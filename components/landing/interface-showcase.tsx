@@ -2,38 +2,35 @@
 
 import { motion } from "framer-motion";
 import { GridSection } from "@/components/ui/grid-section";
-import { Activity, Smartphone, Search } from "lucide-react";
 import { StatusBadge } from "./status-badge";
 
 const interfaces = [
   {
-    icon: Activity,
-    accent: "bg-[#0D7A6B]",
-    accentLight: "bg-[#0D7A6B]/10 text-[#0D7A6B]",
     audience: "For District Officials",
     title: "District Console",
     description:
       "Data-dense, desktop-first interface with MapLibre GL maps, TanStack data tables, and real-time analytics. Bi-directional link between map markers and table rows.",
+    headerGradient: "from-[#0D7A6B]/90 to-[#0FA89A]/90",
     mockContent: (
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 text-[10px] font-medium text-neutral-400">
+      <div className="space-y-2.5">
+        <div className="flex items-center gap-1.5 text-[10px] font-medium text-neutral-400">
           <span className="relative flex h-1.5 w-1.5">
-            <span className="inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
+            <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
           </span>
           Real-time · Last updated 5m ago
         </div>
-        <div className="grid grid-cols-3 gap-2">
-          <div className="rounded-md bg-green-100/50 p-2 text-center">
-            <div className="text-xs font-semibold text-green-700">2,847</div>
-            <div className="text-[8px] text-green-600">Operational</div>
+        <div className="grid grid-cols-3 gap-1.5">
+          <div className="rounded-md border border-emerald-200/60 bg-emerald-50/40 p-1.5 text-center">
+            <div className="text-[11px] font-semibold text-emerald-700">2,847</div>
+            <div className="text-[7px] uppercase tracking-wider text-emerald-600">Operational</div>
           </div>
-          <div className="rounded-md bg-amber-100/50 p-2 text-center">
-            <div className="text-xs font-semibold text-amber-700">287</div>
-            <div className="text-[8px] text-amber-600">Degraded</div>
+          <div className="rounded-md border border-amber-200/60 bg-amber-50/40 p-1.5 text-center">
+            <div className="text-[11px] font-semibold text-amber-700">287</div>
+            <div className="text-[7px] uppercase tracking-wider text-amber-600">Degraded</div>
           </div>
-          <div className="rounded-md bg-red-100/50 p-2 text-center">
-            <div className="text-xs font-semibold text-red-700">107</div>
-            <div className="text-[8px] text-red-600">Down</div>
+          <div className="rounded-md border border-red-200/60 bg-red-50/40 p-1.5 text-center">
+            <div className="text-[11px] font-semibold text-red-700">107</div>
+            <div className="text-[7px] uppercase tracking-wider text-red-600">Down</div>
           </div>
         </div>
         <div className="space-y-1">
@@ -41,7 +38,7 @@ const interfaces = [
             (name, i) => (
               <div
                 key={name}
-                className="flex items-center justify-between rounded-md bg-neutral-50 px-2 py-1"
+                className="flex items-center justify-between rounded-md bg-white px-2 py-1.5 ring-1 ring-inset ring-neutral-200/60"
               >
                 <span className="text-[10px] font-medium text-neutral-700">
                   {name}
@@ -63,54 +60,52 @@ const interfaces = [
     ),
   },
   {
-    icon: Smartphone,
-    accent: "bg-green-600",
-    accentLight: "bg-green-600/10 text-green-600",
     audience: "For Field Workers",
     title: "Mobile Field Reports",
     description:
       "Offline-first PWA with optimistic updates. Three screens: clinic list, 5-field report form, confirmation. Queues with Zustand, syncs when online.",
+    headerGradient: "from-[#059669]/90 to-[#34D399]/90",
     mockContent: (
-      <div className="space-y-2">
-        <div className="rounded-lg bg-green-50 p-2">
-          <div className="text-[10px] font-medium text-green-700">
+      <div className="space-y-2.5">
+        <div className="rounded-lg border border-emerald-200/60 bg-emerald-50/40 p-2">
+          <div className="text-[10px] font-semibold text-emerald-800">
             Diepsloot CHC
           </div>
-          <div className="text-[8px] text-green-600">1.2 km away · Operational</div>
+          <div className="text-[8px] text-emerald-600">1.2 km away · Operational</div>
         </div>
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-1.5 rounded-md bg-neutral-50 px-2 py-1.5">
-            <div className="h-3 w-3 rounded border border-green-400 bg-green-400" />
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 rounded-md bg-white px-2 py-1.5 ring-1 ring-inset ring-neutral-200/60">
+            <div className="flex h-3.5 w-3.5 items-center justify-center rounded border-2 border-emerald-400 bg-emerald-400">
+              <svg className="h-2 w-2 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+            </div>
             <span className="text-[9px] text-neutral-600">Clinic open today?</span>
           </div>
-          <div className="flex items-center gap-1.5 rounded-md bg-neutral-50 px-2 py-1.5">
-            <div className="h-3 w-3 rounded border border-neutral-300 bg-amber-400" />
+          <div className="flex items-center gap-2 rounded-md bg-white px-2 py-1.5 ring-1 ring-inset ring-neutral-200/60">
+            <div className="h-3.5 w-3.5 rounded border-2 border-amber-400 bg-amber-400" />
             <span className="text-[9px] text-neutral-600">Staff level?</span>
           </div>
-          <div className="flex items-center gap-1.5 rounded-md bg-neutral-50 px-2 py-1.5">
-            <div className="h-3 w-3 rounded border border-neutral-300" />
+          <div className="flex items-center gap-2 rounded-md bg-white px-2 py-1.5 ring-1 ring-inset ring-neutral-200/60">
+            <div className="h-3.5 w-3.5 rounded border-2 border-neutral-300" />
             <span className="text-[9px] text-neutral-600">Medicine stocked?</span>
           </div>
         </div>
-        <div className="rounded-md bg-green-600 px-2 py-1.5 text-center text-[9px] font-medium text-white">
+        <div className="rounded-md bg-[#0D7A6B] px-2 py-1.5 text-center text-[9px] font-semibold text-white shadow-sm">
           Submit Report
         </div>
       </div>
     ),
   },
   {
-    icon: Search,
-    accent: "bg-amber-600",
-    accentLight: "bg-amber-600/10 text-amber-600",
-    audience: "For Patients",
+    audience: "For Patients & Public",
     title: "Public Clinic Finder",
     description:
-      "Lightweight, no-login-required clinic finder. Search by suburb or name, view status badges, get directions via Google Maps deep links. ISR revalidated every 10 minutes.",
+      "Lightweight, no-login-required clinic finder. Search by suburb or name, view status badges, get directions via Google Maps deep links. Loads in under 2 seconds on 3G.",
+    headerGradient: "from-[#D97706]/90 to-[#FBBF24]/90",
     mockContent: (
-      <div className="space-y-2">
-        <div className="flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-2 py-1.5">
+      <div className="space-y-2.5">
+        <div className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-2.5 py-2 ring-1 ring-inset ring-neutral-200/60 shadow-sm">
           <svg
-            className="h-3 w-3 text-neutral-400"
+            className="h-3.5 w-3.5 text-neutral-400"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -123,20 +118,20 @@ const interfaces = [
             Search suburb or clinic name...
           </span>
         </div>
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           {[
-            { name: "Soweto CHC", status: "operational" as const },
-            { name: "Sandton Clinic", status: "degraded" as const },
+            { name: "Soweto CHC", dist: "2.1 km", status: "operational" as const },
+            { name: "Sandton Clinic", dist: "4.8 km", status: "degraded" as const },
           ].map((clinic) => (
             <div
               key={clinic.name}
-              className="flex items-center justify-between rounded-md border border-neutral-100 px-2 py-1.5"
+              className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white px-2.5 py-2 ring-1 ring-inset ring-neutral-200/60"
             >
               <div>
-                <div className="text-[10px] font-medium text-neutral-700">
+                <div className="text-[10px] font-medium text-neutral-800">
                   {clinic.name}
                 </div>
-                <div className="text-[8px] text-neutral-400">2.1 km</div>
+                <div className="text-[8px] text-neutral-400">{clinic.dist}</div>
               </div>
               <StatusBadge
                 status={clinic.status}
@@ -145,6 +140,12 @@ const interfaces = [
               />
             </div>
           ))}
+        </div>
+        <div className="flex items-center justify-center gap-1 text-[8px] text-neutral-400">
+          <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+          Get directions on Google Maps
         </div>
       </div>
     ),
@@ -170,44 +171,38 @@ export function InterfaceShowcase() {
           open facility.
         </p>
 
-        <div className="mt-12 grid gap-6 md:grid-cols-3">
-          {interfaces.map((iface, i) => {
-            const Icon = iface.icon;
-            return (
-              <motion.div
-                key={iface.title}
-                initial={{ opacity: 0, y: 15 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-50px" }}
-                transition={{
-                  delay: i * 0.1,
-                  duration: 0.4,
-                  ease: "easeOut",
-                }}
-                className="group overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm ring-1 ring-black/5 transition-shadow hover:shadow-md"
-              >
-                <div className={`${iface.accent} px-5 py-3`}>
-                  <p className="text-[11px] font-medium text-white/70">
-                    {iface.audience}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Icon className="h-4 w-4 text-white" />
-                    <h3 className="text-base font-semibold text-white">
-                      {iface.title}
-                    </h3>
-                  </div>
+        <div className="mt-12 grid gap-5 md:grid-cols-3">
+          {interfaces.map((iface, i) => (
+            <motion.div
+              key={iface.title}
+              initial={{ opacity: 0, y: 15 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{
+                delay: i * 0.1,
+                duration: 0.4,
+                ease: "easeOut",
+              }}
+              className="group overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm ring-1 ring-black/5 transition-shadow hover:shadow-md"
+            >
+              <div className={`bg-gradient-to-r ${iface.headerGradient} px-5 py-3.5`}>
+                <p className="text-[11px] font-medium text-white/70">
+                  {iface.audience}
+                </p>
+                <h3 className="mt-0.5 text-[15px] font-semibold text-white">
+                  {iface.title}
+                </h3>
+              </div>
+              <div className="p-5">
+                <p className="mb-4 text-sm leading-relaxed text-neutral-500">
+                  {iface.description}
+                </p>
+                <div className="rounded-lg border border-neutral-200 bg-neutral-50/50 p-3 ring-1 ring-black/5">
+                  {iface.mockContent}
                 </div>
-                <div className="p-5">
-                  <p className="mb-4 text-sm leading-relaxed text-neutral-500">
-                    {iface.description}
-                  </p>
-                  <div className="rounded-lg border border-neutral-200 bg-neutral-50/50 p-3 ring-1 ring-black/5">
-                    {iface.mockContent}
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
+              </div>
+            </motion.div>
+          ))}
         </div>
       </div>
     </GridSection>
