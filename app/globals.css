@@ -5,7 +5,6 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
   --font-display: var(--font-playfair);
-  --font-mono: var(--font-geist-mono);
 
   --color-primary: #0D7A6B;
   --color-primary-foreground: #ffffff;
@@ -35,7 +34,6 @@
 :root {
   --background: #FAFAFA;
   --foreground: #171717;
-  --font-inter: 'Inter', system-ui, -apple-system, sans-serif;
   --font-playfair: 'Playfair Display', Georgia, serif;
 }
 
