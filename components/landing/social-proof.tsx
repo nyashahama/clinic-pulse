@@ -16,7 +16,7 @@ const testimonials = [
     org: "Right to Care",
   },
   {
-    quote: "Finally, a single source of truth for clinic status. The district console replaced three spreadsheets and a WhatsApp group.",
+    quote: "Finally, a single source of truth for clinic status. The district console replaced three spreadshets and a WhatsApp group.",
     author: "Naledi van der Merwe",
     role: "Program Director",
     org: "BroadReach Health",
@@ -25,7 +25,7 @@ const testimonials = [
 
 export function SocialProofSection() {
   return (
-    <section className="border-t border-neutral-200 bg-white" id="proof">
+    <section className="relative border-t border-neutral-200 bg-white" id="proof">
       <div className="mx-auto max-w-[1200px] border-x border-neutral-200 px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
         <p className="mb-4 text-center text-xs font-semibold uppercase tracking-widest text-[#0D7A6B]">
           Testimonials
@@ -52,7 +52,7 @@ export function SocialProofSection() {
               className="flex flex-col rounded-xl border border-neutral-200 bg-white p-6 shadow-sm ring-1 ring-black/5"
             >
               <p
-                className="mb-4 text-[15px] leading-relaxed text-neutral-600"
+                className="mb-4 flex-1 text-[15px] leading-relaxed text-neutral-600"
                 style={{ textWrap: "pretty" }}
               >
                 &ldquo;{testimonial.quote}&rdquo;
