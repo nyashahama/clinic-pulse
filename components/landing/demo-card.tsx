@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { StatusBadge } from "./status-badge";
 
 const clinicData = [
@@ -33,10 +34,10 @@ const mapDots = [
 ] as const;
 
 const statusCounters = [
-  { value: "2,847", label: "Operational", color: "text-green-700" },
-  { value: "287", label: "Degraded", color: "text-amber-700" },
-  { value: "107", label: "Non-Functional", color: "text-red-700" },
-  { value: "259", label: "Unknown", color: "text-slate-600" },
+  { value: "2,847", label: "Operational", color: "text-green-700", change: "+12" },
+  { value: "287", label: "Degraded", color: "text-amber-700", change: "+3" },
+  { value: "107", label: "Non-Functional", color: "text-red-700", change: "-5" },
+  { value: "259", label: "Unknown", color: "text-slate-600", change: "0" },
 ];
 
 const dotColorMap: Record<string, string> = {
@@ -97,8 +98,14 @@ export function DemoCard() {
                   }}
                 />
                 {mapDots.map((dot, i) => (
-                  <span
+                  <motion.span
                     key={i}
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{
+                      delay: Math.random() * 0.5,
+                      duration: 0.3,
+                    }}
                     className={`absolute rounded-full ${dotColorMap[dot.status]} ${
                       dot.highlighted ? "h-2.5 w-2.5" : "h-1.5 w-1.5"
                     }`}
@@ -107,8 +114,20 @@ export function DemoCard() {
                     {dot.highlighted && (
                       <span className="absolute inset-[-4px] animate-ring-pulse rounded-full border-[1.5px] border-green-400/40" />
                     )}
-                  </span>
+                  </motion.span>
                 ))}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 1.2 }}
+                  className="absolute bottom-2 left-2 right-2 flex justify-between text-[9px] font-medium text-neutral-400"
+                >
+                  <span>254 active</span>
+                  <span className="flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                    Operational
+                  </span>
+                </motion.div>
               </div>
             </div>
 
@@ -117,9 +136,12 @@ export function DemoCard() {
                 Recent Reports
               </div>
               <div className="flex flex-col gap-0">
-                {clinicData.map((clinic) => (
-                  <div
+                {clinicData.map((clinic, i) => (
+                  <motion.div
                     key={clinic.name}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.6 + i * 0.1 }}
                     className="flex items-center justify-between border-b border-neutral-100 py-2 last:border-b-0 md:py-2.5"
                   >
                     <div>
@@ -131,25 +153,35 @@ export function DemoCard() {
                       </div>
                     </div>
                     <StatusBadge status={clinic.status} />
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-2 border-t border-neutral-200 sm:grid-cols-4">
-            {statusCounters.map((counter) => (
-              <div
+            {statusCounters.map((counter, i) => (
+              <motion.div
                 key={counter.label}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1 + i * 0.1 }}
                 className="border-b border-neutral-100 border-r px-4 py-3.5 text-center last:border-r-0 sm:border-b-0 sm:px-5 sm:py-4"
               >
                 <div className={`text-lg font-semibold tabular-nums tracking-tight sm:text-2xl ${counter.color}`}>
                   {counter.value}
+                  <span className="ml-1 text-[10px] text-neutral-400">
+                    {counter.change !== "0" && (
+                      <span className={counter.change.startsWith("+") ? "text-green-500" : "text-red-500"}>
+                        {counter.change}
+                      </span>
+                    )}
+                  </span>
                 </div>
                 <div className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-neutral-400 sm:text-[11px]">
                   {counter.label}
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
