@@ -58,23 +58,25 @@ const features = [
 
 export function FeaturesSection() {
   return (
-    <GridSection className="bg-neutral-50" id="platform">
+    <GridSection className="bg-white" id="features">
       <div>
         <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-[#0D7A6B]">
-          The Platform
+          Under the Hood
         </p>
         <h2
           className="font-display text-3xl font-medium leading-[1.15] tracking-tight text-neutral-900 sm:text-4xl"
           style={{ textWrap: "balance" }}
         >
-          One system. Three interfaces.
+          Built for the realities of<br className="hidden sm:block" /> South
+          African healthcare
         </h2>
         <p className="mt-4 max-w-xl text-base leading-relaxed text-neutral-500">
-          Citizen-report-enriched, NGO-contributed, government-data-fused. Built
-          for the people who need it — and the data they produce.
+          Every technical decision — offline-first, bi-directional maps,
+          5-field reports — comes from watching how healthcare actually works on
+          the ground.
         </p>
 
-        <div className="mt-12 grid grid-cols-1 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-200 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-12 grid grid-cols-1 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-200 shadow-sm ring-1 ring-black/5 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((feature, i) => {
             const Icon = feature.icon;
             return (
@@ -88,7 +90,7 @@ export function FeaturesSection() {
                   duration: 0.4,
                   ease: "easeOut",
                 }}
-                className="bg-white p-7"
+                className="group bg-white p-7 transition-shadow hover:shadow-md"
               >
                 <div
                   className={`mb-4 flex h-10 w-10 items-center justify-center rounded-[10px] ${feature.color}`}

@@ -1,11 +1,9 @@
-"use client";
-
 import Link from "next/link";
 
 export function Nav() {
   return (
-    <nav className="fixed top-0 z-50 flex h-16 w-full items-center justify-between border-b border-neutral-200 bg-white/80 px-6 backdrop-blur-md lg:px-10">
-      <Link href="/" className="flex items-center gap-2.5">
+    <nav className="fixed top-0 z-50 flex h-14 w-full items-center justify-between border-b border-neutral-200/80 bg-white/80 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
+      <Link href="/" className="flex items-center gap-2">
         <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#0D7A6B]">
           <svg
             className="h-3.5 w-3.5"
@@ -24,43 +22,43 @@ export function Nav() {
         </span>
       </Link>
 
-      <div className="hidden items-center gap-8 text-sm text-neutral-500 md:flex">
+      <div className="hidden items-center gap-1 text-sm md:flex">
         <Link
           href="#problem"
-          className="transition-colors hover:text-neutral-900"
+          className="rounded-md px-3 py-1.5 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
         >
           Problem
         </Link>
         <Link
           href="#platform"
-          className="transition-colors hover:text-neutral-900"
+          className="rounded-md px-3 py-1.5 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
         >
           Platform
         </Link>
         <Link
           href="#features"
-          className="transition-colors hover:text-neutral-900"
+          className="rounded-md px-3 py-1.5 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
         >
           Features
         </Link>
         <Link
-          href="#cta"
-          className="transition-colors hover:text-neutral-900"
+          href="#proof"
+          className="rounded-md px-3 py-1.5 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
         >
-          Pricing
+          Testimonials
         </Link>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <Link
           href="/login"
-          className="hidden text-sm font-medium text-neutral-500 transition-colors hover:text-neutral-900 sm:inline-block"
+          className="hidden rounded-md px-3 py-1.5 text-sm font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 sm:block"
         >
           Sign in
         </Link>
         <Link
           href="/demo"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-900 bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-neutral-800 hover:ring-4 hover:ring-neutral-200"
+          className="inline-flex items-center rounded-lg border border-neutral-900 bg-neutral-900 px-3.5 py-1.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-neutral-800 hover:ring-4 hover:ring-neutral-200"
         >
           Request Demo
         </Link>

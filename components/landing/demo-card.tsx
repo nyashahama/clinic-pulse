@@ -48,35 +48,43 @@ const dotColorMap: Record<string, string> = {
 
 export function DemoCard() {
   return (
-    <div className="mx-auto mt-16 max-w-[1000px] px-6 sm:px-0">
+    <div className="mx-auto mt-12 max-w-[1000px] px-4 sm:px-6 lg:px-8">
       <div className="relative">
         <div
-          className="absolute -inset-10 rounded-full opacity-[0.08]"
+          className="absolute -left-20 -right-20 -top-20 -bottom-8 rounded-full opacity-[0.07]"
           style={{
             background:
               "conic-gradient(from 180deg, #0D7A6B, #22c55e, #f59e0b, #ef4444, #0D7A6B)",
-            filter: "blur(80px)",
+            filter: "blur(100px)",
           }}
         />
-        <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_20px_40px_-12px_rgba(0,0,0,0.08)]">
-          <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-3">
+        <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_25px_50px_-12px_rgba(0,0,0,0.12)] ring-1 ring-black/5">
+          {/* Window chrome */}
+          <div className="flex items-center justify-between border-b border-neutral-100 bg-neutral-50/50 px-4 py-2.5">
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1.5">
+                <div className="h-2 w-2 rounded-full border border-neutral-300" />
+                <div className="h-2 w-2 rounded-full border border-neutral-300" />
+                <div className="h-2 w-2 rounded-full border border-neutral-300" />
+              </div>
+            </div>
             <div className="flex items-center gap-2">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="animate-pulse-dot absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
                 <span className="inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
               </span>
-              <span className="text-xs font-medium text-green-600">
+              <span className="text-[11px] font-medium text-green-600">
                 Live
               </span>
             </div>
-            <span className="text-xs text-neutral-400 tabular-nums">
+            <span className="text-[11px] text-neutral-400 tabular-nums">
               District Console · Gauteng Province
             </span>
           </div>
 
           <div className="grid min-h-[320px] grid-cols-1 md:grid-cols-2">
-            <div className="flex flex-col border-b border-neutral-100 p-5 md:border-b-0 md:border-r">
-              <div className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+            <div className="flex flex-col border-b border-neutral-100 p-4 md:border-b-0 md:border-r md:p-5">
+              <div className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
                 Clinic Status Map
               </div>
               <div className="relative flex-1 overflow-hidden rounded-lg border border-neutral-200 bg-gradient-to-br from-neutral-50 to-white">
@@ -104,21 +112,21 @@ export function DemoCard() {
               </div>
             </div>
 
-            <div className="flex flex-col p-5">
-              <div className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+            <div className="flex flex-col p-4 md:p-5">
+              <div className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
                 Recent Reports
               </div>
               <div className="flex flex-col gap-0">
                 {clinicData.map((clinic) => (
                   <div
                     key={clinic.name}
-                    className="flex items-center justify-between border-b border-neutral-100 py-2.5 last:border-b-0"
+                    className="flex items-center justify-between border-b border-neutral-100 py-2 last:border-b-0 md:py-2.5"
                   >
                     <div>
                       <div className="text-[13px] font-medium text-neutral-900">
                         {clinic.name}
                       </div>
-                      <div className="text-xs text-neutral-400">
+                      <div className="text-[11px] text-neutral-400">
                         {clinic.district}
                       </div>
                     </div>
@@ -133,12 +141,12 @@ export function DemoCard() {
             {statusCounters.map((counter) => (
               <div
                 key={counter.label}
-                className="border-b border-neutral-100 border-r px-5 py-4 text-center last:border-r-0 sm:border-b-0"
+                className="border-b border-neutral-100 border-r px-4 py-3.5 text-center last:border-r-0 sm:border-b-0 sm:px-5 sm:py-4"
               >
-                <div className={`text-2xl font-semibold tabular-nums tracking-tight ${counter.color}`}>
+                <div className={`text-lg font-semibold tabular-nums tracking-tight sm:text-2xl ${counter.color}`}>
                   {counter.value}
                 </div>
-                <div className="mt-0.5 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
+                <div className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-neutral-400 sm:text-[11px]">
                   {counter.label}
                 </div>
               </div>
