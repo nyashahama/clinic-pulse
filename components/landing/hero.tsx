@@ -2,21 +2,30 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { Grid } from "@/components/ui/grid";
+import { ButtonLink } from "./button-link";
+
+const HERO_GRADIENT = `radial-gradient(77% 116% at 37% 67%, #EEA5BA, rgba(238, 165, 186, 0) 50%),
+  radial-gradient(56% 84% at 34% 56%, #3A8BFD, rgba(58, 139, 253, 0) 50%),
+  radial-gradient(85% 127% at 100% 100%, #E4C795, rgba(228, 199, 149, 0) 50%),
+  radial-gradient(82% 122% at 3% 29%, #855AFC, rgba(133, 90, 252, 0) 50%),
+  radial-gradient(90% 136% at 52% 100%, #FD3A4E, rgba(253, 58, 78, 0) 50%),
+  radial-gradient(102% 143% at 92% 7%, #72FE7D, rgba(114, 254, 125, 0) 50%)`;
 
 export function Hero() {
   return (
     <section className="relative overflow-hidden px-4 pb-20 pt-28 sm:px-6 sm:pb-28 sm:pt-36 lg:px-8">
-      {/* Grid background pattern */}
-      <div
-        className="absolute inset-0 mask-image-[linear-gradient(to_bottom,white_40%,transparent)]"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(13,122,107,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(13,122,107,0.03) 1px, transparent 1px)",
-          backgroundSize: "60px 60px",
-          maskImage: "linear-gradient(to bottom, white 40%, transparent 100%)",
-          WebkitMaskImage: "linear-gradient(to bottom, white 40%, transparent 100%)",
-        }}
+      <Grid
+        cellSize={80}
+        patternOffset={[1, -58]}
+        className="inset-[unset] left-1/2 top-0 w-[1200px] -translate-x-1/2 text-neutral-200 [mask-image:linear-gradient(transparent,black_70%)]"
       />
+      <div className="absolute -inset-x-10 bottom-0 h-[60%] opacity-30 blur-[100px] [transform:translate3d(0,0,0)]">
+        <div
+          className="size-full -scale-y-100 [mask-image:radial-gradient(closest-side,black_100%,transparent_100%)]"
+          style={{ backgroundImage: HERO_GRADIENT }}
+        />
+      </div>
 
       <div className="relative mx-auto max-w-3xl text-center">
         <motion.div
@@ -67,19 +76,12 @@ export function Hero() {
           transition={{ delay: 0.2, duration: 0.5, ease: "easeOut" }}
           className="flex items-center justify-center gap-2.5"
         >
-          <Link
-            href="/demo"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-900 bg-neutral-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-neutral-800 hover:ring-4 hover:ring-neutral-200"
-          >
-            Request Demo
-            <span aria-hidden="true">→</span>
-          </Link>
-          <Link
-            href="#platform"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-600 shadow-sm transition-all hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900"
-          >
+          <ButtonLink href="/demo" variant="primary">
+            Request Demo <span aria-hidden="true">→</span>
+          </ButtonLink>
+          <ButtonLink href="#platform" variant="secondary">
             View Live Map
-          </Link>
+          </ButtonLink>
         </motion.div>
       </div>
     </section>
