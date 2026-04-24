@@ -7,61 +7,59 @@ import { StatusMapGraphic } from "./graphics/status-map";
 import { AnalyticsGraphic } from "./graphics/analytics";
 import { FieldReportsGraphic } from "./graphics/field-reports";
 import { APIDocumentationGraphic } from "./graphics/api-docs";
+import { CollaborationGraphic } from "./graphics/collaboration";
+import { QRCodeGraphic } from "./graphics/qr-code";
+import { DomainsGraphic } from "./graphics/domains";
+import { PersonalizationGraphic } from "./graphics/personalization";
 
 const features = [
   {
     title: "Real-Time Status Board",
     description:
-      "Interactive map with live clinic status. Click markers to view details, filter by district, and see operational capacity at a glance.",
+      "Interactive map with live clinic status across all 52 districts. Click markers to view details, filter by status, and see operational capacity at a glance.",
     link: "/platform",
     linkText: "Explore platform",
     graphic: <StatusMapGraphic />,
-    graphicKey: "status-map",
   },
   {
     title: "Offline-First Reports",
     description:
-      "Quick 5-field forms that work without internet. Queues submissions locally and syncs when connectivity returns.",
+      "5-field quick report forms that work without internet. Submits optimistically, queues locally, and syncs automatically when connectivity returns.",
     link: "/features",
     linkText: "Learn more",
     graphic: <FieldReportsGraphic />,
-    graphicKey: "reports",
   },
   {
-    title: "REST API",
+    title: "QR Codes",
     description:
-      "Full programmatic access to clinic data, status updates, and analytics. Rate-limited at 1k/min with WebSocket support.",
-    link: "/docs",
-    linkText: "View docs",
-    graphic: <APIDocumentationGraphic />,
-    graphicKey: "api",
+      "Every clinic gets a custom QR code. Patients scan to see real-time status. Customize colors, add logos, and download in any format.",
+    link: "/features",
+    linkText: "Try generator",
+    graphic: <QRCodeGraphic />,
   },
   {
-    title: "District Analytics",
+    title: "Custom Domains",
     description:
-      "Real-time dashboards with trend analysis, burden detection, and resource allocation insights powered by your data.",
-    link: "/analytics",
-    linkText: "View analytics",
-    graphic: <AnalyticsGraphic />,
-    graphicKey: "analytics",
-  },
-  {
-    title: "Referral Routing",
-    description:
-      "Smart patient routing when a clinic is degraded. Finds nearest operational alternative with available capacity.",
+      "Use your own domain for clinic links. Improve trust and click-through rates by up to 30% with branded short URLs.",
     link: "/features",
     linkText: "Learn more",
-    graphic: <StatusMapGraphic />,
-    graphicKey: "routing",
+    graphic: <DomainsGraphic />,
   },
   {
-    title: "NHI-Ready Data",
+    title: "Team Collaboration",
     description:
-      "Facility-level data meeting National Health Insurance requirements. The operational layer DHIS2 was never designed to be.",
-    link: "/nhi",
+      "Invite your team with role-based access. District managers, field leads, and admins — everyone gets the right permissions.",
+    link: "/features",
     linkText: "Learn more",
-    graphic: <AnalyticsGraphic />,
-    graphicKey: "nhi",
+    graphic: <CollaborationGraphic />,
+  },
+  {
+    title: "Analytics",
+    description:
+      "Full attribution for every click. Device, geo, referrer — understand exactly how patients find your clinics.",
+    link: "/analytics",
+    linkText: "View analytics",
+    graphic: <PersonalizationGraphic />,
   },
 ];
 
@@ -85,44 +83,37 @@ export function FeaturesSection() {
           </p>
         </div>
 
-        <div className="mt-14 grid grid-cols-1 divide-y divide-neutral-200 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50 sm:grid-cols-2 sm:divide-x lg:grid-cols-3 lg:divide-y-0">
+        <div className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {features.map((feature, i) => (
             <motion.div
               key={feature.title}
-              initial={{ opacity: 0, y: 15 }}
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-50px" }}
               transition={{
-                delay: i * 0.05,
-                duration: 0.4,
+                delay: i * 0.08,
+                duration: 0.5,
                 ease: "easeOut",
               }}
-              className="group relative flex flex-col gap-4 bg-white p-4 transition-all hover:bg-neutral-50 lg:p-6"
+              className="group relative flex flex-col rounded-2xl border border-neutral-200 bg-white p-4 transition-all hover:border-neutral-300 hover:shadow-lg"
             >
-              <div
-                className="absolute left-1/2 top-1/3 h-1/2 w-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-0 transition-opacity duration-300 group-hover:opacity-10 blur-[50px]"
-                style={{
-                  background: "conic-gradient(from 270deg, #0D7A6B, #22c55e, transparent)",
-                }}
-              />
-              
-              <div className="relative h-32 overflow-hidden rounded-lg border border-neutral-100 bg-neutral-50 sm:h-36">
+              <div className="relative mb-4 h-40 overflow-hidden rounded-xl border border-neutral-100 bg-neutral-50">
                 {feature.graphic}
               </div>
               
-              <h3 className="relative text-base font-medium text-neutral-900">
+              <h3 className="text-base font-medium text-neutral-900">
                 {feature.title}
               </h3>
-              <p className="relative text-sm leading-relaxed text-neutral-500">
+              <p className="mt-1 text-sm leading-relaxed text-neutral-500">
                 {feature.description}
               </p>
               <Link
                 href={feature.link}
-                className="relative mt-auto inline-flex w-fit items-center gap-1 text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900"
+                className="group/link mt-3 inline-flex w-fit items-center gap-1 text-sm font-medium text-neutral-600 transition-colors hover:text-[#0D7A6B]"
               >
                 {feature.linkText}
                 <svg
-                  className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                  className="h-4 w-4 transition-transform group-hover/link:translate-x-0.5"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
