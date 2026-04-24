@@ -29,6 +29,11 @@
   --animate-slide-up-fade: slide-up-fade 0.6s ease-out forwards;
   --animate-pulse-dot: pulse-dot 2s ease-in-out infinite;
   --animate-ring-pulse: ring-pulse 2s ease-out infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-grow: pulse-grow 3s ease-in-out infinite;
+  --animate-count: count 3s ease-out forwards;
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
 }
 
 :root {
@@ -66,6 +71,55 @@
   100% {
     transform: scale(2.5);
     opacity: 0;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse-grow {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+}
+
+@keyframes count {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
   }
 }
 
