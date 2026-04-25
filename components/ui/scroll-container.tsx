@@ -1,0 +1,32 @@
+"use client";
+
+import { cn } from "@/lib/utils";
+import { PropsWithChildren, useRef } from "react";
+import { useScrollProgress } from "@/lib/hooks/use-scroll-progress";
+
+export function ScrollContainer({
+  children,
+  className,
+}: PropsWithChildren<{ className?: string }>) {
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollProgress, updateScrollProgress } = useScrollProgress(ref);
+
+  return (
+    <div className="relative">
+      <div
+        className={cn(
+          "h-full w-screen overflow-y-scroll [clip-path:inset(0)] sm:w-auto",
+          className,
+        )}
+        ref={ref}
+        onScroll={updateScrollProgress}
+      >
+        {children}
+      </div>
+      <div
+        className="pointer-events-none absolute bottom-0 left-0 z-10 hidden h-16 w-full rounded-b-lg bg-gradient-to-t from-white to-transparent sm:block"
+        style={{ opacity: 1 - Math.pow(scrollProgress, 2) }}
+      />
+    </div>
+  );
+}
