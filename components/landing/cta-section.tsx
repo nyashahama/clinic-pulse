@@ -17,7 +17,7 @@ export function CTASection() {
     <section className="relative overflow-hidden border-t border-neutral-800 bg-neutral-950">
       <ProgressiveBlur className="absolute top-0 left-0 right-0 h-32" side="bottom" strength={16} steps={3} />
 
-      <MaxWidthWrapper className="relative py-16 sm:py-20 lg:py-24">
+      <MaxWidthWrapper className="relative border-x-neutral-800 py-16 sm:py-20 lg:py-24">
         <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
