@@ -73,19 +73,19 @@ export function Hero() {
       <Grid
         cellSize={80}
         patternOffset={[1, -58]}
-        className="inset-[unset] left-1/2 top-0 w-[1200px] -translate-x-1/2 text-neutral-200/60 [mask-image:linear-gradient(transparent,black_70%)]"
+        className="inset-[unset] left-1/2 top-0 w-[1200px] -translate-x-1/2 text-neutral-200/30 [mask-image:linear-gradient(transparent,black_70%)]"
       />
       <DotsPattern
         dotSize={1}
         gapSize={8}
-        className="text-neutral-300/40 [mask-image:radial-gradient(closest-side,black,transparent)]"
+        className="text-neutral-300/20 [mask-image:radial-gradient(closest-side,black,transparent)]"
       />
       <ShimmerDots
         dotSize={1}
         cellSize={2}
         speed={3}
         color={[0.05, 0.2, 0.1]}
-        className="opacity-30 [mask-image:radial-gradient(closest-side,black,transparent)]"
+        className="opacity-15 [mask-image:radial-gradient(closest-side,black,transparent)]"
       />
 
       <div className="relative mx-auto max-w-3xl text-center">

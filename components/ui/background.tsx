@@ -20,7 +20,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     pointerEvents: "none",
   },
   backgroundMainBefore: {
-    background: "radial-gradient(circle, rgba(2, 0, 36, 0) 0, #fafafa 100%)",
+    background: "radial-gradient(circle, rgba(2, 0, 36, 0) 0, rgba(250, 250, 250, 0.4) 100%)",
     position: "absolute",
     content: '""',
     zIndex: 2,
@@ -36,7 +36,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     width: "100%",
     height: "100%",
     top: 0,
-    opacity: 0.4,
+    opacity: 0.1,
     filter: "invert(1)",
   },
   backgroundContent: {
@@ -54,6 +54,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     height: "100%",
     filter: "blur(100px) saturate(150%)",
     top: "80px",
-    opacity: 0.15,
+    opacity: 0.08,
   },
 };

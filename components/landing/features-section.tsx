@@ -126,7 +126,7 @@ export function FeaturesSection() {
       <Grid
         cellSize={60}
         patternOffset={[0, 0]}
-        className="text-neutral-200/50 [mask-image:radial-gradient(closest-side,black,transparent)]"
+        className="text-neutral-200/25 [mask-image:radial-gradient(closest-side,black,transparent)]"
       />
       <MaxWidthWrapper className="relative py-16 sm:py-20 lg:py-24">
         <div className="mx-auto max-w-xl text-center">
