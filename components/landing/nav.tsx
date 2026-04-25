@@ -1,68 +1,64 @@
+"use client";
+
+import { cn } from "@/lib/utils";
+import { useScroll } from "@/lib/hooks/use-scroll";
 import Link from "next/link";
 
+const NAV_ITEMS = [
+  { name: "Product", href: "#product" },
+  { name: "Interfaces", href: "#interfaces" },
+  { name: "Proof", href: "#proof" },
+];
+
 export function Nav() {
+  const scrolled = useScroll(40);
+
   return (
-    <nav className="fixed top-0 z-50 flex h-14 w-full items-center justify-between border-b border-neutral-200/80 bg-white/80 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
-      <Link href="/" className="flex items-center gap-2">
-        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#0D7A6B]">
-          <svg
-            className="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="white"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-          </svg>
+    <div className={cn("sticky inset-x-0 top-0 z-30 w-full transition-all")}>
+      <div
+        className={cn(
+          "absolute inset-0 block border-b border-transparent transition-all",
+          scrolled && "border-neutral-200/80 bg-white/75 backdrop-blur-lg",
+        )}
+      />
+      <div className="relative mx-auto w-full max-w-screen-xl px-3 lg:px-10">
+        <div className="flex h-14 items-center justify-between">
+          <div className="grow basis-0">
+            <Link href="/" className="block w-fit py-2 pr-2">
+              <span className="text-[15px] font-semibold tracking-tight text-neutral-900">
+                ClinicPulse
+              </span>
+            </Link>
+          </div>
+
+          <div className="hidden items-center gap-1 lg:flex">
+            {NAV_ITEMS.map(({ name, href }) => (
+              <Link
+                key={name}
+                href={href}
+                className="relative flex items-center rounded-md px-4 py-2 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-900/5 hover:text-neutral-900"
+              >
+                {name}
+              </Link>
+            ))}
+          </div>
+
+          <div className="hidden grow basis-0 justify-end gap-2 lg:flex">
+            <Link
+              href="/login"
+              className="flex h-8 items-center rounded-lg border border-neutral-300 bg-white px-4 text-sm font-medium text-neutral-900 transition-colors hover:bg-neutral-50"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/demo"
+              className="flex h-8 items-center rounded-lg border border-neutral-900 bg-neutral-900 px-4 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
+            >
+              Request Demo
+            </Link>
+          </div>
         </div>
-        <span className="text-[15px] font-semibold tracking-tight text-neutral-900">
-          ClinicPulse
-        </span>
-      </Link>
-
-      <div className="hidden items-center gap-1 text-sm md:flex">
-        <Link
-          href="#problem"
-          className="rounded-md px-3 py-1.5 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
-        >
-          Problem
-        </Link>
-        <Link
-          href="#platform"
-          className="rounded-md px-3 py-1.5 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
-        >
-          Platform
-        </Link>
-        <Link
-          href="#features"
-          className="rounded-md px-3 py-1.5 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
-        >
-          Features
-        </Link>
-        <Link
-          href="#proof"
-          className="rounded-md px-3 py-1.5 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
-        >
-          Testimonials
-        </Link>
       </div>
-
-      <div className="flex items-center gap-2">
-        <Link
-          href="/login"
-          className="hidden rounded-md px-3 py-1.5 text-sm font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 sm:block"
-        >
-          Sign in
-        </Link>
-        <Link
-          href="/demo"
-          className="inline-flex items-center rounded-lg border border-neutral-900 bg-neutral-900 px-3.5 py-1.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-neutral-800 hover:ring-4 hover:ring-neutral-200"
-        >
-          Request Demo
-        </Link>
-      </div>
-    </nav>
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 
 interface Props {
   className?: string;
@@ -10,12 +10,6 @@ const domains = [
   { domain: "clinicpulse.org", clicks: "15.6K", primary: true },
   { domain: "clinicpulse.health", clicks: "3.7K" },
   { domain: "clinicpulse.co.za", clicks: "2.4K" },
-];
-
-const statusOptions = [
-  { label: "QR Code", active: true },
-  { label: "Link", active: false },
-  { label: "API", active: false },
 ];
 
 export function DomainsGraphic({ className }: Props) {
