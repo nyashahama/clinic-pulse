@@ -7,6 +7,8 @@ import { DotsPattern } from "@/components/ui/dots-pattern";
 import { ShimmerDots } from "@/components/ui/shimmer-dots";
 import { ProgressiveBlur } from "@/components/ui/progressive-blur";
 import { ButtonLink } from "./button-link";
+import { PhotoPanel } from "./photo-panel";
+import { landingPhotos } from "./photo-assets";
 
 const mapDots = [
   { left: "32%", top: "20%", status: "operational" },
@@ -157,10 +159,81 @@ export function Hero() {
       </div>
 
       <motion.div
+        initial={{ opacity: 0, y: 28, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ delay: 0.42, duration: 0.6, ease: "easeOut" }}
+        className="relative mx-auto mt-12 grid max-w-[980px] gap-4 md:grid-cols-[0.92fr_1.08fr]"
+      >
+        <PhotoPanel
+          photo={landingPhotos.heroClinic}
+          sizes="(min-width: 768px) 420px, 92vw"
+          priority
+          caption
+          className="min-h-[260px] md:min-h-[360px]"
+        />
+        <div className="relative min-h-[260px] overflow-hidden rounded-2xl border border-neutral-200 bg-white/90 p-4 shadow-lg ring-1 ring-black/5 backdrop-blur-xl md:min-h-[360px] md:p-5">
+          <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400">
+                Live Patient Routing
+              </div>
+              <div className="mt-1 text-sm font-semibold text-neutral-900">
+                Gauteng district flow
+              </div>
+            </div>
+            <span className="rounded-full bg-green-50 px-2 py-1 text-[10px] font-semibold text-green-700 ring-1 ring-green-200">
+              42 reroutes active
+            </span>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {[
+              ["Alexandra PHC", "Non-functional", "Reroute to Sandton Clinic"],
+              [
+                "Mamelodi Clinic",
+                "Degraded",
+                "Send low-acuity patients to Denneboom",
+              ],
+              ["Diepsloot CHC", "Operational", "Accepting overflow"],
+            ].map(([clinic, state, action], i) => (
+              <motion.div
+                key={clinic}
+                initial={{ opacity: 0, x: 18 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.75 + i * 0.12, duration: 0.38 }}
+                className="rounded-xl border border-neutral-200 bg-white p-3 shadow-sm"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-neutral-900">
+                    {clinic}
+                  </span>
+                  <span className="text-[11px] font-semibold text-[#0D7A6B]">
+                    {state}
+                  </span>
+                </div>
+                <div className="mt-1 text-xs text-neutral-500">{action}</div>
+              </motion.div>
+            ))}
+          </div>
+
+          <motion.div
+            animate={{ y: [0, -8, 0] }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute bottom-4 right-4 rounded-xl border border-neutral-200 bg-neutral-950 px-3 py-2 text-white shadow-xl"
+          >
+            <div className="text-[10px] uppercase tracking-widest text-white/45">
+              Capacity score
+            </div>
+            <div className="mt-1 text-2xl font-semibold tracking-tight">78%</div>
+          </motion.div>
+        </div>
+      </motion.div>
+
+      <motion.div
         initial={{ opacity: 0, y: 40, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ delay: 0.5, duration: 0.6, ease: "easeOut" }}
-        className="relative mx-auto mt-16 max-w-[1000px]"
+        className="relative mx-auto mt-6 max-w-[1000px]"
       >
         <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-lg ring-1 ring-black/5">
           <div className="flex items-center justify-between border-b border-neutral-100 bg-neutral-50/50 px-4 py-2.5">
