@@ -82,13 +82,13 @@ export function ShimmerDots({
     });
 
     if (gl === null) {
-      console.error("Failed to initialize WebGL");
+      setContextLost(true);
       return;
     }
 
     const shaderProgram = gl.createProgram();
     if (!shaderProgram) {
-      console.error("Failed to create shader program");
+      setContextLost(true);
       return;
     }
 
@@ -98,19 +98,25 @@ export function ShimmerDots({
         i === 0 ? gl.VERTEX_SHADER : gl.FRAGMENT_SHADER,
       );
       if (!shaderObj) {
-        console.error("Failed to create shader");
+        setContextLost(true);
         return;
       }
       gl.shaderSource(shaderObj, source);
       gl.compileShader(shaderObj);
       const compiled = gl.getShaderParameter(shaderObj, gl.COMPILE_STATUS);
-      if (!compiled) console.error(gl.getShaderInfoLog(shaderObj));
+      if (!compiled) {
+        setContextLost(true);
+        return;
+      }
       gl.attachShader(shaderProgram, shaderObj);
       gl.linkProgram(shaderProgram);
     }
 
     const linked = gl.getProgramParameter(shaderProgram, gl.LINK_STATUS);
-    if (!linked) console.error(gl.getProgramInfoLog(shaderProgram));
+    if (!linked) {
+      setContextLost(true);
+      return;
+    }
 
     const position = gl.getAttribLocation(shaderProgram, "position");
     const time = gl.getUniformLocation(shaderProgram, "time");
@@ -156,17 +162,19 @@ export function ShimmerDots({
 
     animationFrameId = requestAnimationFrame(render);
 
-    canvas.addEventListener("webglcontextlost", (e) => {
+    const handleContextLost = (e: Event) => {
       e.preventDefault();
       setContextLost(true);
       cancelAnimationFrame(animationFrameId);
-    });
+    };
+
+    canvas.addEventListener("webglcontextlost", handleContextLost);
 
     return () => {
       cancelAnimationFrame(animationFrameId);
-      canvas.removeEventListener("webglcontextlost", () => {});
+      canvas.removeEventListener("webglcontextlost", handleContextLost);
     };
-  }, [dotSize, cellSize, speed]);
+  }, [dotSize, cellSize, speed, color]);
 
   return (
     <div
