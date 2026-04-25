@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import NumberFlow from "@number-flow/react";
 import { Grid } from "@/components/ui/grid";
 import { DotsPattern } from "@/components/ui/dots-pattern";
@@ -71,6 +71,8 @@ const statusTextColors: Record<string, string> = {
 };
 
 export function Hero() {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
     <section className="relative overflow-hidden px-4 pb-20 pt-28 sm:px-6 sm:pb-32 sm:pt-40 lg:px-8">
       <Grid
@@ -217,9 +219,13 @@ export function Hero() {
           </div>
 
           <motion.div
-            animate={{ y: [0, -8, 0] }}
-            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute bottom-4 right-4 rounded-xl border border-neutral-200 bg-neutral-950 px-3 py-2 text-white shadow-xl"
+            animate={shouldReduceMotion ? undefined : { y: [0, -8, 0] }}
+            transition={
+              shouldReduceMotion
+                ? undefined
+                : { duration: 4, repeat: Infinity, ease: "easeInOut" }
+            }
+            className="mt-4 w-fit rounded-xl border border-neutral-200 bg-neutral-950 px-3 py-2 text-white shadow-xl md:absolute md:bottom-4 md:right-4 md:mt-0"
           >
             <div className="text-[10px] uppercase tracking-widest text-white/45">
               Capacity score
