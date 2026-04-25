@@ -52,7 +52,7 @@ function LinkedInIcon() {
 export function Footer() {
   return (
     <footer>
-      <div className="mx-auto w-full max-w-screen-xl px-3 lg:px-10">
+      <div className="mx-auto w-full max-w-screen-xl border-x border-neutral-200 px-3 lg:px-10">
         <div className="relative z-10 overflow-hidden rounded-t-2xl border border-b-0 border-neutral-200 bg-white/50 px-6 py-16 backdrop-blur-lg sm:px-10">
           <div className="xl:grid xl:grid-cols-3 xl:gap-8">
             <div className="flex flex-col gap-6">
