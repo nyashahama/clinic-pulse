@@ -148,8 +148,9 @@ export function FeaturesSection() {
               initial={{ opacity: 0, y: 15 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-50px" }}
+              whileHover={{ y: -4, boxShadow: "0 8px 24px rgba(0,0,0,0.08)", borderColor: "rgb(212 212 212)" }}
               transition={{ delay: i * 0.06, duration: 0.4 }}
-              className="group rounded-xl border border-neutral-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-md"
+              className="rounded-xl border border-neutral-200 bg-white p-4"
             >
               <h3 className="text-sm font-semibold text-neutral-900">{cap.title}</h3>
               <p className="mt-1 text-xs leading-relaxed text-neutral-500">{cap.description}</p>

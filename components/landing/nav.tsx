@@ -31,7 +31,7 @@ export function Nav() {
             </Link>
           </div>
 
-          <div className="hidden items-center gap-1 lg:flex">
+          <div className="hidden items-center gap-4 lg:flex">
             {NAV_ITEMS.map(({ name, href }) => (
               <Link
                 key={name}
@@ -41,6 +41,14 @@ export function Nav() {
                 {name}
               </Link>
             ))}
+            <div className="h-5 w-px bg-neutral-200" />
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-500">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-pulse-dot absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
+                <span className="inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
+              </span>
+              Live network · 3,512 clinics
+            </span>
           </div>
 
           <div className="hidden grow basis-0 justify-end gap-2 lg:flex">

@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
+import NumberFlow from "@number-flow/react";
 import { Grid } from "@/components/ui/grid";
 import { DotsPattern } from "@/components/ui/dots-pattern";
 import { ShimmerDots } from "@/components/ui/shimmer-dots";
@@ -112,7 +113,7 @@ export function Hero() {
           style={{ textWrap: "balance" }}
         >
           Every clinic visit should start with{" "}
-          <span className="bg-gradient-to-r from-[#0D7A6B] to-[#0FA89A] bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-[#0D7A6B] via-[#0FA89A] to-[#22c55e] bg-[length:200%_auto] animate-gradient-move bg-clip-text text-transparent">
             knowing what&apos;s available.
           </span>
         </motion.h1>
@@ -299,10 +300,10 @@ export function Hero() {
 
           <div className="grid grid-cols-2 border-t border-neutral-200 sm:grid-cols-4">
             {[
-              { value: "2,847", label: "Operational", color: "text-green-700" },
-              { value: "287", label: "Degraded", color: "text-amber-700" },
-              { value: "107", label: "Non-Functional", color: "text-red-700" },
-              { value: "259", label: "Unknown", color: "text-slate-600" },
+              { value: 2847, label: "Operational", color: "text-green-700" },
+              { value: 287, label: "Degraded", color: "text-amber-700" },
+              { value: 107, label: "Non-Functional", color: "text-red-700" },
+              { value: 259, label: "Unknown", color: "text-slate-600" },
             ].map((counter, i) => (
               <motion.div
                 key={counter.label}
@@ -312,7 +313,7 @@ export function Hero() {
                 className="border-b border-neutral-100 border-r px-5 py-3 text-center last:border-r-0 sm:border-b-0"
               >
                 <div className={`text-lg font-semibold tabular-nums tracking-tight sm:text-xl ${counter.color}`}>
-                  {counter.value}
+                  <NumberFlow value={counter.value} />
                 </div>
                 <div className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-neutral-400 sm:text-[11px]">
                   {counter.label}
