@@ -1,12 +1,14 @@
 "use client";
 
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { MaxWidthWrapper } from "@/components/ui/max-width-wrapper";
 import { DotsPattern } from "@/components/ui/dots-pattern";
 import Link from "next/link";
 import { StatusMapGraphic } from "./graphics/status-map";
 import { FieldReportsGraphic } from "./graphics/field-reports";
 import { AnalyticsGraphic } from "./graphics/analytics";
+import { PhotoPanel } from "./photo-panel";
+import { landingPhotos } from "./photo-assets";
 
 const modules = [
   {
@@ -16,6 +18,7 @@ const modules = [
       "Patients travel to clinics that are out of stock, understaffed, or closed. Know before they go — live status across all 52 districts.",
     href: "/platform",
     linkText: "Explore District Console",
+    photo: landingPhotos.clinicTeam,
     graphic: <StatusMapGraphic />,
   },
   {
@@ -25,6 +28,7 @@ const modules = [
       "Community health workers should not wait weeks for paper forms to arrive. Submit from anywhere — online or off — and sync when connected.",
     href: "/features",
     linkText: "Explore Field Reports",
+    photo: landingPhotos.fieldWorker,
     graphic: <FieldReportsGraphic />,
   },
   {
@@ -34,11 +38,14 @@ const modules = [
       "When a clinic is closed, patients need to know where else to go. Instant routing to the nearest operational alternative — no login required.",
     href: "/features",
     linkText: "Explore Clinic Finder",
+    photo: landingPhotos.patientCare,
     graphic: <AnalyticsGraphic />,
   },
 ];
 
 export function ProductModules() {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
     <section className="relative border-t border-neutral-200 bg-white">
       <DotsPattern
@@ -68,8 +75,29 @@ export function ProductModules() {
               <p className="mt-2 text-sm leading-relaxed text-neutral-500">
                 {mod.description}
               </p>
-              <div className="relative mt-5 h-44 overflow-hidden rounded-xl border border-neutral-100 bg-neutral-50">
-                {mod.graphic}
+              <div className="relative mt-5 h-56 overflow-hidden rounded-xl border border-neutral-100 bg-neutral-50">
+                <PhotoPanel
+                  photo={mod.photo}
+                  sizes="(min-width: 1024px) 28vw, (min-width: 768px) 45vw, 92vw"
+                  className="absolute inset-0 rounded-xl border-0 shadow-none ring-0"
+                  imageClassName="scale-105"
+                />
+                <motion.div
+                  animate={shouldReduceMotion ? { y: 0 } : { y: [0, -6, 0] }}
+                  transition={
+                    shouldReduceMotion
+                      ? undefined
+                      : {
+                          duration: 4.5,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          delay: i * 0.4,
+                        }
+                  }
+                  className="absolute bottom-3 left-3 right-3 overflow-hidden rounded-lg border border-white/60 bg-white/90 shadow-lg backdrop-blur-md"
+                >
+                  <div className="h-28 bg-white/85">{mod.graphic}</div>
+                </motion.div>
               </div>
               <Link
                 href={mod.href}
