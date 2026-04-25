@@ -57,7 +57,7 @@
 }
 
 :root {
-  --background: #FAFAFA;
+  --background: #ffffff;
   --foreground: #171717;
 
   --bg-default: 255 255 255;
@@ -183,4 +183,5 @@ body {
 
 .font-display {
   font-family: var(--font-satoshi);
+  font-weight: 500;
 }

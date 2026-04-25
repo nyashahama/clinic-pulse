@@ -42,7 +42,7 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${satoshi.variable} ${geistMono.variable}`}
     >
-      <body className="bg-[#FAFAFA] text-neutral-900 antialiased">
+      <body className="bg-white text-neutral-900 antialiased">
         {children}
       </body>
     </html>
