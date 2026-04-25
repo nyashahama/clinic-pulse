@@ -13,11 +13,11 @@ export function ScaleSection() {
   return (
     <section className="relative overflow-hidden border-t border-neutral-800 bg-neutral-900">
       <div className="absolute inset-0">
-        <div className="absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#0D7A6B] opacity-[0.06] blur-[120px]" />
+        <div className="absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#0D7A6B] opacity-[0.04] blur-[120px]" />
         <div
           className="absolute inset-0"
           style={{
-            backgroundImage: "radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px)",
+            backgroundImage: "radial-gradient(rgba(255,255,255,0.02) 1px, transparent 1px)",
             backgroundSize: "24px 24px",
           }}
         />

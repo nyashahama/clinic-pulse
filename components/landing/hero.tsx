@@ -112,7 +112,7 @@ export function Hero() {
           style={{ textWrap: "balance" }}
         >
           Every clinic visit should start with{" "}
-          <span className="bg-gradient-to-r from-[#0D7A6B] via-[#0FA89A] to-[#22c55e] bg-[length:200%_auto] animate-gradient-move bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-[#0D7A6B] to-[#0FA89A] bg-clip-text text-transparent">
             knowing what&apos;s available.
           </span>
         </motion.h1>
@@ -161,7 +161,7 @@ export function Hero() {
         transition={{ delay: 0.5, duration: 0.6, ease: "easeOut" }}
         className="relative mx-auto mt-16 max-w-[1000px]"
       >
-        <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_25px_50px_-12px_rgba(0,0,0,0.12)] ring-1 ring-black/5">
+        <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-lg ring-1 ring-black/5">
           <div className="flex items-center justify-between border-b border-neutral-100 bg-neutral-50/50 px-4 py-2.5">
             <div className="flex gap-1.5">
               <div className="h-2.5 w-2.5 rounded-full border border-neutral-300" />

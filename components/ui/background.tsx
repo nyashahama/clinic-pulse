@@ -36,7 +36,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     width: "100%",
     height: "100%",
     top: 0,
-    opacity: 0.1,
+    opacity: 0.05,
     filter: "invert(1)",
   },
   backgroundContent: {
@@ -52,8 +52,8 @@ const styles: { [key: string]: React.CSSProperties } = {
                       radial-gradient(at 79% 53%, hsla(343, 68%, 79%, 1) 0px, transparent 50%)`,
     position: "absolute",
     height: "100%",
-    filter: "blur(100px) saturate(150%)",
+    filter: "blur(100px) saturate(120%)",
     top: "80px",
-    opacity: 0.08,
+    opacity: 0.04,
   },
 };
