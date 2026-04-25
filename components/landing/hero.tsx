@@ -199,7 +199,7 @@ export function Hero() {
                     key={i}
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: 0.8 + Math.random() * 0.4, duration: 0.3 }}
+                    transition={{ delay: 0.8 + i * 0.04, duration: 0.3 }}
                     className={`absolute rounded-full ${statusColors[dot.status]} ${
                       i === 4 || i === 8 ? "h-2.5 w-2.5" : "h-1.5 w-1.5"
                     }`}

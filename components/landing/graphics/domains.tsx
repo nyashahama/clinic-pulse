@@ -12,12 +12,6 @@ const domains = [
   { domain: "clinicpulse.co.za", clicks: "2.4K" },
 ];
 
-const statusOptions = [
-  { label: "QR Code", active: true },
-  { label: "Link", active: false },
-  { label: "API", active: false },
-];
-
 export function DomainsGraphic({ className }: Props) {
   return (
     <div className={`size-full flex flex-col justify-center ${className}`} aria-hidden>

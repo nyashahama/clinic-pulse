@@ -103,7 +103,7 @@ export function DemoCard() {
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{
-                      delay: Math.random() * 0.5,
+                      delay: i * 0.05,
                       duration: 0.3,
                     }}
                     className={`absolute rounded-full ${dotColorMap[dot.status]} ${
