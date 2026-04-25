@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useSpring, useTransform, motionValue } from "framer-motion";
+import { motion, useSpring, useTransform, motionValue } from "motion/react";
 import { useEffect } from "react";
 
 export function AnimatedCounter({

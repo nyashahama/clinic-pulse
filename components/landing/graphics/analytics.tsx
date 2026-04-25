@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 
 const STATS = [
   { label: "Total Clicks", value: "154K", change: "+12%", color: "text-green-600" },

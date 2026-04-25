@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { GridSection } from "@/components/ui/grid-section";
 import { StatusBadge } from "./status-badge";
 
