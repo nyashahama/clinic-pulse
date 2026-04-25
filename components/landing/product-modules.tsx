@@ -75,7 +75,7 @@ export function ProductModules() {
               <p className="mt-2 text-sm leading-relaxed text-neutral-500">
                 {mod.description}
               </p>
-              <div className="relative mt-5 h-72 overflow-hidden rounded-xl border border-neutral-100 bg-neutral-50">
+              <div className="relative mt-5 h-80 overflow-hidden rounded-xl border border-neutral-100 bg-neutral-50">
                 <PhotoPanel
                   photo={mod.photo}
                   sizes="(min-width: 1024px) 28vw, (min-width: 768px) 45vw, 92vw"
@@ -96,7 +96,7 @@ export function ProductModules() {
                   }
                   className="absolute bottom-3 left-3 right-3 overflow-hidden rounded-lg border border-white/60 bg-white/90 shadow-lg backdrop-blur-md"
                 >
-                  <div className="h-44 bg-white/85">{mod.graphic}</div>
+                  <div className="h-72 bg-white/85">{mod.graphic}</div>
                 </motion.div>
               </div>
               <Link
