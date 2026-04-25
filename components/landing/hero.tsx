@@ -1,12 +1,14 @@
 "use client";
 
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import NumberFlow from "@number-flow/react";
 import { Grid } from "@/components/ui/grid";
 import { DotsPattern } from "@/components/ui/dots-pattern";
 import { ShimmerDots } from "@/components/ui/shimmer-dots";
 import { ProgressiveBlur } from "@/components/ui/progressive-blur";
 import { ButtonLink } from "./button-link";
+import { PhotoPanel } from "./photo-panel";
+import { landingPhotos } from "./photo-assets";
 
 const mapDots = [
   { left: "32%", top: "20%", status: "operational" },
@@ -69,6 +71,8 @@ const statusTextColors: Record<string, string> = {
 };
 
 export function Hero() {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
     <section className="relative overflow-hidden px-4 pb-20 pt-28 sm:px-6 sm:pb-32 sm:pt-40 lg:px-8">
       <Grid
@@ -89,15 +93,15 @@ export function Hero() {
         className="opacity-15 [mask-image:radial-gradient(closest-side,black,transparent)]"
       />
 
-      <div className="relative mx-auto max-w-3xl text-center">
+      <div className="relative mx-auto w-full max-w-[358px] text-center sm:max-w-3xl">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
           className="mb-6"
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3.5 py-1.5 text-xs font-medium text-neutral-600 shadow-sm">
-            <span className="relative flex h-1.5 w-1.5">
+          <span className="inline-flex max-w-full items-center justify-center gap-2 rounded-full border border-neutral-200 bg-white px-3.5 py-1.5 text-center text-xs font-medium text-neutral-600 shadow-sm sm:whitespace-nowrap">
+            <span className="relative flex h-1.5 w-1.5 shrink-0">
               <span className="animate-pulse-dot absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
               <span className="inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
             </span>
@@ -132,7 +136,7 @@ export function Hero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.5, ease: "easeOut" }}
-          className="mt-8 flex items-center justify-center gap-2.5"
+          className="mt-8 flex flex-wrap items-center justify-center gap-2.5"
         >
           <ButtonLink href="/demo" variant="primary">
             Request Demo
@@ -157,13 +161,88 @@ export function Hero() {
       </div>
 
       <motion.div
+        initial={{ opacity: 0, y: 28, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ delay: 0.42, duration: 0.6, ease: "easeOut" }}
+        className="relative mx-auto mt-12 grid w-full max-w-[358px] gap-4 sm:max-w-[980px] md:grid-cols-[0.92fr_1.08fr]"
+      >
+        <PhotoPanel
+          photo={landingPhotos.heroClinic}
+          sizes="(min-width: 768px) 420px, 92vw"
+          priority
+          caption
+          className="min-h-[260px] md:min-h-[360px]"
+        />
+        <div className="relative min-h-[260px] overflow-hidden rounded-2xl border border-neutral-200 bg-white/90 p-4 shadow-lg ring-1 ring-black/5 backdrop-blur-xl md:min-h-[360px] md:p-5">
+          <div className="flex flex-col items-start gap-2 border-b border-neutral-100 pb-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400">
+                Live Patient Routing
+              </div>
+              <div className="mt-1 text-sm font-semibold text-neutral-900">
+                Gauteng district flow
+              </div>
+            </div>
+            <span className="shrink-0 rounded-full bg-green-50 px-2 py-1 text-[10px] font-semibold text-green-700 ring-1 ring-green-200">
+              42 reroutes active
+            </span>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {[
+              ["Alexandra PHC", "Non-functional", "Reroute to Sandton Clinic"],
+              [
+                "Mamelodi Clinic",
+                "Degraded",
+                "Send low-acuity patients to Denneboom",
+              ],
+              ["Diepsloot CHC", "Operational", "Accepting overflow"],
+            ].map(([clinic, state, action], i) => (
+              <motion.div
+                key={clinic}
+                initial={{ opacity: 0, x: 18 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.75 + i * 0.12, duration: 0.38 }}
+                className="rounded-xl border border-neutral-200 bg-white p-3 shadow-sm"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-sm font-medium text-neutral-900">
+                    {clinic}
+                  </span>
+                  <span className="shrink-0 text-[11px] font-semibold text-[#0D7A6B]">
+                    {state}
+                  </span>
+                </div>
+                <div className="mt-1 text-xs text-neutral-500">{action}</div>
+              </motion.div>
+            ))}
+          </div>
+
+          <motion.div
+            animate={shouldReduceMotion ? undefined : { y: [0, -8, 0] }}
+            transition={
+              shouldReduceMotion
+                ? undefined
+                : { duration: 4, repeat: Infinity, ease: "easeInOut" }
+            }
+            className="mt-4 w-fit rounded-xl border border-neutral-200 bg-neutral-950 px-3 py-2 text-white shadow-xl"
+          >
+            <div className="text-[10px] uppercase tracking-widest text-white/45">
+              Capacity score
+            </div>
+            <div className="mt-1 text-2xl font-semibold tracking-tight">78%</div>
+          </motion.div>
+        </div>
+      </motion.div>
+
+      <motion.div
         initial={{ opacity: 0, y: 40, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ delay: 0.5, duration: 0.6, ease: "easeOut" }}
-        className="relative mx-auto mt-16 max-w-[1000px]"
+        className="relative mx-auto mt-6 w-full max-w-[358px] sm:max-w-[1000px]"
       >
         <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-lg ring-1 ring-black/5">
-          <div className="flex items-center justify-between border-b border-neutral-100 bg-neutral-50/50 px-4 py-2.5">
+          <div className="flex items-center justify-between gap-3 border-b border-neutral-100 bg-neutral-50/50 px-4 py-2.5">
             <div className="flex gap-1.5">
               <div className="h-2.5 w-2.5 rounded-full border border-neutral-300" />
               <div className="h-2.5 w-2.5 rounded-full border border-neutral-300" />
@@ -176,7 +255,7 @@ export function Hero() {
               </span>
               <span className="text-[11px] font-medium text-green-600">Live</span>
             </div>
-            <span className="text-[11px] text-neutral-400 tabular-nums">
+            <span className="hidden text-[11px] text-neutral-400 tabular-nums sm:block">
               District Console · Gauteng Province
             </span>
           </div>

@@ -54,6 +54,7 @@ export function ProgressiveBlur({
       >
         <div
           className="z-[1] absolute inset-0"
+          suppressHydrationWarning
           style={{
             mask: `linear-gradient(
                   to ${oppositeSide[side]},
@@ -68,6 +69,7 @@ export function ProgressiveBlur({
         {steps > 1 && (
           <div
             className="absolute inset-0 z-[2]"
+            suppressHydrationWarning
             style={{
               mask: `linear-gradient(
                 to ${oppositeSide[side]},
@@ -86,6 +88,7 @@ export function ProgressiveBlur({
             <div
               key={idx}
               className="absolute inset-0"
+              suppressHydrationWarning
               style={{
                 zIndex: idx + 2,
                 mask: `linear-gradient(

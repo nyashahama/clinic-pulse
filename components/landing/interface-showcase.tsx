@@ -1,8 +1,10 @@
 "use client";
 
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { MaxWidthWrapper } from "@/components/ui/max-width-wrapper";
 import { ProgressiveBlur } from "@/components/ui/progressive-blur";
+import { PhotoPanel } from "./photo-panel";
+import { landingPhotos } from "./photo-assets";
 import { StatusBadge } from "./status-badge";
 
 const interfaces = [
@@ -12,6 +14,7 @@ const interfaces = [
     description:
       "Data-dense desktop interface with live maps, drill-down tables, and real-time analytics. Every clinic visible at a glance.",
     offset: "lg:mt-0",
+    photo: landingPhotos.clinicTeam,
     visual: (
       <div className="space-y-2 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
         <div className="flex items-center gap-1.5 text-[10px] font-medium text-neutral-400">
@@ -49,6 +52,7 @@ const interfaces = [
     description:
       "Offline-first PWA. Three screens: clinic list → 5-field report form → confirmation. Queues locally, syncs when online.",
     offset: "lg:mt-8",
+    photo: landingPhotos.fieldWorker,
     visual: (
       <div className="space-y-2 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-2">
@@ -75,6 +79,7 @@ const interfaces = [
     description:
       "No login. No app install. Search by suburb, see status badges, get directions. Loads in under 2 seconds on 3G.",
     offset: "lg:mt-16",
+    photo: landingPhotos.patientCare,
     visual: (
       <div className="space-y-2 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
         <div className="flex items-center gap-2 rounded-lg border bg-white px-2.5 py-2 ring-1 ring-neutral-200">
@@ -107,6 +112,8 @@ const interfaces = [
 ];
 
 export function InterfaceShowcase() {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
     <section className="relative border-t border-neutral-200 bg-neutral-50">
       <MaxWidthWrapper className="py-16 sm:py-20 lg:py-24">
@@ -136,6 +143,20 @@ export function InterfaceShowcase() {
               </div>
               <div className="p-5">
                 <p className="mb-4 text-sm leading-relaxed text-neutral-500">{iface.description}</p>
+                <div className="relative mb-4 h-36">
+                  <PhotoPanel
+                    photo={iface.photo}
+                    sizes="(min-width: 768px) 30vw, 92vw"
+                    className="h-full rounded-xl"
+                  />
+                  <motion.div
+                    animate={shouldReduceMotion ? undefined : { y: [0, -5, 0] }}
+                    transition={shouldReduceMotion ? undefined : { duration: 4, repeat: Infinity, ease: "easeInOut", delay: i * 0.35 }}
+                    className="absolute bottom-3 right-3 rounded-lg border border-white/60 bg-white/90 px-3 py-2 text-[11px] font-semibold text-neutral-800 shadow-lg backdrop-blur-md"
+                  >
+                    Live state synced
+                  </motion.div>
+                </div>
                 {iface.visual}
               </div>
             </motion.div>
