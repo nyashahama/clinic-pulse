@@ -5,6 +5,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
   --font-display: var(--font-satoshi);
+  --font-mono: var(--font-geist-mono);
 
   --color-primary: #0D7A6B;
   --color-primary-foreground: #ffffff;
