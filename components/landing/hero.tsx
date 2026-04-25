@@ -225,7 +225,7 @@ export function Hero() {
                 ? undefined
                 : { duration: 4, repeat: Infinity, ease: "easeInOut" }
             }
-            className="mt-4 w-fit rounded-xl border border-neutral-200 bg-neutral-950 px-3 py-2 text-white shadow-xl md:absolute md:bottom-4 md:right-4 md:mt-0"
+            className="mt-4 w-fit rounded-xl border border-neutral-200 bg-neutral-950 px-3 py-2 text-white shadow-xl"
           >
             <div className="text-[10px] uppercase tracking-widest text-white/45">
               Capacity score
