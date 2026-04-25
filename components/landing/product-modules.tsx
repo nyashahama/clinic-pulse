@@ -2,6 +2,7 @@
 
 import { motion } from "motion/react";
 import { MaxWidthWrapper } from "@/components/ui/max-width-wrapper";
+import { DotsPattern } from "@/components/ui/dots-pattern";
 import Link from "next/link";
 import { StatusMapGraphic } from "./graphics/status-map";
 import { FieldReportsGraphic } from "./graphics/field-reports";
@@ -39,8 +40,13 @@ const modules = [
 
 export function ProductModules() {
   return (
-    <section className="border-t border-neutral-200 bg-white">
-      <MaxWidthWrapper className="py-16 sm:py-20 lg:py-24">
+    <section className="relative border-t border-neutral-200 bg-white">
+      <DotsPattern
+        dotSize={1.5}
+        gapSize={12}
+        className="text-neutral-300/25 [mask-image:radial-gradient(closest-side,black,transparent)]"
+      />
+      <MaxWidthWrapper className="relative py-16 sm:py-20 lg:py-24">
         <div className="grid gap-6 lg:grid-cols-3">
           {modules.map((mod, i) => (
             <motion.div

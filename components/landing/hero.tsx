@@ -74,7 +74,7 @@ export function Hero() {
       <Grid
         cellSize={80}
         patternOffset={[1, -58]}
-        className="inset-[unset] left-1/2 top-0 w-[1200px] -translate-x-1/2 text-neutral-200/30 [mask-image:linear-gradient(transparent,black_70%)]"
+        className="inset-[unset] left-1/2 top-0 w-[1200px] -translate-x-1/2 text-neutral-200/40 [mask-image:linear-gradient(transparent,black_70%)]"
       />
       <DotsPattern
         dotSize={1}
