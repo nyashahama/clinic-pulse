@@ -1,7 +1,7 @@
 export function BrandingPanel() {
   return (
-    <div className="relative hidden min-h-screen min-[900px]:block">
-      <div className="absolute inset-0 isolate overflow-hidden bg-white">
+    <div className="relative hidden h-full flex-col justify-between overflow-hidden border-l border-black/5 bg-neutral-50 min-[900px]:flex">
+      <div className="absolute inset-0 isolate">
         <div
           className="absolute inset-y-0 left-1/2 w-[1200px] -translate-x-1/2"
           style={{
@@ -45,11 +45,7 @@ export function BrandingPanel() {
         </div>
       </div>
 
-      <div className="relative flex h-full flex-col items-center justify-center">
-        <span className="font-display text-2xl font-semibold tracking-tight text-neutral-900">
-          ClinicPulse
-        </span>
-      </div>
+      <div />
     </div>
   );
 }
