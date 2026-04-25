@@ -10,27 +10,27 @@ import { AnalyticsGraphic } from "./graphics/analytics";
 const modules = [
   {
     label: "Product",
-    title: "See every clinic in real time",
+    title: "Stop losing patients to closed doors",
     description:
-      "Interactive map with live status across all 52 districts. Click markers, filter by status, and see operational capacity at a glance.",
+      "Patients travel to clinics that are out of stock, understaffed, or closed. Know before they go — live status across all 52 districts.",
     href: "/platform",
     linkText: "Explore District Console",
     graphic: <StatusMapGraphic />,
   },
   {
     label: "Product",
-    title: "Report from anywhere, even offline",
+    title: "Field reports that actually reach headquarters",
     description:
-      "5-field quick report forms that work without internet. Submits optimistically, queues locally, syncs automatically.",
+      "Community health workers should not wait weeks for paper forms to arrive. Submit from anywhere — online or off — and sync when connected.",
     href: "/features",
     linkText: "Explore Field Reports",
     graphic: <FieldReportsGraphic />,
   },
   {
     label: "Product",
-    title: "Route patients to working clinics",
+    title: "The right clinic. The first time.",
     description:
-      "Lightweight clinic finder for patients. Search by suburb, see status badges, get directions. Loads in under 2 seconds on 3G.",
+      "When a clinic is closed, patients need to know where else to go. Instant routing to the nearest operational alternative — no login required.",
     href: "/features",
     linkText: "Explore Clinic Finder",
     graphic: <AnalyticsGraphic />,

@@ -33,7 +33,7 @@ export function TrustStrip() {
           transition={{ duration: 0.4 }}
           className="mt-6 text-center text-sm text-neutral-400"
         >
-          Built for district managers, NGOs, community health workers, and public clinic finders.
+          Built for the people who actually need to know if a clinic is working today.
         </motion.p>
       </MaxWidthWrapper>
     </section>

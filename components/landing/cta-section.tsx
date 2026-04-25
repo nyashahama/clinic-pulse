@@ -24,7 +24,7 @@ export function CTASection() {
             See the clinic network before the crisis reaches the queue.
           </h2>
           <p className="mx-auto mt-5 max-w-[480px] text-base text-white/50">
-            Join the health organizations using ClinicPulse for real-time clinic intelligence across South Africa.
+            Trusted by district health teams, NGOs, and field workers across all nine provinces.
           </p>
           <div className="mt-8 flex items-center justify-center gap-3">
             <ButtonLink href="/demo" variant="primary">

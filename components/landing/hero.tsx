@@ -111,9 +111,9 @@ export function Hero() {
           className="mx-auto max-w-[800px] font-display text-4xl font-medium leading-[1.1] tracking-tight text-neutral-900 sm:text-5xl lg:text-[56px]"
           style={{ textWrap: "balance" }}
         >
-          A live operating layer for{" "}
+          Every clinic visit should start with{" "}
           <span className="bg-gradient-to-r from-[#0D7A6B] via-[#0FA89A] to-[#22c55e] bg-[length:200%_auto] animate-gradient-move bg-clip-text text-transparent">
-            primary healthcare.
+            knowing what&apos;s available.
           </span>
         </motion.h1>
 
@@ -123,8 +123,8 @@ export function Hero() {
           transition={{ delay: 0.2, duration: 0.5, ease: "easeOut" }}
           className="mx-auto mt-6 max-w-[540px] text-base leading-relaxed text-neutral-500 sm:text-lg"
         >
-          Know which clinics are open, overloaded, out of stock, or ready to
-          receive patients — before anyone starts travelling.
+          Real-time visibility into 3,500+ clinics across South Africa. So
+          no patient travels to a closed door.
         </motion.p>
 
         <motion.div

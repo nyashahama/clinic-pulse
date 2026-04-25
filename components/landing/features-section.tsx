@@ -7,9 +7,9 @@ import Link from "next/link";
 
 const capabilities = [
   {
-    title: "Clinic Status API",
+    title: "Real-time, at any scale",
     description:
-      "REST endpoint returning real-time status for any clinic by ID. Sub-100ms response, cached at edge.",
+      "Query any clinic&apos;s status in under 100ms. 3,500+ clinics, 52 districts, one API. Cached at the edge.",
     href: "#",
     artifact: (
       <div className="rounded-md bg-neutral-900 p-2.5 font-mono text-[10px] text-green-400 leading-relaxed">
@@ -24,9 +24,9 @@ const capabilities = [
     ),
   },
   {
-    title: "Offline Sync Queue",
+    title: "Works where the network doesn&apos;t",
     description:
-      "Reports queue locally in IndexedDB when offline. Auto-syncs with exponential backoff when connectivity returns.",
+      "No signal? No problem. Reports save locally and sync automatically when connectivity returns — no data lost, no double entries.",
     href: "#",
     artifact: (
       <div className="flex items-center gap-3 rounded-md bg-neutral-50 px-2.5 py-2 ring-1 ring-neutral-200">
@@ -42,9 +42,9 @@ const capabilities = [
     ),
   },
   {
-    title: "Capacity Scoring",
+    title: "Know before they arrive",
     description:
-      "Machine learning model predicts clinic load based on staff levels, stock data, time of day, and historical patterns.",
+      "Predict which clinics will be overwhelmed today — based on staff levels, stock data, and historical patterns. Route patients before the queue forms.",
     href: "#",
     artifact: (
       <div className="flex items-center gap-2 rounded-md bg-neutral-50 px-2.5 py-2 ring-1 ring-neutral-200">
@@ -59,9 +59,9 @@ const capabilities = [
     ),
   },
   {
-    title: "Routing Engine",
+    title: "Redirect in real time",
     description:
-      "Patient referral logic: find nearest operational clinic by status, distance, and capacity. Integrates with Google Maps.",
+      "When a clinic goes down, the system finds the nearest operational alternative and routes patients there. Automatically. Integrates with Google Maps.",
     href: "#",
     artifact: (
       <div className="space-y-1 rounded-md bg-neutral-50 px-2.5 py-2 ring-1 ring-neutral-200">
@@ -78,9 +78,9 @@ const capabilities = [
     ),
   },
   {
-    title: "Field Report Schema",
+    title: "Five fields. Complete visibility.",
     description:
-      "Standardized 5-field report: clinic ID, status, staff count, stock levels, notes. Validated at edge before queuing.",
+      "Open or closed. Staff count. Stock levels. Queue length. Notes. That is all a field worker needs to report. Validated before queuing.",
     href: "#",
     artifact: (
       <div className="grid grid-cols-2 gap-1 rounded-md bg-neutral-50 p-2 ring-1 ring-neutral-200 text-[10px]">
@@ -98,9 +98,9 @@ const capabilities = [
     ),
   },
   {
-    title: "Audit Trail",
+    title: "Every change, accounted for",
     description:
-      "Every status change logged with timestamp and reporter. Immutable history for compliance and analysis.",
+      "Immutable history of every status change. Who reported it. When. What changed. Compliance and analysis, built in.",
     href: "#",
     artifact: (
       <div className="space-y-1 rounded-md bg-neutral-50 p-2 ring-1 ring-neutral-200">
@@ -137,7 +137,7 @@ export function FeaturesSection() {
             Built to operate under pressure
           </h2>
           <p className="mt-4 text-base text-neutral-500">
-            Every component of ClinicPulse is designed for the realities of South African healthcare infrastructure — intermittent connectivity, high load, and life-critical decisions.
+            Intermittent connectivity. High load. Life-critical decisions. ClinicPulse is built for the realities of South African healthcare — not a San Francisco server room.
           </p>
         </div>
 
