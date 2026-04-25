@@ -1,135 +1,172 @@
 "use client";
 
 import { motion } from "motion/react";
-import { GridSection } from "@/components/ui/grid-section";
+import { MaxWidthWrapper } from "@/components/ui/max-width-wrapper";
+import { Grid } from "@/components/ui/grid";
 import Link from "next/link";
-import { StatusMapGraphic } from "./graphics/status-map";
-import { AnalyticsGraphic } from "./graphics/analytics";
-import { FieldReportsGraphic } from "./graphics/field-reports";
-import { APIDocumentationGraphic } from "./graphics/api-docs";
-import { CollaborationGraphic } from "./graphics/collaboration";
-import { QRCodeGraphic } from "./graphics/qr-code";
-import { DomainsGraphic } from "./graphics/domains";
-import { PersonalizationGraphic } from "./graphics/personalization";
 
-const features = [
+const capabilities = [
   {
-    title: "Real-Time Status Board",
+    title: "Clinic Status API",
     description:
-      "Interactive map with live clinic status across all 52 districts. Click markers to view details, filter by status, and see operational capacity at a glance.",
-    link: "/platform",
-    linkText: "Explore platform",
-    graphic: <StatusMapGraphic />,
+      "REST endpoint returning real-time status for any clinic by ID. Sub-100ms response, cached at edge.",
+    href: "#",
+    artifact: (
+      <div className="rounded-md bg-neutral-900 p-2.5 font-mono text-[10px] text-green-400 leading-relaxed">
+        <span className="text-blue-400">GET</span> /v1/clinics/{`{id}`}
+        {"\n"}
+        <span className="text-neutral-500">{`{`}</span>
+        {"\n  "}<span className="text-amber-300">&quot;status&quot;</span>: <span className="text-green-300">&quot;operational&quot;</span>,
+        {"\n  "}<span className="text-amber-300">&quot;staff&quot;</span>: <span className="text-purple-300">5</span>,
+        {"\n  "}<span className="text-amber-300">&quot;stock&quot;</span>: <span className="text-purple-300">92</span>%
+        {"\n"}<span className="text-neutral-500">{`}`}</span>
+      </div>
+    ),
   },
   {
-    title: "Offline-First Reports",
+    title: "Offline Sync Queue",
     description:
-      "5-field quick report forms that work without internet. Submits optimistically, queues locally, and syncs automatically when connectivity returns.",
-    link: "/features",
-    linkText: "Learn more",
-    graphic: <FieldReportsGraphic />,
+      "Reports queue locally in IndexedDB when offline. Auto-syncs with exponential backoff when connectivity returns.",
+    href: "#",
+    artifact: (
+      <div className="flex items-center gap-3 rounded-md bg-neutral-50 px-2.5 py-2 ring-1 ring-neutral-200">
+        <div className="flex h-5 w-5 items-center justify-center rounded bg-amber-100 text-[10px] font-bold text-amber-700">3</div>
+        <div className="flex-1">
+          <div className="text-[11px] font-medium text-neutral-700">Reports queued</div>
+          <div className="h-1 mt-1 overflow-hidden rounded-full bg-neutral-200">
+            <div className="h-full w-[65%] rounded-full bg-amber-400 animate-pulse" />
+          </div>
+        </div>
+        <span className="text-[10px] text-neutral-400">Syncing...</span>
+      </div>
+    ),
   },
   {
-    title: "QR Codes",
+    title: "Capacity Scoring",
     description:
-      "Every clinic gets a custom QR code. Patients scan to see real-time status. Customize colors, add logos, and download in any format.",
-    link: "/features",
-    linkText: "Try generator",
-    graphic: <QRCodeGraphic />,
+      "Machine learning model predicts clinic load based on staff levels, stock data, time of day, and historical patterns.",
+    href: "#",
+    artifact: (
+      <div className="flex items-center gap-2 rounded-md bg-neutral-50 px-2.5 py-2 ring-1 ring-neutral-200">
+        <div className="text-[11px] font-medium text-neutral-600">Diepsloot CHC</div>
+        <div className="ml-auto flex items-center gap-1.5">
+          <div className="h-1.5 w-16 overflow-hidden rounded-full bg-neutral-200">
+            <div className="h-full w-[78%] rounded-full bg-gradient-to-r from-red-400 via-amber-400 to-green-400" />
+          </div>
+          <span className="text-[11px] font-semibold text-neutral-700">78%</span>
+        </div>
+      </div>
+    ),
   },
   {
-    title: "Custom Domains",
+    title: "Routing Engine",
     description:
-      "Use your own domain for clinic links. Improve trust and click-through rates by up to 30% with branded short URLs.",
-    link: "/features",
-    linkText: "Learn more",
-    graphic: <DomainsGraphic />,
+      "Patient referral logic: find nearest operational clinic by status, distance, and capacity. Integrates with Google Maps.",
+    href: "#",
+    artifact: (
+      <div className="space-y-1 rounded-md bg-neutral-50 px-2.5 py-2 ring-1 ring-neutral-200">
+        <div className="flex items-center justify-between text-[10px]">
+          <span className="text-neutral-500">Patient: Sandton</span>
+          <span className="text-green-600">Routed → Soweto CHC</span>
+        </div>
+        <div className="flex items-center gap-1 text-[10px] text-neutral-400">
+          <span>Clinic A: degraded (8.2km)</span>
+          <span>→</span>
+          <span className="font-medium text-green-600">Clinic B: operational (3.1km)</span>
+        </div>
+      </div>
+    ),
   },
   {
-    title: "Team Collaboration",
+    title: "Field Report Schema",
     description:
-      "Invite your team with role-based access. District managers, field leads, and admins — everyone gets the right permissions.",
-    link: "/features",
-    linkText: "Learn more",
-    graphic: <CollaborationGraphic />,
+      "Standardized 5-field report: clinic ID, status, staff count, stock levels, notes. Validated at edge before queuing.",
+    href: "#",
+    artifact: (
+      <div className="grid grid-cols-2 gap-1 rounded-md bg-neutral-50 p-2 ring-1 ring-neutral-200 text-[10px]">
+        <span className="text-neutral-400">clinic_id</span>
+        <span className="font-mono text-neutral-700">&quot;dsp-001&quot;</span>
+        <span className="text-neutral-400">status</span>
+        <span className="font-mono text-green-600">&quot;operational&quot;</span>
+        <span className="text-neutral-400">staff_count</span>
+        <span className="font-mono text-neutral-700">5</span>
+        <span className="text-neutral-400">stock_level</span>
+        <span className="font-mono text-neutral-700">92</span>
+        <span className="text-neutral-400">notes</span>
+        <span className="font-mono text-neutral-700">&quot;All clear&quot;</span>
+      </div>
+    ),
   },
   {
-    title: "Analytics",
+    title: "Audit Trail",
     description:
-      "Full attribution for every click. Device, geo, referrer — understand exactly how patients find your clinics.",
-    link: "/analytics",
-    linkText: "View analytics",
-    graphic: <PersonalizationGraphic />,
+      "Every status change logged with timestamp and reporter. Immutable history for compliance and analysis.",
+    href: "#",
+    artifact: (
+      <div className="space-y-1 rounded-md bg-neutral-50 p-2 ring-1 ring-neutral-200">
+        {[
+          { time: "14:32", event: "Status changed to operational", user: "S. Ndaba" },
+          { time: "14:15", event: "Stock level updated: 92%", user: "S. Ndaba" },
+          { time: "13:48", event: "Report submitted (offline queue)", user: "T. Mkhize" },
+        ].map((row, i) => (
+          <div key={i} className="flex items-center gap-2 text-[10px]">
+            <span className="font-mono text-neutral-400">{row.time}</span>
+            <span className="text-neutral-600">{row.event}</span>
+            <span className="ml-auto text-neutral-400">{row.user}</span>
+          </div>
+        ))}
+      </div>
+    ),
   },
 ];
 
 export function FeaturesSection() {
   return (
-    <GridSection className="bg-white" id="features">
-      <div>
-        <div className="mx-auto w-full max-w-xl px-4 text-center">
-          <div className="mx-auto flex h-7 w-fit items-center rounded-full border border-neutral-200 bg-white px-4 text-xs text-neutral-800">
-            Platform Features
-          </div>
-          <h2
-            className="mt-6 font-display text-3xl font-medium leading-[1.15] tracking-tight text-neutral-900 sm:text-4xl"
-            style={{ textWrap: "balance" }}
-          >
-            Built for the realities of South African healthcare
+    <section className="relative border-t border-neutral-200 bg-white" id="features">
+      <Grid
+        cellSize={60}
+        patternOffset={[0, 0]}
+        className="text-neutral-200/50 [mask-image:radial-gradient(closest-side,black,transparent)]"
+      />
+      <MaxWidthWrapper className="relative py-16 sm:py-20 lg:py-24">
+        <div className="mx-auto max-w-xl text-center">
+          <span className="inline-flex items-center rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-widest text-[#0D7A6B]">
+            Infrastructure
+          </span>
+          <h2 className="mt-6 font-display text-3xl font-medium leading-[1.15] tracking-tight text-neutral-900 sm:text-4xl" style={{ textWrap: "balance" }}>
+            Built to operate under pressure
           </h2>
-          <p className="mt-4 text-lg text-neutral-500">
-            Real-time clinic intelligence that actually works in the field — 
-            designed with healthcare workers, for healthcare workers.
+          <p className="mt-4 text-base text-neutral-500">
+            Every component of ClinicPulse is designed for the realities of South African healthcare infrastructure — intermittent connectivity, high load, and life-critical decisions.
           </p>
         </div>
 
-        <div className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {features.map((feature, i) => (
+        <div className="mt-14 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {capabilities.map((cap, i) => (
             <motion.div
-              key={feature.title}
-              initial={{ opacity: 0, y: 20 }}
+              key={cap.title}
+              initial={{ opacity: 0, y: 15 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-50px" }}
-              transition={{
-                delay: i * 0.08,
-                duration: 0.5,
-                ease: "easeOut",
-              }}
-              className="group relative flex flex-col rounded-2xl border border-neutral-200 bg-white p-4 transition-all hover:border-neutral-300 hover:shadow-lg"
+              transition={{ delay: i * 0.06, duration: 0.4 }}
+              className="group rounded-xl border border-neutral-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-md"
             >
-              <div className="relative mb-4 h-40 overflow-hidden rounded-xl border border-neutral-100 bg-neutral-50">
-                {feature.graphic}
-              </div>
-              
-              <h3 className="text-base font-medium text-neutral-900">
-                {feature.title}
-              </h3>
-              <p className="mt-1 text-sm leading-relaxed text-neutral-500">
-                {feature.description}
-              </p>
+              <h3 className="text-sm font-semibold text-neutral-900">{cap.title}</h3>
+              <p className="mt-1 text-xs leading-relaxed text-neutral-500">{cap.description}</p>
+              <div className="mt-3 overflow-hidden rounded-lg">{cap.artifact}</div>
               <Link
-                href={feature.link}
-                className="group/link mt-3 inline-flex w-fit items-center gap-1 text-sm font-medium text-neutral-600 transition-colors hover:text-[#0D7A6B]"
+                href={cap.href}
+                className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-neutral-400 transition-colors hover:text-[#0D7A6B]"
               >
-                {feature.linkText}
-                <svg
-                  className="h-4 w-4 transition-transform group-hover/link:translate-x-0.5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 8l4 4m0 0l-4 4m4-4H3"
-                  />
+                Learn more
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
               </Link>
             </motion.div>
           ))}
         </div>
-      </div>
-    </GridSection>
+      </MaxWidthWrapper>
+    </section>
   );
 }
