@@ -20,7 +20,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     pointerEvents: "none",
   },
   backgroundMainBefore: {
-    background: "transparent",
+    background: "radial-gradient(circle, rgba(2, 0, 36, 0) 0, #fafafa 100%)",
     position: "absolute",
     content: '""',
     zIndex: 2,
@@ -30,12 +30,14 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   backgroundMainAfter: {
     content: '""',
+    backgroundImage: "url(https://assets.dub.co/misc/grid.svg)",
     zIndex: 1,
     position: "absolute",
     width: "100%",
     height: "100%",
     top: 0,
-    opacity: 0,
+    opacity: 0.4,
+    filter: "invert(1)",
   },
   backgroundContent: {
     zIndex: 3,
@@ -50,8 +52,8 @@ const styles: { [key: string]: React.CSSProperties } = {
                       radial-gradient(at 79% 53%, hsla(343, 68%, 79%, 1) 0px, transparent 50%)`,
     position: "absolute",
     height: "100%",
-    filter: "blur(100px) saturate(120%)",
+    filter: "blur(100px) saturate(150%)",
     top: "80px",
-    opacity: 0.03,
+    opacity: 0.15,
   },
 };
