@@ -1,27 +1,26 @@
-import { RefObject, useCallback, useEffect, useState } from "react";
+import { RefObject, useSyncExternalStore } from "react";
+
+function readScrollPosition(container?: RefObject<HTMLElement | null>) {
+  if (typeof window === "undefined") {
+    return 0;
+  }
+
+  return container?.current ? container.current.scrollTop : window.scrollY;
+}
 
 export function useScroll(
   threshold: number,
   { container }: { container?: RefObject<HTMLElement | null> } = {},
 ) {
-  const [scrolled, setScrolled] = useState(false);
+  const scrollPosition = useSyncExternalStore(
+    (onStoreChange) => {
+      const element = container?.current ?? window;
+      element.addEventListener("scroll", onStoreChange);
+      return () => element.removeEventListener("scroll", onStoreChange);
+    },
+    () => readScrollPosition(container),
+    () => 0,
+  );
 
-  const onScroll = useCallback(() => {
-    setScrolled(
-      (container?.current ? container.current.scrollTop : window.scrollY) >
-        threshold,
-    );
-  }, [threshold]);
-
-  useEffect(() => {
-    const element = container?.current ?? window;
-    element.addEventListener("scroll", onScroll);
-    return () => element.removeEventListener("scroll", onScroll);
-  }, [onScroll]);
-
-  useEffect(() => {
-    onScroll();
-  }, [onScroll]);
-
-  return scrolled;
+  return scrollPosition > threshold;
 }

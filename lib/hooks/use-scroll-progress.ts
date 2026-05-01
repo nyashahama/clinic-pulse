@@ -11,6 +11,7 @@ export function useScrollProgress(
 
   const updateScrollProgress = useCallback(() => {
     if (!ref.current) return;
+
     const scroll =
       direction === "vertical" ? ref.current.scrollTop : ref.current.scrollLeft;
     const scrollSize =
@@ -27,11 +28,13 @@ export function useScrollProgress(
         ? 1
         : Math.min(scroll / (scrollSize - clientSize), 1),
     );
-  }, [direction]);
+  }, [direction, ref]);
 
   const resizeObserverEntry = useResizeObserver(ref);
 
-  useEffect(updateScrollProgress, [resizeObserverEntry]);
+  useEffect(() => {
+    updateScrollProgress();
+  }, [resizeObserverEntry, updateScrollProgress]);
 
   return { scrollProgress, updateScrollProgress };
 }
