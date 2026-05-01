@@ -1,0 +1,48 @@
+import type { DemoLead } from "@/lib/demo/types";
+
+export const demoLeads: DemoLead[] = [
+  {
+    id: "lead-001",
+    name: "Thandi Mabuza",
+    workEmail: "thandi.mabuza@gautenghealth.gov.za",
+    organization: "Gauteng Department of Health",
+    role: "District operations lead",
+    interest: "government",
+    note: "Interested in district-wide visibility and audit exports before budget review.",
+    createdAt: "2026-04-30T09:10:00.000Z",
+    status: "scheduled",
+  },
+  {
+    id: "lead-002",
+    name: "Ben Molefe",
+    workEmail: "ben.molefe@healthbridge.org",
+    organization: "HealthBridge NGO",
+    role: "Programs director",
+    interest: "ngo",
+    note: "Wants offline field reporting for mobile outreach teams.",
+    createdAt: "2026-04-29T15:25:00.000Z",
+    status: "contacted",
+  },
+  {
+    id: "lead-003",
+    name: "Catherine Joubert",
+    workEmail: "c.joubert@capitalclinics.co.za",
+    organization: "Capital Clinics Group",
+    role: "Operations executive",
+    interest: "clinic_operator",
+    note: "Exploring private network rollout with public referral visibility.",
+    createdAt: "2026-04-28T12:00:00.000Z",
+    status: "new",
+  },
+  {
+    id: "lead-004",
+    name: "Hassan Patel",
+    workEmail: "h.patel@northstar.vc",
+    organization: "Northstar Ventures",
+    role: "Partner",
+    interest: "investor",
+    note: "Asked for a founder demo focused on expansion readiness and API story.",
+    createdAt: "2026-04-27T17:40:00.000Z",
+    status: "completed",
+  },
+];

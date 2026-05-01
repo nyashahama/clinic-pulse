@@ -1,0 +1,243 @@
+"use client";
+
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+} from "react";
+
+import {
+  createInitialDemoState,
+  createQueuedOfflineReport,
+  submitFieldReportScenario,
+  syncOfflineReportsScenario,
+  triggerStaffingShortageScenario,
+  triggerStockoutScenario,
+} from "@/lib/demo/scenarios";
+import {
+  clearDemoStorage,
+  loadStoredDemoLeads,
+  loadStoredOfflineReports,
+  saveStoredDemoLeads,
+  saveStoredOfflineReports,
+} from "@/lib/demo/storage";
+import type {
+  AddDemoLeadInput,
+  DemoLead,
+  DemoRole,
+  DemoState,
+  QueueOfflineReportInput,
+  SubmitFieldReportInput,
+} from "@/lib/demo/types";
+
+type DemoLeadStatus = DemoLead["status"];
+
+type DemoStoreValue = {
+  state: DemoState;
+  resetDemo: () => void;
+  triggerStockout: (clinicId: string) => void;
+  triggerStaffingShortage: (clinicId: string) => void;
+  queueOfflineReport: (report: QueueOfflineReportInput) => void;
+  submitFieldReport: (report: SubmitFieldReportInput) => void;
+  syncOfflineReports: () => void;
+  addDemoLead: (lead: AddDemoLeadInput) => void;
+  updateLeadStatus: (leadId: string, status: DemoLeadStatus) => void;
+  setRole: (role: DemoRole) => void;
+};
+
+type DemoAction =
+  | { type: "reset" }
+  | { type: "trigger_stockout"; clinicId: string }
+  | { type: "trigger_staffing_shortage"; clinicId: string }
+  | { type: "queue_offline_report"; report: QueueOfflineReportInput }
+  | { type: "submit_field_report"; report: SubmitFieldReportInput }
+  | { type: "sync_offline_reports" }
+  | { type: "add_demo_lead"; lead: AddDemoLeadInput }
+  | { type: "update_lead_status"; leadId: string; status: DemoLeadStatus }
+  | { type: "set_role"; role: DemoRole }
+  | { type: "hydrate"; leads: DemoLead[]; offlineQueue: DemoState["offlineQueue"] };
+
+const DemoStoreContext = createContext<DemoStoreValue | null>(null);
+
+function buildLeadId() {
+  return `lead-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function createReducerState(): DemoState {
+  return createInitialDemoState();
+}
+
+function demoReducer(state: DemoState, action: DemoAction): DemoState {
+  const now = new Date().toISOString();
+
+  switch (action.type) {
+    case "reset":
+      return createInitialDemoState();
+    case "trigger_stockout":
+      return triggerStockoutScenario(state, action.clinicId, now);
+    case "trigger_staffing_shortage":
+      return triggerStaffingShortageScenario(state, action.clinicId, now);
+    case "queue_offline_report": {
+      const queuedReport = createQueuedOfflineReport(action.report, now);
+
+      return {
+        ...state,
+        offlineQueue: [queuedReport, ...state.offlineQueue],
+        alerts: [
+          {
+            id: `alert-${Math.random().toString(36).slice(2, 10)}`,
+            clinicId: queuedReport.clinicId,
+            type: "offline_queue_delay",
+            severity: "medium",
+            status: "open",
+            recommendedAction:
+              "Sync queued field reports when connectivity returns so district status can refresh.",
+            createdAt: now,
+          },
+          ...state.alerts.filter(
+            (alert) =>
+              !(
+                alert.clinicId === queuedReport.clinicId &&
+                alert.type === "offline_queue_delay" &&
+                alert.status !== "resolved"
+              ),
+          ),
+        ],
+        auditEvents: [
+          {
+            id: `audit-${Math.random().toString(36).slice(2, 10)}`,
+            clinicId: queuedReport.clinicId,
+            actorName: queuedReport.reporterName,
+            eventType: "report.received_offline",
+            summary: "Offline report queued locally until connectivity is restored.",
+            createdAt: now,
+          },
+          ...state.auditEvents,
+        ],
+      };
+    }
+    case "sync_offline_reports":
+      return syncOfflineReportsScenario(state, now);
+    case "submit_field_report":
+      return submitFieldReportScenario(
+        state,
+        {
+          ...action.report,
+          offlineCreated: action.report.offlineCreated,
+        },
+        now,
+      );
+    case "add_demo_lead":
+      return {
+        ...state,
+        leads: [
+          {
+            id: buildLeadId(),
+            createdAt: action.lead.createdAt ?? now,
+            status: action.lead.status ?? "new",
+            ...action.lead,
+          },
+          ...state.leads,
+        ],
+      };
+    case "update_lead_status":
+      return {
+        ...state,
+        leads: state.leads.map((lead) =>
+          lead.id === action.leadId ? { ...lead, status: action.status } : lead,
+        ),
+      };
+    case "set_role":
+      return {
+        ...state,
+        role: action.role,
+      };
+    case "hydrate":
+      return {
+        ...state,
+        leads: [...action.leads, ...state.leads],
+        offlineQueue: [...action.offlineQueue],
+      };
+    default:
+      return state;
+  }
+}
+
+export function DemoStoreProvider({ children }: { children: React.ReactNode }) {
+  const [state, dispatch] = useReducer(demoReducer, undefined, createReducerState);
+  const hasHydrated = useRef(false);
+
+  useEffect(() => {
+    if (hasHydrated.current) {
+      return;
+    }
+
+    const storedLeads = loadStoredDemoLeads();
+    const storedOfflineReports = loadStoredOfflineReports();
+    hasHydrated.current = true;
+
+    if (storedLeads.length === 0 && storedOfflineReports.length === 0) {
+      return;
+    }
+
+    dispatch({
+      type: "hydrate",
+      leads: storedLeads.filter(
+        (storedLead) => !state.leads.some((lead) => lead.id === storedLead.id),
+      ),
+      offlineQueue: storedOfflineReports,
+    });
+  }, [state.leads]);
+
+  useEffect(() => {
+    saveStoredDemoLeads(state.leads);
+  }, [state.leads]);
+
+  useEffect(() => {
+    saveStoredOfflineReports(state.offlineQueue);
+  }, [state.offlineQueue]);
+
+  const value = useMemo<DemoStoreValue>(
+    () => ({
+      state,
+      resetDemo: () => {
+        clearDemoStorage();
+        dispatch({ type: "reset" });
+      },
+      triggerStockout: (clinicId: string) =>
+        dispatch({ type: "trigger_stockout", clinicId }),
+      triggerStaffingShortage: (clinicId: string) =>
+        dispatch({ type: "trigger_staffing_shortage", clinicId }),
+      queueOfflineReport: (report: QueueOfflineReportInput) =>
+        dispatch({ type: "queue_offline_report", report }),
+      submitFieldReport: (report: SubmitFieldReportInput) =>
+        dispatch({ type: "submit_field_report", report }),
+      syncOfflineReports: () => dispatch({ type: "sync_offline_reports" }),
+      addDemoLead: (lead: AddDemoLeadInput) =>
+        dispatch({ type: "add_demo_lead", lead }),
+      updateLeadStatus: (leadId: string, status: DemoLeadStatus) =>
+        dispatch({ type: "update_lead_status", leadId, status }),
+      setRole: (role: DemoRole) => dispatch({ type: "set_role", role }),
+    }),
+    [state],
+  );
+
+  return (
+    <DemoStoreContext.Provider value={value}>
+      {children}
+    </DemoStoreContext.Provider>
+  );
+}
+
+export function useDemoStore() {
+  const context = useContext(DemoStoreContext);
+
+  if (!context) {
+    throw new Error("useDemoStore must be used within a DemoStoreProvider");
+  }
+
+  return context;
+}
