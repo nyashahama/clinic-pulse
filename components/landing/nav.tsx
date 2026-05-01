@@ -5,9 +5,9 @@ import { useScroll } from "@/lib/hooks/use-scroll";
 import Link from "next/link";
 
 const NAV_ITEMS = [
-  { name: "Product", href: "#product" },
-  { name: "Interfaces", href: "#interfaces" },
-  { name: "Proof", href: "#proof" },
+  { name: "Product Flow", href: "#flow" },
+  { name: "Routing", href: "#routing" },
+  { name: "Trust", href: "#trust" },
 ];
 
 export function Nav() {
@@ -47,7 +47,7 @@ export function Nav() {
                 <span className="animate-pulse-dot absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
                 <span className="inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
               </span>
-              Live network · 3,512 clinics
+              Demo workspace
             </span>
           </div>
 
@@ -62,7 +62,7 @@ export function Nav() {
               href="/book-demo"
               className="flex h-8 items-center rounded-lg border border-neutral-900 bg-neutral-900 px-4 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
             >
-              Request Demo
+              Book Demo
             </Link>
           </div>
         </div>
@@ -70,3 +70,4 @@ export function Nav() {
     </div>
   );
 }
+
