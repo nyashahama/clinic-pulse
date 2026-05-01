@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 
 type ClinicMapProps = {
   clinics: ClinicRow[];
+  referenceClinics?: ClinicRow[];
   selectedClinicId: string | null;
   rerouteClinicId?: string | null;
   onSelectClinic: (clinicId: string) => void;
@@ -28,7 +29,15 @@ function getStatusPinClass(status: ClinicRow["status"]) {
   }
 }
 
+function clampPercent(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
 function getMapPosition(clinics: ClinicRow[]) {
+  if (clinics.length === 0) {
+    return () => ({ left: "10%", top: "12%" });
+  }
+
   const latitudes = clinics.map((clinic) => clinic.latitude);
   const longitudes = clinics.map((clinic) => clinic.longitude);
   const minLat = Math.min(...latitudes);
@@ -37,8 +46,16 @@ function getMapPosition(clinics: ClinicRow[]) {
   const maxLng = Math.max(...longitudes);
 
   return (clinic: ClinicRow) => {
-    const x = ((clinic.longitude - minLng) / Math.max(maxLng - minLng, 0.0001)) * 70 + 10;
-    const y = ((maxLat - clinic.latitude) / Math.max(maxLat - minLat, 0.0001)) * 70 + 12;
+    const x = clampPercent(
+      ((clinic.longitude - minLng) / Math.max(maxLng - minLng, 0.0001)) * 70 + 10,
+      10,
+      90,
+    );
+    const y = clampPercent(
+      ((maxLat - clinic.latitude) / Math.max(maxLat - minLat, 0.0001)) * 70 + 12,
+      10,
+      88,
+    );
 
     return { left: `${x}%`, top: `${y}%` };
   };
@@ -67,11 +84,12 @@ function getPriorityScore(clinic: ClinicRow) {
 
 export function ClinicMap({
   clinics,
+  referenceClinics,
   selectedClinicId,
   rerouteClinicId,
   onSelectClinic,
 }: ClinicMapProps) {
-  const placePin = getMapPosition(clinics);
+  const placePin = getMapPosition(referenceClinics ?? clinics);
   const priorityClinics = [...clinics]
     .sort((left, right) => getPriorityScore(right) - getPriorityScore(left))
     .slice(0, 4);
