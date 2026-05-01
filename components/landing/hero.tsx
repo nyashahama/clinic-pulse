@@ -138,7 +138,7 @@ export function Hero() {
           transition={{ delay: 0.3, duration: 0.5, ease: "easeOut" }}
           className="mt-8 flex flex-wrap items-center justify-center gap-2.5"
         >
-          <ButtonLink href="/demo" variant="primary">
+          <ButtonLink href="/book-demo" variant="primary">
             Request Demo
             <svg
               className="ml-1 size-3.5"
