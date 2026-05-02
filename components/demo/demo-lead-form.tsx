@@ -73,7 +73,7 @@ export function DemoLeadForm({
   };
 
   return (
-    <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
+    <section className="min-w-0 overflow-hidden rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
       <header className="border-b border-border-subtle pb-4">
         <p className="text-xs font-medium uppercase tracking-[0.08em] text-content-subtle">
           Demo booking
@@ -84,7 +84,7 @@ export function DemoLeadForm({
         </p>
       </header>
 
-      <form className="mt-4 space-y-3" onSubmit={handleSubmit}>
+      <form className="mt-4 min-w-0 space-y-3" onSubmit={handleSubmit}>
         <label className="block space-y-1.5">
           <span className="text-sm font-medium text-content-emphasis">Name</span>
           <input
@@ -158,7 +158,7 @@ export function DemoLeadForm({
           />
         </label>
 
-        <Button className="w-full" type="submit" disabled={isSubmitDisabled}>
+        <Button className="w-full max-w-full shrink" type="submit" disabled={isSubmitDisabled}>
           {isSubmitting ? "Submitting..." : submitLabel}
         </Button>
       </form>
