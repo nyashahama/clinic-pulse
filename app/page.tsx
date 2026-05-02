@@ -3,12 +3,12 @@ import type { Metadata } from "next";
 import { Background } from "@/components/ui/background";
 import { Nav } from "@/components/landing/nav";
 import { Footer } from "@/components/landing/footer";
+import { BookingHero } from "@/components/landing/booking-hero";
 import { DemoBookingCTA } from "@/components/landing/demo-booking-cta";
 import { ProblemContrast } from "@/components/landing/problem-contrast";
 import { ProductFlow } from "@/components/landing/product-flow";
 import { ProofStrip } from "@/components/landing/proof-strip";
 import { RoutingMoment } from "@/components/landing/routing-moment";
-import { ScenarioHero } from "@/components/landing/scenario-hero";
 import { TrustInfrastructure } from "@/components/landing/trust-infrastructure";
 import { DemoStoreProvider } from "@/lib/demo/demo-store";
 
@@ -25,7 +25,7 @@ export default function Home() {
       <Nav />
       <main>
         <DemoStoreProvider>
-          <ScenarioHero />
+          <BookingHero />
         </DemoStoreProvider>
         <ProofStrip />
         <ProblemContrast />

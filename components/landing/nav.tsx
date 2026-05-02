@@ -15,11 +15,11 @@ export function Nav() {
   const scrolled = useScroll(40);
 
   return (
-    <div className={cn("sticky inset-x-0 top-0 z-30 w-full transition-all")}>
+    <div className={cn("sticky inset-x-0 top-0 z-40 w-full border-b border-neutral-200/70 bg-[#f7f6f2]/90 backdrop-blur-lg transition-all")}>
       <div
         className={cn(
-          "absolute inset-0 block border-b border-transparent transition-all",
-          scrolled && "border-neutral-200/80 bg-white/75 backdrop-blur-lg",
+          "absolute inset-0 block transition-all",
+          scrolled && "bg-white/85",
         )}
       />
       <div className="relative mx-auto w-full max-w-screen-xl px-3 lg:px-10">
@@ -58,7 +58,7 @@ export function Nav() {
               Sign in
             </Link>
             <Link
-              href="/book-demo"
+              href="/#booking"
               className="flex h-8 items-center rounded-lg border border-neutral-900 bg-neutral-900 px-4 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
             >
               Book Demo
