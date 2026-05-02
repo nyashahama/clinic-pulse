@@ -1,5 +1,6 @@
 export const adminWorkspaceSections = [
-  "lead-capture",
   "pipeline",
   "builder",
 ] as const;
+
+export const adminManualLeadEntryMode = "modal";

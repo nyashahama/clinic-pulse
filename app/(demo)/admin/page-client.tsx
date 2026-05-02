@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   AlertCircle,
   ArrowLeft,
   CalendarClock,
   RefreshCcw,
-  Users,
+  UserPlus,
+  X,
 } from "lucide-react";
 
 import { DemoLeadForm } from "@/components/demo/demo-lead-form";
@@ -98,6 +99,7 @@ export default function AdminPage() {
   const queuedReports = state.offlineQueue.length;
   const activeAlertCount = state.alerts.filter((alert) => alert.status === "open").length;
   const exportPayload = useMemo(() => buildExportPayload(state), [state]);
+  const [manualLeadOpen, setManualLeadOpen] = useState(false);
 
   const leadSorted = useMemo(
     () => [...state.leads].sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
@@ -110,6 +112,7 @@ export default function AdminPage() {
       createdAt: new Date().toISOString(),
       status: "new",
     });
+    setManualLeadOpen(false);
   };
 
   return (
@@ -208,27 +211,27 @@ export default function AdminPage() {
       ) : null}
 
       <div className="grid gap-4">
-        <section
-          className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm"
-          data-admin-section={adminWorkspaceSections[0]}
-        >
-          <SectionHeader
-            eyebrow="Manual lead capture"
-            title="Add custom demo lead"
-            description="Useful for rehearsal runs or founder-led warm-ups before sharing a link."
-            actions={
-              <span className="inline-flex items-center gap-1 rounded-full border border-border-subtle bg-bg-subtle px-2 py-1 text-xs text-content-subtle">
-                <Users className="size-3.5" />
-                Internal queue
-              </span>
-            }
-          />
-
-          <DemoLeadForm onSubmit={handleLeadSubmit} submitLabel="Add lead to demo queue" />
-        </section>
-
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
-          <div className="grid min-w-0 gap-4" data-admin-section={adminWorkspaceSections[1]}>
+          <div className="grid min-w-0 gap-4" data-admin-section={adminWorkspaceSections[0]}>
+            <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
+              <SectionHeader
+                eyebrow="Founder pipeline"
+                title="Lead management"
+                description="Track booking leads from the public demo flow and move each prospect through follow-up."
+                actions={
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setManualLeadOpen(true)}
+                  >
+                    <UserPlus className="size-3.5" />
+                    Add lead manually
+                  </Button>
+                }
+              />
+            </section>
+
             <DemoLeadTable
               leads={leadSorted}
               onLeadStatusChange={(leadId, status) => {
@@ -244,7 +247,7 @@ export default function AdminPage() {
             />
           </div>
 
-          <div className="grid min-w-0 gap-4" data-admin-section={adminWorkspaceSections[2]}>
+          <div className="grid min-w-0 gap-4" data-admin-section={adminWorkspaceSections[1]}>
             <APIPreview clinicCount={clinics.length} onOpen={() => {}} />
             <RoadmapModules />
             <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
@@ -279,6 +282,35 @@ export default function AdminPage() {
           </div>
         </div>
       </div>
+
+      {manualLeadOpen ? (
+        <div
+          className="fixed inset-0 z-50 grid place-items-start overflow-y-auto bg-neutral-950/35 px-3 py-6 backdrop-blur-[1px] sm:place-items-center sm:px-4"
+          role="presentation"
+          onClick={() => setManualLeadOpen(false)}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add lead manually"
+            className="relative w-full max-w-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              aria-label="Close manual lead entry"
+              className="absolute right-3 top-3 z-10 bg-bg-default"
+              onClick={() => setManualLeadOpen(false)}
+            >
+              <X className="size-4" />
+            </Button>
+
+            <DemoLeadForm onSubmit={handleLeadSubmit} submitLabel="Add lead to pipeline" />
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }

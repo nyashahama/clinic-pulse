@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
 
-import { adminWorkspaceSections } from "@/lib/demo/admin-layout";
+import {
+  adminManualLeadEntryMode,
+  adminWorkspaceSections,
+} from "@/lib/demo/admin-layout";
 
 describe("adminWorkspaceSections", () => {
-  it("keeps manual lead capture before builder content", () => {
+  it("makes pipeline and builder the primary admin workspace", () => {
     expect(adminWorkspaceSections).toEqual([
-      "lead-capture",
       "pipeline",
       "builder",
     ]);
+  });
+
+  it("keeps manual lead entry as a secondary modal action", () => {
+    expect(adminManualLeadEntryMode).toBe("modal");
   });
 });

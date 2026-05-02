@@ -76,11 +76,11 @@ export function DemoLeadForm({
     <section className="min-w-0 overflow-hidden rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
       <header className="border-b border-border-subtle pb-4">
         <p className="text-xs font-medium uppercase tracking-[0.08em] text-content-subtle">
-          Demo booking
+          Manual entry
         </p>
-        <h3 className="mt-1 text-lg font-semibold text-content-emphasis">Request a founder walk-through</h3>
+        <h3 className="mt-1 text-lg font-semibold text-content-emphasis">Add lead to pipeline</h3>
         <p className="mt-1 text-sm text-content-default">
-          Provide context and we&apos;ll tailor a live product demo in this flow.
+          Use this for rehearsal entries or prospects captured outside the booking flow.
         </p>
       </header>
 
