@@ -8,9 +8,13 @@ import { ReroutePanel } from "@/components/demo/reroute-panel";
 import { SectionHeader } from "@/components/demo/section-header";
 import { StatusBadge } from "@/components/demo/status-badge";
 import { Button } from "@/components/ui/button";
+import {
+  buildFinderAlternatives,
+  filterClinicRows,
+  isClinicUnavailable,
+  sortClinicRowsByDistance,
+} from "@/lib/demo/finder";
 import type { ClinicRow } from "@/lib/demo/types";
-
-const BASE_COORDS: [number, number] = [-25.74, 28.13];
 
 type ClinicFinderProps = {
   clinics: ClinicRow[];
@@ -20,60 +24,6 @@ type ClinicFinderProps = {
   onNavigateToDetail: (clinicId: string) => void;
 };
 
-function normalize(value: string) {
-  return value.trim().toLowerCase();
-}
-
-function estimateDistance(lat: number, lng: number) {
-  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
-  const [baseLat, baseLng] = BASE_COORDS;
-  const dLat = toRadians(lat - baseLat);
-  const dLng = toRadians(lng - baseLng);
-
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRadians(baseLat)) * Math.cos(toRadians(lat)) * Math.sin(dLng / 2) ** 2;
-  return Math.max(0.3, 2 * 6371 * Math.asin(Math.sqrt(a)));
-}
-
-function isClinicUnavailable(clinic: ClinicRow) {
-  return (
-    clinic.status === "non_functional" ||
-    clinic.status === "unknown" ||
-    clinic.freshness === "stale" ||
-    clinic.freshness === "needs_confirmation"
-  );
-}
-
-function buildAlternatives(stateClinics: ClinicRow[], clinic: ClinicRow) {
-  if (!clinic.services[0]) {
-    return [];
-  }
-
-  return stateClinics
-    .filter((candidate) => candidate.id !== clinic.id)
-    .filter((candidate) =>
-      candidate.services.some((service) => clinic.services.includes(service)),
-    )
-    .filter((candidate) => candidate.status !== "non_functional")
-    .sort((left, right) => {
-      if (left.freshness !== right.freshness) {
-        return left.freshness === "fresh" ? -1 : 1;
-      }
-
-      return left.status === right.status
-        ? 0
-        : left.status === "operational"
-          ? -1
-          : right.status === "operational"
-            ? 1
-            : left.status === "degraded"
-              ? -1
-              : 1;
-    })
-    .slice(0, 4);
-}
-
 export function ClinicFinder({
   clinics,
   query,
@@ -81,78 +31,22 @@ export function ClinicFinder({
   service,
   onNavigateToDetail,
 }: ClinicFinderProps) {
-  const normalizedQuery = normalize(query);
-  const normalizedService = normalize(service);
-  const normalizedStatus = normalize(status);
-
   const filtered = useMemo(() => {
-    return clinics.filter((clinic) => {
-      const hasStatusFilter = normalizedStatus
-        ? clinic.status === (normalizedStatus as ClinicRow["status"])
-        : true;
-
-      if (!hasStatusFilter) {
-        return false;
-      }
-
-      const hasServiceFilter = normalizedService
-        ? clinic.services.some((item) => normalize(item).includes(normalizedService))
-        : true;
-
-      if (!hasServiceFilter) {
-        return false;
-      }
-
-      if (!normalizedQuery) {
-        return true;
-      }
-
-      const haystack = [
-        clinic.name,
-        clinic.district,
-        clinic.facilityCode,
-        clinic.services.join(" "),
-      ]
-        .join(" ")
-        .toLowerCase();
-
-      return haystack.includes(normalizedQuery);
-    });
-  }, [clinics, normalizedQuery, normalizedService, normalizedStatus]);
+    return filterClinicRows(clinics, { query, service, status });
+  }, [clinics, query, service, status]);
 
   const [selectedClinicId, setSelectedClinicId] = useState<string | null>(() => {
     return filtered[0]?.id ?? null;
   });
 
   const sorted = useMemo(() => {
-    return [...filtered]
-      .map((clinic) => {
-        return {
-          clinic,
-          distance: estimateDistance(clinic.latitude, clinic.longitude),
-        };
-      })
-      .sort((left, right) => left.distance - right.distance);
+    return sortClinicRowsByDistance(filtered);
   }, [filtered]);
 
   const selectedClinicRow = sorted.find((entry) => entry.clinic.id === selectedClinicId)?.clinic ?? sorted[0]?.clinic;
 
   const alternatives = selectedClinicRow
-    ? buildAlternatives(clinics, selectedClinicRow).map((recommendation) => ({
-        clinic: recommendation,
-        distanceKm: estimateDistance(
-          recommendation.latitude,
-          recommendation.longitude,
-        ),
-        estimatedMinutes: Math.max(5, Math.round(estimateDistance(recommendation.latitude, recommendation.longitude) * 2.8)),
-        compatibilityServices: recommendation.services.filter((item) =>
-          selectedClinicRow.services.includes(item),
-        ),
-        reason:
-          recommendation.status === "operational"
-            ? "Operational and can absorb overflow demand immediately."
-            : "Degraded but can absorb select services.",
-      }))
+    ? buildFinderAlternatives(clinics, selectedClinicRow)
     : [];
 
   if (clinics.length === 0) {
@@ -176,7 +70,7 @@ export function ClinicFinder({
           ) : (
             sorted.slice(0, 12).map((entry) => {
               const { clinic } = entry;
-              const distance = `${entry.distance.toFixed(1)} km`;
+              const distance = `${entry.distanceKm.toFixed(1)} km`;
               const isSelected = selectedClinicId === clinic.id;
               const isUnavailable = isClinicUnavailable(clinic);
 
