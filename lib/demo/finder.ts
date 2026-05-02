@@ -103,6 +103,23 @@ export function sortClinicRowsByDistance(
     .sort((left, right) => left.distanceKm - right.distanceKm);
 }
 
+export function resolveSelectedClinicId(
+  sorted: FinderClinicDistance[],
+  selectedClinicId: string | null,
+): string | null {
+  if (selectedClinicId) {
+    const selectedClinic = sorted.find(
+      (entry) => entry.clinic.id === selectedClinicId,
+    );
+
+    if (selectedClinic) {
+      return selectedClinicId;
+    }
+  }
+
+  return sorted[0]?.clinic.id ?? null;
+}
+
 function getAlternativeRank(clinic: ClinicRow) {
   if (clinic.status === "operational" && clinic.freshness === "fresh") {
     return 0;

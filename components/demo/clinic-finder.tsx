@@ -12,6 +12,7 @@ import {
   buildFinderAlternatives,
   filterClinicRows,
   isClinicUnavailable,
+  resolveSelectedClinicId,
   sortClinicRowsByDistance,
 } from "@/lib/demo/finder";
 import type { ClinicRow } from "@/lib/demo/types";
@@ -43,7 +44,13 @@ export function ClinicFinder({
     return sortClinicRowsByDistance(filtered);
   }, [filtered]);
 
-  const selectedClinicRow = sorted.find((entry) => entry.clinic.id === selectedClinicId)?.clinic ?? sorted[0]?.clinic;
+  const resolvedSelectedClinicId = resolveSelectedClinicId(
+    sorted,
+    selectedClinicId,
+  );
+  const selectedClinicRow = sorted.find(
+    (entry) => entry.clinic.id === resolvedSelectedClinicId,
+  )?.clinic;
 
   const alternatives = selectedClinicRow
     ? buildFinderAlternatives(clinics, selectedClinicRow)
@@ -71,7 +78,7 @@ export function ClinicFinder({
             sorted.slice(0, 12).map((entry) => {
               const { clinic } = entry;
               const distance = `${entry.distanceKm.toFixed(1)} km`;
-              const isSelected = selectedClinicId === clinic.id;
+              const isSelected = resolvedSelectedClinicId === clinic.id;
               const isUnavailable = isClinicUnavailable(clinic);
 
               return (

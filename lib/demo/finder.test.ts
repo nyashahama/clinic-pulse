@@ -5,6 +5,7 @@ import {
   estimateDistanceKm,
   filterClinicRows,
   isClinicUnavailable,
+  resolveSelectedClinicId,
   sortClinicRowsByDistance,
 } from "@/lib/demo/finder";
 import { createInitialDemoState } from "@/lib/demo/scenarios";
@@ -77,6 +78,27 @@ describe("sortClinicRowsByDistance", () => {
   });
 });
 
+describe("resolveSelectedClinicId", () => {
+  it("returns an existing selected id when it is present", () => {
+    const sorted = sortClinicRowsByDistance(getRows()).slice(0, 3);
+    const selectedId = sorted[1].clinic.id;
+
+    expect(resolveSelectedClinicId(sorted, selectedId)).toBe(selectedId);
+  });
+
+  it("falls back to the first sorted clinic id when the selected id is stale", () => {
+    const sorted = sortClinicRowsByDistance(getRows()).slice(0, 3);
+
+    expect(resolveSelectedClinicId(sorted, "stale-clinic-id")).toBe(
+      sorted[0].clinic.id,
+    );
+  });
+
+  it("returns null for empty sorted results", () => {
+    expect(resolveSelectedClinicId([], "stale-clinic-id")).toBeNull();
+  });
+});
+
 describe("estimateDistanceKm", () => {
   it("returns a positive distance", () => {
     const [clinic] = getRows();
@@ -101,5 +123,64 @@ describe("buildFinderAlternatives", () => {
     expect(alternatives.every((entry) => entry.estimatedMinutes >= 5)).toBe(true);
     expect(alternatives.every((entry) => entry.reason.length > 0)).toBe(true);
     expect(alternatives.some((entry) => entry.clinic.status === "non_functional")).toBe(false);
+  });
+
+  it("ranks fresh operational alternatives ahead of weaker matches and breaks rank ties by distance", () => {
+    const [sourceFixture, candidateFixture] = getRows();
+    const sharedServices = ["Primary care"];
+    const source = cloneClinic(sourceFixture, {
+      id: "source",
+      services: sharedServices,
+    });
+    const freshOperationalFar = cloneClinic(candidateFixture, {
+      id: "fresh-operational-far",
+      latitude: -25.78,
+      longitude: 28.2,
+      status: "operational",
+      freshness: "fresh",
+      services: sharedServices,
+    });
+    const freshOperationalNear = cloneClinic(candidateFixture, {
+      id: "fresh-operational-near",
+      latitude: -25.741,
+      longitude: 28.131,
+      status: "operational",
+      freshness: "fresh",
+      services: sharedServices,
+    });
+    const staleOperationalNear = cloneClinic(candidateFixture, {
+      id: "stale-operational-near",
+      latitude: -25.742,
+      longitude: 28.132,
+      status: "operational",
+      freshness: "stale",
+      services: sharedServices,
+    });
+    const degradedFreshNear = cloneClinic(candidateFixture, {
+      id: "degraded-fresh-near",
+      latitude: -25.743,
+      longitude: 28.133,
+      status: "degraded",
+      freshness: "fresh",
+      services: sharedServices,
+    });
+
+    const alternatives = buildFinderAlternatives(
+      [
+        source,
+        staleOperationalNear,
+        freshOperationalFar,
+        degradedFreshNear,
+        freshOperationalNear,
+      ],
+      source,
+    );
+
+    expect(alternatives.map((entry) => entry.clinic.id)).toEqual([
+      "fresh-operational-near",
+      "fresh-operational-far",
+      "stale-operational-near",
+      "degraded-fresh-near",
+    ]);
   });
 });
