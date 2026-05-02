@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { shouldOpenBookingModal } from "@/lib/landing/booking-modal";
+import {
+  shouldOpenBookingModal,
+  shouldOpenBookingModalFromSearchParams,
+} from "@/lib/landing/booking-modal";
 
 describe("shouldOpenBookingModal", () => {
   it("opens for the booking hash", () => {
@@ -13,5 +16,11 @@ describe("shouldOpenBookingModal", () => {
 
   it("stays closed for normal landing visits", () => {
     expect(shouldOpenBookingModal("http://localhost:3000/")).toBe(false);
+  });
+
+  it("opens from readonly search params used by the App Router", () => {
+    expect(shouldOpenBookingModalFromSearchParams(new URLSearchParams("booking=1"))).toBe(
+      true,
+    );
   });
 });

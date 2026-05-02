@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { Background } from "@/components/ui/background";
 import { Nav } from "@/components/landing/nav";
@@ -25,7 +26,9 @@ export default function Home() {
       <Nav />
       <main>
         <DemoStoreProvider>
-          <BookingHero />
+          <Suspense fallback={null}>
+            <BookingHero />
+          </Suspense>
         </DemoStoreProvider>
         <ProofStrip />
         <ProblemContrast />

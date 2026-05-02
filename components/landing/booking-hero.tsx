@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Activity,
   ArrowRight,
@@ -22,7 +22,10 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useDemoStore } from "@/lib/demo/demo-store";
-import { shouldOpenBookingModal } from "@/lib/landing/booking-modal";
+import {
+  shouldOpenBookingModal,
+  shouldOpenBookingModalFromSearchParams,
+} from "@/lib/landing/booking-modal";
 import { cn } from "@/lib/utils";
 import type { DemoLeadFormInput } from "@/components/demo/demo-lead-form";
 
@@ -35,6 +38,7 @@ type InterestType = DemoLeadFormInput["interest"];
 
 export function BookingHero() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { addDemoLead } = useDemoStore();
   const [duration, setDuration] = useState<30 | 45>(30);
   const [selectedDay, setSelectedDay] = useState(4);
@@ -54,43 +58,22 @@ export function BookingHero() {
     () => `May ${selectedDay}, 2026 at ${selectedTime}`,
     [selectedDay, selectedTime],
   );
+  const bookingUrlOpen = shouldOpenBookingModalFromSearchParams(searchParams);
+  const bookingOpen = isBookingOpen || bookingUrlOpen;
 
   useEffect(() => {
-    const syncBookingUrl = () => {
-      if (shouldOpenBookingModal(window.location.href)) {
+    const syncBookingHash = () => {
+      if (window.location.hash === "#booking") {
         setIsBookingOpen(true);
       }
     };
 
-    const notifyLocationChange = () => {
-      window.dispatchEvent(new Event("clinicpulse-locationchange"));
-    };
-    const originalPushState = window.history.pushState;
-    const originalReplaceState = window.history.replaceState;
-
-    window.history.pushState = function pushState(...args) {
-      const result = originalPushState.apply(this, args);
-      notifyLocationChange();
-      return result;
-    };
-    window.history.replaceState = function replaceState(...args) {
-      const result = originalReplaceState.apply(this, args);
-      notifyLocationChange();
-      return result;
-    };
-
-    const openBooking = window.setTimeout(syncBookingUrl, 0);
-    window.addEventListener("hashchange", syncBookingUrl);
-    window.addEventListener("popstate", syncBookingUrl);
-    window.addEventListener("clinicpulse-locationchange", syncBookingUrl);
+    const openBooking = window.setTimeout(syncBookingHash, 0);
+    window.addEventListener("hashchange", syncBookingHash);
 
     return () => {
       window.clearTimeout(openBooking);
-      window.history.pushState = originalPushState;
-      window.history.replaceState = originalReplaceState;
-      window.removeEventListener("hashchange", syncBookingUrl);
-      window.removeEventListener("popstate", syncBookingUrl);
-      window.removeEventListener("clinicpulse-locationchange", syncBookingUrl);
+      window.removeEventListener("hashchange", syncBookingHash);
     };
   }, []);
 
@@ -202,7 +185,7 @@ export function BookingHero() {
         </div>
       </section>
 
-      {isBookingOpen ? (
+      {bookingOpen ? (
         <div
           className="fixed inset-0 z-50 grid place-items-start overflow-y-auto bg-neutral-950/52 px-4 py-8 backdrop-blur-[2px] sm:place-items-center"
           role="dialog"
