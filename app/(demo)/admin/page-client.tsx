@@ -210,77 +210,85 @@ export default function AdminPage() {
         </section>
       ) : null}
 
-      <div className="grid gap-4">
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
-          <div className="grid min-w-0 gap-4" data-admin-section={adminWorkspaceSections[0]}>
-            <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
-              <SectionHeader
-                eyebrow="Founder pipeline"
-                title="Lead management"
-                description="Track booking leads from the public demo flow and move each prospect through follow-up."
-                actions={
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setManualLeadOpen(true)}
-                  >
-                    <UserPlus className="size-3.5" />
-                    Add lead manually
-                  </Button>
-                }
-              />
-            </section>
+      <div className="grid min-w-0 gap-4">
+        <section
+          className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm"
+          data-admin-section={adminWorkspaceSections[0]}
+        >
+          <SectionHeader
+            eyebrow="Founder pipeline"
+            title="Lead management"
+            description="Track booking leads from the public demo flow and move each prospect through follow-up."
+            actions={
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setManualLeadOpen(true)}
+              >
+                <UserPlus className="size-3.5" />
+                Add lead manually
+              </Button>
+            }
+          />
+        </section>
 
-            <DemoLeadTable
-              leads={leadSorted}
-              onLeadStatusChange={(leadId, status) => {
-                updateLeadStatus(leadId, status);
-              }}
-            />
+        <DemoLeadTable
+          leads={leadSorted}
+          onLeadStatusChange={(leadId, status) => {
+            updateLeadStatus(leadId, status);
+          }}
+        />
 
-            <ExportPreview
-              payload={exportPayload}
-              onOpen={() => {
-                // No-op stub for visual audit in this phase.
-              }}
-            />
-          </div>
-
-          <div className="grid min-w-0 gap-4" data-admin-section={adminWorkspaceSections[1]}>
-            <APIPreview clinicCount={clinics.length} onOpen={() => {}} />
-            <RoadmapModules />
-            <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
-              <SectionHeader
-                eyebrow="Ops snapshot"
-                title="Quick notes"
-                description="Short list of talking points before the founder pitch starts."
-              />
-              <ul className="mt-4 space-y-2 text-sm text-content-default">
-                <li className="rounded-lg border border-border-subtle bg-bg-subtle px-3 py-2">
-                  <span className="font-medium text-content-emphasis">Demo flow:</span>{" "}
-                  Start at <span className="font-mono">/demo</span>, then open finder and field flows.
-                </li>
-                <li className="rounded-lg border border-border-subtle bg-bg-subtle px-3 py-2">
-                  <span className="font-medium text-content-emphasis">Escalation path:</span>{" "}
-                  Use alert list and status actions to show reroute confidence.
-                </li>
-                <li className="rounded-lg border border-border-subtle bg-bg-subtle px-3 py-2">
-                  <span className="font-medium text-content-emphasis">Lead capture:</span>{" "}
-                  Bookings in <span className="font-mono">/book-demo</span> are persisted in local storage.
-                </li>
-                <li className="rounded-lg border border-border-subtle bg-bg-subtle px-3 py-2">
-                  <span className="font-medium text-content-emphasis">Admin proof:</span>{" "}
-                  Export payload and API schema are intentionally mock-first for solo founder pacing.
-                </li>
-              </ul>
-              <div className="mt-4 flex items-center gap-2 rounded-md border border-border-subtle bg-bg-subtle px-3 py-2 text-sm text-content-subtle">
-                <CalendarClock className="size-4" />
-                Last admin interaction: {formatDate(new Date().toISOString())}
-              </div>
-            </section>
-          </div>
+        <div data-admin-section={adminWorkspaceSections[1]}>
+          <ExportPreview
+            payload={exportPayload}
+            onOpen={() => {
+              // No-op stub for visual audit in this phase.
+            }}
+          />
         </div>
+
+        <div data-admin-section={adminWorkspaceSections[2]}>
+          <APIPreview clinicCount={clinics.length} onOpen={() => {}} />
+        </div>
+
+        <div data-admin-section={adminWorkspaceSections[3]}>
+          <RoadmapModules />
+        </div>
+
+        <section
+          className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm"
+          data-admin-section={adminWorkspaceSections[4]}
+        >
+          <SectionHeader
+            eyebrow="Ops snapshot"
+            title="Quick notes"
+            description="Short list of talking points before the founder pitch starts."
+          />
+          <ul className="mt-4 space-y-2 text-sm text-content-default">
+            <li className="rounded-lg border border-border-subtle bg-bg-subtle px-3 py-2">
+              <span className="font-medium text-content-emphasis">Demo flow:</span>{" "}
+              Start at <span className="font-mono">/demo</span>, then open finder and field flows.
+            </li>
+            <li className="rounded-lg border border-border-subtle bg-bg-subtle px-3 py-2">
+              <span className="font-medium text-content-emphasis">Escalation path:</span>{" "}
+              Use alert list and status actions to show reroute confidence.
+            </li>
+            <li className="rounded-lg border border-border-subtle bg-bg-subtle px-3 py-2">
+              <span className="font-medium text-content-emphasis">Lead capture:</span>{" "}
+              Bookings in <span className="font-mono">/book-demo</span> are persisted in local storage.
+            </li>
+            <li className="rounded-lg border border-border-subtle bg-bg-subtle px-3 py-2">
+              <span className="font-medium text-content-emphasis">Admin proof:</span>{" "}
+              Export payload and API schema are intentionally mock-first for solo founder pacing.
+            </li>
+          </ul>
+          <div className="mt-4 flex items-center gap-2 rounded-md border border-border-subtle bg-bg-subtle px-3 py-2 text-sm text-content-subtle">
+            <CalendarClock className="size-4" />
+            Last admin interaction: {formatDate(new Date().toISOString())}
+          </div>
+        </section>
       </div>
 
       {manualLeadOpen ? (

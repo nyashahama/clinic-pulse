@@ -6,10 +6,13 @@ import {
 } from "@/lib/demo/admin-layout";
 
 describe("adminWorkspaceSections", () => {
-  it("makes pipeline and builder the primary admin workspace", () => {
+  it("renders the admin workspace in one vertical workflow", () => {
     expect(adminWorkspaceSections).toEqual([
       "pipeline",
+      "export",
       "builder",
+      "roadmap",
+      "notes",
     ]);
   });
 
