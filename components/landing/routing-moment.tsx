@@ -9,7 +9,7 @@ import { demoImages } from "@/lib/demo/images";
 
 export function RoutingMoment() {
   return (
-    <section id="routing" className="bg-white">
+    <section id="routing" className="bg-[#eef3f2]">
       <MaxWidthWrapper className="py-16 sm:py-20 lg:py-24">
         <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
           <div>
@@ -126,4 +126,3 @@ export function RoutingMoment() {
     </section>
   );
 }
-

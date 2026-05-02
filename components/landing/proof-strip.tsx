@@ -24,7 +24,7 @@ const liveSignals = [
 
 export function ProofStrip() {
   return (
-    <section className="border-y border-neutral-200 bg-white">
+    <section className="border-y border-[#d4dee1] bg-[#eef3f2]">
       <MaxWidthWrapper className="py-10">
         <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -102,4 +102,3 @@ export function ProofStrip() {
     </section>
   );
 }
-

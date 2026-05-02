@@ -15,7 +15,7 @@ export function DemoShell({ children, detail }: DemoShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-dvh bg-neutral-50 text-neutral-900">
+    <div className="flex h-dvh bg-[#eef3f2] text-neutral-900">
       <div className="hidden w-72 shrink-0 border-r border-neutral-200 lg:block">
         <Sidebar />
       </div>

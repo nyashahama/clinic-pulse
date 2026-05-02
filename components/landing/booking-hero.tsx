@@ -124,6 +124,9 @@ export function BookingHero() {
 
         <div className="relative grid min-h-[560px] min-w-0 grid-cols-1 items-center gap-8 px-6 py-12 sm:px-10 lg:min-h-[620px] lg:grid-cols-[minmax(390px,0.9fr)_minmax(560px,1.1fr)] lg:px-20 lg:py-16">
           <div className="w-full min-w-0 max-w-full text-white lg:ml-[12vw] lg:max-w-[540px]">
+            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-white/60">
+              Live routing workspace
+            </p>
             <h1 className="max-w-[300px] font-display text-4xl leading-[1.08] text-white sm:max-w-[540px] sm:text-5xl lg:text-[62px]">
               Live clinic<br className="sm:hidden" /> routing,<br /> automated.
             </h1>
@@ -155,10 +158,10 @@ export function BookingHero() {
       </section>
 
       <section className="mx-auto max-w-7xl px-6 py-9 sm:px-8">
-        <p className="text-center text-xs font-semibold uppercase tracking-[0.18em] text-neutral-400">
+        <p className="text-center text-xs font-semibold uppercase tracking-[0.18em] text-[#6f8790]">
           Trusted by
         </p>
-        <div className="mx-auto mt-7 grid max-w-[320px] grid-cols-2 items-center justify-items-center gap-x-6 gap-y-5 text-neutral-900 sm:flex sm:max-w-none sm:flex-wrap sm:justify-center sm:gap-x-14 sm:gap-y-6">
+        <div className="mx-auto mt-7 grid max-w-[320px] grid-cols-2 items-center justify-items-center gap-x-6 gap-y-5 text-[#213138] sm:flex sm:max-w-none sm:flex-wrap sm:justify-center sm:gap-x-14 sm:gap-y-6">
           {customerLogos.map((logo) => (
             <span key={logo} className="text-sm font-semibold tracking-wide sm:text-base">
               {logo}

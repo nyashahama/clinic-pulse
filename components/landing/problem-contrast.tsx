@@ -21,7 +21,7 @@ const clinicPulseEvents = [
 
 export function ProblemContrast() {
   return (
-    <section id="problem" className="bg-[#f7f8f4]">
+    <section id="problem" className="bg-[#eef3f2]">
       <MaxWidthWrapper className="py-16 sm:py-20 lg:py-24">
         <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <div>
@@ -114,4 +114,3 @@ export function ProblemContrast() {
     </section>
   );
 }
-

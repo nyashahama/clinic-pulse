@@ -8,7 +8,7 @@ export default function AuthLayout({
   return (
     <div className="relative grid min-h-[100dvh] min-h-screen grid-cols-1 min-[900px]:grid-cols-[minmax(0,1fr)_440px] lg:grid-cols-[minmax(0,1fr)_595px]">
       <div className="relative">
-        <div className="absolute inset-0 isolate overflow-hidden bg-white">
+        <div className="absolute inset-0 isolate overflow-hidden bg-[#eef3f2]">
           <div
             className="absolute inset-y-0 left-1/2 w-[1200px] -translate-x-1/2"
             style={{
@@ -18,7 +18,7 @@ export default function AuthLayout({
             }}
           >
             <svg
-              className="pointer-events-none absolute inset-0 text-neutral-200"
+              className="pointer-events-none absolute inset-0 text-[#d4dee1]"
               width="100%"
               height="100%"
             >
@@ -64,7 +64,7 @@ export default function AuthLayout({
         {children}
       </div>
 
-      <div className="relative hidden h-full flex-col overflow-hidden border-l border-black/5 bg-neutral-50 min-[900px]:flex" />
+      <div className="relative hidden h-full flex-col overflow-hidden border-l border-black/5 bg-[#e0e9eb] min-[900px]:flex" />
     </div>
   );
 }

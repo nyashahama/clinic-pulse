@@ -23,7 +23,7 @@ const trustObjects = [
 
 export function TrustInfrastructure() {
   return (
-    <section id="trust" className="border-y border-neutral-200 bg-neutral-50">
+    <section id="trust" className="border-y border-[#d4dee1] bg-[#eef3f2]">
       <MaxWidthWrapper className="py-16 sm:py-20 lg:py-24">
         <div className="grid gap-8 lg:grid-cols-[0.82fr_1.18fr]">
           <div>
@@ -133,4 +133,3 @@ export function TrustInfrastructure() {
     </section>
   );
 }
-

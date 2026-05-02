@@ -15,7 +15,7 @@ export function Nav() {
   const scrolled = useScroll(40);
 
   return (
-    <div className={cn("sticky inset-x-0 top-0 z-40 w-full border-b border-neutral-200/70 bg-[#f7f6f2]/90 backdrop-blur-lg transition-all")}>
+    <div className={cn("sticky inset-x-0 top-0 z-40 w-full border-b border-[#d4dee1] bg-[#eef3f2]/90 backdrop-blur-lg transition-all")}>
       <div
         className={cn(
           "absolute inset-0 block transition-all",

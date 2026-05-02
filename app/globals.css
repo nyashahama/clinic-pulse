@@ -57,12 +57,12 @@
 }
 
 :root {
-  --background: #ffffff;
+  --background: #eef3f2;
   --foreground: #171717;
 
   --bg-default: 255 255 255;
-  --bg-muted: 250 250 250;
-  --bg-subtle: 245 245 245;
+  --bg-muted: 241 246 245;
+  --bg-subtle: 232 240 239;
   --bg-emphasis: 229 229 229;
   --bg-inverted: 23 23 23;
 
