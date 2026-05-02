@@ -104,7 +104,7 @@ export function ExportPreview({ payload, onOpen }: ExportPreviewProps) {
   };
 
   return (
-    <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
+    <section className="min-w-0 overflow-hidden rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
       <SectionHeader
         eyebrow="Founder package"
         title="Export preview"

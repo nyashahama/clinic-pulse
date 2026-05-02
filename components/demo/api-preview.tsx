@@ -60,7 +60,7 @@ export function APIPreview({ clinicCount, onOpen }: APIPreviewProps) {
   );
 
   return (
-    <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
+    <section className="min-w-0 overflow-hidden rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
       <SectionHeader
         eyebrow="Builder interface"
         title="API preview"
@@ -78,7 +78,7 @@ export function APIPreview({ clinicCount, onOpen }: APIPreviewProps) {
           <Button
             size="sm"
             variant="outline"
-            className="mt-3"
+            className="mt-3 max-w-full"
             onClick={() => onOpen?.()}
           >
             <BookCheck className="size-4" />
@@ -91,7 +91,7 @@ export function APIPreview({ clinicCount, onOpen }: APIPreviewProps) {
           {REQUEST_EXAMPLES.map((entry) => (
             <article
               key={entry.title}
-              className="rounded-lg border border-border-subtle bg-bg-default"
+              className="min-w-0 overflow-hidden rounded-lg border border-border-subtle bg-bg-default"
             >
               <div className="border-b border-border-subtle px-3 py-3 text-sm">
                 <div className="flex flex-wrap items-center gap-2">
@@ -100,27 +100,29 @@ export function APIPreview({ clinicCount, onOpen }: APIPreviewProps) {
                   </span>
                   <span className="font-medium text-content-emphasis">{entry.title}</span>
                 </div>
-                <p className="mt-2 font-mono text-xs text-content-subtle">{entry.path}</p>
+                <p className="mt-2 break-all font-mono text-xs text-content-subtle">
+                  {entry.path}
+                </p>
               </div>
 
-              <div className="grid gap-3 p-3 sm:grid-cols-2">
-                <div className="space-y-2">
+              <div className="grid min-w-0 gap-3 p-3 sm:grid-cols-2">
+                <div className="min-w-0 space-y-2">
                   <p className="text-xs font-semibold uppercase tracking-[0.08em] text-content-subtle">
                     Request
                   </p>
-                  <pre className="rounded-lg border border-border-subtle bg-bg-subtle p-2 text-[11px] leading-6">
-                    <span className="text-content-subtle">
+                  <pre className="overflow-x-auto rounded-lg border border-border-subtle bg-bg-subtle p-2 text-[11px] leading-6">
+                    <span className="font-mono text-content-subtle">
                       {entry.headers.map((header) => `\n${header}`)}
                       {"\n\n"}
                       {entry.body ? `${formatCodeBlock(entry.body)}\n` : "(no body required)\n"}
                     </span>
                   </pre>
                 </div>
-                <div className="space-y-2">
+                <div className="min-w-0 space-y-2">
                   <p className="text-xs font-semibold uppercase tracking-[0.08em] text-content-subtle">
                     Response
                   </p>
-                  <pre className="rounded-lg border border-border-subtle bg-bg-subtle p-2 text-[11px] leading-6">
+                  <pre className="overflow-x-auto rounded-lg border border-border-subtle bg-bg-subtle p-2 text-[11px] leading-6">
                     <span className="font-mono text-content-subtle">
                       <CodeXml className="size-4" />
                       {formatCodeBlock(entry.response)}

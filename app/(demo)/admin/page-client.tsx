@@ -206,8 +206,8 @@ export default function AdminPage() {
         </section>
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-[1.08fr_0.92fr]">
-        <div className="grid gap-4">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
+        <div className="grid min-w-0 gap-4">
           <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
             <SectionHeader
               eyebrow="Manual lead capture"
@@ -239,7 +239,7 @@ export default function AdminPage() {
           />
         </div>
 
-        <div className="grid gap-4">
+        <div className="grid min-w-0 gap-4">
           <APIPreview clinicCount={clinics.length} onOpen={() => {}} />
           <RoadmapModules />
           <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
