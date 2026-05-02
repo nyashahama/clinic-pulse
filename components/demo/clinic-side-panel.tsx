@@ -1,11 +1,12 @@
 import Image from "next/image";
-import { AlertTriangle, ArrowRight, ClipboardList, Route } from "lucide-react";
+import { AlertTriangle, ArrowRight, ClipboardList, Route, X } from "lucide-react";
 
 import { EmptyState } from "@/components/demo/empty-state";
 import { FreshnessBadge } from "@/components/demo/freshness-badge";
 import { SectionHeader } from "@/components/demo/section-header";
 import { SeverityBadge } from "@/components/demo/severity-badge";
 import { StatusBadge } from "@/components/demo/status-badge";
+import { Button } from "@/components/ui/button";
 import type { Alert, ClinicRow, ReportEvent } from "@/lib/demo/types";
 
 type ClinicSidePanelProps = {
@@ -14,6 +15,7 @@ type ClinicSidePanelProps = {
   alerts: Alert[];
   alternatives: ClinicRow[];
   rerouteActive: boolean;
+  onClose?: () => void;
 };
 
 function formatTimestamp(value: string) {
@@ -31,6 +33,7 @@ export function ClinicSidePanel({
   alerts,
   alternatives,
   rerouteActive,
+  onClose,
 }: ClinicSidePanelProps) {
   if (!clinic) {
     return (
@@ -47,6 +50,19 @@ export function ClinicSidePanel({
           eyebrow="Selected clinic"
           title={clinic.name}
           description={`${clinic.facilityCode} • ${clinic.operatingHours}`}
+          actions={
+            onClose ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                aria-label="Close selected clinic"
+                onClick={onClose}
+              >
+                <X className="size-4" />
+              </Button>
+            ) : null
+          }
         />
       </div>
 
