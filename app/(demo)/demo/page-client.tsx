@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { AlertList } from "@/components/demo/alert-list";
@@ -93,6 +93,21 @@ export default function DistrictConsolePage() {
 
   const selectedClinic =
     mapClinics.find((clinic) => clinic.id === resolvedSelectedClinicId) ?? null;
+
+  useEffect(() => {
+    if (!selectedClinic) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        handleCloseClinicPanel();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedClinic]);
 
   const clinicReports = useMemo(
     () => (selectedClinic ? getClinicReports(state, selectedClinic.id) : []),

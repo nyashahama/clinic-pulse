@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   AlertCircle,
@@ -114,6 +114,21 @@ export default function AdminPage() {
     });
     setManualLeadOpen(false);
   };
+
+  useEffect(() => {
+    if (!manualLeadOpen) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setManualLeadOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [manualLeadOpen]);
 
   return (
     <div className="grid gap-4 pb-4">
