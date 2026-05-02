@@ -27,6 +27,7 @@ CREATE TABLE clinic_services (
 
 CREATE TABLE reports (
     id BIGSERIAL PRIMARY KEY,
+    external_id TEXT UNIQUE CHECK (external_id IS NULL OR btrim(external_id) <> ''),
     clinic_id TEXT NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
     reporter_name TEXT CHECK (reporter_name IS NULL OR btrim(reporter_name) <> ''),
     source TEXT NOT NULL CHECK (btrim(source) <> ''),
@@ -64,6 +65,7 @@ CREATE TABLE current_status (
 
 CREATE TABLE audit_events (
     id BIGSERIAL PRIMARY KEY,
+    external_id TEXT UNIQUE CHECK (external_id IS NULL OR btrim(external_id) <> ''),
     clinic_id TEXT NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
     actor_name TEXT CHECK (actor_name IS NULL OR btrim(actor_name) <> ''),
     event_type TEXT NOT NULL CHECK (btrim(event_type) <> ''),
