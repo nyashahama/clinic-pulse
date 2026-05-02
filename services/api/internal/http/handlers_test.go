@@ -276,17 +276,295 @@ func TestListClinicAuditEventsReturnsNotFoundForUnknownClinic(t *testing.T) {
 	}
 }
 
+func TestCreateReportReturnsCreatedReportStatusAndAuditEvent(t *testing.T) {
+	reason := "Generator failed"
+	staffPressure := "strained"
+	stockPressure := "low"
+	queuePressure := "moderate"
+	submittedAt := time.Date(2026, 5, 2, 9, 15, 0, 0, time.UTC)
+	receivedAt := time.Date(2026, 5, 2, 9, 16, 0, 0, time.UTC)
+	reporterName := "Amina Nkosi"
+	notes := "Using backup generator"
+	var createInput store.CreateReportInput
+	router := apihttp.NewRouter(fakeStore{
+		createReport: store.Report{
+			ID:             100,
+			ClinicID:       "clinic-1",
+			Source:         "field_worker",
+			SubmittedAt:    submittedAt,
+			ReceivedAt:     receivedAt,
+			Status:         "degraded",
+			Reason:         &reason,
+			StaffPressure:  &staffPressure,
+			StockPressure:  &stockPressure,
+			QueuePressure:  &queuePressure,
+			ReviewState:    "accepted",
+			OfflineCreated: true,
+		},
+		createStatus: store.CurrentStatus{
+			ClinicID:       "clinic-1",
+			Status:         "degraded",
+			Reason:         &reason,
+			Freshness:      "fresh",
+			LastReportedAt: &submittedAt,
+			UpdatedAt:      receivedAt,
+		},
+		createAuditEvent: store.AuditEvent{
+			ID:        200,
+			ClinicID:  "clinic-1",
+			EventType: "report.submitted",
+			Summary:   "Report submitted with degraded status.",
+			CreatedAt: receivedAt,
+		},
+		createInput: &createInput,
+	})
+	body := `{
+		"clinicId":"clinic-1",
+		"status":"degraded",
+		"staffPressure":"strained",
+		"stockPressure":"low",
+		"queuePressure":"moderate",
+		"reason":"Generator failed",
+		"source":"field_worker",
+		"reporterName":"Amina Nkosi",
+		"notes":"Using backup generator",
+		"confidence":86,
+		"offlineCreated":true,
+		"submittedAt":"2026-05-02T09:15:00Z"
+	}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/reports", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusCreated, rec.Code, rec.Body.String())
+	}
+
+	var got struct {
+		Report        store.Report        `json:"report"`
+		CurrentStatus store.CurrentStatus `json:"currentStatus"`
+		AuditEvent    store.AuditEvent    `json:"auditEvent"`
+	}
+	decodeJSON(t, rec, &got)
+	if got.Report.ID != 100 || got.CurrentStatus.ClinicID != "clinic-1" || got.AuditEvent.ID != 200 {
+		t.Fatalf("unexpected create report response: %#v", got)
+	}
+	if createInput.SubmittedAt != submittedAt {
+		t.Fatalf("expected submittedAt %s, got %s", submittedAt, createInput.SubmittedAt)
+	}
+	if !createInput.OfflineCreated {
+		t.Fatal("expected offlineCreated to map to store input")
+	}
+	if createInput.ReporterName == nil || *createInput.ReporterName != reporterName {
+		t.Fatalf("expected reporterName %q, got %v", reporterName, createInput.ReporterName)
+	}
+	if createInput.Notes == nil || *createInput.Notes != notes {
+		t.Fatalf("expected notes %q, got %v", notes, createInput.Notes)
+	}
+	if createInput.ConfidenceScore == nil || *createInput.ConfidenceScore != 0.86 {
+		t.Fatalf("expected confidence score 0.86, got %v", createInput.ConfidenceScore)
+	}
+}
+
+func TestCreateReportReturnsBadRequestForInvalidJSON(t *testing.T) {
+	router := apihttp.NewRouter(fakeStore{})
+	req := httptest.NewRequest(http.MethodPost, "/v1/reports", strings.NewReader(`{"clinicId":`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusBadRequest, rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"code":"invalid_json"`) {
+		t.Fatalf("expected invalid_json code, got %q", rec.Body.String())
+	}
+}
+
+func TestCreateReportReturnsBadRequestForTrailingJSON(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+	}{
+		{name: "second object", body: validReportJSON() + `{}`},
+		{name: "trailing garbage", body: validReportJSON() + `garbage`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			createCalls := 0
+			router := apihttp.NewRouter(fakeStore{createCalls: &createCalls})
+			req := httptest.NewRequest(http.MethodPost, "/v1/reports", strings.NewReader(tt.body))
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("expected status %d, got %d with body %s", http.StatusBadRequest, rec.Code, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), `"code":"invalid_json"`) {
+				t.Fatalf("expected invalid_json code, got %q", rec.Body.String())
+			}
+			if createCalls != 0 {
+				t.Fatalf("expected trailing JSON not to call store, got %d calls", createCalls)
+			}
+		})
+	}
+}
+
+func TestCreateReportReturnsBadRequestForValidationFailures(t *testing.T) {
+	router := apihttp.NewRouter(fakeStore{})
+	req := httptest.NewRequest(http.MethodPost, "/v1/reports", strings.NewReader(`{
+		"clinicId":"",
+		"status":"closed",
+		"staffPressure":"busy",
+		"stockPressure":"empty",
+		"queuePressure":"packed",
+		"reason":"",
+		"source":""
+	}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusBadRequest, rec.Code, rec.Body.String())
+	}
+	for _, message := range []string{
+		"clinicId: clinicId is required",
+		"status: status must be one of: operational, degraded, non_functional, unknown",
+		"staffPressure: staffPressure must be one of: normal, strained, critical, unknown",
+		"stockPressure: stockPressure must be one of: normal, low, stockout, unknown",
+		"queuePressure: queuePressure must be one of: low, moderate, high, unknown",
+		"reason: reason is required",
+		"source: source must be one of: field_worker, clinic_coordinator, demo_control, seed",
+	} {
+		if !strings.Contains(rec.Body.String(), message) {
+			t.Fatalf("expected validation message %q in response, got %q", message, rec.Body.String())
+		}
+	}
+}
+
+func TestCreateReportReturnsBadRequestForInvalidConfidence(t *testing.T) {
+	tests := []struct {
+		name        string
+		body        string
+		wantMessage string
+	}{
+		{
+			name: "confidence above range",
+			body: `{
+				"clinicId":"clinic-1",
+				"status":"operational",
+				"staffPressure":"normal",
+				"stockPressure":"normal",
+				"queuePressure":"low",
+				"reason":"Daily facility check",
+				"source":"field_worker",
+				"confidence":101
+			}`,
+			wantMessage: "confidence: confidence must be between 0 and 100",
+		},
+		{
+			name: "confidence score above range",
+			body: `{
+				"clinicId":"clinic-1",
+				"status":"operational",
+				"staffPressure":"normal",
+				"stockPressure":"normal",
+				"queuePressure":"low",
+				"reason":"Daily facility check",
+				"source":"field_worker",
+				"confidenceScore":1.01
+			}`,
+			wantMessage: "confidenceScore: confidenceScore must be between 0 and 1",
+		},
+		{
+			name: "invalid confidence rejected even with valid confidence score",
+			body: `{
+				"clinicId":"clinic-1",
+				"status":"operational",
+				"staffPressure":"normal",
+				"stockPressure":"normal",
+				"queuePressure":"low",
+				"reason":"Daily facility check",
+				"source":"field_worker",
+				"confidence":-1,
+				"confidenceScore":0.8
+			}`,
+			wantMessage: "confidence: confidence must be between 0 and 100",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			createCalls := 0
+			router := apihttp.NewRouter(fakeStore{
+				createCalls: &createCalls,
+				createErr:   errors.New("store should not be called"),
+			})
+			req := httptest.NewRequest(http.MethodPost, "/v1/reports", strings.NewReader(tt.body))
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("expected status %d, got %d with body %s", http.StatusBadRequest, rec.Code, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), tt.wantMessage) {
+				t.Fatalf("expected validation message %q in response, got %q", tt.wantMessage, rec.Body.String())
+			}
+			if createCalls != 0 {
+				t.Fatalf("expected invalid confidence not to call store, got %d calls", createCalls)
+			}
+		})
+	}
+}
+
+func TestCreateReportReturnsNotFoundForUnknownClinic(t *testing.T) {
+	router := apihttp.NewRouter(fakeStore{createErr: pgx.ErrNoRows})
+	req := httptest.NewRequest(http.MethodPost, "/v1/reports", strings.NewReader(validReportJSON()))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusNotFound, rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"code":"not_found"`) {
+		t.Fatalf("expected not_found error code, got %q", rec.Body.String())
+	}
+}
+
+func TestCreateReportReturnsInternalErrorForUnexpectedStoreError(t *testing.T) {
+	storeErr := errors.New("database password leaked")
+	router := apihttp.NewRouter(fakeStore{createErr: storeErr})
+	req := httptest.NewRequest(http.MethodPost, "/v1/reports", strings.NewReader(validReportJSON()))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assertInternalError(t, rec, storeErr)
+}
+
 type fakeStore struct {
-	clinics        []store.ClinicDetail
-	clinic         store.ClinicDetail
-	status         store.CurrentStatus
-	reports        []store.Report
-	auditEvents    []store.AuditEvent
-	listErr        error
-	getClinicErr   error
-	statusErr      error
-	reportsErr     error
-	auditEventsErr error
+	clinics          []store.ClinicDetail
+	clinic           store.ClinicDetail
+	status           store.CurrentStatus
+	reports          []store.Report
+	auditEvents      []store.AuditEvent
+	createReport     store.Report
+	createStatus     store.CurrentStatus
+	createAuditEvent store.AuditEvent
+	createInput      *store.CreateReportInput
+	createCalls      *int
+	listErr          error
+	getClinicErr     error
+	statusErr        error
+	reportsErr       error
+	auditEventsErr   error
+	createErr        error
 }
 
 func (f fakeStore) ListClinics(context.Context) ([]store.ClinicDetail, error) {
@@ -307,6 +585,28 @@ func (f fakeStore) ListClinicReports(context.Context, string) ([]store.Report, e
 
 func (f fakeStore) ListClinicAuditEvents(context.Context, string) ([]store.AuditEvent, error) {
 	return f.auditEvents, f.auditEventsErr
+}
+
+func (f fakeStore) CreateReportTx(_ context.Context, input store.CreateReportInput) (store.Report, store.CurrentStatus, store.AuditEvent, error) {
+	if f.createCalls != nil {
+		*f.createCalls++
+	}
+	if f.createInput != nil {
+		*f.createInput = input
+	}
+	return f.createReport, f.createStatus, f.createAuditEvent, f.createErr
+}
+
+func validReportJSON() string {
+	return `{
+		"clinicId":"clinic-1",
+		"status":"operational",
+		"staffPressure":"normal",
+		"stockPressure":"normal",
+		"queuePressure":"low",
+		"reason":"Daily facility check",
+		"source":"field_worker"
+	}`
 }
 
 func decodeJSON(t *testing.T, rec *httptest.ResponseRecorder, target any) {
