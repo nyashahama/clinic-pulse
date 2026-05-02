@@ -3,7 +3,6 @@
 import {
   AlertTriangle,
   ArrowUpRight,
-  CalendarClock,
   ClipboardList,
   DatabaseZap,
   MapPinned,
@@ -232,6 +231,9 @@ export function ScenarioHero() {
               </span>
               <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1">
                 {activeAlerts.length} active alerts
+              </span>
+              <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1">
+                {reportStream.length} reports
               </span>
               <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1">
                 {state.offlineQueue.length} queued offline
