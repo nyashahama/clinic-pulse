@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { getDemoImage } from "@/lib/demo/images";
 import { createInitialDemoState } from "@/lib/demo/scenarios";
 import {
   getActiveAlerts,
@@ -53,12 +54,21 @@ describe("demo selectors", () => {
   it("joins clinics with current state and image metadata", () => {
     const state = createInitialDemoState();
     const rows = getClinicRows(state);
-    const firstRow = rows[0];
+    const row = rows.find((candidate) => candidate.id === state.clinics[0].id);
 
     expect(rows).toHaveLength(state.clinics.length);
-    expect(firstRow.name).toEqual(expect.any(String));
-    expect(firstRow.status).toEqual(expect.any(String));
-    expect(firstRow.image.src).toEqual(expect.stringMatching(/^\/demo\/clinics\//));
+    expect(row).toBeDefined();
+
+    const clinic = state.clinics.find((candidate) => candidate.id === row!.id);
+    const clinicState = state.clinicStates.find((entry) => entry.clinicId === row!.id);
+
+    expect(clinic).toBeDefined();
+    expect(clinicState).toBeDefined();
+    expect(row).toMatchObject({
+      ...clinic!,
+      ...clinicState!,
+      image: getDemoImage(clinic!.imageKey),
+    });
   });
 
   it("returns unresolved alerts sorted by severity before time", () => {
@@ -149,13 +159,16 @@ describe("demo selectors", () => {
   it("joins recent report stream items to clinic names and facility codes", () => {
     const state = createInitialDemoState();
     const stream = getRecentReportStream(state);
-    const firstItem = stream[0];
-    const firstClinic = state.clinics.find((clinic) => clinic.id === firstItem.clinicId);
 
     expect(stream).toHaveLength(state.reports.length);
     expect(stream).toEqual([...stream].sort(byRecentTimestamp));
-    expect(firstClinic).toBeDefined();
-    expect(firstItem.clinicName).toBe(firstClinic!.name);
-    expect(firstItem.facilityCode).toBe(firstClinic!.facilityCode);
+
+    for (const item of stream) {
+      const clinic = state.clinics.find((candidate) => candidate.id === item.clinicId);
+
+      expect(clinic).toBeDefined();
+      expect(item.clinicName).toBe(clinic!.name);
+      expect(item.facilityCode).toBe(clinic!.facilityCode);
+    }
   });
 });
