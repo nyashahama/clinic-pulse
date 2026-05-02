@@ -113,7 +113,7 @@ export default function AdminPage() {
 
   return (
     <div className="grid gap-4 pb-4">
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4">
         <div className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
           <SectionHeader
             eyebrow="Founder operations"
@@ -146,7 +146,7 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-3">
           <MetricTile
             label="Leads"
             count={state.leads.length}
