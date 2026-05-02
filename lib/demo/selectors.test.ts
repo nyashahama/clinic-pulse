@@ -33,6 +33,10 @@ function findClinicIdWithReportsAndAuditEvents() {
   )?.id;
 }
 
+function addMilliseconds(timestamp: number, milliseconds: number) {
+  return new Date(timestamp + milliseconds).toISOString();
+}
+
 describe("demo selectors", () => {
   it("counts current clinic statuses and keeps totals aligned with clinic states", () => {
     const state = createInitialDemoState();
@@ -102,25 +106,35 @@ describe("demo selectors", () => {
 
     expect(clinicId).toBeDefined();
 
+    const existingClinicReports = state.reports.filter((report) => report.clinicId === clinicId);
+    const existingClinicAuditEvents = state.auditEvents.filter(
+      (event) => event.clinicId === clinicId,
+    );
+    const maxReportTimestamp = Math.max(
+      ...existingClinicReports.map((report) => new Date(report.receivedAt).getTime()),
+    );
+    const maxAuditTimestamp = Math.max(
+      ...existingClinicAuditEvents.map((event) => new Date(event.createdAt).getTime()),
+    );
     const olderReport: ReportEvent = {
       ...state.reports.find((report) => report.clinicId === clinicId)!,
       id: "report-selector-older",
-      receivedAt: "2026-04-28T08:00:00.000Z",
+      receivedAt: addMilliseconds(maxReportTimestamp, -1_000),
     };
     const newerReport: ReportEvent = {
       ...olderReport,
       id: "report-selector-newer",
-      receivedAt: "2026-05-02T08:00:00.000Z",
+      receivedAt: addMilliseconds(maxReportTimestamp, 1_000),
     };
     const olderAuditEvent: AuditEvent = {
       ...state.auditEvents.find((event) => event.clinicId === clinicId)!,
       id: "audit-selector-older",
-      createdAt: "2026-04-28T08:00:00.000Z",
+      createdAt: addMilliseconds(maxAuditTimestamp, -1_000),
     };
     const newerAuditEvent: AuditEvent = {
       ...olderAuditEvent,
       id: "audit-selector-newer",
-      createdAt: "2026-05-02T08:00:00.000Z",
+      createdAt: addMilliseconds(maxAuditTimestamp, 1_000),
     };
     const enrichedState = {
       ...state,
@@ -142,7 +156,7 @@ describe("demo selectors", () => {
     expect(auditEvents[0].id).toBe("audit-selector-newer");
   });
 
-  it("returns compatible alternative clinics while excluding the source and non-functional clinics", () => {
+  it("returns compatible alternative clinics while excluding the source and ineligible clinics", () => {
     const state = createInitialDemoState();
     const source = state.clinics.find((clinic) => clinic.id === "clinic-mabopane-station");
 
@@ -153,7 +167,13 @@ describe("demo selectors", () => {
     expect(alternatives.length).toBeGreaterThan(0);
     expect(alternatives.every((clinic) => clinic.id !== source!.id)).toBe(true);
     expect(alternatives.every((clinic) => clinic.services.includes("Pharmacy"))).toBe(true);
-    expect(alternatives.some((clinic) => clinic.status === "non_functional")).toBe(false);
+    expect(
+      alternatives.every(
+        (clinic) =>
+          clinic.status === "operational" ||
+          (clinic.status === "degraded" && clinic.freshness !== "stale"),
+      ),
+    ).toBe(true);
   });
 
   it("joins recent report stream items to clinic names and facility codes", () => {
