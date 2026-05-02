@@ -1,22 +1,25 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	"clinicpulse/services/api/internal/config"
 	apihttp "clinicpulse/services/api/internal/http"
+	"clinicpulse/services/api/internal/store"
 )
 
 func main() {
 	cfg := config.Load()
 
-	if _, err := pgxpool.ParseConfig(cfg.DatabaseURL); err != nil {
-		log.Fatalf("invalid database url: %v", err)
+	ctx := context.Background()
+	pool, err := store.Open(ctx, cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("open database: %v", err)
 	}
+	defer pool.Close()
 
-	router := apihttp.NewRouter()
+	router := apihttp.NewRouter(store.New(pool))
 	log.Fatal(http.ListenAndServe(cfg.Addr, router))
 }
