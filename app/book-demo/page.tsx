@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function BookDemoPage() {
-  redirect("/#booking");
+  redirect("/?booking=1");
 }

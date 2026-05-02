@@ -17,7 +17,7 @@ export function DemoBookingCTA() {
           The walkthrough covers district visibility, offline field reporting, patient rerouting, audit history, and the infrastructure roadmap.
         </p>
         <div className="mt-8 flex justify-center">
-          <ButtonLink href="/book-demo" variant="primary">
+          <ButtonLink href="/?booking=1" variant="primary">
             Book Demo
           </ButtonLink>
         </div>
@@ -28,4 +28,3 @@ export function DemoBookingCTA() {
     </section>
   );
 }
-

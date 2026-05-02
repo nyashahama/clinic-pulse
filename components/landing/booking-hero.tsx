@@ -22,6 +22,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useDemoStore } from "@/lib/demo/demo-store";
+import { shouldOpenBookingModal } from "@/lib/landing/booking-modal";
 import { cn } from "@/lib/utils";
 import type { DemoLeadFormInput } from "@/components/demo/demo-lead-form";
 
@@ -55,20 +56,51 @@ export function BookingHero() {
   );
 
   useEffect(() => {
-    const syncBookingHash = () => {
-      if (window.location.hash === "#booking") {
+    const syncBookingUrl = () => {
+      if (shouldOpenBookingModal(window.location.href)) {
         setIsBookingOpen(true);
       }
     };
 
-    const openBooking = window.setTimeout(syncBookingHash, 0);
-    window.addEventListener("hashchange", syncBookingHash);
+    const notifyLocationChange = () => {
+      window.dispatchEvent(new Event("clinicpulse-locationchange"));
+    };
+    const originalPushState = window.history.pushState;
+    const originalReplaceState = window.history.replaceState;
+
+    window.history.pushState = function pushState(...args) {
+      const result = originalPushState.apply(this, args);
+      notifyLocationChange();
+      return result;
+    };
+    window.history.replaceState = function replaceState(...args) {
+      const result = originalReplaceState.apply(this, args);
+      notifyLocationChange();
+      return result;
+    };
+
+    const openBooking = window.setTimeout(syncBookingUrl, 0);
+    window.addEventListener("hashchange", syncBookingUrl);
+    window.addEventListener("popstate", syncBookingUrl);
+    window.addEventListener("clinicpulse-locationchange", syncBookingUrl);
 
     return () => {
       window.clearTimeout(openBooking);
-      window.removeEventListener("hashchange", syncBookingHash);
+      window.history.pushState = originalPushState;
+      window.history.replaceState = originalReplaceState;
+      window.removeEventListener("hashchange", syncBookingUrl);
+      window.removeEventListener("popstate", syncBookingUrl);
+      window.removeEventListener("clinicpulse-locationchange", syncBookingUrl);
     };
   }, []);
+
+  const closeBooking = () => {
+    setIsBookingOpen(false);
+
+    if (shouldOpenBookingModal(window.location.href)) {
+      router.replace("/", { scroll: false });
+    }
+  };
 
   const isSubmitDisabled =
     isSubmitting ||
@@ -185,7 +217,7 @@ export function BookingHero() {
             selectedDateLabel={selectedDateLabel}
             selectedDay={selectedDay}
             selectedTime={selectedTime}
-            onClose={() => setIsBookingOpen(false)}
+            onClose={closeBooking}
             onDurationChange={setDuration}
             onLeadChange={updateLead}
             onSelectedDayChange={setSelectedDay}
@@ -529,6 +561,7 @@ function BookingPanel({
         </div>
 
         <Button
+          type="submit"
           className="mt-5 h-11 w-full rounded-lg bg-neutral-950 text-white hover:bg-neutral-800"
           disabled={isSubmitDisabled}
         >
