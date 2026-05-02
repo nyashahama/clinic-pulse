@@ -17,6 +17,7 @@ import {
   STOCKOUT_TRIGGER_CLINIC_ID,
 } from "@/lib/demo/clinics";
 import { useDemoStore } from "@/lib/demo/demo-store";
+import { resolveVisibleClinicId } from "@/lib/demo/panel-state";
 import {
   getActiveAlerts,
   getAlternativeClinics,
@@ -35,10 +36,6 @@ function normalizeStatusFilter(value: string | null) {
   return (VALID_STATUSES.includes(normalized as ValidStatusFilter) ? normalized : "") as
     | ValidStatusFilter
     | "";
-}
-
-function getDefaultSelectedClinicId(stateClinicId: string | undefined, fallbackClinicId: string | undefined) {
-  return stateClinicId ?? fallbackClinicId ?? null;
 }
 
 function formatStatusTransition(from: string, to: string) {
@@ -70,27 +67,32 @@ export default function DistrictConsolePage() {
   const reportStream = useMemo(() => getRecentReportStream(state), [state]);
   const statusCounts = useMemo(() => getStatusCounts(state), [state]);
 
-  const [selectedClinicId, setSelectedClinicId] = useState<string | null>(() =>
-    getDefaultSelectedClinicId(activeAlerts[0]?.clinicId, mapClinics[0]?.id),
-  );
+  const [selectedClinicId, setSelectedClinicId] = useState<string | null>(null);
+  const [clinicPanelOpen, setClinicPanelOpen] = useState(false);
   const [rerouteClinicId, setRerouteClinicId] = useState<string | null>(null);
   const hasStatusFilter = Boolean(statusFilter);
   const statusFilterLabel = statusFilter.replaceAll("_", " ");
 
   const selectClinic = (clinicId: string | null) => {
     setSelectedClinicId(clinicId);
+    setClinicPanelOpen(Boolean(clinicId));
     setRerouteClinicId((previous) => (previous === clinicId ? previous : null));
   };
 
-  const resolvedSelectedClinicId =
-    selectedClinicId && mapClinics.some((clinic) => clinic.id === selectedClinicId)
-      ? selectedClinicId
-      : getDefaultSelectedClinicId(activeAlerts[0]?.clinicId, mapClinics[0]?.id);
+  const handleCloseClinicPanel = () => {
+    setClinicPanelOpen(false);
+    setSelectedClinicId(null);
+    setRerouteClinicId(null);
+  };
+
+  const resolvedSelectedClinicId = resolveVisibleClinicId({
+    clinicIds: mapClinics.map((clinic) => clinic.id),
+    selectedClinicId,
+    panelOpen: clinicPanelOpen,
+  });
 
   const selectedClinic =
-    mapClinics.find((clinic) => clinic.id === resolvedSelectedClinicId) ??
-    mapClinics[0] ??
-    null;
+    mapClinics.find((clinic) => clinic.id === resolvedSelectedClinicId) ?? null;
 
   const clinicReports = useMemo(
     () => (selectedClinic ? getClinicReports(state, selectedClinic.id) : []),
@@ -213,10 +215,12 @@ export default function DistrictConsolePage() {
 
     if (!rerouteCandidate) {
       setRerouteClinicId(null);
+      setClinicPanelOpen(false);
       return;
     }
 
     setSelectedClinicId(rerouteCandidate.id);
+    setClinicPanelOpen(true);
     setRerouteClinicId(rerouteCandidate.id);
   };
 
@@ -242,57 +246,71 @@ export default function DistrictConsolePage() {
         </section>
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(22rem,0.95fr)]">
-        <div className="grid gap-4">
-          <ClinicMap
-            clinics={mapClinics}
-            referenceClinics={clinicRows}
-            selectedClinicId={selectedClinic?.id ?? null}
-            rerouteClinicId={rerouteClinicId}
-            onSelectClinic={selectClinic}
-          />
+      <div className="grid gap-4">
+        <ClinicMap
+          clinics={mapClinics}
+          referenceClinics={clinicRows}
+          selectedClinicId={selectedClinic?.id ?? null}
+          rerouteClinicId={rerouteClinicId}
+          onSelectClinic={selectClinic}
+        />
 
-          <ClinicTable
-            clinics={filteredClinicRows}
-            selectedClinicId={selectedClinic?.id ?? null}
-            recommendedActionByClinicId={recommendedActionByClinicId}
-            onSelectClinic={selectClinic}
-          />
-        </div>
+        <ClinicTable
+          clinics={filteredClinicRows}
+          selectedClinicId={selectedClinic?.id ?? null}
+          recommendedActionByClinicId={recommendedActionByClinicId}
+          onSelectClinic={selectClinic}
+        />
 
-        <div className="grid gap-4">
-          <ClinicSidePanel
-            clinic={selectedClinic}
-            latestReport={clinicReports[0] ?? null}
-            alerts={clinicAlerts}
-            alternatives={alternatives}
-            rerouteActive={rerouteClinicId === selectedClinic?.id}
-          />
-
-          <DemoControls
-            stockoutClinicLabel="Mamelodi East"
-            staffingClinicLabel="Soshanguve Block F"
-            offlineQueueCount={state.offlineQueue.length}
-            onReset={() => {
-              resetDemo();
-              setSelectedClinicId(null);
-              setRerouteClinicId(null);
-            }}
-            onTriggerStockout={() => {
-              setSelectedClinicId(STOCKOUT_TRIGGER_CLINIC_ID);
-              setRerouteClinicId(STOCKOUT_TRIGGER_CLINIC_ID);
-              triggerStockout(STOCKOUT_TRIGGER_CLINIC_ID);
-            }}
-            onTriggerStaffingShortage={() => {
-              setSelectedClinicId(STAFFING_TRIGGER_CLINIC_ID);
-              setRerouteClinicId(null);
-              triggerStaffingShortage(STAFFING_TRIGGER_CLINIC_ID);
-            }}
-            onSyncOfflineReports={handleSyncOfflineReports}
-            onTriggerReroute={handleTriggerReroute}
-          />
-        </div>
+        <DemoControls
+          stockoutClinicLabel="Mamelodi East"
+          staffingClinicLabel="Soshanguve Block F"
+          offlineQueueCount={state.offlineQueue.length}
+          onReset={() => {
+            resetDemo();
+            handleCloseClinicPanel();
+          }}
+          onTriggerStockout={() => {
+            setSelectedClinicId(STOCKOUT_TRIGGER_CLINIC_ID);
+            setClinicPanelOpen(true);
+            setRerouteClinicId(STOCKOUT_TRIGGER_CLINIC_ID);
+            triggerStockout(STOCKOUT_TRIGGER_CLINIC_ID);
+          }}
+          onTriggerStaffingShortage={() => {
+            setSelectedClinicId(STAFFING_TRIGGER_CLINIC_ID);
+            setClinicPanelOpen(true);
+            setRerouteClinicId(null);
+            triggerStaffingShortage(STAFFING_TRIGGER_CLINIC_ID);
+          }}
+          onSyncOfflineReports={handleSyncOfflineReports}
+          onTriggerReroute={handleTriggerReroute}
+        />
       </div>
+
+      {selectedClinic ? (
+        <div
+          className="fixed inset-0 z-50 bg-neutral-950/20 backdrop-blur-[1px]"
+          role="presentation"
+          onClick={handleCloseClinicPanel}
+        >
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Selected clinic: ${selectedClinic.name}`}
+            className="ml-auto h-full w-full max-w-[30rem] overflow-y-auto border-l border-border-subtle bg-bg-subtle p-3 shadow-2xl sm:p-4"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <ClinicSidePanel
+              clinic={selectedClinic}
+              latestReport={clinicReports[0] ?? null}
+              alerts={clinicAlerts}
+              alternatives={alternatives}
+              rerouteActive={rerouteClinicId === selectedClinic.id}
+              onClose={handleCloseClinicPanel}
+            />
+          </aside>
+        </div>
+      ) : null}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
         <AlertList alerts={activeAlerts} clinics={clinicRows} onSelectClinic={selectClinic} />
