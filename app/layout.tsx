@@ -21,13 +21,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ClinicPulse — Real-Time Primary Healthcare Intelligence",
+  title: "ClinicPulse - Live Clinic Availability",
   description:
-    "Real-time visibility into South Africa's 3,500+ public primary healthcare clinics. Status tracking, referral routing, and operational intelligence for NGOs, district health managers, and patients.",
+    "Live clinic availability, field reporting, patient rerouting, and audit history for district health teams.",
   openGraph: {
-    title: "ClinicPulse — Know which clinics are working today",
+    title: "ClinicPulse - Know which clinics can serve patients right now",
     description:
-      "Real-time visibility into South Africa's 3,500+ public primary healthcare clinics.",
+      "Live clinic availability, field reporting, patient rerouting, and audit history for district health teams.",
     type: "website",
   },
 };

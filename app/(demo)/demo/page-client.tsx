@@ -246,6 +246,7 @@ export default function DistrictConsolePage() {
         <div className="grid gap-4">
           <ClinicMap
             clinics={mapClinics}
+            referenceClinics={clinicRows}
             selectedClinicId={selectedClinic?.id ?? null}
             rerouteClinicId={rerouteClinicId}
             onSelectClinic={selectClinic}

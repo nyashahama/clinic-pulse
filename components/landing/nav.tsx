@@ -1,13 +1,14 @@
 "use client";
 
+import { ClinicPulseLogo } from "@/components/brand/clinicpulse-logo";
 import { cn } from "@/lib/utils";
 import { useScroll } from "@/lib/hooks/use-scroll";
 import Link from "next/link";
 
 const NAV_ITEMS = [
-  { name: "Product", href: "#product" },
-  { name: "Interfaces", href: "#interfaces" },
-  { name: "Proof", href: "#proof" },
+  { name: "Product Flow", href: "#flow" },
+  { name: "Routing", href: "#routing" },
+  { name: "Trust", href: "#trust" },
 ];
 
 export function Nav() {
@@ -25,9 +26,7 @@ export function Nav() {
         <div className="flex h-14 items-center justify-between">
           <div className="grow basis-0">
             <Link href="/" className="block w-fit py-2 pr-2">
-              <span className="text-[15px] font-semibold tracking-tight text-neutral-900">
-                ClinicPulse
-              </span>
+              <ClinicPulseLogo />
             </Link>
           </div>
 
@@ -47,7 +46,7 @@ export function Nav() {
                 <span className="animate-pulse-dot absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
                 <span className="inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
               </span>
-              Live network · 3,512 clinics
+              Demo workspace
             </span>
           </div>
 
@@ -62,7 +61,7 @@ export function Nav() {
               href="/book-demo"
               className="flex h-8 items-center rounded-lg border border-neutral-900 bg-neutral-900 px-4 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
             >
-              Request Demo
+              Book Demo
             </Link>
           </div>
         </div>
