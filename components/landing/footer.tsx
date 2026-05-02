@@ -1,3 +1,4 @@
+import { ClinicPulseLogo } from "@/components/brand/clinicpulse-logo";
 import Link from "next/link";
 
 const navigation = {
@@ -23,9 +24,10 @@ export function Footer() {
             <div className="flex flex-col gap-6">
               <div className="grow">
                 <Link href="/" className="block max-w-fit">
-                  <span className="text-sm font-semibold tracking-tight text-neutral-900">
-                    ClinicPulse
-                  </span>
+                  <ClinicPulseLogo
+                    iconClassName="size-6 rounded-md"
+                    wordmarkClassName="text-sm"
+                  />
                 </Link>
               </div>
             </div>
@@ -79,4 +81,3 @@ export function Footer() {
     </footer>
   );
 }
-

@@ -1,5 +1,6 @@
 "use client";
 
+import { ClinicPulseLogo } from "@/components/brand/clinicpulse-logo";
 import { cn } from "@/lib/utils";
 import { useScroll } from "@/lib/hooks/use-scroll";
 import Link from "next/link";
@@ -25,9 +26,7 @@ export function Nav() {
         <div className="flex h-14 items-center justify-between">
           <div className="grow basis-0">
             <Link href="/" className="block w-fit py-2 pr-2">
-              <span className="text-[15px] font-semibold tracking-tight text-neutral-900">
-                ClinicPulse
-              </span>
+              <ClinicPulseLogo />
             </Link>
           </div>
 
@@ -70,4 +69,3 @@ export function Nav() {
     </div>
   );
 }
-
