@@ -134,6 +134,8 @@ function demoReducer(state: DemoState, action: DemoAction): DemoState {
     case "queue_offline_report": {
       const queuedReport = createQueuedOfflineReport(action.report, now);
 
+      // Phase 2 keeps offline field reports in a browser-local demo queue.
+      // Durable offline sync semantics move to Phase 4.
       return {
         ...state,
         offlineQueue: [queuedReport, ...state.offlineQueue],

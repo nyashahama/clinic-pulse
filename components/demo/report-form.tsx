@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { SectionHeader } from "@/components/demo/section-header";
@@ -9,15 +9,15 @@ import type {
   ClinicStatus,
   QueuePressure,
   StaffPressure,
-  SubmitFieldReportInput,
   StockPressure,
 } from "@/lib/demo/types";
+import type { OnlineFieldReportInput } from "@/lib/demo/field-report";
 
 type FieldReportFormProps = {
   clinicId: string;
   clinicName: string;
   submitting: boolean;
-  onSubmit: (input: SubmitFieldReportInput) => void;
+  onSubmit: (input: OnlineFieldReportInput) => boolean | Promise<boolean> | void;
 };
 
 const STATUS_OPTIONS: Array<{ value: ClinicStatus; label: string }> = [
@@ -84,6 +84,7 @@ function SegmentedOptions({ options, value, name, onChange }: SegmentedOptionPro
 }
 
 export function ReportForm({ clinicId, clinicName, onSubmit, submitting }: FieldReportFormProps) {
+  const submitInFlight = useRef(false);
   const [status, setStatus] = useState<ClinicStatus>("operational");
   const [staff, setStaff] = useState<StaffPressure>("normal");
   const [stock, setStock] = useState<StockPressure>("normal");
@@ -93,25 +94,31 @@ export function ReportForm({ clinicId, clinicName, onSubmit, submitting }: Field
   const submitDisabled =
     !clinicId || (notes.trim().length > 250) || submitting;
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!clinicId) {
+    if (!clinicId || submitting || submitInFlight.current) {
       return;
     }
 
-    onSubmit({
-      clinicId,
-      reporterName: "Field worker",
-      source: "field_worker",
-      notes,
-      status,
-      reason: `${clinicName} status update from field worker report.`,
-      staffPressure: staff,
-      stockPressure: stock,
-      queuePressure: queue,
-      offlineCreated: false,
-    });
-    setNotes("");
+    submitInFlight.current = true;
+
+    try {
+      const submitted = await onSubmit({
+        reporterName: "Field worker",
+        notes,
+        status,
+        reason: `${clinicName} status update from field worker report.`,
+        staffPressure: staff,
+        stockPressure: stock,
+        queuePressure: queue,
+      });
+
+      if (submitted !== false) {
+        setNotes("");
+      }
+    } finally {
+      submitInFlight.current = false;
+    }
   };
 
   return (

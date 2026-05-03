@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { FieldClinicList } from "@/components/demo/field-clinic-list";
 import { OfflineQueue } from "@/components/demo/offline-queue";
@@ -10,9 +11,15 @@ import { SyncStatus } from "@/components/demo/sync-status";
 import { SectionHeader } from "@/components/demo/section-header";
 import { Button } from "@/components/ui/button";
 import { useDemoStore } from "@/lib/demo/demo-store";
+import {
+  submitOnlineFieldReport,
+  type OnlineFieldReportInput,
+} from "@/lib/demo/field-report";
 import { getClinicRows } from "@/lib/demo/selectors";
+import { createFieldReport } from "./actions";
 
 export default function FieldPage() {
+  const router = useRouter();
   const {
     state,
     queueOfflineReport,
@@ -26,6 +33,8 @@ export default function FieldPage() {
   );
   const [isOnline, setIsOnline] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const submitInFlight = useRef(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
 
   const selectedClinic = useMemo(
@@ -36,25 +45,40 @@ export default function FieldPage() {
   const selectedName = selectedClinic?.name ?? "Select a clinic";
   const selectedId = selectedClinic?.id ?? "";
 
-  const handleSubmit = (report: Parameters<typeof submitFieldReport>[0]) => {
-    setSubmitting(true);
-
-    if (!selectedId) {
-      setSubmitting(false);
-      return;
+  const handleSubmit = async (report: OnlineFieldReportInput) => {
+    if (submitInFlight.current) {
+      return false;
     }
 
-    if (isOnline) {
-      submitFieldReport({
-        ...report,
-        clinicId: selectedId,
-        offlineCreated: false,
-      });
-    } else {
+    submitInFlight.current = true;
+    setSubmitting(true);
+    setSubmitError(null);
+
+    if (!selectedId) {
+      submitInFlight.current = false;
+      setSubmitting(false);
+      return false;
+    }
+
+    try {
+      if (isOnline) {
+        await submitOnlineFieldReport({
+          clinicId: selectedId,
+          refresh: () => router.refresh(),
+          report,
+          submitReport: createFieldReport,
+          submitFieldReport,
+        });
+
+        return true;
+      }
+
+      // Phase 2 keeps offline mode as a browser-local demo queue.
+      // Durable offline sync semantics are intentionally deferred to Phase 4.
       queueOfflineReport({
         clinicId: selectedId,
         reporterName: report.reporterName,
-        source: report.source,
+        source: "field_worker",
         status: report.status,
         reason: report.reason,
         staffPressure: report.staffPressure,
@@ -63,9 +87,19 @@ export default function FieldPage() {
         notes: report.notes,
         submittedAt: report.submittedAt,
       });
-    }
 
-    setSubmitting(false);
+      return true;
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Online report submission failed. Try again when the API is reachable.",
+      );
+      return false;
+    } finally {
+      submitInFlight.current = false;
+      setSubmitting(false);
+    }
   };
 
   const handleSync = () => {
@@ -113,6 +147,11 @@ export default function FieldPage() {
           onSubmit={handleSubmit}
           submitting={submitting}
         />
+        {submitError ? (
+          <p className="xl:col-start-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {submitError}
+          </p>
+        ) : null}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
