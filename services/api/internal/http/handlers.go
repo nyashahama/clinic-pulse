@@ -93,8 +93,18 @@ func (h Handler) GetClinicStatus(w nethttp.ResponseWriter, r *nethttp.Request) {
 
 func (h Handler) ListClinicReports(w nethttp.ResponseWriter, r *nethttp.Request) {
 	clinicID := chi.URLParam(r, "clinicId")
-	if _, err := h.store.GetClinic(r.Context(), clinicID); err != nil {
+	clinic, err := h.store.GetClinic(r.Context(), clinicID)
+	if err != nil {
 		respondStoreError(w, err, "clinic not found")
+		return
+	}
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+	if !canReadClinicOperationalRecords(principal, clinic.Clinic.District) {
+		RespondError(w, nethttp.StatusForbidden, "forbidden", "forbidden")
 		return
 	}
 
@@ -131,8 +141,18 @@ func (h Handler) ListPendingReports(w nethttp.ResponseWriter, r *nethttp.Request
 
 func (h Handler) ListClinicAuditEvents(w nethttp.ResponseWriter, r *nethttp.Request) {
 	clinicID := chi.URLParam(r, "clinicId")
-	if _, err := h.store.GetClinic(r.Context(), clinicID); err != nil {
+	clinic, err := h.store.GetClinic(r.Context(), clinicID)
+	if err != nil {
 		respondStoreError(w, err, "clinic not found")
+		return
+	}
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+	if !canReadClinicOperationalRecords(principal, clinic.Clinic.District) {
+		RespondError(w, nethttp.StatusForbidden, "forbidden", "forbidden")
 		return
 	}
 
@@ -531,6 +551,17 @@ func reviewScopeForPrincipal(principal Principal) store.ReportReviewScope {
 	return store.ReportReviewScope{
 		Role:     principal.Role,
 		District: principal.DistrictScope,
+	}
+}
+
+func canReadClinicOperationalRecords(principal Principal, clinicDistrict string) bool {
+	switch principal.Role {
+	case "district_manager":
+		return principal.DistrictScope != nil && strings.TrimSpace(*principal.DistrictScope) != "" && *principal.DistrictScope == clinicDistrict
+	case "org_admin", "system_admin":
+		return true
+	default:
+		return false
 	}
 }
 

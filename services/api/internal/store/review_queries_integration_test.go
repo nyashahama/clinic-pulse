@@ -81,6 +81,7 @@ func TestReportReviewQueriesIntegration(t *testing.T) {
 	if submissionAudit.Metadata["reviewState"] != "pending" {
 		t.Fatalf("expected pending submission audit metadata, got %#v", submissionAudit.Metadata)
 	}
+	assertIntegrationAuditEventsImmutable(t, ctx, store, submissionAudit.ID)
 
 	pending, err := store.ListPendingReports(ctx, ReportReviewScope{Role: "system_admin"})
 	if err != nil {
@@ -311,4 +312,26 @@ func assertIntegrationAuditEvent(t *testing.T, ctx context.Context, store Store,
 	}
 	t.Fatalf("expected audit event type %q, got %+v", eventType, events)
 	return AuditEvent{}
+}
+
+func assertIntegrationAuditEventsImmutable(t *testing.T, ctx context.Context, store Store, auditEventID int64) {
+	t.Helper()
+
+	assertAuditEventMutationRejected(t, ctx, store, "UPDATE audit_events SET summary = summary || ' mutated' WHERE id = $1", auditEventID)
+	assertAuditEventMutationRejected(t, ctx, store, "DELETE FROM audit_events WHERE id = $1", auditEventID)
+	assertAuditEventMutationRejected(t, ctx, store, "TRUNCATE audit_events")
+}
+
+func assertAuditEventMutationRejected(t *testing.T, ctx context.Context, store Store, statement string, args ...any) {
+	t.Helper()
+
+	tx, err := store.pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin audit immutability assertion transaction: %v", err)
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, statement, args...); err == nil {
+		t.Fatalf("expected audit_events mutation to be rejected for statement %q", statement)
+	}
 }

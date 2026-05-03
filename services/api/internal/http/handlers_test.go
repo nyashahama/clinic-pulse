@@ -19,6 +19,8 @@ import (
 	"clinicpulse/services/api/internal/store"
 )
 
+const defaultTestDistrict = "Tshwane North Demo District"
+
 func TestHealthzReturnsOK(t *testing.T) {
 	router := apihttp.NewRouter(fakeStore{})
 
@@ -390,6 +392,120 @@ func TestListClinicReportsReturnsNotFoundForUnknownClinic(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), `"code":"not_found"`) {
 		t.Fatalf("expected not_found error code, got %q", rec.Body.String())
+	}
+}
+
+func TestClinicOperationalReadsDenyDistrictManagerOutsideDistrict(t *testing.T) {
+	managerDistrict := defaultTestDistrict
+	clinicDistrict := "Ekurhuleni East District"
+	storeErr := errors.New("scoped read should not reach unscoped store list")
+	now := time.Date(2026, 5, 3, 11, 0, 0, 0, time.UTC)
+	memberships := []store.OrganisationMembership{{
+		ID:        1,
+		UserID:    42,
+		Role:      "district_manager",
+		District:  &managerDistrict,
+		CreatedAt: now,
+	}}
+
+	tests := []struct {
+		name  string
+		path  string
+		store fakeStore
+	}{
+		{
+			name: "reports",
+			path: "/v1/clinics/clinic-1/reports",
+			store: fakeStore{
+				clinic:     clinicDetailInDistrict("clinic-1", clinicDistrict),
+				reportsErr: storeErr,
+			},
+		},
+		{
+			name: "audit events",
+			path: "/v1/clinics/clinic-1/audit-events",
+			store: fakeStore{
+				clinic:         clinicDetailInDistrict("clinic-1", clinicDistrict),
+				auditEventsErr: storeErr,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.store.memberships = memberships
+			router := apihttp.NewRouter(authenticatedStore(t, "district_manager", tt.store))
+			req := newAuthenticatedRequest(t, http.MethodGet, tt.path, nil)
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusForbidden {
+				t.Fatalf("expected status %d, got %d with body %s", http.StatusForbidden, rec.Code, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), `"code":"forbidden"`) {
+				t.Fatalf("expected forbidden error code, got %q", rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestClinicOperationalReadsAllowAdminRolesAcrossDistricts(t *testing.T) {
+	clinicDistrict := "Ekurhuleni East District"
+	tests := []struct {
+		name string
+		role string
+		path string
+	}{
+		{name: "org admin reports", role: "org_admin", path: "/v1/clinics/clinic-1/reports"},
+		{name: "system admin reports", role: "system_admin", path: "/v1/clinics/clinic-1/reports"},
+		{name: "org admin audit events", role: "org_admin", path: "/v1/clinics/clinic-1/audit-events"},
+		{name: "system admin audit events", role: "system_admin", path: "/v1/clinics/clinic-1/audit-events"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := apihttp.NewRouter(authenticatedStore(t, tt.role, fakeStore{
+				clinic: clinicDetailInDistrict("clinic-1", clinicDistrict),
+			}))
+			req := newAuthenticatedRequest(t, http.MethodGet, tt.path, nil)
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestClinicOperationalReadsDenyUnknownAndEmptyRoles(t *testing.T) {
+	tests := []struct {
+		name string
+		role string
+		path string
+	}{
+		{name: "empty reports", path: "/v1/clinics/clinic-1/reports"},
+		{name: "unknown reports", role: "unknown", path: "/v1/clinics/clinic-1/reports"},
+		{name: "empty audit events", path: "/v1/clinics/clinic-1/audit-events"},
+		{name: "unknown audit events", role: "unknown", path: "/v1/clinics/clinic-1/audit-events"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := apihttp.NewRouter(authenticatedStore(t, tt.role, fakeStore{
+				clinic: clinicDetailInDistrict("clinic-1", defaultTestDistrict),
+			}))
+			req := newAuthenticatedRequest(t, http.MethodGet, tt.path, nil)
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusForbidden {
+				t.Fatalf("expected status %d, got %d with body %s", http.StatusForbidden, rec.Code, rec.Body.String())
+			}
+		})
 	}
 }
 
@@ -1812,7 +1928,10 @@ func (f fakeStore) ListClinics(context.Context) ([]store.ClinicDetail, error) {
 	return f.clinics, f.listErr
 }
 
-func (f fakeStore) GetClinic(context.Context, string) (store.ClinicDetail, error) {
+func (f fakeStore) GetClinic(_ context.Context, clinicID string) (store.ClinicDetail, error) {
+	if f.clinic.Clinic.ID == "" {
+		return clinicDetailInDistrict(clinicID, defaultTestDistrict), f.getClinicErr
+	}
 	return f.clinic, f.getClinicErr
 }
 
@@ -2140,10 +2259,15 @@ func authenticatedStore(t *testing.T, role string, f fakeStore) fakeStore {
 		}
 	}
 	if f.memberships == nil {
+		var district *string
+		if role == "district_manager" {
+			district = stringPtr(defaultTestDistrict)
+		}
 		f.memberships = []store.OrganisationMembership{{
 			ID:        1,
 			UserID:    f.sessionUser.ID,
 			Role:      role,
+			District:  district,
 			CreatedAt: now,
 		}}
 	}
@@ -2188,4 +2312,15 @@ func clinicDetail(id, name string, latitude, longitude float64, status, freshnes
 	}
 
 	return detail
+}
+
+func clinicDetailInDistrict(id string, district string) store.ClinicDetail {
+	return store.ClinicDetail{
+		Clinic: store.Clinic{
+			ID:                 id,
+			District:           district,
+			FacilityType:       "clinic",
+			VerificationStatus: "verified",
+		},
+	}
 }
