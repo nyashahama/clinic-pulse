@@ -9,7 +9,7 @@ describe("phaseOneDemoRouteChecklist", () => {
       "/book-demo",
       "/book-demo/thanks",
       "/demo",
-      "/clinics/clinic-mamelodi-east",
+      "/demo/clinics/clinic-mamelodi-east",
       "/finder",
       "/field",
       "/admin",
