@@ -10,6 +10,10 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// missingClientReportIDExternalID is the ledger sentinel used when a received
+// offline item fails validation before providing a nonblank client report id.
+const missingClientReportIDExternalID = "missing-client-report-id"
+
 type OfflineSyncStore interface {
 	CreatePendingReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, error)
 	GetReportByExternalID(ctx context.Context, externalID string) (store.Report, error)
@@ -271,12 +275,9 @@ func recordOfflineSyncAttempt(
 	result OfflineSyncResult,
 	reportID *int64,
 ) error {
-	if strings.TrimSpace(item.ClientReportID) == "" {
-		return nil
-	}
 	submittedAt := item.SubmittedAt
 	input := store.CreateReportSyncAttemptInput{
-		ExternalID:         item.ClientReportID,
+		ExternalID:         syncAttemptExternalID(item.ClientReportID),
 		ReportID:           reportID,
 		SubmittedByUserID:  offlineActorUserID(actor),
 		OrganisationID:     actor.OrganisationID,
@@ -296,6 +297,13 @@ func recordOfflineSyncAttempt(
 	}
 	_, err := syncStore.CreateReportSyncAttempt(ctx, input)
 	return err
+}
+
+func syncAttemptExternalID(clientReportID string) string {
+	if strings.TrimSpace(clientReportID) == "" {
+		return missingClientReportIDExternalID
+	}
+	return clientReportID
 }
 
 func sameOfflineReportPayload(existing store.Report, input store.CreateReportInput) bool {

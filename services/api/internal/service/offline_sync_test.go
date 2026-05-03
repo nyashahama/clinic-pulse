@@ -144,8 +144,11 @@ func TestSyncOfflineReportsReturnsPerItemValidationErrors(t *testing.T) {
 	if len(fake.created) != 0 {
 		t.Fatalf("expected invalid reports not to be created, got %#v", fake.created)
 	}
-	if len(fake.attempts) != 1 {
+	if len(fake.attempts) != 2 {
 		t.Fatalf("expected validation sync attempts, got %#v", fake.attempts)
+	}
+	if fake.attempts[0].ExternalID != missingClientReportIDExternalID {
+		t.Fatalf("expected missing client id sentinel external id, got %#v", fake.attempts[0])
 	}
 	if fake.attempts[0].ErrorCode == nil || *fake.attempts[0].ErrorCode != "validation_error" {
 		t.Fatalf("expected validation attempt error code, got %#v", fake.attempts[0])
@@ -155,7 +158,7 @@ func TestSyncOfflineReportsReturnsPerItemValidationErrors(t *testing.T) {
 	}
 }
 
-func TestSyncOfflineReportsKeepsBlankClientReportIDValidationWhenAttemptCannotBeRecorded(t *testing.T) {
+func TestSyncOfflineReportsRecordsBlankClientReportIDValidationWithSentinelExternalID(t *testing.T) {
 	now := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
 	fake := newFakeOfflineSyncStore()
 	fake.enforceAttemptConstraints = true
@@ -172,8 +175,14 @@ func TestSyncOfflineReportsKeepsBlankClientReportIDValidationWhenAttemptCannotBe
 	if len(fake.created) != 0 {
 		t.Fatalf("expected blank client id not to create report, got %#v", fake.created)
 	}
-	if len(fake.attempts) != 0 {
-		t.Fatalf("expected invalid external id not to be sent to attempt store, got %#v", fake.attempts)
+	if len(fake.attempts) != 1 {
+		t.Fatalf("expected validation sync attempt, got %#v", fake.attempts)
+	}
+	if fake.attempts[0].ExternalID != missingClientReportIDExternalID {
+		t.Fatalf("expected sentinel external id, got %#v", fake.attempts[0])
+	}
+	if fake.attempts[0].Result != "validation_error" {
+		t.Fatalf("expected validation_error sync attempt, got %#v", fake.attempts[0])
 	}
 	if got.Summary.Failed != 1 {
 		t.Fatalf("expected failed summary count, got %#v", got.Summary)
