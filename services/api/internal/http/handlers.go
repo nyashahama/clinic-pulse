@@ -223,6 +223,10 @@ func (h Handler) Login(w nethttp.ResponseWriter, r *nethttp.Request) {
 	if memberships == nil {
 		memberships = []store.OrganisationMembership{}
 	}
+	if len(memberships) == 0 {
+		respondUnauthorized(w)
+		return
+	}
 
 	token, err := auth.GenerateSessionToken()
 	if err != nil {
@@ -256,6 +260,19 @@ func (h Handler) Login(w nethttp.ResponseWriter, r *nethttp.Request) {
 }
 
 func (h Handler) Me(w nethttp.ResponseWriter, r *nethttp.Request) {
+	if details, ok := authDetailsFromContext(r.Context()); ok {
+		memberships := details.Memberships
+		if memberships == nil {
+			memberships = []store.OrganisationMembership{}
+		}
+		RespondJSON(w, nethttp.StatusOK, authMeResponse{
+			User:        publicUser(details.User),
+			Session:     publicSession(details.Session),
+			Memberships: memberships,
+		})
+		return
+	}
+
 	cookie, err := r.Cookie(sessionCookieName)
 	if err != nil || cookie.Value == "" {
 		respondUnauthorized(w)

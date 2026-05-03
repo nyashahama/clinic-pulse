@@ -9,18 +9,21 @@ import (
 func NewRouter(store ClinicStore) nethttp.Handler {
 	router := chi.NewRouter()
 	handler := NewHandler(store)
+	requireAuth := RequireAuth(store)
+	reporterOrHigher := RequireRole("reporter", "district_manager", "org_admin", "system_admin")
+	districtManagerOrHigher := RequireRole("district_manager", "org_admin", "system_admin")
 
 	router.Get("/healthz", Healthz)
-	router.Get("/v1/alternatives", handler.ListAlternatives)
 	router.Post("/v1/auth/login", handler.Login)
 	router.Post("/v1/auth/logout", handler.Logout)
-	router.Get("/v1/auth/me", handler.Me)
-	router.Get("/v1/clinics", handler.ListClinics)
-	router.Get("/v1/clinics/{clinicId}", handler.GetClinic)
-	router.Get("/v1/clinics/{clinicId}/status", handler.GetClinicStatus)
-	router.Get("/v1/clinics/{clinicId}/reports", handler.ListClinicReports)
-	router.Get("/v1/clinics/{clinicId}/audit-events", handler.ListClinicAuditEvents)
-	router.Post("/v1/reports", handler.CreateReport)
+	router.With(requireAuth).Get("/v1/auth/me", handler.Me)
+	router.With(requireAuth).Get("/v1/alternatives", handler.ListAlternatives)
+	router.With(requireAuth).Get("/v1/clinics", handler.ListClinics)
+	router.With(requireAuth).Get("/v1/clinics/{clinicId}", handler.GetClinic)
+	router.With(requireAuth).Get("/v1/clinics/{clinicId}/status", handler.GetClinicStatus)
+	router.With(requireAuth, districtManagerOrHigher).Get("/v1/clinics/{clinicId}/reports", handler.ListClinicReports)
+	router.With(requireAuth, districtManagerOrHigher).Get("/v1/clinics/{clinicId}/audit-events", handler.ListClinicAuditEvents)
+	router.With(requireAuth, reporterOrHigher).Post("/v1/reports", handler.CreateReport)
 
 	return router
 }

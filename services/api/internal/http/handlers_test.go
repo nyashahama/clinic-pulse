@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -36,7 +37,7 @@ func TestHealthzReturnsOK(t *testing.T) {
 
 func TestListClinicsReturnsOK(t *testing.T) {
 	updatedAt := time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC)
-	router := apihttp.NewRouter(fakeStore{
+	router := newAuthenticatedTestRouter(t, fakeStore{
 		clinics: []store.ClinicDetail{{
 			Clinic: store.Clinic{
 				ID:                 "clinic-1",
@@ -52,7 +53,7 @@ func TestListClinicsReturnsOK(t *testing.T) {
 		}},
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/clinics", nil)
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/clinics", nil)
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -69,9 +70,9 @@ func TestListClinicsReturnsOK(t *testing.T) {
 }
 
 func TestListClinicsReturnsEmptyArrayForNilSlice(t *testing.T) {
-	router := apihttp.NewRouter(fakeStore{})
+	router := newAuthenticatedTestRouter(t, fakeStore{})
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/clinics", nil)
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/clinics", nil)
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -86,9 +87,9 @@ func TestListClinicsReturnsEmptyArrayForNilSlice(t *testing.T) {
 
 func TestListClinicsReturnsInternalErrorForUnexpectedStoreError(t *testing.T) {
 	storeErr := errors.New("database password leaked")
-	router := apihttp.NewRouter(fakeStore{listErr: storeErr})
+	router := newAuthenticatedTestRouter(t, fakeStore{listErr: storeErr})
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/clinics", nil)
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/clinics", nil)
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -137,8 +138,8 @@ func TestUnexpectedStoreErrorsReturnInternalError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			router := apihttp.NewRouter(tt.store)
-			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
+			router := newAuthenticatedTestRouter(t, tt.store)
+			req := newAuthenticatedRequest(t, http.MethodGet, tt.path, nil)
 			rec := httptest.NewRecorder()
 
 			router.ServeHTTP(rec, req)
@@ -149,9 +150,9 @@ func TestUnexpectedStoreErrorsReturnInternalError(t *testing.T) {
 }
 
 func TestGetClinicReturnsNotFoundForMissingClinic(t *testing.T) {
-	router := apihttp.NewRouter(fakeStore{getClinicErr: pgx.ErrNoRows})
+	router := newAuthenticatedTestRouter(t, fakeStore{getClinicErr: pgx.ErrNoRows})
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/clinics/missing-clinic", nil)
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/clinics/missing-clinic", nil)
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -167,7 +168,7 @@ func TestGetClinicReturnsNotFoundForMissingClinic(t *testing.T) {
 func TestGetClinicStatusReturnsCurrentStatusJSON(t *testing.T) {
 	updatedAt := time.Date(2026, 5, 1, 11, 0, 0, 0, time.UTC)
 	reason := "Power outage"
-	router := apihttp.NewRouter(fakeStore{
+	router := newAuthenticatedTestRouter(t, fakeStore{
 		status: store.CurrentStatus{
 			ClinicID:  "clinic-1",
 			Status:    "limited",
@@ -177,7 +178,7 @@ func TestGetClinicStatusReturnsCurrentStatusJSON(t *testing.T) {
 		},
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/clinics/clinic-1/status", nil)
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/clinics/clinic-1/status", nil)
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -196,14 +197,14 @@ func TestGetClinicStatusReturnsCurrentStatusJSON(t *testing.T) {
 func TestListClinicReportsReturnsOrderedReportJSON(t *testing.T) {
 	firstSubmitted := time.Date(2026, 5, 1, 9, 0, 0, 0, time.UTC)
 	secondSubmitted := time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC)
-	router := apihttp.NewRouter(fakeStore{
+	router := newAuthenticatedTestRouter(t, fakeStore{
 		reports: []store.Report{
 			{ID: 10, ClinicID: "clinic-1", Source: "ussd", SubmittedAt: firstSubmitted, ReceivedAt: firstSubmitted, Status: "open", ReviewState: "accepted"},
 			{ID: 11, ClinicID: "clinic-1", Source: "web", SubmittedAt: secondSubmitted, ReceivedAt: secondSubmitted, Status: "limited", ReviewState: "accepted"},
 		},
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/clinics/clinic-1/reports", nil)
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/clinics/clinic-1/reports", nil)
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -220,9 +221,9 @@ func TestListClinicReportsReturnsOrderedReportJSON(t *testing.T) {
 }
 
 func TestListClinicReportsReturnsNotFoundForUnknownClinic(t *testing.T) {
-	router := apihttp.NewRouter(fakeStore{getClinicErr: pgx.ErrNoRows})
+	router := newAuthenticatedTestRouter(t, fakeStore{getClinicErr: pgx.ErrNoRows})
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/clinics/unknown-clinic/reports", nil)
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/clinics/unknown-clinic/reports", nil)
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -238,14 +239,14 @@ func TestListClinicReportsReturnsNotFoundForUnknownClinic(t *testing.T) {
 func TestListClinicAuditEventsReturnsOrderedAuditEventJSON(t *testing.T) {
 	firstCreated := time.Date(2026, 5, 1, 9, 30, 0, 0, time.UTC)
 	secondCreated := time.Date(2026, 5, 1, 10, 30, 0, 0, time.UTC)
-	router := apihttp.NewRouter(fakeStore{
+	router := newAuthenticatedTestRouter(t, fakeStore{
 		auditEvents: []store.AuditEvent{
 			{ID: 20, ClinicID: "clinic-1", EventType: "report.submitted", Summary: "First report", CreatedAt: firstCreated},
 			{ID: 21, ClinicID: "clinic-1", EventType: "status.changed", Summary: "Status changed", CreatedAt: secondCreated},
 		},
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/clinics/clinic-1/audit-events", nil)
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/clinics/clinic-1/audit-events", nil)
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -262,9 +263,9 @@ func TestListClinicAuditEventsReturnsOrderedAuditEventJSON(t *testing.T) {
 }
 
 func TestListClinicAuditEventsReturnsNotFoundForUnknownClinic(t *testing.T) {
-	router := apihttp.NewRouter(fakeStore{getClinicErr: pgx.ErrNoRows})
+	router := newAuthenticatedTestRouter(t, fakeStore{getClinicErr: pgx.ErrNoRows})
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/clinics/unknown-clinic/audit-events", nil)
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/clinics/unknown-clinic/audit-events", nil)
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -288,8 +289,8 @@ func TestAlternativesReturnsBadRequestForMissingQueryParams(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			router := apihttp.NewRouter(fakeStore{})
-			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
+			router := newAuthenticatedTestRouter(t, fakeStore{})
+			req := newAuthenticatedRequest(t, http.MethodGet, tt.path, nil)
 			rec := httptest.NewRecorder()
 
 			router.ServeHTTP(rec, req)
@@ -305,8 +306,8 @@ func TestAlternativesReturnsBadRequestForMissingQueryParams(t *testing.T) {
 }
 
 func TestAlternativesReturnsNotFoundForUnknownSourceClinic(t *testing.T) {
-	router := apihttp.NewRouter(fakeStore{getClinicErr: pgx.ErrNoRows})
-	req := httptest.NewRequest(http.MethodGet, "/v1/alternatives?clinicId=unknown-clinic&service=Primary%20care", nil)
+	router := newAuthenticatedTestRouter(t, fakeStore{getClinicErr: pgx.ErrNoRows})
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/alternatives?clinicId=unknown-clinic&service=Primary%20care", nil)
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -321,7 +322,7 @@ func TestAlternativesReturnsNotFoundForUnknownSourceClinic(t *testing.T) {
 
 func TestAlternativesReturnsRankedAlternatives(t *testing.T) {
 	source := clinicDetail("clinic-mamelodi-east", "Mamelodi East Clinic", -25.7400, 28.1300, "non_functional", "fresh", "Primary care")
-	router := apihttp.NewRouter(fakeStore{
+	router := newAuthenticatedTestRouter(t, fakeStore{
 		clinic: source,
 		clinics: []store.ClinicDetail{
 			source,
@@ -330,7 +331,7 @@ func TestAlternativesReturnsRankedAlternatives(t *testing.T) {
 			clinicDetail("wrong-service", "Wrong Service Clinic", -25.7405, 28.1305, "operational", "fresh", "Pharmacy"),
 		},
 	})
-	req := httptest.NewRequest(http.MethodGet, "/v1/alternatives?clinicId=clinic-mamelodi-east&service=Primary%20care", nil)
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/alternatives?clinicId=clinic-mamelodi-east&service=Primary%20care", nil)
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -372,8 +373,8 @@ func TestAlternativesReturnsInternalErrorForUnexpectedStoreErrors(t *testing.T) 
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			router := apihttp.NewRouter(tt.store)
-			req := httptest.NewRequest(http.MethodGet, "/v1/alternatives?clinicId=clinic-1&service=Primary%20care", nil)
+			router := newAuthenticatedTestRouter(t, tt.store)
+			req := newAuthenticatedRequest(t, http.MethodGet, "/v1/alternatives?clinicId=clinic-1&service=Primary%20care", nil)
 			rec := httptest.NewRecorder()
 
 			router.ServeHTTP(rec, req)
@@ -393,7 +394,7 @@ func TestCreateReportReturnsCreatedReportStatusAndAuditEvent(t *testing.T) {
 	reporterName := "Amina Nkosi"
 	notes := "Using backup generator"
 	var createInput store.CreateReportInput
-	router := apihttp.NewRouter(fakeStore{
+	router := newAuthenticatedTestRouter(t, fakeStore{
 		createReport: store.Report{
 			ID:             100,
 			ClinicID:       "clinic-1",
@@ -439,7 +440,7 @@ func TestCreateReportReturnsCreatedReportStatusAndAuditEvent(t *testing.T) {
 		"offlineCreated":true,
 		"submittedAt":"2026-05-02T09:15:00Z"
 	}`
-	req := httptest.NewRequest(http.MethodPost, "/v1/reports", strings.NewReader(body))
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports", strings.NewReader(body))
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -475,8 +476,8 @@ func TestCreateReportReturnsCreatedReportStatusAndAuditEvent(t *testing.T) {
 }
 
 func TestCreateReportReturnsBadRequestForInvalidJSON(t *testing.T) {
-	router := apihttp.NewRouter(fakeStore{})
-	req := httptest.NewRequest(http.MethodPost, "/v1/reports", strings.NewReader(`{"clinicId":`))
+	router := newAuthenticatedTestRouter(t, fakeStore{})
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports", strings.NewReader(`{"clinicId":`))
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -501,8 +502,8 @@ func TestCreateReportReturnsBadRequestForTrailingJSON(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			createCalls := 0
-			router := apihttp.NewRouter(fakeStore{createCalls: &createCalls})
-			req := httptest.NewRequest(http.MethodPost, "/v1/reports", strings.NewReader(tt.body))
+			router := newAuthenticatedTestRouter(t, fakeStore{createCalls: &createCalls})
+			req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports", strings.NewReader(tt.body))
 			rec := httptest.NewRecorder()
 
 			router.ServeHTTP(rec, req)
@@ -521,8 +522,8 @@ func TestCreateReportReturnsBadRequestForTrailingJSON(t *testing.T) {
 }
 
 func TestCreateReportReturnsBadRequestForValidationFailures(t *testing.T) {
-	router := apihttp.NewRouter(fakeStore{})
-	req := httptest.NewRequest(http.MethodPost, "/v1/reports", strings.NewReader(`{
+	router := newAuthenticatedTestRouter(t, fakeStore{})
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports", strings.NewReader(`{
 		"clinicId":"",
 		"status":"closed",
 		"staffPressure":"busy",
@@ -607,11 +608,11 @@ func TestCreateReportReturnsBadRequestForInvalidConfidence(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			createCalls := 0
-			router := apihttp.NewRouter(fakeStore{
+			router := newAuthenticatedTestRouter(t, fakeStore{
 				createCalls: &createCalls,
 				createErr:   errors.New("store should not be called"),
 			})
-			req := httptest.NewRequest(http.MethodPost, "/v1/reports", strings.NewReader(tt.body))
+			req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports", strings.NewReader(tt.body))
 			rec := httptest.NewRecorder()
 
 			router.ServeHTTP(rec, req)
@@ -630,8 +631,8 @@ func TestCreateReportReturnsBadRequestForInvalidConfidence(t *testing.T) {
 }
 
 func TestCreateReportReturnsNotFoundForUnknownClinic(t *testing.T) {
-	router := apihttp.NewRouter(fakeStore{createErr: pgx.ErrNoRows})
-	req := httptest.NewRequest(http.MethodPost, "/v1/reports", strings.NewReader(validReportJSON()))
+	router := newAuthenticatedTestRouter(t, fakeStore{createErr: pgx.ErrNoRows})
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports", strings.NewReader(validReportJSON()))
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -646,8 +647,8 @@ func TestCreateReportReturnsNotFoundForUnknownClinic(t *testing.T) {
 
 func TestCreateReportReturnsInternalErrorForUnexpectedStoreError(t *testing.T) {
 	storeErr := errors.New("database password leaked")
-	router := apihttp.NewRouter(fakeStore{createErr: storeErr})
-	req := httptest.NewRequest(http.MethodPost, "/v1/reports", strings.NewReader(validReportJSON()))
+	router := newAuthenticatedTestRouter(t, fakeStore{createErr: storeErr})
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports", strings.NewReader(validReportJSON()))
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -908,6 +909,26 @@ func TestLoginMembershipFailureReturnsInternalErrorWithoutCreatingSession(t *tes
 	}
 	if findCookie(rec, "clinicpulse_session") != nil {
 		t.Fatalf("expected membership failure not to set session cookie, got %v", rec.Result().Cookies())
+	}
+}
+
+func TestLoginNoMembershipReturnsUnauthorizedWithoutCreatingSession(t *testing.T) {
+	createSessionCalls := 0
+	loginStore := successfulLoginStore(t)
+	loginStore.memberships = []store.OrganisationMembership{}
+	loginStore.createSessionCalls = &createSessionCalls
+	router := apihttp.NewRouter(loginStore)
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", strings.NewReader(`{"email":"manager@example.test","password":"correct-password"}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assertGenericUnauthorized(t, rec)
+	if createSessionCalls != 0 {
+		t.Fatalf("expected no-membership login not to create a session, got %d calls", createSessionCalls)
+	}
+	if findCookie(rec, "clinicpulse_session") != nil {
+		t.Fatalf("expected no-membership login not to set session cookie, got %v", rec.Result().Cookies())
 	}
 }
 
@@ -1349,6 +1370,49 @@ func hashSessionTokenForTest(t *testing.T, token string) string {
 		t.Fatalf("HashSessionToken returned error: %v", err)
 	}
 	return hash
+}
+
+func authenticatedStore(t *testing.T, role string, f fakeStore) fakeStore {
+	t.Helper()
+	now := time.Date(2026, 5, 3, 11, 0, 0, 0, time.UTC)
+	if f.session.ID == 0 {
+		f.session = store.Session{
+			ID:        100,
+			UserID:    42,
+			CreatedAt: now,
+			ExpiresAt: now.Add(12 * time.Hour),
+		}
+	}
+	if f.sessionUser.ID == 0 {
+		f.sessionUser = store.User{
+			ID:          f.session.UserID,
+			Email:       "auth-user@example.test",
+			DisplayName: "Authenticated User",
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		}
+	}
+	if f.memberships == nil {
+		f.memberships = []store.OrganisationMembership{{
+			ID:        1,
+			UserID:    f.sessionUser.ID,
+			Role:      role,
+			CreatedAt: now,
+		}}
+	}
+	return f
+}
+
+func newAuthenticatedTestRouter(t *testing.T, f fakeStore) http.Handler {
+	t.Helper()
+	return apihttp.NewRouter(authenticatedStore(t, "district_manager", f))
+}
+
+func newAuthenticatedRequest(t *testing.T, method string, target string, body io.Reader) *http.Request {
+	t.Helper()
+	req := httptest.NewRequest(method, target, body)
+	req.AddCookie(&http.Cookie{Name: "clinicpulse_session", Value: sessionTokenForTest(t)})
+	return req
 }
 
 func clinicDetail(id, name string, latitude, longitude float64, status, freshness string, services ...string) store.ClinicDetail {
