@@ -21,9 +21,10 @@ import (
 )
 
 const (
-	sessionCookieName = "clinicpulse_session"
-	sessionDuration   = 12 * time.Hour
-	dummyPasswordHash = "$2a$10$7EqJtq98hPqEX7fNZaFWoOhiYv4gfyJ5v5e26nnbuoJ6PmwKzJxYy"
+	sessionCookieName                   = "clinicpulse_session"
+	sessionDuration                     = 12 * time.Hour
+	dummyPasswordHash                   = "$2a$10$7EqJtq98hPqEX7fNZaFWoOhiYv4gfyJ5v5e26nnbuoJ6PmwKzJxYy"
+	missingClientReportIDSyncExternalID = "missing-client-report-id"
 )
 
 type ClinicStore interface {
@@ -343,22 +344,67 @@ func (h Handler) SyncOfflineReports(w nethttp.ResponseWriter, r *nethttp.Request
 		return
 	}
 
-	items := make([]service.OfflineSyncItemInput, 0, len(payload.Items))
-	for index, item := range payload.Items {
-		input, err := item.toServiceInput()
-		if err != nil {
-			RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", err.Error())
-			return
+	actor := offlineSyncActorForPrincipal(principal)
+	now := time.Now().UTC()
+	result := service.OfflineSyncBatchResult{
+		Results: make([]service.OfflineSyncResult, 0, len(payload.Items)),
+	}
+	for _, item := range payload.Items {
+		input, fields := item.toServiceInput()
+		if len(fields) > 0 {
+			itemResult := h.offlineSyncValidationResult(r.Context(), actor, input, fields, now)
+			result.Results = append(result.Results, itemResult)
+			result.Summary.Failed++
+			continue
 		}
-		if input.SubmittedAt.IsZero() {
-			RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "items["+strconv.Itoa(index)+"].submittedAt: submittedAt is required")
-			return
-		}
-		items = append(items, input)
+
+		itemResult := service.SyncOfflineReports(r.Context(), h.store, actor, []service.OfflineSyncItemInput{input}, now)
+		result.Results = append(result.Results, itemResult.Results...)
+		result.Summary.Created += itemResult.Summary.Created
+		result.Summary.Duplicate += itemResult.Summary.Duplicate
+		result.Summary.Conflict += itemResult.Summary.Conflict
+		result.Summary.Failed += itemResult.Summary.Failed
 	}
 
-	result := service.SyncOfflineReports(r.Context(), h.store, offlineSyncActorForPrincipal(principal), items, time.Now().UTC())
 	RespondJSON(w, nethttp.StatusOK, result)
+}
+
+func (h Handler) offlineSyncValidationResult(ctx context.Context, actor service.OfflineSyncActor, input service.OfflineSyncItemInput, fields []string, now time.Time) service.OfflineSyncResult {
+	itemResult := service.OfflineSyncResult{
+		ClientReportID: input.ClientReportID,
+		Result:         "validation_error",
+		Error: &service.SyncItemError{
+			Code:    "validation_error",
+			Message: "offline report failed validation",
+			Fields:  fields,
+		},
+	}
+
+	submittedAt := input.SubmittedAt
+	attempt := store.CreateReportSyncAttemptInput{
+		ExternalID:         offlineSyncAttemptExternalID(input.ClientReportID),
+		SubmittedByUserID:  offlineSyncActorUserID(actor),
+		OrganisationID:     actor.OrganisationID,
+		ClinicID:           input.ClinicID,
+		Result:             itemResult.Result,
+		ClientAttemptCount: input.ClientAttemptCount,
+		QueuedAt:           input.QueuedAt,
+		ReceivedAt:         now,
+		ErrorCode:          &itemResult.Error.Code,
+		ErrorMessage:       &itemResult.Error.Message,
+		Metadata:           map[string]any{"fields": fields},
+	}
+	if !submittedAt.IsZero() {
+		attempt.SubmittedAt = &submittedAt
+	}
+	if _, err := h.store.CreateReportSyncAttempt(ctx, attempt); err != nil {
+		itemResult.Result = "server_error"
+		itemResult.Error = &service.SyncItemError{
+			Code:    "server_error",
+			Message: "failed to record offline sync attempt",
+		}
+	}
+	return itemResult
 }
 
 func (h Handler) GetSyncSummary(w nethttp.ResponseWriter, r *nethttp.Request) {
@@ -691,6 +737,20 @@ func offlineSyncActorForPrincipal(principal Principal) service.OfflineSyncActor 
 	}
 }
 
+func offlineSyncActorUserID(actor service.OfflineSyncActor) *int64 {
+	if actor.UserID == 0 {
+		return nil
+	}
+	return &actor.UserID
+}
+
+func offlineSyncAttemptExternalID(clientReportID string) string {
+	if strings.TrimSpace(clientReportID) == "" {
+		return missingClientReportIDSyncExternalID
+	}
+	return clientReportID
+}
+
 func derivedReporterName(principal Principal) *string {
 	name := strings.TrimSpace(principal.DisplayName)
 	if name == "" {
@@ -778,19 +838,23 @@ type offlineSyncItemRequest struct {
 	AttemptCount   int    `json:"attemptCount"`
 }
 
-func (p offlineSyncItemRequest) toServiceInput() (service.OfflineSyncItemInput, error) {
-	submittedAt, err := parseOfflineSyncTimestamp(p.SubmittedAt, "submittedAt")
-	if err != nil {
-		return service.OfflineSyncItemInput{}, err
+func (p offlineSyncItemRequest) toServiceInput() (service.OfflineSyncItemInput, []string) {
+	fields := []string(nil)
+	submittedAt, ok := parseOfflineSyncTimestamp(p.SubmittedAt)
+	if !ok {
+		fields = append(fields, "submittedAt: submittedAt must be an RFC3339 timestamp")
+	} else if submittedAt.IsZero() {
+		fields = append(fields, "submittedAt: submittedAt is required")
 	}
 
 	var queuedAt *time.Time
 	if strings.TrimSpace(p.QueuedAt) != "" {
-		parsedQueuedAt, err := parseOfflineSyncTimestamp(p.QueuedAt, "queuedAt")
-		if err != nil {
-			return service.OfflineSyncItemInput{}, err
+		parsedQueuedAt, ok := parseOfflineSyncTimestamp(p.QueuedAt)
+		if !ok {
+			fields = append(fields, "queuedAt: queuedAt must be an RFC3339 timestamp")
+		} else {
+			queuedAt = &parsedQueuedAt
 		}
-		queuedAt = &parsedQueuedAt
 	}
 
 	return service.OfflineSyncItemInput{
@@ -805,19 +869,19 @@ func (p offlineSyncItemRequest) toServiceInput() (service.OfflineSyncItemInput, 
 		SubmittedAt:        submittedAt,
 		QueuedAt:           queuedAt,
 		ClientAttemptCount: p.AttemptCount,
-	}, nil
+	}, fields
 }
 
-func parseOfflineSyncTimestamp(value string, field string) (time.Time, error) {
+func parseOfflineSyncTimestamp(value string) (time.Time, bool) {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
-		return time.Time{}, nil
+		return time.Time{}, true
 	}
 	parsed, err := time.Parse(time.RFC3339, trimmed)
 	if err != nil {
-		return time.Time{}, errors.New(field + ": " + field + " must be an RFC3339 timestamp")
+		return time.Time{}, false
 	}
-	return parsed, nil
+	return parsed, true
 }
 
 type loginRequest struct {

@@ -1288,6 +1288,93 @@ func TestOfflineSyncReturnsPerItemResults(t *testing.T) {
 	}
 }
 
+func TestOfflineSyncContinuesAfterItemTimestampValidationError(t *testing.T) {
+	submittedAt := time.Date(2026, 5, 3, 8, 30, 0, 0, time.UTC)
+	var createInput store.CreateReportInput
+	var syncAttemptInputs []store.CreateReportSyncAttemptInput
+	createCalls := 0
+	router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{
+		createReport: store.Report{
+			ID:             100,
+			ClinicID:       "clinic-1",
+			Status:         "degraded",
+			SubmittedAt:    submittedAt,
+			ReviewState:    "pending",
+			OfflineCreated: true,
+		},
+		createCalls:       &createCalls,
+		createInput:       &createInput,
+		syncAttemptInputs: &syncAttemptInputs,
+		externalReportErr: pgx.ErrNoRows,
+	}))
+	body := `{
+		"items": [
+			{
+				"clientReportId": "offline-report-bad-time",
+				"clinicId": "clinic-1",
+				"status": "degraded",
+				"reason": "Queued while offline.",
+				"staffPressure": "strained",
+				"stockPressure": "low",
+				"queuePressure": "high",
+				"submittedAt": "not-a-timestamp",
+				"attemptCount": 1
+			},
+			{
+				"clientReportId": "offline-report-1",
+				"clinicId": "clinic-1",
+				"status": "degraded",
+				"reason": "Queued while offline.",
+				"staffPressure": "strained",
+				"stockPressure": "low",
+				"queuePressure": "high",
+				"submittedAt": "2026-05-03T08:30:00Z",
+				"queuedAt": "2026-05-03T08:30:03Z",
+				"attemptCount": 2
+			}
+		]
+	}`
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports/offline-sync", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	var got struct {
+		Results []struct {
+			ClientReportID string                 `json:"clientReportId"`
+			Result         string                 `json:"result"`
+			Report         *store.Report          `json:"report,omitempty"`
+			Error          map[string]interface{} `json:"error,omitempty"`
+		} `json:"results"`
+		Summary struct {
+			Created int `json:"created"`
+			Failed  int `json:"failed"`
+		} `json:"summary"`
+	}
+	decodeJSON(t, rec, &got)
+	if len(got.Results) != 2 {
+		t.Fatalf("expected two per-item results, got %#v", got.Results)
+	}
+	if got.Results[0].ClientReportID != "offline-report-bad-time" || got.Results[0].Result != "validation_error" || got.Results[0].Error["code"] != "validation_error" {
+		t.Fatalf("expected first item validation_error, got %#v", got.Results[0])
+	}
+	if got.Results[1].ClientReportID != "offline-report-1" || got.Results[1].Result != "created" || got.Results[1].Report == nil || got.Results[1].Report.ID != 100 {
+		t.Fatalf("expected second item created, got %#v", got.Results[1])
+	}
+	if got.Summary.Created != 1 || got.Summary.Failed != 1 {
+		t.Fatalf("unexpected mixed batch summary: %#v", got.Summary)
+	}
+	if createCalls != 1 || createInput.ExternalID == nil || *createInput.ExternalID != "offline-report-1" {
+		t.Fatalf("expected only valid item to create report, calls=%d input=%#v", createCalls, createInput)
+	}
+	if len(syncAttemptInputs) != 2 || syncAttemptInputs[0].Result != "validation_error" || syncAttemptInputs[1].Result != "created" {
+		t.Fatalf("expected sync attempts for validation and created items, got %#v", syncAttemptInputs)
+	}
+}
+
 func TestOfflineSyncRejectsInvalidJSON(t *testing.T) {
 	for _, tt := range []struct {
 		name string
@@ -2208,6 +2295,7 @@ type fakeStore struct {
 	createInput                 *store.CreateReportInput
 	reviewInput                 *store.ReviewReportInput
 	syncAttemptInput            *store.CreateReportSyncAttemptInput
+	syncAttemptInputs           *[]store.CreateReportSyncAttemptInput
 	pendingScope                *store.ReportReviewScope
 	summarySince                *time.Time
 	getUserEmail                *string
@@ -2299,6 +2387,9 @@ func (f fakeStore) GetReportByExternalID(context.Context, string) (store.Report,
 func (f fakeStore) CreateReportSyncAttempt(_ context.Context, input store.CreateReportSyncAttemptInput) (store.ReportSyncAttempt, error) {
 	if f.syncAttemptInput != nil {
 		*f.syncAttemptInput = input
+	}
+	if f.syncAttemptInputs != nil {
+		*f.syncAttemptInputs = append(*f.syncAttemptInputs, input)
 	}
 	return f.syncAttempt, f.syncAttemptErr
 }
