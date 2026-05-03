@@ -18,25 +18,25 @@ type OfflineSyncStore interface {
 }
 
 type OfflineSyncActor struct {
-	UserID         int64
-	DisplayName    string
-	Email          string
-	Role           string
-	OrganisationID *int64
+	UserID         int64  `json:"userId"`
+	DisplayName    string `json:"displayName"`
+	Email          string `json:"email"`
+	Role           string `json:"role"`
+	OrganisationID *int64 `json:"organisationId,omitempty"`
 }
 
 type OfflineSyncItemInput struct {
-	ClientReportID     string
-	ClinicID           string
-	Status             string
-	Reason             string
-	StaffPressure      string
-	StockPressure      string
-	QueuePressure      string
-	Notes              string
-	SubmittedAt        time.Time
-	QueuedAt           *time.Time
-	ClientAttemptCount int
+	ClientReportID     string     `json:"clientReportId"`
+	ClinicID           string     `json:"clinicId"`
+	Status             string     `json:"status"`
+	Reason             string     `json:"reason"`
+	StaffPressure      string     `json:"staffPressure"`
+	StockPressure      string     `json:"stockPressure"`
+	QueuePressure      string     `json:"queuePressure"`
+	Notes              string     `json:"notes,omitempty"`
+	SubmittedAt        time.Time  `json:"submittedAt"`
+	QueuedAt           *time.Time `json:"queuedAt,omitempty"`
+	ClientAttemptCount int        `json:"clientAttemptCount"`
 }
 
 type OfflineSyncResult struct {
@@ -111,15 +111,13 @@ func syncOfflineReport(
 			Message: "offline report failed validation",
 			Fields:  []string{fieldMessage("clientReportId", "clientReportId is required")},
 		}
-		recordOfflineSyncAttempt(ctx, syncStore, actor, item, now, result, nil)
-		return result
+		return resultWithSyncAttempt(ctx, syncStore, actor, item, now, result, nil)
 	}
 
 	if err := ValidateCreateReportInputAt(ReportInput{StoreInput: storeInput}, now); err != nil {
 		result.Result = "validation_error"
 		result.Error = syncValidationError(err)
-		recordOfflineSyncAttempt(ctx, syncStore, actor, item, now, result, nil)
-		return result
+		return resultWithSyncAttempt(ctx, syncStore, actor, item, now, result, nil)
 	}
 
 	existing, err := syncStore.GetReportByExternalID(ctx, item.ClientReportID)
@@ -128,8 +126,7 @@ func syncOfflineReport(
 			result.Result = "duplicate"
 			result.Report = &existing
 			result.Warning = offlineCurrentStatusWarning(ctx, syncStore, item)
-			recordOfflineSyncAttempt(ctx, syncStore, actor, item, now, result, &existing.ID)
-			return result
+			return resultWithSyncAttempt(ctx, syncStore, actor, item, now, result, &existing.ID)
 		}
 		result.Result = "conflict"
 		result.Report = &existing
@@ -137,8 +134,7 @@ func syncOfflineReport(
 			Code:    "conflict",
 			Message: "client report id already exists with a different payload",
 		}
-		recordOfflineSyncAttempt(ctx, syncStore, actor, item, now, result, &existing.ID)
-		return result
+		return resultWithSyncAttempt(ctx, syncStore, actor, item, now, result, &existing.ID)
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		result.Result = "server_error"
@@ -146,8 +142,7 @@ func syncOfflineReport(
 			Code:    "server_error",
 			Message: "failed to check existing offline report",
 		}
-		recordOfflineSyncAttempt(ctx, syncStore, actor, item, now, result, nil)
-		return result
+		return resultWithSyncAttempt(ctx, syncStore, actor, item, now, result, nil)
 	}
 
 	report, err := syncStore.CreatePendingReportTx(ctx, storeInput)
@@ -157,15 +152,13 @@ func syncOfflineReport(
 			Code:    "server_error",
 			Message: "failed to create offline report",
 		}
-		recordOfflineSyncAttempt(ctx, syncStore, actor, item, now, result, nil)
-		return result
+		return resultWithSyncAttempt(ctx, syncStore, actor, item, now, result, nil)
 	}
 
 	result.Result = "created"
 	result.Report = &report
 	result.Warning = offlineCurrentStatusWarning(ctx, syncStore, item)
-	recordOfflineSyncAttempt(ctx, syncStore, actor, item, now, result, &report.ID)
-	return result
+	return resultWithSyncAttempt(ctx, syncStore, actor, item, now, result, &report.ID)
 }
 
 func offlineItemStoreInput(item OfflineSyncItemInput, actor OfflineSyncActor, now time.Time) store.CreateReportInput {
@@ -241,6 +234,25 @@ func offlineCurrentStatusWarning(ctx context.Context, syncStore OfflineSyncStore
 	return nil
 }
 
+func resultWithSyncAttempt(
+	ctx context.Context,
+	syncStore OfflineSyncStore,
+	actor OfflineSyncActor,
+	item OfflineSyncItemInput,
+	now time.Time,
+	result OfflineSyncResult,
+	reportID *int64,
+) OfflineSyncResult {
+	if err := recordOfflineSyncAttempt(ctx, syncStore, actor, item, now, result, reportID); err != nil {
+		result.Result = "server_error"
+		result.Error = &SyncItemError{
+			Code:    "server_error",
+			Message: "failed to record offline sync attempt",
+		}
+	}
+	return result
+}
+
 func recordOfflineSyncAttempt(
 	ctx context.Context,
 	syncStore OfflineSyncStore,
@@ -249,7 +261,7 @@ func recordOfflineSyncAttempt(
 	now time.Time,
 	result OfflineSyncResult,
 	reportID *int64,
-) {
+) error {
 	submittedAt := item.SubmittedAt
 	input := store.CreateReportSyncAttemptInput{
 		ExternalID:         item.ClientReportID,
@@ -270,7 +282,8 @@ func recordOfflineSyncAttempt(
 			input.Metadata = map[string]any{"fields": result.Error.Fields}
 		}
 	}
-	_, _ = syncStore.CreateReportSyncAttempt(ctx, input)
+	_, err := syncStore.CreateReportSyncAttempt(ctx, input)
+	return err
 }
 
 func sameOfflineReportPayload(existing store.Report, input store.CreateReportInput) bool {

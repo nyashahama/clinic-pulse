@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -203,6 +204,85 @@ func TestSyncOfflineReportsContinuesAfterOneItemFails(t *testing.T) {
 	}
 }
 
+func TestSyncOfflineReportsSurfacesSyncAttemptPersistenceFailure(t *testing.T) {
+	now := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
+	fake := newFakeOfflineSyncStore()
+	fake.attemptErr = errors.New("attempt insert failed")
+	item := validOfflineSyncItem("offline-report-attempt-fails")
+
+	got := SyncOfflineReports(context.Background(), fake, validOfflineSyncActor(), []OfflineSyncItemInput{item}, now)
+
+	if got.Results[0].Result != "server_error" {
+		t.Fatalf("expected server_error result, got %#v", got.Results[0])
+	}
+	if got.Results[0].Error == nil || got.Results[0].Error.Code != "server_error" {
+		t.Fatalf("expected server error details, got %#v", got.Results[0].Error)
+	}
+	if got.Results[0].Report == nil || got.Results[0].Report.ID == 0 {
+		t.Fatalf("expected created report context to be preserved, got %#v", got.Results[0].Report)
+	}
+	if len(fake.created) != 1 {
+		t.Fatalf("expected report create to have succeeded before attempt failure, got %#v", fake.created)
+	}
+	if len(fake.attempts) != 1 || fake.attempts[0].Result != "created" {
+		t.Fatalf("expected original created attempt to be made, got %#v", fake.attempts)
+	}
+	if got.Summary.Failed != 1 {
+		t.Fatalf("expected failed summary count, got %#v", got.Summary)
+	}
+}
+
+func TestOfflineSyncInputsMarshalWithJSONTags(t *testing.T) {
+	actorJSON, err := json.Marshal(OfflineSyncActor{
+		UserID:         42,
+		DisplayName:    "Nurse Example",
+		Email:          "nurse@example.test",
+		Role:           "field_worker",
+		OrganisationID: ptr(int64(7)),
+	})
+	if err != nil {
+		t.Fatalf("marshal actor: %v", err)
+	}
+	if got, want := string(actorJSON), `{"userId":42,"displayName":"Nurse Example","email":"nurse@example.test","role":"field_worker","organisationId":7}`; got != want {
+		t.Fatalf("unexpected actor json: got %s want %s", got, want)
+	}
+
+	itemJSON, err := json.Marshal(OfflineSyncItemInput{
+		ClientReportID:     "offline-report-1",
+		ClinicID:           "clinic-1",
+		Status:             "operational",
+		Reason:             "Daily facility check",
+		StaffPressure:      "normal",
+		StockPressure:      "normal",
+		QueuePressure:      "low",
+		Notes:              "Opened on time",
+		SubmittedAt:        time.Date(2026, 5, 3, 11, 0, 0, 0, time.UTC),
+		QueuedAt:           ptr(time.Date(2026, 5, 3, 10, 30, 0, 0, time.UTC)),
+		ClientAttemptCount: 2,
+	})
+	if err != nil {
+		t.Fatalf("marshal item: %v", err)
+	}
+	var item map[string]any
+	if err := json.Unmarshal(itemJSON, &item); err != nil {
+		t.Fatalf("unmarshal item: %v", err)
+	}
+	for _, key := range []string{
+		"clientReportId",
+		"clinicId",
+		"staffPressure",
+		"stockPressure",
+		"queuePressure",
+		"submittedAt",
+		"queuedAt",
+		"clientAttemptCount",
+	} {
+		if _, ok := item[key]; !ok {
+			t.Fatalf("expected item json key %q in %s", key, string(itemJSON))
+		}
+	}
+}
+
 func validOfflineSyncActor() OfflineSyncActor {
 	orgID := int64(7)
 	return OfflineSyncActor{
@@ -254,6 +334,7 @@ type fakeOfflineSyncStore struct {
 	createErrors    map[string]error
 	created         []store.CreateReportInput
 	attempts        []store.CreateReportSyncAttemptInput
+	attemptErr      error
 }
 
 func newFakeOfflineSyncStore() *fakeOfflineSyncStore {
@@ -310,5 +391,8 @@ func (f *fakeOfflineSyncStore) GetCurrentStatus(_ context.Context, clinicID stri
 
 func (f *fakeOfflineSyncStore) CreateReportSyncAttempt(_ context.Context, input store.CreateReportSyncAttemptInput) (store.ReportSyncAttempt, error) {
 	f.attempts = append(f.attempts, input)
+	if f.attemptErr != nil {
+		return store.ReportSyncAttempt{}, f.attemptErr
+	}
 	return store.ReportSyncAttempt{ID: int64(len(f.attempts)), Result: input.Result}, nil
 }
