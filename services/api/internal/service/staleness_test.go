@@ -60,12 +60,12 @@ func TestReconcileStatusFreshnessDoesNotRewriteAlreadyCorrectFreshness(t *testin
 	now := fixedStalenessNow()
 	freshReportedAt := now.Add(-11*time.Hour - 59*time.Minute)
 	confirmationReportedAt := now.Add(-12 * time.Hour)
-	staleUpdatedAt := now.Add(-25 * time.Hour)
+	staleReportedAt := now.Add(-25 * time.Hour)
 	fake := &fakeStalenessStore{
 		statuses: []store.CurrentStatus{
 			{ClinicID: "fresh-clinic", Freshness: "fresh", LastReportedAt: &freshReportedAt},
 			{ClinicID: "confirm-clinic", Freshness: "needs_confirmation", LastReportedAt: &confirmationReportedAt},
-			{ClinicID: "stale-clinic", Freshness: "stale", UpdatedAt: staleUpdatedAt},
+			{ClinicID: "stale-clinic", Freshness: "stale", LastReportedAt: &staleReportedAt},
 		},
 	}
 
@@ -79,6 +79,52 @@ func TestReconcileStatusFreshnessDoesNotRewriteAlreadyCorrectFreshness(t *testin
 	}
 	if len(fake.updates) != 0 {
 		t.Fatalf("expected no updates, got %#v", fake.updates)
+	}
+}
+
+func TestReconcileStatusFreshnessSkipsNilLastReportedAt(t *testing.T) {
+	now := fixedStalenessNow()
+	fake := &fakeStalenessStore{
+		statuses: []store.CurrentStatus{{
+			ClinicID:  "clinic-1",
+			Freshness: "fresh",
+			UpdatedAt: now.Add(-48 * time.Hour),
+		}},
+	}
+
+	result, err := ReconcileStatusFreshness(context.Background(), fake, AuditActor{}, now)
+	if err != nil {
+		t.Fatalf("ReconcileStatusFreshness returned error: %v", err)
+	}
+
+	if result.Checked != 1 || result.MarkedNeedsConfirmation != 0 || result.MarkedStale != 0 {
+		t.Fatalf("unexpected reconciliation result: %#v", result)
+	}
+	if len(fake.updates) != 0 {
+		t.Fatalf("expected nil LastReportedAt row not to update, got %#v", fake.updates)
+	}
+}
+
+func TestReconcileStatusFreshnessDoesNotMoveBackToFresh(t *testing.T) {
+	now := fixedStalenessNow()
+	recentReportedAt := now.Add(-2 * time.Hour)
+	fake := &fakeStalenessStore{
+		statuses: []store.CurrentStatus{
+			{ClinicID: "confirm-clinic", Freshness: "needs_confirmation", LastReportedAt: &recentReportedAt},
+			{ClinicID: "stale-clinic", Freshness: "stale", LastReportedAt: &recentReportedAt},
+		},
+	}
+
+	result, err := ReconcileStatusFreshness(context.Background(), fake, AuditActor{}, now)
+	if err != nil {
+		t.Fatalf("ReconcileStatusFreshness returned error: %v", err)
+	}
+
+	if result.Checked != 2 || result.MarkedNeedsConfirmation != 0 || result.MarkedStale != 0 {
+		t.Fatalf("unexpected reconciliation result: %#v", result)
+	}
+	if len(fake.updates) != 0 {
+		t.Fatalf("expected no downgrade to fresh, got %#v", fake.updates)
 	}
 }
 

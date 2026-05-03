@@ -37,12 +37,11 @@ func ReconcileStatusFreshness(ctx context.Context, store StalenessStore, actor A
 
 	result := StalenessReconciliationResult{Checked: len(statuses)}
 	for _, status := range statuses {
-		ageFrom := status.UpdatedAt
-		if status.LastReportedAt != nil {
-			ageFrom = *status.LastReportedAt
+		if status.LastReportedAt == nil {
+			continue
 		}
-		freshness := FreshnessForStatusAge(now.Sub(ageFrom))
-		if freshness == status.Freshness {
+		freshness := FreshnessForStatusAge(now.Sub(*status.LastReportedAt))
+		if !shouldEscalateFreshness(status.Freshness, freshness) {
 			continue
 		}
 
@@ -63,6 +62,17 @@ func ReconcileStatusFreshness(ctx context.Context, store StalenessStore, actor A
 	}
 
 	return result, nil
+}
+
+func shouldEscalateFreshness(current string, next string) bool {
+	switch current {
+	case "fresh":
+		return next == "needs_confirmation" || next == "stale"
+	case "needs_confirmation":
+		return next == "stale"
+	default:
+		return false
+	}
 }
 
 func stalenessTransitionAudit(clinicID string, freshness string, actor AuditActor) store.CreateAuditEventInput {
