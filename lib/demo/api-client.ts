@@ -1,10 +1,10 @@
 import type {
   AlternativeApiResponse,
   ApiErrorResponse,
-  ClinicDetailApiResponse,
   CreateReportApiInput,
   CreateReportApiResponse,
   CurrentStatusApiResponse,
+  PublicClinicDetailApiResponse,
   ReportApiResponse,
   AuditEventApiResponse,
 } from "@/lib/demo/api-types";
@@ -148,11 +148,17 @@ export async function requestClinicPulseApi<T>(
 }
 
 export function fetchClinics(options?: ClinicPulseApiClientOptions) {
-  return requestClinicPulseApi<ClinicDetailApiResponse[]>(["v1", "clinics"], options);
+  return requestClinicPulseApi<PublicClinicDetailApiResponse[]>(
+    ["v1", "public", "clinics"],
+    options,
+  );
 }
 
 export function fetchClinic(clinicId: string, options?: ClinicPulseApiClientOptions) {
-  return requestClinicPulseApi<ClinicDetailApiResponse>(["v1", "clinics", clinicId], options);
+  return requestClinicPulseApi<PublicClinicDetailApiResponse>(
+    ["v1", "public", "clinics", clinicId],
+    options,
+  );
 }
 
 export function fetchClinicStatus(clinicId: string, options?: ClinicPulseApiClientOptions) {
@@ -186,7 +192,7 @@ export function fetchAlternatives(
   options?: ClinicPulseApiClientOptions,
 ) {
   return requestClinicPulseApi<AlternativeApiResponse[]>(
-    ["v1", "alternatives"],
+    ["v1", "public", "alternatives"],
     options,
     undefined,
     { clinicId, service },

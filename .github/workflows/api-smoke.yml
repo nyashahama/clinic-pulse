@@ -82,12 +82,9 @@ jobs:
           const base = "http://localhost:8080";
           const routes = [
             "/healthz",
-            "/v1/clinics",
-            "/v1/clinics/clinic-mamelodi-east",
-            "/v1/clinics/clinic-mamelodi-east/status",
-            "/v1/clinics/clinic-mamelodi-east/reports",
-            "/v1/clinics/clinic-mamelodi-east/audit-events",
-            "/v1/alternatives?clinicId=clinic-mamelodi-east&service=Primary%20care"
+            "/v1/public/clinics",
+            "/v1/public/clinics/clinic-mamelodi-east",
+            "/v1/public/alternatives?clinicId=clinic-mamelodi-east&service=Primary%20care"
           ];
 
           let failed = false;
@@ -99,42 +96,6 @@ jobs:
             }
           }
           process.exit(failed ? 1 : 0);
-          NODE
-
-      - name: Check report persistence
-        run: |
-          node - <<'NODE'
-          const response = await fetch("http://localhost:8080/v1/reports", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              clinicId: "clinic-mamelodi-east",
-              reporterName: "GitHub Actions",
-              source: "clinic_coordinator",
-              status: "degraded",
-              reason: "GitHub Actions persistence check.",
-              staffPressure: "strained",
-              stockPressure: "low",
-              queuePressure: "high",
-              notes: "Created by API smoke workflow."
-            })
-          });
-
-          const body = await response.json();
-          console.log(response.status, JSON.stringify({
-            reportId: body.report?.id,
-            currentStatusClinicId: body.currentStatus?.clinicId,
-            auditEventId: body.auditEvent?.id
-          }));
-
-          if (
-            response.status !== 201 ||
-            !body.report?.id ||
-            body.currentStatus?.clinicId !== "clinic-mamelodi-east" ||
-            !body.auditEvent?.id
-          ) {
-            process.exit(1);
-          }
           NODE
 
       - name: Stop API

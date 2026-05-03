@@ -48,10 +48,19 @@ export type CurrentStatusApiResponse = {
   updatedAt: string;
 };
 
+export type PublicCurrentStatusApiResponse = Omit<
+  CurrentStatusApiResponse,
+  "reporterName" | "source"
+>;
+
 export type ClinicDetailApiResponse = {
   clinic: ClinicApiResponse;
   services: ClinicServiceApiResponse[];
   currentStatus?: ApiNullable<CurrentStatusApiResponse>;
+};
+
+export type PublicClinicDetailApiResponse = Omit<ClinicDetailApiResponse, "currentStatus"> & {
+  currentStatus?: ApiNullable<PublicCurrentStatusApiResponse>;
 };
 
 export type ReportApiResponse = {
@@ -84,7 +93,7 @@ export type AuditEventApiResponse = {
 };
 
 export type AlternativeApiResponse = {
-  clinic: ClinicDetailApiResponse;
+  clinic: PublicClinicDetailApiResponse;
   distanceKm?: ApiNullable<number>;
   reasonCode: string;
   rankReason: string;

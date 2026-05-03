@@ -363,4 +363,27 @@ describe("ClinicPulse API mappers", () => {
       queuePressure: "unknown",
     } satisfies Partial<ClinicRow>);
   });
+
+  it("maps public status payloads without reporter or source fields safely", () => {
+    const status = {
+      clinicId: "clinic-mamelodi-east",
+      status: "degraded",
+      reason: "Public status omits internal attribution.",
+      freshness: "needs_confirmation",
+      staffPressure: "strained",
+      stockPressure: "low",
+      queuePressure: "moderate",
+      updatedAt: "2026-05-01T06:41:00.000Z",
+    } satisfies CurrentStatusApiResponse;
+
+    expect(mapApiClinicDetailToClinicRow({ ...clinicDetail, currentStatus: status })).toMatchObject({
+      status: "degraded",
+      reason: "Public status omits internal attribution.",
+      reporterName: "ClinicPulse API",
+      source: "seed",
+      staffPressure: "strained",
+      stockPressure: "low",
+      queuePressure: "moderate",
+    } satisfies Partial<ClinicRow>);
+  });
 });

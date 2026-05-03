@@ -97,6 +97,162 @@ func TestListClinicsReturnsInternalErrorForUnexpectedStoreError(t *testing.T) {
 	assertInternalError(t, rec, storeErr)
 }
 
+func TestPublicListClinicsWorksWithoutCookieAndSanitizesStatus(t *testing.T) {
+	updatedAt := time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC)
+	reportedAt := time.Date(2026, 5, 1, 9, 45, 0, 0, time.UTC)
+	reporterName := "Nomsa Dlamini"
+	source := "field_worker"
+	reason := "Short staffed"
+	router := apihttp.NewRouter(fakeStore{
+		clinics: []store.ClinicDetail{{
+			Clinic: store.Clinic{
+				ID:                 "clinic-1",
+				Name:               "Central Clinic",
+				FacilityCode:       "C001",
+				Province:           "Gauteng",
+				District:           "Johannesburg",
+				FacilityType:       "clinic",
+				VerificationStatus: "verified",
+				CreatedAt:          updatedAt,
+				UpdatedAt:          updatedAt,
+			},
+			Services: []store.ClinicService{{
+				ClinicID:            "clinic-1",
+				ServiceName:         "Primary care",
+				CurrentAvailability: "available",
+			}},
+			CurrentStatus: &store.CurrentStatus{
+				ClinicID:       "clinic-1",
+				Status:         "degraded",
+				Reason:         &reason,
+				Freshness:      "fresh",
+				LastReportedAt: &reportedAt,
+				ReporterName:   &reporterName,
+				Source:         &source,
+				UpdatedAt:      updatedAt,
+			},
+		}},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/public/clinics", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	assertPublicSafeResponse(t, rec.Body.String())
+
+	var got []struct {
+		Clinic        store.Clinic          `json:"clinic"`
+		Services      []store.ClinicService `json:"services"`
+		CurrentStatus *struct {
+			ClinicID       string     `json:"clinicId"`
+			Status         string     `json:"status"`
+			Reason         *string    `json:"reason,omitempty"`
+			Freshness      string     `json:"freshness"`
+			LastReportedAt *time.Time `json:"lastReportedAt,omitempty"`
+			UpdatedAt      time.Time  `json:"updatedAt"`
+		} `json:"currentStatus,omitempty"`
+	}
+	decodeJSON(t, rec, &got)
+	if len(got) != 1 || got[0].Clinic.ID != "clinic-1" || got[0].Services[0].ServiceName != "Primary care" {
+		t.Fatalf("unexpected public clinics response: %#v", got)
+	}
+	if got[0].CurrentStatus == nil || got[0].CurrentStatus.ClinicID != "clinic-1" || got[0].CurrentStatus.Status != "degraded" {
+		t.Fatalf("unexpected public status response: %#v", got[0].CurrentStatus)
+	}
+}
+
+func TestPublicGetClinicWorksWithoutCookieAndSanitizesStatus(t *testing.T) {
+	updatedAt := time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC)
+	reporterName := "Nomsa Dlamini"
+	source := "field_worker"
+	router := apihttp.NewRouter(fakeStore{
+		clinic: store.ClinicDetail{
+			Clinic: store.Clinic{
+				ID:                 "clinic-1",
+				Name:               "Central Clinic",
+				FacilityCode:       "C001",
+				Province:           "Gauteng",
+				District:           "Johannesburg",
+				FacilityType:       "clinic",
+				VerificationStatus: "verified",
+				CreatedAt:          updatedAt,
+				UpdatedAt:          updatedAt,
+			},
+			CurrentStatus: &store.CurrentStatus{
+				ClinicID:     "clinic-1",
+				Status:       "operational",
+				Freshness:    "fresh",
+				ReporterName: &reporterName,
+				Source:       &source,
+				UpdatedAt:    updatedAt,
+			},
+		},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/public/clinics/clinic-1", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	assertPublicSafeResponse(t, rec.Body.String())
+	if !strings.Contains(rec.Body.String(), `"id":"clinic-1"`) {
+		t.Fatalf("expected public clinic detail in response, got %q", rec.Body.String())
+	}
+}
+
+func TestPublicAlternativesWorksWithoutCookieAndSanitizesNestedClinics(t *testing.T) {
+	reporterName := "Nomsa Dlamini"
+	sourceLabel := "clinic_coordinator"
+	source := clinicDetail("clinic-mamelodi-east", "Mamelodi East Clinic", -25.7400, 28.1300, "non_functional", "fresh", "Primary care")
+	candidate := clinicDetail("near-operational", "Near Operational Clinic", -25.7410, 28.1310, "operational", "fresh", "Primary care")
+	candidate.CurrentStatus.ReporterName = &reporterName
+	candidate.CurrentStatus.Source = &sourceLabel
+	router := apihttp.NewRouter(fakeStore{
+		clinic:  source,
+		clinics: []store.ClinicDetail{source, candidate},
+	})
+	req := httptest.NewRequest(http.MethodGet, "/v1/public/alternatives?clinicId=clinic-mamelodi-east&service=Primary%20care", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	assertPublicSafeResponse(t, rec.Body.String())
+	if !strings.Contains(rec.Body.String(), `"matchedService":"Primary care"`) {
+		t.Fatalf("expected ranked public alternative response, got %q", rec.Body.String())
+	}
+}
+
+func TestRestrictedClinicRoutesStillRequireCookie(t *testing.T) {
+	router := apihttp.NewRouter(fakeStore{})
+	for _, path := range []string{
+		"/v1/clinics",
+		"/v1/clinics/clinic-1",
+		"/v1/clinics/clinic-1/status",
+		"/v1/clinics/clinic-1/reports",
+		"/v1/clinics/clinic-1/audit-events",
+		"/v1/alternatives?clinicId=clinic-1&service=Primary%20care",
+	} {
+		t.Run(path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			assertGenericUnauthorized(t, rec)
+		})
+	}
+}
+
 func TestUnexpectedStoreErrorsReturnInternalError(t *testing.T) {
 	storeErr := errors.New("database password leaked")
 	tests := []struct {
@@ -1287,6 +1443,41 @@ func assertGenericUnauthorized(t *testing.T, rec *httptest.ResponseRecorder) {
 	for _, leaked := range []string{"disabled", "password", "missing", "hash", "malformed"} {
 		if strings.Contains(strings.ToLower(rec.Body.String()), leaked) {
 			t.Fatalf("expected generic unauthorized response, got %q", rec.Body.String())
+		}
+	}
+}
+
+func assertPublicSafeResponse(t *testing.T, body string) {
+	t.Helper()
+
+	var payload any
+	if err := json.Unmarshal([]byte(body), &payload); err != nil {
+		t.Fatalf("failed to decode public response %q: %v", body, err)
+	}
+	forbiddenKeys := map[string]struct{}{
+		"reporterName": {},
+		"source":       {},
+		"auditEvent":   {},
+		"auditEvents":  {},
+		"reviewState":  {},
+		"notes":        {},
+	}
+	assertNoForbiddenJSONKeys(t, payload, forbiddenKeys)
+}
+
+func assertNoForbiddenJSONKeys(t *testing.T, value any, forbiddenKeys map[string]struct{}) {
+	t.Helper()
+	switch typed := value.(type) {
+	case map[string]any:
+		for key, child := range typed {
+			if _, forbidden := forbiddenKeys[key]; forbidden {
+				t.Fatalf("expected public response not to contain JSON key %q", key)
+			}
+			assertNoForbiddenJSONKeys(t, child, forbiddenKeys)
+		}
+	case []any:
+		for _, child := range typed {
+			assertNoForbiddenJSONKeys(t, child, forbiddenKeys)
 		}
 	}
 }

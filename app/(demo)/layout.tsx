@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { connection } from "next/server";
 
 import { DemoShell } from "@/components/demo/demo-shell";
-import { fetchClinicAuditEvents, fetchClinicReports, fetchClinics } from "@/lib/demo/api-client";
+import { fetchClinics } from "@/lib/demo/api-client";
 import {
   type ApiDemoHydrationPayload,
   mapApiDemoHydrationToState,
@@ -16,24 +16,10 @@ async function loadDemoHydration() {
 
   try {
     const clinics = await fetchClinics();
-    const clinicPayloads = await Promise.all(
-      clinics.map(async (clinic) => {
-        const [reports, auditEvents] = await Promise.all([
-          fetchClinicReports(clinic.clinic.id),
-          fetchClinicAuditEvents(clinic.clinic.id),
-        ]);
-
-        return [clinic.clinic.id, reports, auditEvents] as const;
-      }),
-    );
     const payload: ApiDemoHydrationPayload = {
       clinics,
-      reportsByClinicId: Object.fromEntries(
-        clinicPayloads.map(([clinicId, reports]) => [clinicId, reports]),
-      ),
-      auditEventsByClinicId: Object.fromEntries(
-        clinicPayloads.map(([clinicId, , auditEvents]) => [clinicId, auditEvents]),
-      ),
+      reportsByClinicId: {},
+      auditEventsByClinicId: {},
     };
 
     return mapApiDemoHydrationToState(payload, fallbackState);

@@ -1,16 +1,14 @@
 "use server";
 
-import { createReport } from "@/lib/demo/api-client";
-import {
-  mapOnlineFieldReportToCreateReportInput,
-  type OnlineFieldReportActionInput,
-  type OnlineFieldReportResult,
+import type {
+  OnlineFieldReportActionInput,
+  OnlineFieldReportResult,
 } from "@/lib/demo/field-report";
 
 export async function createFieldReport(
-  input: OnlineFieldReportActionInput,
+  _input: OnlineFieldReportActionInput,
 ): Promise<OnlineFieldReportResult> {
-  await createReport(mapOnlineFieldReportToCreateReportInput(input));
-
+  void _input;
+  // Demo-safe until authenticated field report submission is wired in Task 9/10.
   return { ok: true };
 }

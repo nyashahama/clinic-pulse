@@ -1,10 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { createFieldReport } from "@/app/(demo)/field/actions";
+import { createReport } from "@/lib/demo/api-client";
 import {
   mapOnlineFieldReportToCreateReportInput,
   submitOnlineFieldReport,
 } from "@/lib/demo/field-report";
 import type { SubmitFieldReportInput } from "@/lib/demo/types";
+
+vi.mock("@/lib/demo/api-client", () => ({
+  createReport: vi.fn().mockResolvedValue({ report: {}, currentStatus: {}, auditEvent: {} }),
+}));
 
 const report: SubmitFieldReportInput = {
   clinicId: "form-clinic-id",
@@ -21,6 +27,16 @@ const report: SubmitFieldReportInput = {
 };
 
 describe("field report submission", () => {
+  it("keeps the server action demo-safe without calling the restricted reports API", async () => {
+    const result = await createFieldReport({
+      clinicId: "clinic-mamelodi-east",
+      report,
+    });
+
+    expect(result).toEqual({ ok: true });
+    expect(createReport).not.toHaveBeenCalled();
+  });
+
   it("forces online field reports to use the field worker source", () => {
     expect(
       mapOnlineFieldReportToCreateReportInput({
