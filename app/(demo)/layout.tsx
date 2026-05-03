@@ -1,7 +1,17 @@
 import type { ReactNode } from "react";
+import { redirect } from "next/navigation";
 import { connection } from "next/server";
 
 import { DemoShell } from "@/components/demo/demo-shell";
+import { AUTH_ROLES, logout } from "@/lib/auth/api";
+import {
+  applySessionCookieFromHeader,
+  clearSessionCookie,
+  getCurrentSession,
+  getSessionCookieHeader,
+  requireRole,
+  toClientAuthSession,
+} from "@/lib/auth/session";
 import { fetchClinics } from "@/lib/demo/api-client";
 import {
   type ApiDemoHydrationPayload,
@@ -38,13 +48,44 @@ async function loadDemoHydration() {
   }
 }
 
+async function logoutAction() {
+  "use server";
+
+  const cookieHeader = await getSessionCookieHeader();
+  const result = await logout({
+    init: cookieHeader
+      ? {
+          headers: {
+            cookie: cookieHeader,
+          },
+        }
+      : undefined,
+  });
+
+  if (result.setCookie) {
+    await applySessionCookieFromHeader(result.setCookie);
+  } else {
+    await clearSessionCookie();
+  }
+
+  redirect("/login");
+}
+
 export default async function DemoLayout({ children }: { children: ReactNode }) {
   await connection();
+  const currentSession = await getCurrentSession();
+  if (!currentSession) {
+    redirect("/login");
+  }
+
+  const session = requireRole(currentSession, AUTH_ROLES);
   const initialState = await loadDemoHydration();
 
   return (
     <DemoStoreProvider initialState={initialState}>
-      <DemoShell>{children}</DemoShell>
+      <DemoShell session={toClientAuthSession(session)} logoutAction={logoutAction}>
+        {children}
+      </DemoShell>
     </DemoStoreProvider>
   );
 }

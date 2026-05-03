@@ -2,19 +2,28 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Menu, RotateCcw, Search } from "lucide-react";
+import { LogOut, Menu, RotateCcw, Search, UserRound } from "lucide-react";
 
 import { CommandPalette } from "@/components/demo/command-palette";
 import { LiveIndicator } from "@/components/demo/live-indicator";
-import { RoleSwitcher } from "@/components/demo/role-switcher";
 import { Button } from "@/components/ui/button";
+import type { AuthRole, ClientAuthSession } from "@/lib/auth/api";
 import { useDemoStore } from "@/lib/demo/demo-store";
 
 type TopbarProps = {
+  authSession: ClientAuthSession;
+  logoutAction: () => Promise<void>;
   onOpenSidebar?: () => void;
 };
 
-export function Topbar({ onOpenSidebar }: TopbarProps) {
+const ROLE_LABELS: Record<AuthRole, string> = {
+  system_admin: "System admin",
+  org_admin: "Org admin",
+  district_manager: "District manager",
+  reporter: "Reporter",
+};
+
+export function Topbar({ authSession, logoutAction, onOpenSidebar }: TopbarProps) {
   const router = useRouter();
   const { resetDemo } = useDemoStore();
   const [query, setQuery] = useState("");
@@ -109,7 +118,28 @@ export function Topbar({ onOpenSidebar }: TopbarProps) {
             <LiveIndicator />
           </div>
 
-          <RoleSwitcher />
+          <div className="hidden min-w-0 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 sm:flex">
+            <UserRound className="size-4 shrink-0 text-neutral-500" />
+            <div className="min-w-0">
+              <p className="truncate text-xs font-medium text-neutral-900">
+                {authSession.displayName || authSession.email}
+              </p>
+              <p className="truncate text-[11px] font-medium text-neutral-500">
+                {ROLE_LABELS[authSession.role]}
+              </p>
+            </div>
+          </div>
+
+          <form action={logoutAction}>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              type="submit"
+              aria-label="Sign out"
+            >
+              <LogOut className="size-4" />
+            </Button>
+          </form>
 
           <Button
             variant="outline"

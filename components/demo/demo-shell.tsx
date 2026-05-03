@@ -4,14 +4,17 @@ import { useState, type ReactNode } from "react";
 
 import { Sidebar } from "@/components/demo/sidebar";
 import { Topbar } from "@/components/demo/topbar";
+import type { ClientAuthSession } from "@/lib/auth/api";
 import { cn } from "@/lib/utils";
 
 type DemoShellProps = {
   children: ReactNode;
   detail?: ReactNode;
+  logoutAction: () => Promise<void>;
+  session: ClientAuthSession;
 };
 
-export function DemoShell({ children, detail }: DemoShellProps) {
+export function DemoShell({ children, detail, logoutAction, session }: DemoShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -41,7 +44,11 @@ export function DemoShell({ children, detail }: DemoShellProps) {
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar onOpenSidebar={() => setSidebarOpen(true)} />
+        <Topbar
+          authSession={session}
+          logoutAction={logoutAction}
+          onOpenSidebar={() => setSidebarOpen(true)}
+        />
 
         <div className="flex min-h-0 flex-1">
           <main className="min-w-0 flex-1 overflow-y-auto">
