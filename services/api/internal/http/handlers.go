@@ -36,6 +36,9 @@ type ClinicStore interface {
 	CreateReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, store.CurrentStatus, store.AuditEvent, error)
 	CreatePendingReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, error)
 	ReviewReportTx(ctx context.Context, input store.ReviewReportInput) (store.Report, *store.CurrentStatus, error)
+	GetReportByExternalID(ctx context.Context, externalID string) (store.Report, error)
+	CreateReportSyncAttempt(ctx context.Context, input store.CreateReportSyncAttemptInput) (store.ReportSyncAttempt, error)
+	GetSyncSummarySince(ctx context.Context, since time.Time) (store.SyncSummary, error)
 	GetUserByEmail(ctx context.Context, email string) (store.User, error)
 	CreateSessionWithAuditTx(ctx context.Context, input store.CreateSessionWithAuditInput) (store.Session, store.AuditEvent, error)
 	GetSessionByTokenHash(ctx context.Context, tokenHash string) (store.Session, store.User, error)
@@ -326,6 +329,47 @@ func (h Handler) ReviewReport(w nethttp.ResponseWriter, r *nethttp.Request) {
 		Report:        report,
 		CurrentStatus: status,
 	})
+}
+
+func (h Handler) SyncOfflineReports(w nethttp.ResponseWriter, r *nethttp.Request) {
+	var payload offlineSyncRequest
+	if !decodeSingleJSON(w, r, &payload) {
+		return
+	}
+
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	items := make([]service.OfflineSyncItemInput, 0, len(payload.Items))
+	for index, item := range payload.Items {
+		input, err := item.toServiceInput()
+		if err != nil {
+			RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", err.Error())
+			return
+		}
+		if input.SubmittedAt.IsZero() {
+			RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "items["+strconv.Itoa(index)+"].submittedAt: submittedAt is required")
+			return
+		}
+		items = append(items, input)
+	}
+
+	result := service.SyncOfflineReports(r.Context(), h.store, offlineSyncActorForPrincipal(principal), items, time.Now().UTC())
+	RespondJSON(w, nethttp.StatusOK, result)
+}
+
+func (h Handler) GetSyncSummary(w nethttp.ResponseWriter, r *nethttp.Request) {
+	since := time.Now().UTC().Add(-24 * time.Hour)
+	summary, err := h.store.GetSyncSummarySince(r.Context(), since)
+	if err != nil {
+		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusOK, summary)
 }
 
 func (h Handler) Login(w nethttp.ResponseWriter, r *nethttp.Request) {
@@ -637,6 +681,16 @@ func auditActorForPrincipal(principal Principal) service.AuditActor {
 	}
 }
 
+func offlineSyncActorForPrincipal(principal Principal) service.OfflineSyncActor {
+	return service.OfflineSyncActor{
+		UserID:         principal.UserID,
+		DisplayName:    principal.DisplayName,
+		Email:          principal.Email,
+		Role:           principal.Role,
+		OrganisationID: principal.OrganisationID,
+	}
+}
+
 func derivedReporterName(principal Principal) *string {
 	name := strings.TrimSpace(principal.DisplayName)
 	if name == "" {
@@ -704,6 +758,66 @@ type reviewReportRequest struct {
 type reviewReportResponse struct {
 	Report        store.Report         `json:"report"`
 	CurrentStatus *store.CurrentStatus `json:"currentStatus,omitempty"`
+}
+
+type offlineSyncRequest struct {
+	Items []offlineSyncItemRequest `json:"items"`
+}
+
+type offlineSyncItemRequest struct {
+	ClientReportID string `json:"clientReportId"`
+	ClinicID       string `json:"clinicId"`
+	Status         string `json:"status"`
+	Reason         string `json:"reason"`
+	StaffPressure  string `json:"staffPressure"`
+	StockPressure  string `json:"stockPressure"`
+	QueuePressure  string `json:"queuePressure"`
+	Notes          string `json:"notes"`
+	SubmittedAt    string `json:"submittedAt"`
+	QueuedAt       string `json:"queuedAt"`
+	AttemptCount   int    `json:"attemptCount"`
+}
+
+func (p offlineSyncItemRequest) toServiceInput() (service.OfflineSyncItemInput, error) {
+	submittedAt, err := parseOfflineSyncTimestamp(p.SubmittedAt, "submittedAt")
+	if err != nil {
+		return service.OfflineSyncItemInput{}, err
+	}
+
+	var queuedAt *time.Time
+	if strings.TrimSpace(p.QueuedAt) != "" {
+		parsedQueuedAt, err := parseOfflineSyncTimestamp(p.QueuedAt, "queuedAt")
+		if err != nil {
+			return service.OfflineSyncItemInput{}, err
+		}
+		queuedAt = &parsedQueuedAt
+	}
+
+	return service.OfflineSyncItemInput{
+		ClientReportID:     p.ClientReportID,
+		ClinicID:           p.ClinicID,
+		Status:             p.Status,
+		Reason:             p.Reason,
+		StaffPressure:      p.StaffPressure,
+		StockPressure:      p.StockPressure,
+		QueuePressure:      p.QueuePressure,
+		Notes:              p.Notes,
+		SubmittedAt:        submittedAt,
+		QueuedAt:           queuedAt,
+		ClientAttemptCount: p.AttemptCount,
+	}, nil
+}
+
+func parseOfflineSyncTimestamp(value string, field string) (time.Time, error) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return time.Time{}, nil
+	}
+	parsed, err := time.Parse(time.RFC3339, trimmed)
+	if err != nil {
+		return time.Time{}, errors.New(field + ": " + field + " must be an RFC3339 timestamp")
+	}
+	return parsed, nil
 }
 
 type loginRequest struct {

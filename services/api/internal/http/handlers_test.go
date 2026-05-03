@@ -1182,6 +1182,195 @@ func TestReporterCannotListPendingOrReviewReports(t *testing.T) {
 	}
 }
 
+func TestOfflineSyncRequiresReporterRoleOrHigher(t *testing.T) {
+	body := strings.NewReader(validOfflineSyncJSON())
+	for _, tt := range []struct {
+		name     string
+		role     string
+		wantCode int
+	}{
+		{name: "reporter", role: "reporter", wantCode: http.StatusOK},
+		{name: "district manager", role: "district_manager", wantCode: http.StatusOK},
+		{name: "org admin", role: "org_admin", wantCode: http.StatusOK},
+		{name: "system admin", role: "system_admin", wantCode: http.StatusOK},
+		{name: "unknown role", role: "unknown", wantCode: http.StatusForbidden},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			createCalls := 0
+			router := apihttp.NewRouter(authenticatedStore(t, tt.role, fakeStore{
+				createReport:      store.Report{ID: 100, ClinicID: "clinic-1", Status: "degraded", ReviewState: "pending"},
+				createCalls:       &createCalls,
+				externalReportErr: pgx.ErrNoRows,
+			}))
+			req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports/offline-sync", strings.NewReader(validOfflineSyncJSON()))
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != tt.wantCode {
+				t.Fatalf("expected status %d, got %d with body %s", tt.wantCode, rec.Code, rec.Body.String())
+			}
+			if tt.wantCode == http.StatusOK && createCalls != 1 {
+				t.Fatalf("expected allowed role to create one report, got %d", createCalls)
+			}
+		})
+	}
+
+	router := apihttp.NewRouter(fakeStore{})
+	req := httptest.NewRequest(http.MethodPost, "/v1/reports/offline-sync", body)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assertGenericUnauthorized(t, rec)
+}
+
+func TestOfflineSyncReturnsPerItemResults(t *testing.T) {
+	submittedAt := time.Date(2026, 5, 3, 8, 30, 0, 0, time.UTC)
+	reason := "Queued while offline."
+	staffPressure := "strained"
+	stockPressure := "low"
+	queuePressure := "high"
+	notes := "Pharmacy queue overflow."
+	var createInput store.CreateReportInput
+	var syncAttemptInput store.CreateReportSyncAttemptInput
+	router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{
+		createReport: store.Report{
+			ID:             100,
+			ClinicID:       "clinic-1",
+			Status:         "degraded",
+			Reason:         &reason,
+			StaffPressure:  &staffPressure,
+			StockPressure:  &stockPressure,
+			QueuePressure:  &queuePressure,
+			Notes:          &notes,
+			SubmittedAt:    submittedAt,
+			ReviewState:    "pending",
+			OfflineCreated: true,
+		},
+		createInput:       &createInput,
+		syncAttemptInput:  &syncAttemptInput,
+		externalReportErr: pgx.ErrNoRows,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports/offline-sync", strings.NewReader(validOfflineSyncJSON()))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	var got struct {
+		Results []struct {
+			ClientReportID string        `json:"clientReportId"`
+			Result         string        `json:"result"`
+			Report         *store.Report `json:"report,omitempty"`
+		} `json:"results"`
+		Summary struct {
+			Created   int `json:"created"`
+			Duplicate int `json:"duplicate"`
+			Conflict  int `json:"conflict"`
+			Failed    int `json:"failed"`
+		} `json:"summary"`
+	}
+	decodeJSON(t, rec, &got)
+	if len(got.Results) != 1 || got.Results[0].ClientReportID != "offline-report-1" || got.Results[0].Result != "created" || got.Results[0].Report == nil || got.Results[0].Report.ID != 100 {
+		t.Fatalf("unexpected offline sync results: %#v", got.Results)
+	}
+	if got.Summary.Created != 1 || got.Summary.Duplicate != 0 || got.Summary.Conflict != 0 || got.Summary.Failed != 0 {
+		t.Fatalf("unexpected offline sync summary: %#v", got.Summary)
+	}
+	if createInput.ExternalID == nil || *createInput.ExternalID != "offline-report-1" || createInput.ClinicID != "clinic-1" || createInput.SubmittedAt != submittedAt {
+		t.Fatalf("unexpected offline report create input: %#v", createInput)
+	}
+	if syncAttemptInput.ClientAttemptCount != 2 || syncAttemptInput.ExternalID != "offline-report-1" || syncAttemptInput.QueuedAt == nil {
+		t.Fatalf("expected attemptCount to map to sync attempt input, got %#v", syncAttemptInput)
+	}
+}
+
+func TestOfflineSyncRejectsInvalidJSON(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		body string
+	}{
+		{name: "invalid", body: `{"items":`},
+		{name: "trailing", body: validOfflineSyncJSON() + `{}`},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			createCalls := 0
+			router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{createCalls: &createCalls}))
+			req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports/offline-sync", strings.NewReader(tt.body))
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("expected status %d, got %d with body %s", http.StatusBadRequest, rec.Code, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), `"code":"invalid_json"`) {
+				t.Fatalf("expected invalid_json code, got %q", rec.Body.String())
+			}
+			if createCalls != 0 {
+				t.Fatalf("expected invalid JSON not to call store, got %d calls", createCalls)
+			}
+		})
+	}
+}
+
+func TestSyncSummaryRequiresDistrictManagerOrHigher(t *testing.T) {
+	summary := store.SyncSummary{
+		OfflineReportsReceived:    3,
+		DuplicateSyncsHandled:     1,
+		ConflictsNeedingAttention: 1,
+		ValidationFailures:        1,
+		PendingOfflineReports:     2,
+	}
+	for _, tt := range []struct {
+		name     string
+		role     string
+		wantCode int
+	}{
+		{name: "district manager", role: "district_manager", wantCode: http.StatusOK},
+		{name: "org admin", role: "org_admin", wantCode: http.StatusOK},
+		{name: "system admin", role: "system_admin", wantCode: http.StatusOK},
+		{name: "reporter", role: "reporter", wantCode: http.StatusForbidden},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var since time.Time
+			router := apihttp.NewRouter(authenticatedStore(t, tt.role, fakeStore{
+				syncSummary:  &summary,
+				summarySince: &since,
+			}))
+			req := newAuthenticatedRequest(t, http.MethodGet, "/v1/sync/summary", nil)
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != tt.wantCode {
+				t.Fatalf("expected status %d, got %d with body %s", tt.wantCode, rec.Code, rec.Body.String())
+			}
+			if tt.wantCode == http.StatusOK {
+				var got store.SyncSummary
+				decodeJSON(t, rec, &got)
+				if got.OfflineReportsReceived != 3 || got.WindowStartedAt.IsZero() {
+					t.Fatalf("unexpected sync summary response: %#v", got)
+				}
+				if age := time.Since(since); age < 23*time.Hour || age > 25*time.Hour {
+					t.Fatalf("expected default summary window near 24 hours, got since %s", since)
+				}
+			}
+		})
+	}
+
+	router := apihttp.NewRouter(fakeStore{})
+	req := httptest.NewRequest(http.MethodGet, "/v1/sync/summary", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assertGenericUnauthorized(t, rec)
+}
+
 func TestReviewReportRequiresAuthenticatedPrincipal(t *testing.T) {
 	router := apihttp.NewRouter(fakeStore{})
 	req := httptest.NewRequest(http.MethodPost, "/v1/reports/100/review", strings.NewReader(`{"decision":"accepted"}`))
@@ -2010,12 +2199,17 @@ type fakeStore struct {
 	user                        store.User
 	createSession               store.Session
 	createSessionAudit          store.AuditEvent
+	externalReport              store.Report
+	syncAttempt                 store.ReportSyncAttempt
 	session                     store.Session
 	sessionUser                 store.User
 	memberships                 []store.OrganisationMembership
+	syncSummary                 *store.SyncSummary
 	createInput                 *store.CreateReportInput
 	reviewInput                 *store.ReviewReportInput
+	syncAttemptInput            *store.CreateReportSyncAttemptInput
 	pendingScope                *store.ReportReviewScope
+	summarySince                *time.Time
 	getUserEmail                *string
 	createSessionInput          *store.CreateSessionInput
 	sessionAuditInput           *store.CreateSessionWithAuditInput
@@ -2040,6 +2234,9 @@ type fakeStore struct {
 	createSessionErr            error
 	createSessionWithAuditErr   error
 	auditErr                    error
+	externalReportErr           error
+	syncAttemptErr              error
+	syncSummaryErr              error
 	getSessionErr               error
 	revokeErr                   error
 	membershipsErr              error
@@ -2093,6 +2290,29 @@ func (f fakeStore) CreatePendingReportTx(_ context.Context, input store.CreateRe
 		*f.createInput = input
 	}
 	return f.createReport, f.createErr
+}
+
+func (f fakeStore) GetReportByExternalID(context.Context, string) (store.Report, error) {
+	return f.externalReport, f.externalReportErr
+}
+
+func (f fakeStore) CreateReportSyncAttempt(_ context.Context, input store.CreateReportSyncAttemptInput) (store.ReportSyncAttempt, error) {
+	if f.syncAttemptInput != nil {
+		*f.syncAttemptInput = input
+	}
+	return f.syncAttempt, f.syncAttemptErr
+}
+
+func (f fakeStore) GetSyncSummarySince(_ context.Context, since time.Time) (store.SyncSummary, error) {
+	if f.summarySince != nil {
+		*f.summarySince = since
+	}
+	if f.syncSummary != nil {
+		summary := *f.syncSummary
+		summary.WindowStartedAt = since
+		return summary, f.syncSummaryErr
+	}
+	return store.SyncSummary{WindowStartedAt: since}, f.syncSummaryErr
 }
 
 func (f fakeStore) ReviewReportTx(_ context.Context, input store.ReviewReportInput) (store.Report, *store.CurrentStatus, error) {
@@ -2205,6 +2425,24 @@ func validReportJSON() string {
 		"queuePressure":"low",
 		"reason":"Daily facility check",
 		"source":"field_worker"
+	}`
+}
+
+func validOfflineSyncJSON() string {
+	return `{
+		"items": [{
+			"clientReportId": "offline-report-1",
+			"clinicId": "clinic-1",
+			"status": "degraded",
+			"reason": "Queued while offline.",
+			"staffPressure": "strained",
+			"stockPressure": "low",
+			"queuePressure": "high",
+			"notes": "Pharmacy queue overflow.",
+			"submittedAt": "2026-05-03T08:30:00Z",
+			"queuedAt": "2026-05-03T08:30:03Z",
+			"attemptCount": 2
+		}]
 	}`
 }
 
