@@ -279,6 +279,27 @@ describe("ClinicPulse API mappers", () => {
     } satisfies AuditEvent);
   });
 
+  it("preserves reviewed-report audit events for operational timelines", () => {
+    const event: AuditEventApiResponse = {
+      id: 11,
+      externalId: "audit-review-11",
+      clinicId: "clinic-mamelodi-east",
+      actorName: "District Manager",
+      eventType: "report.reviewed",
+      summary: "Report accepted.",
+      createdAt: "2026-05-01T06:43:00.000Z",
+    };
+
+    expect(mapApiAuditEvent(event)).toEqual({
+      id: "audit-review-11",
+      clinicId: "clinic-mamelodi-east",
+      actorName: "District Manager",
+      eventType: "report.reviewed",
+      summary: "Report accepted.",
+      createdAt: "2026-05-01T06:43:00.000Z",
+    } satisfies AuditEvent);
+  });
+
   it("maps backend audit events missing nullable actor names to defaults", () => {
     const event: AuditEventApiResponse = {
       id: 10,

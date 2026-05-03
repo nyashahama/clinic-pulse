@@ -88,6 +88,7 @@ export type AuditEvent = {
     | "clinic.status_changed"
     | "clinic.status_marked_stale"
     | "report.submitted"
+    | "report.reviewed"
     | "report.received_offline"
     | "report.synced"
     | "alert.created"
