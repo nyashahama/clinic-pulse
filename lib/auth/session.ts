@@ -47,6 +47,47 @@ const ROLE_RANK: Record<AuthRole, number> = {
   reporter: 1,
 };
 
+export const FIELD_WORKFLOW_ROLES = [
+  "reporter",
+  "district_manager",
+  "org_admin",
+  "system_admin",
+] as const satisfies readonly AuthRole[];
+
+export const DEMO_WORKFLOW_ROLES = [
+  "district_manager",
+  "org_admin",
+  "system_admin",
+] as const satisfies readonly AuthRole[];
+
+export const ADMIN_WORKFLOW_ROLES = [
+  "org_admin",
+  "system_admin",
+] as const satisfies readonly AuthRole[];
+
+const WORKFLOW_ROLE_REQUIREMENTS = {
+  field: {
+    roles: FIELD_WORKFLOW_ROLES,
+    insufficientRoleRedirectPath: "/demo",
+  },
+  demo: {
+    roles: DEMO_WORKFLOW_ROLES,
+    insufficientRoleRedirectPath: "/field",
+  },
+  admin: {
+    roles: ADMIN_WORKFLOW_ROLES,
+    insufficientRoleRedirectPath: "/demo",
+  },
+} as const satisfies Record<
+  string,
+  {
+    roles: readonly AuthRole[];
+    insufficientRoleRedirectPath: string;
+  }
+>;
+
+export type ProtectedWorkflow = keyof typeof WORKFLOW_ROLE_REQUIREMENTS;
+
 type CookieSetOptions = {
   domain?: string;
   expires?: Date;
@@ -271,6 +312,32 @@ export function requireRole(session: AuthSession | null, roles: readonly AuthRol
   }
 
   return session;
+}
+
+export function getWorkflowRoles(workflow: ProtectedWorkflow) {
+  return WORKFLOW_ROLE_REQUIREMENTS[workflow].roles;
+}
+
+export function getWorkflowInsufficientRoleRedirectPath(workflow: ProtectedWorkflow) {
+  return WORKFLOW_ROLE_REQUIREMENTS[workflow].insufficientRoleRedirectPath;
+}
+
+export function requireWorkflowRole(session: AuthSession | null, workflow: ProtectedWorkflow) {
+  return requireRole(session, getWorkflowRoles(workflow));
+}
+
+export async function requireCurrentSessionRole(
+  roles: readonly AuthRole[],
+  options: AuthSessionLoadOptions = {},
+) {
+  return requireRole(await getCurrentSession(options), roles);
+}
+
+export async function requireCurrentWorkflowRole(
+  workflow: ProtectedWorkflow,
+  options: AuthSessionLoadOptions = {},
+) {
+  return requireCurrentSessionRole(getWorkflowRoles(workflow), options);
 }
 
 export async function applySessionCookieFromHeader(setCookieHeader: string | null | undefined) {

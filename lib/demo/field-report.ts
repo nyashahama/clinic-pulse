@@ -10,7 +10,6 @@ export type OnlineFieldReportInput = Pick<
   | "stockPressure"
   | "queuePressure"
   | "notes"
-  | "submittedAt"
 >;
 
 export type OnlineFieldReportActionInput = {
@@ -20,6 +19,7 @@ export type OnlineFieldReportActionInput = {
 
 export type OnlineFieldReportResult = {
   ok: true;
+  reporterName?: string;
 };
 
 type SubmitOnlineFieldReportAction = (
@@ -53,10 +53,6 @@ export function mapOnlineFieldReportToCreateReportInput({
     input.reporterName = report.reporterName;
   }
 
-  if (report.submittedAt) {
-    input.submittedAt = report.submittedAt;
-  }
-
   if (report.notes) {
     input.notes = report.notes;
   }
@@ -78,7 +74,6 @@ function createVisibleOnlineReport(
     stockPressure: report.stockPressure,
     queuePressure: report.queuePressure,
     notes: report.notes,
-    submittedAt: report.submittedAt,
     offlineCreated: false,
   };
 }
@@ -90,11 +85,16 @@ export async function submitOnlineFieldReport({
   submitReport,
   submitFieldReport,
 }: SubmitOnlineFieldReportOptions) {
-  await submitReport({
+  const result = await submitReport({
     clinicId,
     report,
   });
 
-  submitFieldReport(createVisibleOnlineReport(clinicId, report));
+  submitFieldReport(
+    createVisibleOnlineReport(clinicId, {
+      ...report,
+      reporterName: result.reporterName ?? report.reporterName,
+    }),
+  );
   refresh();
 }

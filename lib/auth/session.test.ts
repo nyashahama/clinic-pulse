@@ -9,7 +9,12 @@ import {
   me,
 } from "@/lib/auth/api";
 import {
+  ADMIN_WORKFLOW_ROLES,
+  DEMO_WORKFLOW_ROLES,
+  FIELD_WORKFLOW_ROLES,
   type AuthSession,
+  getWorkflowInsufficientRoleRedirectPath,
+  requireWorkflowRole,
   requireRole,
   toAuthSession,
   toClientAuthSession,
@@ -184,5 +189,49 @@ describe("auth session role guard", () => {
       email: "manager@example.test",
       role: "org_admin",
     });
+  });
+});
+
+describe("auth workflow role guards", () => {
+  it("allows reporter access to the field workflow", () => {
+    const session = authSession("reporter");
+
+    expect(FIELD_WORKFLOW_ROLES).toEqual([
+      "reporter",
+      "district_manager",
+      "org_admin",
+      "system_admin",
+    ]);
+    expect(requireWorkflowRole(session, "field")).toBe(session);
+  });
+
+  it("allows district manager access to the field and demo workflows", () => {
+    const session = authSession("district_manager");
+
+    expect(DEMO_WORKFLOW_ROLES).toEqual([
+      "district_manager",
+      "org_admin",
+      "system_admin",
+    ]);
+    expect(requireWorkflowRole(session, "field")).toBe(session);
+    expect(requireWorkflowRole(session, "demo")).toBe(session);
+  });
+
+  it("rejects reporter access to the admin workflow", () => {
+    const session = authSession("reporter");
+
+    expect(ADMIN_WORKFLOW_ROLES).toEqual(["org_admin", "system_admin"]);
+    expect(() => requireWorkflowRole(session, "admin")).toThrow("Insufficient role");
+  });
+
+  it("allows org admin access to the admin workflow", () => {
+    const session = authSession("org_admin");
+
+    expect(requireWorkflowRole(session, "admin")).toBe(session);
+  });
+
+  it("uses stable fallback destinations for insufficient workflow roles", () => {
+    expect(getWorkflowInsufficientRoleRedirectPath("demo")).toBe("/field");
+    expect(getWorkflowInsufficientRoleRedirectPath("admin")).toBe("/demo");
   });
 });
