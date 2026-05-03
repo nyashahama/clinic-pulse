@@ -276,6 +276,112 @@ func TestListClinicAuditEventsReturnsNotFoundForUnknownClinic(t *testing.T) {
 	}
 }
 
+func TestAlternativesReturnsBadRequestForMissingQueryParams(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+	}{
+		{name: "missing clinicId", path: "/v1/alternatives?service=Primary%20care"},
+		{name: "missing service", path: "/v1/alternatives?clinicId=clinic-1"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := apihttp.NewRouter(fakeStore{})
+			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("expected status %d, got %d with body %s", http.StatusBadRequest, rec.Code, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), `"code":"validation_error"`) {
+				t.Fatalf("expected validation_error code, got %q", rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestAlternativesReturnsNotFoundForUnknownSourceClinic(t *testing.T) {
+	router := apihttp.NewRouter(fakeStore{getClinicErr: pgx.ErrNoRows})
+	req := httptest.NewRequest(http.MethodGet, "/v1/alternatives?clinicId=unknown-clinic&service=Primary%20care", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusNotFound, rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"code":"not_found"`) {
+		t.Fatalf("expected not_found error code, got %q", rec.Body.String())
+	}
+}
+
+func TestAlternativesReturnsRankedAlternatives(t *testing.T) {
+	source := clinicDetail("clinic-mamelodi-east", "Mamelodi East Clinic", -25.7400, 28.1300, "non_functional", "fresh", "Primary care")
+	router := apihttp.NewRouter(fakeStore{
+		clinic: source,
+		clinics: []store.ClinicDetail{
+			source,
+			clinicDetail("far-degraded", "Far Degraded Clinic", -25.7600, 28.1600, "degraded", "fresh", "Primary care"),
+			clinicDetail("near-operational", "Near Operational Clinic", -25.7410, 28.1310, "operational", "fresh", "Primary care"),
+			clinicDetail("wrong-service", "Wrong Service Clinic", -25.7405, 28.1305, "operational", "fresh", "Pharmacy"),
+		},
+	})
+	req := httptest.NewRequest(http.MethodGet, "/v1/alternatives?clinicId=clinic-mamelodi-east&service=Primary%20care", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+
+	var got []struct {
+		Clinic     store.ClinicDetail `json:"clinic"`
+		DistanceKm float64            `json:"distanceKm"`
+		RankReason string             `json:"rankReason"`
+	}
+	decodeJSON(t, rec, &got)
+
+	if len(got) != 2 {
+		t.Fatalf("expected 2 alternatives, got %#v", got)
+	}
+	if got[0].Clinic.Clinic.ID != "near-operational" || got[1].Clinic.Clinic.ID != "far-degraded" {
+		t.Fatalf("unexpected alternatives order: %#v", got)
+	}
+	if got[0].DistanceKm <= 0 {
+		t.Fatalf("expected positive distance, got %.3f", got[0].DistanceKm)
+	}
+	if got[0].RankReason == "" {
+		t.Fatalf("expected rank reason in response, got %#v", got[0])
+	}
+}
+
+func TestAlternativesReturnsInternalErrorForUnexpectedStoreErrors(t *testing.T) {
+	storeErr := errors.New("database password leaked")
+	tests := []struct {
+		name  string
+		store fakeStore
+	}{
+		{name: "get source clinic", store: fakeStore{getClinicErr: storeErr}},
+		{name: "list candidates", store: fakeStore{listErr: storeErr}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := apihttp.NewRouter(tt.store)
+			req := httptest.NewRequest(http.MethodGet, "/v1/alternatives?clinicId=clinic-1&service=Primary%20care", nil)
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			assertInternalError(t, rec, storeErr)
+		})
+	}
+}
+
 func TestCreateReportReturnsCreatedReportStatusAndAuditEvent(t *testing.T) {
 	reason := "Generator failed"
 	staffPressure := "strained"
@@ -627,4 +733,32 @@ func assertInternalError(t *testing.T, rec *httptest.ResponseRecorder, storeErr 
 	if strings.Contains(rec.Body.String(), storeErr.Error()) {
 		t.Fatalf("expected response not to leak store error, got %q", rec.Body.String())
 	}
+}
+
+func clinicDetail(id, name string, latitude, longitude float64, status, freshness string, services ...string) store.ClinicDetail {
+	detail := store.ClinicDetail{
+		Clinic: store.Clinic{
+			ID:                 id,
+			Name:               name,
+			Latitude:           &latitude,
+			Longitude:          &longitude,
+			FacilityType:       "clinic",
+			VerificationStatus: "verified",
+		},
+		CurrentStatus: &store.CurrentStatus{
+			ClinicID:  id,
+			Status:    status,
+			Freshness: freshness,
+		},
+	}
+
+	for _, serviceName := range services {
+		detail.Services = append(detail.Services, store.ClinicService{
+			ClinicID:            id,
+			ServiceName:         serviceName,
+			CurrentAvailability: "available",
+		})
+	}
+
+	return detail
 }

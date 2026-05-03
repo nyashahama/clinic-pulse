@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	nethttp "net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -108,6 +109,33 @@ func (h Handler) ListClinicAuditEvents(w nethttp.ResponseWriter, r *nethttp.Requ
 	}
 
 	RespondJSON(w, nethttp.StatusOK, events)
+}
+
+func (h Handler) ListAlternatives(w nethttp.ResponseWriter, r *nethttp.Request) {
+	clinicID := strings.TrimSpace(r.URL.Query().Get("clinicId"))
+	serviceName := strings.TrimSpace(r.URL.Query().Get("service"))
+	if clinicID == "" {
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "clinicId: clinicId is required")
+		return
+	}
+	if serviceName == "" {
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "service: service is required")
+		return
+	}
+
+	source, err := h.store.GetClinic(r.Context(), clinicID)
+	if err != nil {
+		respondStoreError(w, err, "clinic not found")
+		return
+	}
+
+	candidates, err := h.store.ListClinics(r.Context())
+	if err != nil {
+		respondStoreError(w, err, "failed to list clinic alternatives")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusOK, service.RankAlternatives(source, candidates, serviceName))
 }
 
 func (h Handler) CreateReport(w nethttp.ResponseWriter, r *nethttp.Request) {
