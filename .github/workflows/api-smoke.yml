@@ -1,0 +1,148 @@
+name: API Smoke
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-smoke-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Go API with PostgreSQL
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: clinicpulse
+          POSTGRES_USER: clinicpulse
+          POSTGRES_PASSWORD: clinicpulse
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U clinicpulse -d clinicpulse"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://clinicpulse:clinicpulse@localhost:5432/clinicpulse?sslmode=disable
+      CLINICPULSE_API_ADDR: :8080
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: services/api/go.mod
+          cache-dependency-path: services/api/go.sum
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+
+      - name: Apply migrations
+        run: |
+          psql "$DATABASE_URL" < services/api/migrations/0001_init.sql
+          psql "$DATABASE_URL" < services/api/migrations/0002_seed_demo_data.sql
+
+      - name: Start API
+        working-directory: services/api
+        run: |
+          go run ./cmd/api > "$RUNNER_TEMP/clinicpulse-api.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/clinicpulse-api.pid"
+          for i in {1..30}; do
+            if curl -fsS http://localhost:8080/healthz >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/clinicpulse-api.log"
+          exit 1
+
+      - name: Check read endpoints
+        run: |
+          node - <<'NODE'
+          const base = "http://localhost:8080";
+          const routes = [
+            "/healthz",
+            "/v1/clinics",
+            "/v1/clinics/clinic-mamelodi-east",
+            "/v1/clinics/clinic-mamelodi-east/status",
+            "/v1/clinics/clinic-mamelodi-east/reports",
+            "/v1/clinics/clinic-mamelodi-east/audit-events",
+            "/v1/alternatives?clinicId=clinic-mamelodi-east&service=Primary%20care"
+          ];
+
+          let failed = false;
+          for (const route of routes) {
+            const response = await fetch(`${base}${route}`);
+            console.log(route, response.status);
+            if (response.status !== 200) {
+              failed = true;
+            }
+          }
+          process.exit(failed ? 1 : 0);
+          NODE
+
+      - name: Check report persistence
+        run: |
+          node - <<'NODE'
+          const response = await fetch("http://localhost:8080/v1/reports", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              clinicId: "clinic-mamelodi-east",
+              reporterName: "GitHub Actions",
+              source: "clinic_coordinator",
+              status: "degraded",
+              reason: "GitHub Actions persistence check.",
+              staffPressure: "strained",
+              stockPressure: "low",
+              queuePressure: "high",
+              notes: "Created by API smoke workflow."
+            })
+          });
+
+          const body = await response.json();
+          console.log(response.status, JSON.stringify({
+            reportId: body.report?.id,
+            currentStatusClinicId: body.currentStatus?.clinicId,
+            auditEventId: body.auditEvent?.id
+          }));
+
+          if (
+            response.status !== 201 ||
+            !body.report?.id ||
+            body.currentStatus?.clinicId !== "clinic-mamelodi-east" ||
+            !body.auditEvent?.id
+          ) {
+            process.exit(1);
+          }
+          NODE
+
+      - name: Stop API
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/clinicpulse-api.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/clinicpulse-api.pid")" || true
+          fi
+
+      - name: Print API log on failure
+        if: failure()
+        run: cat "$RUNNER_TEMP/clinicpulse-api.log" || true
