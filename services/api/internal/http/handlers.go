@@ -31,6 +31,8 @@ type ClinicStore interface {
 	ListClinics(ctx context.Context) ([]store.ClinicDetail, error)
 	GetClinic(ctx context.Context, clinicID string) (store.ClinicDetail, error)
 	GetCurrentStatus(ctx context.Context, clinicID string) (store.CurrentStatus, error)
+	ListCurrentStatuses(ctx context.Context) ([]store.CurrentStatus, error)
+	UpdateCurrentStatusFreshness(ctx context.Context, clinicID string, freshness string, updatedAt time.Time, audit *store.CreateAuditEventInput) (store.CurrentStatus, bool, error)
 	ListClinicReports(ctx context.Context, clinicID string) ([]store.Report, error)
 	ListPendingReports(ctx context.Context, scope store.ReportReviewScope) ([]store.Report, error)
 	ListClinicAuditEvents(ctx context.Context, clinicID string) ([]store.AuditEvent, error)
@@ -423,6 +425,22 @@ func (h Handler) GetSyncSummary(w nethttp.ResponseWriter, r *nethttp.Request) {
 	}
 
 	RespondJSON(w, nethttp.StatusOK, summary)
+}
+
+func (h Handler) ReconcileStatusStaleness(w nethttp.ResponseWriter, r *nethttp.Request) {
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	result, err := service.ReconcileStatusFreshness(r.Context(), h.store, auditActorForPrincipal(principal), time.Now().UTC())
+	if err != nil {
+		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusOK, result)
 }
 
 func (h Handler) Login(w nethttp.ResponseWriter, r *nethttp.Request) {

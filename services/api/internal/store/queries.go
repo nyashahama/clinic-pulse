@@ -474,6 +474,7 @@ SET
     freshness = $2,
     updated_at = $3
 WHERE clinic_id = $1
+    AND freshness <> $2
 RETURNING
     clinic_id,
     status,

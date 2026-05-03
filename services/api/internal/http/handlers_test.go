@@ -1540,6 +1540,81 @@ func TestSyncSummaryRequiresDistrictManagerOrHigher(t *testing.T) {
 	assertGenericUnauthorized(t, rec)
 }
 
+func TestReconcileStalenessRequiresDistrictManagerOrHigher(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		role     string
+		wantCode int
+	}{
+		{name: "district manager", role: "district_manager", wantCode: http.StatusOK},
+		{name: "org admin", role: "org_admin", wantCode: http.StatusOK},
+		{name: "system admin", role: "system_admin", wantCode: http.StatusOK},
+		{name: "reporter", role: "reporter", wantCode: http.StatusForbidden},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			router := apihttp.NewRouter(authenticatedStore(t, tt.role, fakeStore{}))
+			req := newAuthenticatedRequest(t, http.MethodPost, "/v1/status/reconcile-staleness", nil)
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != tt.wantCode {
+				t.Fatalf("expected status %d, got %d with body %s", tt.wantCode, rec.Code, rec.Body.String())
+			}
+		})
+	}
+
+	router := apihttp.NewRouter(fakeStore{})
+	req := httptest.NewRequest(http.MethodPost, "/v1/status/reconcile-staleness", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assertGenericUnauthorized(t, rec)
+}
+
+func TestReconcileStalenessReturnsSummary(t *testing.T) {
+	now := time.Now().UTC()
+	lastReportedAt := now.Add(-24 * time.Hour)
+	var updateInput store.CreateAuditEventInput
+	var updateCalled bool
+	router := apihttp.NewRouter(authenticatedStore(t, "district_manager", fakeStore{
+		currentStatuses: []store.CurrentStatus{{
+			ClinicID:       "clinic-1",
+			Freshness:      "fresh",
+			LastReportedAt: &lastReportedAt,
+		}},
+		updateFreshnessInput:  &updateInput,
+		updateFreshnessCalled: &updateCalled,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/status/reconcile-staleness", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	var got struct {
+		Checked                 int `json:"checked"`
+		MarkedNeedsConfirmation int `json:"markedNeedsConfirmation"`
+		MarkedStale             int `json:"markedStale"`
+	}
+	decodeJSON(t, rec, &got)
+	if got.Checked != 1 || got.MarkedNeedsConfirmation != 0 || got.MarkedStale != 1 {
+		t.Fatalf("unexpected reconcile response: %#v", got)
+	}
+	if !updateCalled {
+		t.Fatal("expected freshness update to be called")
+	}
+	if updateInput.ActorUserID == nil || *updateInput.ActorUserID != 42 {
+		t.Fatalf("expected authenticated actor in audit input, got %#v", updateInput.ActorUserID)
+	}
+	if updateInput.EventType != "clinic.status_marked_stale" || updateInput.Metadata["freshness"] != "stale" {
+		t.Fatalf("unexpected audit input: %#v", updateInput)
+	}
+}
+
 func TestReviewReportRequiresAuthenticatedPrincipal(t *testing.T) {
 	router := apihttp.NewRouter(fakeStore{})
 	req := httptest.NewRequest(http.MethodPost, "/v1/reports/100/review", strings.NewReader(`{"decision":"accepted"}`))
@@ -2360,6 +2435,7 @@ type fakeStore struct {
 	reports                     []store.Report
 	pendingReports              []store.Report
 	auditEvents                 []store.AuditEvent
+	currentStatuses             []store.CurrentStatus
 	createReport                store.Report
 	createStatus                store.CurrentStatus
 	createAuditEvent            store.AuditEvent
@@ -2378,6 +2454,8 @@ type fakeStore struct {
 	reviewInput                 *store.ReviewReportInput
 	syncAttemptInput            *store.CreateReportSyncAttemptInput
 	syncAttemptInputs           *[]store.CreateReportSyncAttemptInput
+	updateFreshnessInput        *store.CreateAuditEventInput
+	updateFreshnessCalled       *bool
 	pendingScope                *store.ReportReviewScope
 	summarySince                *time.Time
 	getUserEmail                *string
@@ -2398,7 +2476,9 @@ type fakeStore struct {
 	reportsErr                  error
 	pendingReportsErr           error
 	auditEventsErr              error
+	currentStatusesErr          error
 	createErr                   error
+	updateFreshnessErr          error
 	reviewErr                   error
 	getUserErr                  error
 	createSessionErr            error
@@ -2440,6 +2520,20 @@ func (f fakeStore) ListPendingReports(_ context.Context, scope store.ReportRevie
 
 func (f fakeStore) ListClinicAuditEvents(context.Context, string) ([]store.AuditEvent, error) {
 	return f.auditEvents, f.auditEventsErr
+}
+
+func (f fakeStore) ListCurrentStatuses(context.Context) ([]store.CurrentStatus, error) {
+	return f.currentStatuses, f.currentStatusesErr
+}
+
+func (f fakeStore) UpdateCurrentStatusFreshness(_ context.Context, clinicID string, freshness string, updatedAt time.Time, audit *store.CreateAuditEventInput) (store.CurrentStatus, bool, error) {
+	if f.updateFreshnessCalled != nil {
+		*f.updateFreshnessCalled = true
+	}
+	if f.updateFreshnessInput != nil && audit != nil {
+		*f.updateFreshnessInput = *audit
+	}
+	return store.CurrentStatus{ClinicID: clinicID, Freshness: freshness, UpdatedAt: updatedAt}, true, f.updateFreshnessErr
 }
 
 func (f fakeStore) CreateReportTx(_ context.Context, input store.CreateReportInput) (store.Report, store.CurrentStatus, store.AuditEvent, error) {
