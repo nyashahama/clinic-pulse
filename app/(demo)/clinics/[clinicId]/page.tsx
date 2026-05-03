@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, ArrowLeft } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import { AuditTrail } from "@/components/demo/audit-trail";
@@ -9,9 +9,18 @@ import { ClinicOperationalGrid } from "@/components/demo/clinic-operational-grid
 import { ClinicProfileHeader } from "@/components/demo/clinic-profile-header";
 import { ReroutePanel, type RerouteRecommendation } from "@/components/demo/reroute-panel";
 import { Button } from "@/components/ui/button";
+import {
+  loadAlternativeRecommendations,
+  resolveAlternativeService,
+} from "@/lib/demo/alternatives";
 import { useDemoStore } from "@/lib/demo/demo-store";
 import { getClinicAuditEvents, getClinicReports, getClinicRows } from "@/lib/demo/selectors";
 import type { Clinic, ClinicRow } from "@/lib/demo/types";
+
+type LocalRerouteRecommendation = RerouteRecommendation & {
+  distanceKm: number;
+  estimatedMinutes: number;
+};
 
 function toDate(value: string) {
   return new Intl.DateTimeFormat("en-ZA", {
@@ -41,7 +50,7 @@ function getDistanceKm(fromClinic: Clinic, toClinic: Clinic) {
 function buildRerouteRecommendations(
   sourceClinic: ClinicRow,
   candidates: ClinicRow[],
-): RerouteRecommendation[] {
+): LocalRerouteRecommendation[] {
   const compatibilityRows = candidates
     .filter((clinic) => clinic.id !== sourceClinic.id)
     .filter(
@@ -72,7 +81,7 @@ function buildRerouteRecommendations(
         reason,
       };
     })
-    .filter((entry): entry is RerouteRecommendation => entry !== null)
+    .filter((entry): entry is LocalRerouteRecommendation => entry !== null)
     .sort((left, right) => {
       const statusRank = (status: ClinicRow["status"]) =>
         status === "operational" ? 0 : 1;
@@ -106,6 +115,11 @@ function getClinicName(clinicId: string | string[] | undefined) {
   return Array.isArray(clinicId) ? clinicId[0] : clinicId;
 }
 
+type RecommendationResult = {
+  key: string;
+  recommendations: RerouteRecommendation[];
+};
+
 export default function ClinicDetailPage() {
   const router = useRouter();
   const { state } = useDemoStore();
@@ -127,13 +141,44 @@ export default function ClinicDetailPage() {
     [clinicId, state],
   );
 
-  const recommendations = useMemo(() => {
+  const recommendationKey = clinicRow
+    ? `${clinicRow.id}:${resolveAlternativeService(clinicRow, clinicRow.services[0])}`
+    : "";
+  const [recommendationResult, setRecommendationResult] = useState<RecommendationResult>({
+    key: "",
+    recommendations: [],
+  });
+  const recommendations =
+    recommendationResult.key === recommendationKey ? recommendationResult.recommendations : [];
+
+  useEffect(() => {
+    let isCurrent = true;
+
     if (!clinicRow) {
-      return [];
+      return;
     }
 
-    return buildRerouteRecommendations(clinicRow, clinicRows);
-  }, [clinicRow, clinicRows]);
+    void loadAlternativeRecommendations({
+      sourceClinic: clinicRow,
+      localClinics: clinicRows,
+      requestedService: clinicRow.services[0],
+      localFallback: () => buildRerouteRecommendations(clinicRow, clinicRows),
+      onFetchError: (error) => {
+        console.warn("Unable to fetch backend reroute alternatives.", error);
+      },
+    }).then((nextRecommendations) => {
+      if (isCurrent) {
+        setRecommendationResult({
+          key: recommendationKey,
+          recommendations: nextRecommendations,
+        });
+      }
+    });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [clinicRow, clinicRows, recommendationKey]);
 
   const latestReason = useMemo(
     () => reports[0]?.reason ?? clinicRow?.reason ?? "No reason has been reported yet.",

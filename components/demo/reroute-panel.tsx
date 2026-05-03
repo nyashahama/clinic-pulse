@@ -5,15 +5,9 @@ import { FreshnessBadge } from "@/components/demo/freshness-badge";
 import { SectionHeader } from "@/components/demo/section-header";
 import { ServiceList } from "@/components/demo/service-list";
 import { StatusBadge } from "@/components/demo/status-badge";
-import type { ClinicRow } from "@/lib/demo/types";
+import type { AlternativeRecommendation } from "@/lib/demo/alternatives";
 
-export type RerouteRecommendation = {
-  clinic: ClinicRow;
-  distanceKm: number;
-  estimatedMinutes: number;
-  compatibilityServices: string[];
-  reason: string;
-};
+export type RerouteRecommendation = AlternativeRecommendation;
 
 type ReroutePanelProps = {
   sourceClinicName: string;
@@ -22,12 +16,12 @@ type ReroutePanelProps = {
   recommendations: RerouteRecommendation[];
 };
 
-function formatDistance(distanceKm: number) {
-  return `${distanceKm.toFixed(1)} km`;
+function formatDistance(distanceKm: number | null) {
+  return distanceKm === null ? "Distance unavailable" : `${distanceKm.toFixed(1)} km`;
 }
 
-function formatMinutes(minutes: number) {
-  return `${minutes} min`;
+function formatMinutes(minutes: number | null) {
+  return minutes === null ? "ETA unavailable" : `${minutes} min`;
 }
 
 export function ReroutePanel({

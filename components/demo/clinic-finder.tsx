@@ -1,7 +1,7 @@
 "use client";
 
 import { ExternalLink } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { FreshnessBadge } from "@/components/demo/freshness-badge";
 import { ReroutePanel } from "@/components/demo/reroute-panel";
@@ -9,7 +9,11 @@ import { SectionHeader } from "@/components/demo/section-header";
 import { StatusBadge } from "@/components/demo/status-badge";
 import { Button } from "@/components/ui/button";
 import {
-  buildFinderAlternatives,
+  type AlternativeRecommendation,
+  loadAlternativeRecommendations,
+  resolveAlternativeService,
+} from "@/lib/demo/alternatives";
+import {
   filterClinicRows,
   isClinicUnavailable,
   resolveSelectedClinicId,
@@ -23,6 +27,11 @@ type ClinicFinderProps = {
   service: string;
   status: string;
   onNavigateToDetail: (clinicId: string) => void;
+};
+
+type RecommendationResult = {
+  key: string;
+  recommendations: AlternativeRecommendation[];
 };
 
 export function ClinicFinder({
@@ -52,9 +61,43 @@ export function ClinicFinder({
     (entry) => entry.clinic.id === resolvedSelectedClinicId,
   )?.clinic;
 
-  const alternatives = selectedClinicRow
-    ? buildFinderAlternatives(clinics, selectedClinicRow)
-    : [];
+  const recommendationKey = selectedClinicRow
+    ? `${selectedClinicRow.id}:${resolveAlternativeService(selectedClinicRow, service)}`
+    : "";
+  const [recommendationResult, setRecommendationResult] = useState<RecommendationResult>({
+    key: "",
+    recommendations: [],
+  });
+  const recommendations =
+    recommendationResult.key === recommendationKey ? recommendationResult.recommendations : [];
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    if (!selectedClinicRow) {
+      return;
+    }
+
+    void loadAlternativeRecommendations({
+      sourceClinic: selectedClinicRow,
+      localClinics: clinics,
+      requestedService: service,
+      onFetchError: (error) => {
+        console.warn("Unable to fetch backend finder alternatives.", error);
+      },
+    }).then((nextRecommendations) => {
+      if (isCurrent) {
+        setRecommendationResult({
+          key: recommendationKey,
+          recommendations: nextRecommendations,
+        });
+      }
+    });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [clinics, recommendationKey, selectedClinicRow, service]);
 
   if (clinics.length === 0) {
     return null;
@@ -172,13 +215,7 @@ export function ClinicFinder({
             sourceClinicName={selectedClinicRow.name}
             unavailable={isClinicUnavailable(selectedClinicRow)}
             reason={selectedClinicRow.reason}
-            recommendations={alternatives.map((entry) => ({
-              clinic: entry.clinic,
-              distanceKm: entry.distanceKm,
-              estimatedMinutes: entry.estimatedMinutes,
-              compatibilityServices: entry.compatibilityServices,
-              reason: entry.reason,
-            }))}
+            recommendations={recommendations}
           />
         ) : null}
       </section>
