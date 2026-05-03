@@ -24,7 +24,6 @@ export default function FieldPageClient() {
     state,
     queueOfflineReport,
     syncOfflineReports,
-    submitFieldReport,
   } = useDemoStore();
 
   const clinics = useMemo(() => getClinicRows(state), [state]);
@@ -67,7 +66,6 @@ export default function FieldPageClient() {
           refresh: () => router.refresh(),
           report,
           submitReport: createFieldReport,
-          submitFieldReport,
         });
 
         return true;

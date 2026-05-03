@@ -228,68 +228,33 @@ describe("field report submission", () => {
     expect(input).not.toHaveProperty("notes");
   });
 
-  it("submits online field reports before updating visible state and refreshing", async () => {
-    const submitReport = vi.fn().mockResolvedValue({ ok: true });
-    const submitFieldReport = vi.fn();
-    const refresh = vi.fn();
-
-    await submitOnlineFieldReport({
-      clinicId: "clinic-mamelodi-east",
-      refresh,
-      report,
-      submitReport,
-      submitFieldReport,
-    });
-
-    const durableReport = {
-      ...report,
-      clinicId: "clinic-mamelodi-east",
-      offlineCreated: false,
-    };
-    delete durableReport.submittedAt;
-    expect(submitReport).toHaveBeenCalledWith({
-      clinicId: "clinic-mamelodi-east",
-      report,
-    });
-    expect(submitFieldReport).toHaveBeenCalledWith(durableReport);
-    expect(refresh).toHaveBeenCalledTimes(1);
-    expect(submitReport.mock.invocationCallOrder[0]).toBeLessThan(
-      submitFieldReport.mock.invocationCallOrder[0],
-    );
-    expect(submitFieldReport.mock.invocationCallOrder[0]).toBeLessThan(
-      refresh.mock.invocationCallOrder[0],
-    );
-  });
-
-  it("uses the server-confirmed reporter name for the visible online report", async () => {
+  it("submits online field reports and refreshes without updating visible state", async () => {
     const submitReport = vi.fn().mockResolvedValue({
       ok: true,
       reporterName: "Authenticated Reporter",
     });
-    const submitFieldReport = vi.fn();
     const refresh = vi.fn();
 
-    await submitOnlineFieldReport({
+    const result = await submitOnlineFieldReport({
       clinicId: "clinic-mamelodi-east",
       refresh,
-      report: {
-        ...report,
-        reporterName: "Caller Controlled Name",
-      },
+      report,
       submitReport,
-      submitFieldReport,
     });
 
-    expect(submitFieldReport).toHaveBeenCalledWith(
-      expect.objectContaining({
-        reporterName: "Authenticated Reporter",
-      }),
+    expect(result).toEqual({ ok: true, reporterName: "Authenticated Reporter" });
+    expect(submitReport).toHaveBeenCalledWith({
+      clinicId: "clinic-mamelodi-east",
+      report,
+    });
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(submitReport.mock.invocationCallOrder[0]).toBeLessThan(
+      refresh.mock.invocationCallOrder[0],
     );
   });
 
   it("does not update local visible state when the online submission rejects", async () => {
     const submitReport = vi.fn().mockRejectedValue(new Error("API unavailable"));
-    const submitFieldReport = vi.fn();
     const refresh = vi.fn();
 
     await expect(
@@ -298,11 +263,9 @@ describe("field report submission", () => {
         refresh,
         report,
         submitReport,
-        submitFieldReport,
       }),
     ).rejects.toThrow("API unavailable");
 
-    expect(submitFieldReport).not.toHaveBeenCalled();
     expect(refresh).not.toHaveBeenCalled();
   });
 });
