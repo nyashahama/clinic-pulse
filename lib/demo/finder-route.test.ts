@@ -23,6 +23,14 @@ const restrictedDemoClinicDetailPage = path.join(
   "[clinicId]",
   "page.tsx",
 );
+const restrictedDemoClinicDetailClient = path.join(
+  appDir,
+  "(demo)",
+  "demo",
+  "clinics",
+  "[clinicId]",
+  "page-client.tsx",
+);
 const demoRunbook = path.join(process.cwd(), "lib", "demo", "demo-runbook.ts");
 
 describe("public finder route boundary", () => {
@@ -50,6 +58,21 @@ describe("public finder route boundary", () => {
     expect(existsSync(publicClinicDetailPage)).toBe(true);
     expect(existsSync(legacyDemoClinicDetailPage)).toBe(false);
     expect(existsSync(restrictedDemoClinicDetailPage)).toBe(true);
+  });
+
+  it("guards the operational clinic detail route while keeping client interactivity separate", () => {
+    expect(existsSync(restrictedDemoClinicDetailPage)).toBe(true);
+    expect(existsSync(restrictedDemoClinicDetailClient)).toBe(true);
+
+    const pageSource = readFileSync(restrictedDemoClinicDetailPage, "utf8");
+    const clientSource = readFileSync(restrictedDemoClinicDetailClient, "utf8");
+
+    expect(pageSource).toContain('requireDemoWorkflowAccess("demo")');
+    expect(pageSource).toContain("connection()");
+    expect(pageSource).toContain("ClinicDetailPageClient");
+    expect(pageSource).not.toContain('"use client"');
+    expect(clientSource).toContain('"use client"');
+    expect(clientSource).toContain("useDemoStore");
   });
 
   it("keeps the public clinic detail source free of restricted demo data", () => {
