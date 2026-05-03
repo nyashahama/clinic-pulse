@@ -56,7 +56,8 @@ func TestLocalPhase3AuthSeedExistsOutsideMigrations(t *testing.T) {
 		"org-admin@clinicpulse.local",
 		"district-manager@clinicpulse.local",
 		"reporter@clinicpulse.local",
-		"$2a$",
+		"Password hashes correspond to the local demo password shared out-of-band.",
+		"$2b$",
 	}
 	for _, value := range required {
 		if !strings.Contains(seedSQL, value) {

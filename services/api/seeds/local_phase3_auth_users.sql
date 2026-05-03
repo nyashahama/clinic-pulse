@@ -1,6 +1,6 @@
 -- Local-only Phase 3 auth demo users.
 -- This file is intentionally outside services/api/migrations and is not run automatically.
--- Password hashes correspond to ignored local runbook credentials.
+-- Password hashes correspond to the local demo password shared out-of-band.
 WITH seed_organisation AS (
     INSERT INTO organisations (name, slug)
     SELECT 'Tshwane North Demo District', 'tshwane-north-demo-district'
@@ -20,10 +20,10 @@ WHERE lower(slug) = 'tshwane-north-demo-district';
 
 WITH seed_users (email, display_name, password_hash) AS (
     VALUES
-        ('system-admin@clinicpulse.local', 'System Admin', '$2a$10$knasPITs/37CXcBFOWzpmu9MRyZQPBiGrkCbCktKlkL6UtBfjnY9.'),
-        ('org-admin@clinicpulse.local', 'Organisation Admin', '$2a$10$knasPITs/37CXcBFOWzpmu9MRyZQPBiGrkCbCktKlkL6UtBfjnY9.'),
-        ('district-manager@clinicpulse.local', 'District Manager', '$2a$10$knasPITs/37CXcBFOWzpmu9MRyZQPBiGrkCbCktKlkL6UtBfjnY9.'),
-        ('reporter@clinicpulse.local', 'Reporter', '$2a$10$knasPITs/37CXcBFOWzpmu9MRyZQPBiGrkCbCktKlkL6UtBfjnY9.')
+        ('system-admin@clinicpulse.local', 'System Admin', '$2b$10$Wb1y1.FnS/YJ7TINBCsJCuysK7qDRweyevzs46UjsZV/hzy8P/JeG'),
+        ('org-admin@clinicpulse.local', 'Organisation Admin', '$2b$10$Wb1y1.FnS/YJ7TINBCsJCuysK7qDRweyevzs46UjsZV/hzy8P/JeG'),
+        ('district-manager@clinicpulse.local', 'District Manager', '$2b$10$Wb1y1.FnS/YJ7TINBCsJCuysK7qDRweyevzs46UjsZV/hzy8P/JeG'),
+        ('reporter@clinicpulse.local', 'Reporter', '$2b$10$Wb1y1.FnS/YJ7TINBCsJCuysK7qDRweyevzs46UjsZV/hzy8P/JeG')
 ), inserted_users AS (
     INSERT INTO users (email, display_name, password_hash)
     SELECT seed_users.email, seed_users.display_name, seed_users.password_hash
