@@ -5,6 +5,7 @@ import {
   mapApiAuditEvent,
   mapApiClinicDetailToClinicRow,
   mapApiDemoHydrationToState,
+  mapApiReport,
   mapApiReportToReportStreamItem,
 } from "@/lib/demo/api-mappers";
 import { createInitialDemoState } from "@/lib/demo/scenarios";
@@ -16,7 +17,7 @@ import type {
   ReportApiResponse,
 } from "@/lib/demo/api-types";
 import { getDemoImage } from "@/lib/demo/images";
-import type { AuditEvent, ClinicRow, ReportStreamItem } from "@/lib/demo/types";
+import type { AuditEvent, ClinicRow, QueuedOfflineReport, ReportStreamItem } from "@/lib/demo/types";
 
 const clinicDetail: ClinicDetailApiResponse = {
   clinic: {
@@ -93,6 +94,12 @@ describe("ClinicPulse API mappers", () => {
       summary: "Clinic status changed after the latest field report.",
       createdAt: "2026-05-01T06:42:00.000Z",
     };
+    const queuedReport = {
+      ...mapApiReport(report),
+      id: "queued-report-1",
+      queuedAt: "2026-05-01T06:41:00.000Z",
+      syncStatus: "queued",
+    } satisfies QueuedOfflineReport;
 
     const state = mapApiDemoHydrationToState(
       {
@@ -106,14 +113,7 @@ describe("ClinicPulse API mappers", () => {
       },
       {
         ...baseState,
-        offlineQueue: [
-          {
-            ...report,
-            id: "queued-report-1",
-            queuedAt: "2026-05-01T06:41:00.000Z",
-            syncStatus: "queued",
-          },
-        ],
+        offlineQueue: [queuedReport],
       },
     );
 
