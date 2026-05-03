@@ -1,5 +1,12 @@
 import type { OfflineSyncApiResult } from "@/lib/demo/offline-sync-types";
-import type { OfflineReportQueueItem } from "@/lib/demo/types";
+import type { OfflineReportQueueItem, OfflineReportQueueStatus } from "@/lib/demo/types";
+
+const MANUAL_RETRY_STATUSES = new Set<OfflineReportQueueStatus>([
+  "queued",
+  "retry_wait",
+  "failed",
+  "conflict",
+]);
 
 function addMilliseconds(date: Date, milliseconds: number) {
   return new Date(date.getTime() + milliseconds).toISOString();
@@ -27,6 +34,22 @@ export function getNextRetryAt(attemptCount: number, now: Date): string | null {
   }
 
   return addMilliseconds(now, 5 * 60 * 1000);
+}
+
+export function isOfflineReportReadyForSync(
+  item: OfflineReportQueueItem,
+  now: Date,
+  manualRetry = false,
+) {
+  if (manualRetry) {
+    return MANUAL_RETRY_STATUSES.has(item.syncStatus);
+  }
+
+  if (item.syncStatus === "queued") {
+    return true;
+  }
+
+  return item.nextRetryAt !== null && Date.parse(item.nextRetryAt) <= now.getTime();
 }
 
 export function markQueuedItemSyncing(

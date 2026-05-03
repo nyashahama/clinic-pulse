@@ -35,8 +35,8 @@ export function SyncStatus({
     <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
       <SectionHeader
         eyebrow="Sync status"
-        title="Connectivity"
-        description="Toggle connectivity to demo how offline queueing works."
+        title="Device queue"
+        description="Reports stored on this browser until the API accepts them."
       />
 
       <div className="mt-4 grid gap-3">
@@ -73,7 +73,7 @@ export function SyncStatus({
 
         <div className="rounded-lg border border-border-subtle bg-bg-subtle p-3 text-sm">
           <p className="text-xs font-medium uppercase tracking-[0.08em] text-content-subtle">
-            Offline queue
+            Device queue
           </p>
           <p className="mt-1 text-content-emphasis">
             {queuedReports} report{queuedReports === 1 ? "" : "s"} waiting to sync.

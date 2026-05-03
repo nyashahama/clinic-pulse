@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyOfflineSyncResult,
   getNextRetryAt,
+  isOfflineReportReadyForSync,
   markQueuedItemNetworkFailure,
   markQueuedItemSyncing,
 } from "@/lib/demo/offline-sync";
@@ -203,5 +204,41 @@ describe("offline sync item transitions", () => {
       conflictReason: null,
       updatedAt: now.toISOString(),
     });
+  });
+});
+
+describe("offline sync item selection", () => {
+  it("selects queued reports for automatic sync", () => {
+    expect(isOfflineReportReadyForSync(queueItem({ syncStatus: "queued" }), now)).toBe(true);
+  });
+
+  it("selects retry-wait reports only after the retry time has passed", () => {
+    expect(
+      isOfflineReportReadyForSync(
+        queueItem({
+          syncStatus: "retry_wait",
+          nextRetryAt: "2026-05-03T08:00:00.000Z",
+        }),
+        now,
+      ),
+    ).toBe(true);
+    expect(
+      isOfflineReportReadyForSync(
+        queueItem({
+          syncStatus: "retry_wait",
+          nextRetryAt: "2026-05-03T08:00:01.000Z",
+        }),
+        now,
+      ),
+    ).toBe(false);
+  });
+
+  it("allows manual retry for queued, retry-wait, failed, and conflict reports", () => {
+    expect(isOfflineReportReadyForSync(queueItem({ syncStatus: "queued" }), now, true)).toBe(true);
+    expect(isOfflineReportReadyForSync(queueItem({ syncStatus: "retry_wait" }), now, true)).toBe(true);
+    expect(isOfflineReportReadyForSync(queueItem({ syncStatus: "failed" }), now, true)).toBe(true);
+    expect(isOfflineReportReadyForSync(queueItem({ syncStatus: "conflict" }), now, true)).toBe(true);
+    expect(isOfflineReportReadyForSync(queueItem({ syncStatus: "synced" }), now, true)).toBe(false);
+    expect(isOfflineReportReadyForSync(queueItem({ syncStatus: "syncing" }), now, true)).toBe(false);
   });
 });
