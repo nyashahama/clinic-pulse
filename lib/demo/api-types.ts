@@ -6,6 +6,7 @@ import type {
   StaffPressure,
   StockPressure,
 } from "@/lib/demo/types";
+import type { OfflineSyncApiResult } from "@/lib/demo/offline-sync-types";
 
 export type ApiNullable<T> = T | null | undefined;
 
@@ -121,6 +122,32 @@ export type CreateReportApiResponse = {
   report: ReportApiResponse;
   currentStatus?: CurrentStatusApiResponse;
   auditEvent?: AuditEventApiResponse;
+};
+
+export type OfflineSyncApiRequest = {
+  items: Array<{
+    clientReportId: string;
+    clinicId: string;
+    status: ClinicStatus;
+    reason: string;
+    staffPressure: StaffPressure;
+    stockPressure: StockPressure;
+    queuePressure: QueuePressure;
+    notes: string;
+    submittedAt: string;
+    queuedAt: string;
+    attemptCount: number;
+  }>;
+};
+
+export type OfflineSyncApiResponse = {
+  results: OfflineSyncApiResult[];
+  summary: {
+    created: number;
+    duplicate: number;
+    conflict: number;
+    failed: number;
+  };
 };
 
 export type ApiErrorResponse = {

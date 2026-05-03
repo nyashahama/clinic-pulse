@@ -12,6 +12,7 @@ import {
   fetchClinics,
   fetchOperationalClinics,
   requestClinicPulseApi,
+  syncOfflineReportsApi,
 } from "@/lib/demo/api-client";
 import type { CreateReportApiInput } from "@/lib/demo/api-types";
 
@@ -95,6 +96,26 @@ describe("ClinicPulse API client", () => {
       method: "POST",
     });
     expect(new Headers(init?.headers).get("content-type")).toBe("application/json");
+  });
+
+  it("posts offline sync batches to the reports sync endpoint", async () => {
+    const fetchImpl = mockFetch({
+      results: [],
+      summary: { created: 0, duplicate: 0, conflict: 0, failed: 0 },
+    });
+
+    await syncOfflineReportsApi(
+      { items: [] },
+      {
+        baseUrl: "https://api.example.test",
+        fetch: fetchImpl,
+      },
+    );
+
+    expect(fetchImpl.mock.calls[0][0]).toBe(
+      "https://api.example.test/v1/reports/offline-sync",
+    );
+    expect(fetchImpl.mock.calls[0][1]).toMatchObject({ method: "POST" });
   });
 
   it("preserves client-level Headers instances when posting JSON", async () => {

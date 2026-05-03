@@ -5,6 +5,8 @@ import type {
   CreateReportApiResponse,
   ClinicDetailApiResponse,
   CurrentStatusApiResponse,
+  OfflineSyncApiRequest,
+  OfflineSyncApiResponse,
   PublicClinicDetailApiResponse,
   ReportApiResponse,
   AuditEventApiResponse,
@@ -189,6 +191,20 @@ export function createReport(input: CreateReportApiInput, options?: ClinicPulseA
     body: JSON.stringify(input),
     method: "POST",
   });
+}
+
+export function syncOfflineReportsApi(
+  input: OfflineSyncApiRequest,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<OfflineSyncApiResponse>(
+    ["v1", "reports", "offline-sync"],
+    options,
+    {
+      body: JSON.stringify(input),
+      method: "POST",
+    },
+  );
 }
 
 export function fetchAlternatives(

@@ -1,17 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createFieldReport } from "@/app/(demo)/field/actions";
+import { createFieldReport, syncQueuedFieldReports } from "@/app/(demo)/field/actions";
 import {
   getCurrentSession,
   getSessionCookieHeader,
 } from "@/lib/auth/session";
-import { createReport } from "@/lib/demo/api-client";
+import { createReport, syncOfflineReportsApi } from "@/lib/demo/api-client";
 import {
   mapOnlineFieldReportToCreateReportInput,
   submitOnlineFieldReport,
 } from "@/lib/demo/field-report";
 import type { AuthRole } from "@/lib/auth/api";
-import type { SubmitFieldReportInput } from "@/lib/demo/types";
+import type { OfflineReportQueueItem, SubmitFieldReportInput } from "@/lib/demo/types";
 
 vi.mock("@/lib/auth/session", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/auth/session")>();
@@ -25,9 +25,14 @@ vi.mock("@/lib/auth/session", async (importOriginal) => {
 
 vi.mock("@/lib/demo/api-client", () => ({
   createReport: vi.fn().mockResolvedValue({ report: {}, currentStatus: {}, auditEvent: {} }),
+  syncOfflineReportsApi: vi.fn().mockResolvedValue({
+    results: [],
+    summary: { created: 0, duplicate: 0, conflict: 0, failed: 0 },
+  }),
 }));
 
 const createReportMock = vi.mocked(createReport);
+const syncOfflineReportsApiMock = vi.mocked(syncOfflineReportsApi);
 const getCurrentSessionMock = vi.mocked(getCurrentSession);
 const getSessionCookieHeaderMock = vi.mocked(getSessionCookieHeader);
 type CurrentSession = NonNullable<Awaited<ReturnType<typeof getCurrentSession>>>;
@@ -44,6 +49,29 @@ const report: SubmitFieldReportInput = {
   notes: "Pharmacy queue is backing up.",
   submittedAt: "2026-05-03T08:30:00.000Z",
   offlineCreated: true,
+};
+
+const queuedReport: OfflineReportQueueItem = {
+  clientReportId: "client-report-1",
+  schemaVersion: 1,
+  clinicId: "clinic-mamelodi-east",
+  status: "degraded",
+  reason: "Mamelodi East status update from offline field capture.",
+  staffPressure: "strained",
+  stockPressure: "low",
+  queuePressure: "high",
+  notes: "Pharmacy queue is backing up.",
+  submittedAt: "2026-05-03T08:30:00.000Z",
+  queuedAt: "2026-05-03T08:31:00.000Z",
+  updatedAt: "2026-05-03T08:32:00.000Z",
+  syncStatus: "queued",
+  attemptCount: 2,
+  nextRetryAt: null,
+  lastAttemptAt: null,
+  lastError: null,
+  lastServerReportId: null,
+  lastServerReviewState: null,
+  conflictReason: null,
 };
 
 function authSession({
@@ -94,6 +122,10 @@ function authSession({
 beforeEach(() => {
   vi.clearAllMocks();
   createReportMock.mockResolvedValue({ report: {} as never });
+  syncOfflineReportsApiMock.mockResolvedValue({
+    results: [],
+    summary: { created: 0, duplicate: 0, conflict: 0, failed: 0 },
+  });
   getCurrentSessionMock.mockResolvedValue(authSession());
   getSessionCookieHeaderMock.mockResolvedValue("clinicpulse_session=session-token");
 });
@@ -267,5 +299,67 @@ describe("field report submission", () => {
     ).rejects.toThrow("API unavailable");
 
     expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("rejects unauthenticated queued field report syncs before calling the API", async () => {
+    getSessionCookieHeaderMock.mockResolvedValue(null);
+
+    await expect(syncQueuedFieldReports([queuedReport])).rejects.toThrow("Authentication required");
+
+    expect(getCurrentSessionMock).not.toHaveBeenCalled();
+    expect(syncOfflineReportsApiMock).not.toHaveBeenCalled();
+  });
+
+  it("forwards the session cookie when syncing queued field reports", async () => {
+    await syncQueuedFieldReports([queuedReport]);
+
+    expect(getCurrentSessionMock).toHaveBeenCalledWith({
+      cookieHeader: "clinicpulse_session=session-token",
+    });
+    expect(
+      new Headers(syncOfflineReportsApiMock.mock.calls[0][1]?.init?.headers).get("cookie"),
+    ).toBe("clinicpulse_session=session-token");
+  });
+
+  it("maps queue items to offline sync API request items", async () => {
+    await syncQueuedFieldReports([queuedReport]);
+
+    expect(syncOfflineReportsApiMock.mock.calls[0][0]).toEqual({
+      items: [
+        {
+          clientReportId: "client-report-1",
+          clinicId: "clinic-mamelodi-east",
+          status: "degraded",
+          reason: "Mamelodi East status update from offline field capture.",
+          staffPressure: "strained",
+          stockPressure: "low",
+          queuePressure: "high",
+          notes: "Pharmacy queue is backing up.",
+          submittedAt: "2026-05-03T08:30:00.000Z",
+          queuedAt: "2026-05-03T08:31:00.000Z",
+          attemptCount: 2,
+        },
+      ],
+    });
+  });
+
+  it("returns the queued sync API response without mutating client storage", async () => {
+    const response = {
+      results: [
+        {
+          clientReportId: "client-report-1",
+          result: "created" as const,
+          report: { id: 42, reviewState: "pending" },
+        },
+      ],
+      summary: { created: 1, duplicate: 0, conflict: 0, failed: 0 },
+    };
+    syncOfflineReportsApiMock.mockResolvedValue(response);
+    const queueItems = [structuredClone(queuedReport)];
+    const originalItems = structuredClone(queueItems);
+
+    await expect(syncQueuedFieldReports(queueItems)).resolves.toBe(response);
+
+    expect(queueItems).toEqual(originalItems);
   });
 });
