@@ -381,6 +381,7 @@ pending_offline AS (
     FROM reports
     WHERE offline_created = true
         AND review_state = 'pending'
+        AND received_at >= $1
 ),
 current_status_counts AS (
     SELECT

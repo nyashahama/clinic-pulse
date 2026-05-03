@@ -265,7 +265,9 @@ func TestOfflineSyncStoreIntegrationRecordsAttemptsAndSummary(t *testing.T) {
 	insertIntegrationClinic(t, ctx, store, "clinic-offline-sync-confirm", "Offline Sync Confirmation Clinic")
 	insertIntegrationClinic(t, ctx, store, "clinic-offline-sync-stale", "Offline Sync Stale Clinic")
 
-	baseTime := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
+	baseTime := time.Date(2126, 5, 3, 12, 0, 0, 0, time.UTC)
+	windowStart := baseTime.Add(-time.Minute)
+	beforeWindow := windowStart.Add(-time.Hour)
 	report, err := store.CreatePendingReportTx(ctx, CreateReportInput{
 		ExternalID:     stringPtr("offline-sync-1"),
 		ClinicID:       "clinic-offline-sync",
@@ -279,6 +281,19 @@ func TestOfflineSyncStoreIntegrationRecordsAttemptsAndSummary(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("CreatePendingReportTx offline report returned error: %v", err)
+	}
+	if _, err := store.CreatePendingReportTx(ctx, CreateReportInput{
+		ExternalID:     stringPtr("offline-sync-old-pending"),
+		ClinicID:       "clinic-offline-sync",
+		ReporterName:   stringPtr("Offline Reporter"),
+		Source:         "field_worker",
+		OfflineCreated: true,
+		SubmittedAt:    beforeWindow.Add(-10 * time.Minute),
+		ReceivedAt:     beforeWindow,
+		Status:         "degraded",
+		ReviewState:    "pending",
+	}); err != nil {
+		t.Fatalf("CreatePendingReportTx old offline report returned error: %v", err)
 	}
 
 	for _, fixture := range []struct {
@@ -300,6 +315,20 @@ func TestOfflineSyncStoreIntegrationRecordsAttemptsAndSummary(t *testing.T) {
 		if err != nil {
 			t.Fatalf("CreateReportSyncAttempt %s returned error: %v", fixture.result, err)
 		}
+	}
+	if _, err := store.CreateReportSyncAttempt(ctx, CreateReportSyncAttemptInput{
+		ExternalID: "offline-sync-old-created",
+		ReportID:   &report.ID,
+		ClinicID:   "clinic-offline-sync",
+		Result:     "created",
+		ReceivedAt: beforeWindow,
+	}); err != nil {
+		t.Fatalf("CreateReportSyncAttempt old created returned error: %v", err)
+	}
+
+	baselineSummary, err := store.GetSyncSummarySince(ctx, windowStart)
+	if err != nil {
+		t.Fatalf("GetSyncSummarySince baseline returned error: %v", err)
 	}
 
 	if _, err := store.pool.Exec(ctx, `
@@ -325,11 +354,11 @@ VALUES
 		t.Fatalf("unexpected offline report: %+v", gotReport)
 	}
 
-	summary, err := store.GetSyncSummarySince(ctx, baseTime.Add(-time.Minute))
+	summary, err := store.GetSyncSummarySince(ctx, windowStart)
 	if err != nil {
 		t.Fatalf("GetSyncSummarySince returned error: %v", err)
 	}
-	if summary.WindowStartedAt != baseTime.Add(-time.Minute) {
+	if summary.WindowStartedAt != windowStart {
 		t.Fatalf("expected summary window start, got %s", summary.WindowStartedAt)
 	}
 	if summary.OfflineReportsReceived != 1 ||
@@ -341,8 +370,11 @@ VALUES
 	if summary.PendingOfflineReports != 1 {
 		t.Fatalf("expected one pending offline report, got %+v", summary)
 	}
-	if summary.NeedsConfirmationClinics < 2 || summary.StaleClinics < 3 {
-		t.Fatalf("expected summary to include seeded and fixture freshness counts, got %+v", summary)
+	if summary.NeedsConfirmationClinics != baselineSummary.NeedsConfirmationClinics+1 {
+		t.Fatalf("expected needs_confirmation snapshot baseline + fixture, baseline=%+v got=%+v", baselineSummary, summary)
+	}
+	if summary.StaleClinics != baselineSummary.StaleClinics+1 {
+		t.Fatalf("expected stale snapshot baseline + fixture, baseline=%+v got=%+v", baselineSummary, summary)
 	}
 }
 

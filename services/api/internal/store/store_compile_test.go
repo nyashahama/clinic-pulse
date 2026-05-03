@@ -44,6 +44,20 @@ func TestOfflineSyncStoreMethodSignatures(t *testing.T) {
 	var _ func(Store, context.Context, string, string, time.Time, *CreateAuditEventInput) (CurrentStatus, bool, error) = Store.UpdateCurrentStatusFreshness
 }
 
+func TestSyncSummarySinceScopesPendingOfflineReportsToWindow(t *testing.T) {
+	t.Parallel()
+
+	start := strings.Index(syncSummarySinceSQL, "pending_offline AS")
+	end := strings.Index(syncSummarySinceSQL, "current_status_counts AS")
+	if start == -1 || end == -1 || end <= start {
+		t.Fatal("expected sync summary SQL to include pending_offline before current_status_counts")
+	}
+	pendingOfflineCTE := syncSummarySinceSQL[start:end]
+	if !strings.Contains(pendingOfflineCTE, "AND received_at >= $1") {
+		t.Fatal("expected pending_offline CTE to filter reports by the summary window")
+	}
+}
+
 func TestNormalizeCreateReportInputDoesNotInventRequiredReportFields(t *testing.T) {
 	t.Parallel()
 
