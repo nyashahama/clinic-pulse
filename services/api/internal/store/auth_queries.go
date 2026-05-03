@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"net/netip"
+	"strconv"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -145,6 +146,41 @@ func (s Store) CreateSession(ctx context.Context, input CreateSessionInput) (Ses
 		normalized.UserAgent,
 		normalized.IPAddress,
 	))
+}
+
+func (s Store) CreateSessionWithAuditTx(ctx context.Context, input CreateSessionWithAuditInput) (Session, AuditEvent, error) {
+	normalizedSession, err := normalizeCreateSessionInput(input.Session)
+	if err != nil {
+		return Session{}, AuditEvent{}, err
+	}
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return Session{}, AuditEvent{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	session, err := scanSession(tx.QueryRow(ctx, createSessionSQL,
+		normalizedSession.UserID,
+		normalizedSession.TokenHash,
+		normalizedSession.ExpiresAt,
+		normalizedSession.UserAgent,
+		normalizedSession.IPAddress,
+	))
+	if err != nil {
+		return Session{}, AuditEvent{}, err
+	}
+
+	auditEvent, err := insertAuditEvent(ctx, tx, auditEventForSession(input.AuditEvent, session))
+	if err != nil {
+		return Session{}, AuditEvent{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return Session{}, AuditEvent{}, err
+	}
+
+	return session, auditEvent, nil
 }
 
 func (s Store) GetSessionByTokenHash(ctx context.Context, tokenHash string) (Session, User, error) {
@@ -298,4 +334,26 @@ func normalizeCreateSessionInput(input CreateSessionInput) (CreateSessionInput, 
 	input.IPAddress = &normalized
 
 	return input, nil
+}
+
+func auditEventForSession(input CreateAuditEventInput, session Session) CreateAuditEventInput {
+	entityType := "session"
+	input.EntityType = &entityType
+	entityID := strconv.FormatInt(session.ID, 10)
+	input.EntityID = &entityID
+	if input.CreatedAt.IsZero() {
+		input.CreatedAt = session.CreatedAt
+	}
+
+	input.Metadata = cloneMetadata(input.Metadata)
+	input.Metadata["sessionId"] = session.ID
+	return input
+}
+
+func cloneMetadata(metadata map[string]any) map[string]any {
+	cloned := make(map[string]any, len(metadata)+1)
+	for key, value := range metadata {
+		cloned[key] = value
+	}
+	return cloned
 }

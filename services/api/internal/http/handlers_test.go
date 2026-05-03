@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -395,10 +396,27 @@ func TestListClinicReportsReturnsNotFoundForUnknownClinic(t *testing.T) {
 func TestListClinicAuditEventsReturnsOrderedAuditEventJSON(t *testing.T) {
 	firstCreated := time.Date(2026, 5, 1, 9, 30, 0, 0, time.UTC)
 	secondCreated := time.Date(2026, 5, 1, 10, 30, 0, 0, time.UTC)
+	actorUserID := int64(42)
+	actorRole := "district_manager"
+	organisationID := int64(7)
+	entityType := "report"
+	entityID := "100"
 	router := newAuthenticatedTestRouter(t, fakeStore{
 		auditEvents: []store.AuditEvent{
 			{ID: 20, ClinicID: "clinic-1", EventType: "report.submitted", Summary: "First report", CreatedAt: firstCreated},
-			{ID: 21, ClinicID: "clinic-1", EventType: "status.changed", Summary: "Status changed", CreatedAt: secondCreated},
+			{
+				ID:             21,
+				ClinicID:       "clinic-1",
+				EventType:      "report.reviewed",
+				Summary:        "Report accepted.",
+				CreatedAt:      secondCreated,
+				ActorUserID:    &actorUserID,
+				ActorRole:      &actorRole,
+				OrganisationID: &organisationID,
+				EntityType:     &entityType,
+				EntityID:       &entityID,
+				Metadata:       map[string]any{"decision": "accepted"},
+			},
 		},
 	})
 
@@ -415,6 +433,12 @@ func TestListClinicAuditEventsReturnsOrderedAuditEventJSON(t *testing.T) {
 	decodeJSON(t, rec, &got)
 	if len(got) != 2 || got[0].ID != 20 || got[1].ID != 21 {
 		t.Fatalf("unexpected audit event response order: %#v", got)
+	}
+	if got[1].ActorUserID == nil || *got[1].ActorUserID != actorUserID || got[1].EntityID == nil || *got[1].EntityID != entityID {
+		t.Fatalf("expected actor and entity fields in audit response, got %#v", got[1])
+	}
+	if got[1].Metadata["decision"] != "accepted" {
+		t.Fatalf("expected decision metadata in audit response, got %#v", got[1].Metadata)
 	}
 }
 
@@ -638,6 +662,31 @@ func TestCreateReportAssociatesAuthenticatedReporter(t *testing.T) {
 	}
 	if createInput.SubmittedByUserID == nil || *createInput.SubmittedByUserID != 42 {
 		t.Fatalf("expected submittedByUserId 42, got %v", createInput.SubmittedByUserID)
+	}
+}
+
+func TestCreateReportWritesSubmissionAuditWithAuthenticatedActor(t *testing.T) {
+	var createInput store.CreateReportInput
+	router := newAuthenticatedTestRouter(t, fakeStore{
+		createReport: store.Report{ID: 100, ClinicID: "clinic-1", ReviewState: "pending"},
+		createInput:  &createInput,
+	})
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports", strings.NewReader(validReportJSON()))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusCreated, rec.Code, rec.Body.String())
+	}
+	if createInput.AuditEvent == nil {
+		t.Fatal("expected submission audit event in store input")
+	}
+	if createInput.AuditEvent.ActorUserID == nil || *createInput.AuditEvent.ActorUserID != 42 {
+		t.Fatalf("expected actor user id 42, got %v", createInput.AuditEvent.ActorUserID)
+	}
+	if createInput.AuditEvent.ActorRole == nil || *createInput.AuditEvent.ActorRole != "district_manager" {
+		t.Fatalf("expected actor role district_manager, got %v", createInput.AuditEvent.ActorRole)
 	}
 }
 
@@ -953,6 +1002,45 @@ func TestAcceptPendingReportReturnsUpdatedReportAndCurrentStatus(t *testing.T) {
 	}
 }
 
+func TestReviewReportWritesDecisionAuditWithAuthenticatedActor(t *testing.T) {
+	orgID := int64(7)
+	notes := "District verified"
+	district := "Tshwane North Demo District"
+	var reviewInput store.ReviewReportInput
+	router := apihttp.NewRouter(authenticatedStore(t, "district_manager", fakeStore{
+		reviewReport: store.Report{ID: 100, ClinicID: "clinic-1", ReviewState: "accepted", Status: "degraded"},
+		reviewInput:  &reviewInput,
+		memberships: []store.OrganisationMembership{{
+			ID:             1,
+			OrganisationID: &orgID,
+			UserID:         42,
+			Role:           "district_manager",
+			District:       &district,
+			CreatedAt:      time.Date(2026, 5, 3, 11, 0, 0, 0, time.UTC),
+		}},
+	}))
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports/100/review", strings.NewReader(`{"decision":"accepted","notes":"District verified"}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if reviewInput.AuditEvent == nil {
+		t.Fatal("expected review audit event in store input")
+	}
+	if reviewInput.AuditEvent.ActorUserID == nil || *reviewInput.AuditEvent.ActorUserID != 42 {
+		t.Fatalf("expected actor user id 42, got %v", reviewInput.AuditEvent.ActorUserID)
+	}
+	if reviewInput.AuditEvent.OrganisationID == nil || *reviewInput.AuditEvent.OrganisationID != orgID {
+		t.Fatalf("expected organisation id %d, got %v", orgID, reviewInput.AuditEvent.OrganisationID)
+	}
+	if reviewInput.AuditEvent.Metadata["decision"] != "accepted" || reviewInput.AuditEvent.Metadata["notes"] != notes {
+		t.Fatalf("unexpected review audit metadata: %#v", reviewInput.AuditEvent.Metadata)
+	}
+}
+
 func TestRejectPendingReportReturnsNoCurrentStatus(t *testing.T) {
 	router := newAuthenticatedTestRouter(t, fakeStore{
 		reviewReport: store.Report{ID: 100, ClinicID: "clinic-1", ReviewState: "rejected"},
@@ -1165,6 +1253,120 @@ func TestLoginSuccessSetsSessionCookieAndReturnsUserMemberships(t *testing.T) {
 	}
 	if strings.Contains(rec.Body.String(), "correct-password") || strings.Contains(rec.Body.String(), passwordHash) || strings.Contains(rec.Body.String(), createInput.TokenHash) {
 		t.Fatalf("expected auth secrets not to appear in response, got %q", rec.Body.String())
+	}
+}
+
+func TestLoginSuccessWritesActorAuditEvent(t *testing.T) {
+	passwordHash := hashPasswordForTest(t, "correct-password")
+	now := time.Date(2026, 5, 3, 8, 0, 0, 0, time.UTC)
+	orgID := int64(7)
+	var auditInput store.CreateAuditEventInput
+	auditCalls := 0
+	createSessionCalls := 0
+	router := apihttp.NewRouter(fakeStore{
+		user: store.User{
+			ID:           42,
+			Email:        "manager@example.test",
+			DisplayName:  "Clinic Manager",
+			PasswordHash: &passwordHash,
+			CreatedAt:    now,
+			UpdatedAt:    now,
+		},
+		createSession: store.Session{
+			ID:        100,
+			UserID:    42,
+			CreatedAt: now,
+			ExpiresAt: now.Add(12 * time.Hour),
+		},
+		memberships: []store.OrganisationMembership{
+			{ID: 7, OrganisationID: &orgID, UserID: 42, Role: "org_admin", CreatedAt: now},
+		},
+		auditInput:         &auditInput,
+		auditCalls:         &auditCalls,
+		createSessionCalls: &createSessionCalls,
+	})
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", strings.NewReader(`{"email":"manager@example.test","password":"correct-password"}`))
+	req.Header.Set("User-Agent", "ClinicPulse Test")
+	req.RemoteAddr = "192.0.2.55:4321"
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if auditCalls != 1 {
+		t.Fatalf("expected one audit event, got %d", auditCalls)
+	}
+	if createSessionCalls != 0 {
+		t.Fatalf("expected login to use transactional session audit store method, got %d CreateSession calls", createSessionCalls)
+	}
+	if auditInput.EventType != "auth.login.succeeded" {
+		t.Fatalf("expected auth.login.succeeded event type, got %q", auditInput.EventType)
+	}
+	if auditInput.ActorUserID == nil || *auditInput.ActorUserID != 42 {
+		t.Fatalf("expected actor user id 42, got %v", auditInput.ActorUserID)
+	}
+	if auditInput.ActorRole == nil || *auditInput.ActorRole != "org_admin" {
+		t.Fatalf("expected actor role org_admin, got %v", auditInput.ActorRole)
+	}
+	if auditInput.OrganisationID == nil || *auditInput.OrganisationID != orgID {
+		t.Fatalf("expected organisation id %d, got %v", orgID, auditInput.OrganisationID)
+	}
+	if auditInput.EntityType == nil || *auditInput.EntityType != "session" {
+		t.Fatalf("expected session entity type, got %v", auditInput.EntityType)
+	}
+	if auditInput.EntityID == nil || *auditInput.EntityID != "100" {
+		t.Fatalf("expected session entity id 100, got %v", auditInput.EntityID)
+	}
+	if auditInput.Metadata["sessionId"] != int64(100) || auditInput.Metadata["userAgent"] != "ClinicPulse Test" || auditInput.Metadata["ipAddress"] != "192.0.2.55" {
+		t.Fatalf("unexpected login audit metadata: %#v", auditInput.Metadata)
+	}
+}
+
+func TestLoginAuditFailureDoesNotCreateSessionOnlyOrSetCookie(t *testing.T) {
+	passwordHash := hashPasswordForTest(t, "correct-password")
+	now := time.Date(2026, 5, 3, 8, 0, 0, 0, time.UTC)
+	storeErr := errors.New("audit insert failed")
+	createSessionCalls := 0
+	sessionAuditCalls := 0
+	router := apihttp.NewRouter(fakeStore{
+		user: store.User{
+			ID:           42,
+			Email:        "manager@example.test",
+			DisplayName:  "Clinic Manager",
+			PasswordHash: &passwordHash,
+			CreatedAt:    now,
+			UpdatedAt:    now,
+		},
+		createSession: store.Session{
+			ID:        100,
+			UserID:    42,
+			CreatedAt: now,
+			ExpiresAt: now.Add(12 * time.Hour),
+		},
+		memberships: []store.OrganisationMembership{
+			{ID: 7, UserID: 42, Role: "org_admin", CreatedAt: now},
+		},
+		createSessionCalls:          &createSessionCalls,
+		createSessionWithAuditCalls: &sessionAuditCalls,
+		createSessionWithAuditErr:   storeErr,
+		auditErr:                    storeErr,
+	})
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", strings.NewReader(`{"email":"manager@example.test","password":"correct-password"}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assertInternalError(t, rec, storeErr)
+	if createSessionCalls != 0 {
+		t.Fatalf("expected audit failure not to use CreateSession-only path, got %d calls", createSessionCalls)
+	}
+	if sessionAuditCalls != 1 {
+		t.Fatalf("expected transactional session audit path once, got %d calls", sessionAuditCalls)
+	}
+	if findCookie(rec, "clinicpulse_session") != nil {
+		t.Fatalf("expected audit failure not to set session cookie, got %v", rec.Result().Cookies())
 	}
 }
 
@@ -1557,46 +1759,53 @@ func TestLogoutClearCookieSecureBehaviorMatchesRequest(t *testing.T) {
 }
 
 type fakeStore struct {
-	clinics             []store.ClinicDetail
-	clinic              store.ClinicDetail
-	status              store.CurrentStatus
-	reports             []store.Report
-	pendingReports      []store.Report
-	auditEvents         []store.AuditEvent
-	createReport        store.Report
-	createStatus        store.CurrentStatus
-	createAuditEvent    store.AuditEvent
-	reviewReport        store.Report
-	reviewStatus        *store.CurrentStatus
-	user                store.User
-	createSession       store.Session
-	session             store.Session
-	sessionUser         store.User
-	memberships         []store.OrganisationMembership
-	createInput         *store.CreateReportInput
-	reviewInput         *store.ReviewReportInput
-	pendingScope        *store.ReportReviewScope
-	getUserEmail        *string
-	createSessionInput  *store.CreateSessionInput
-	getSessionTokenHash *string
-	revokedTokenHash    *string
-	createCalls         *int
-	createSessionCalls  *int
-	getSessionCalls     *int
-	revokeCalls         *int
-	listErr             error
-	getClinicErr        error
-	statusErr           error
-	reportsErr          error
-	pendingReportsErr   error
-	auditEventsErr      error
-	createErr           error
-	reviewErr           error
-	getUserErr          error
-	createSessionErr    error
-	getSessionErr       error
-	revokeErr           error
-	membershipsErr      error
+	clinics                     []store.ClinicDetail
+	clinic                      store.ClinicDetail
+	status                      store.CurrentStatus
+	reports                     []store.Report
+	pendingReports              []store.Report
+	auditEvents                 []store.AuditEvent
+	createReport                store.Report
+	createStatus                store.CurrentStatus
+	createAuditEvent            store.AuditEvent
+	reviewReport                store.Report
+	reviewStatus                *store.CurrentStatus
+	user                        store.User
+	createSession               store.Session
+	createSessionAudit          store.AuditEvent
+	session                     store.Session
+	sessionUser                 store.User
+	memberships                 []store.OrganisationMembership
+	createInput                 *store.CreateReportInput
+	reviewInput                 *store.ReviewReportInput
+	pendingScope                *store.ReportReviewScope
+	getUserEmail                *string
+	createSessionInput          *store.CreateSessionInput
+	sessionAuditInput           *store.CreateSessionWithAuditInput
+	auditInput                  *store.CreateAuditEventInput
+	getSessionTokenHash         *string
+	revokedTokenHash            *string
+	createCalls                 *int
+	createSessionCalls          *int
+	createSessionWithAuditCalls *int
+	auditCalls                  *int
+	getSessionCalls             *int
+	revokeCalls                 *int
+	listErr                     error
+	getClinicErr                error
+	statusErr                   error
+	reportsErr                  error
+	pendingReportsErr           error
+	auditEventsErr              error
+	createErr                   error
+	reviewErr                   error
+	getUserErr                  error
+	createSessionErr            error
+	createSessionWithAuditErr   error
+	auditErr                    error
+	getSessionErr               error
+	revokeErr                   error
+	membershipsErr              error
 }
 
 func (f fakeStore) ListClinics(context.Context) ([]store.ClinicDetail, error) {
@@ -1674,6 +1883,53 @@ func (f fakeStore) CreateSession(_ context.Context, input store.CreateSessionInp
 	session.UserAgent = input.UserAgent
 	session.IPAddress = input.IPAddress
 	return session, f.createSessionErr
+}
+
+func (f fakeStore) CreateSessionWithAuditTx(_ context.Context, input store.CreateSessionWithAuditInput) (store.Session, store.AuditEvent, error) {
+	if f.createSessionWithAuditCalls != nil {
+		*f.createSessionWithAuditCalls++
+	}
+	if f.createSessionInput != nil {
+		*f.createSessionInput = input.Session
+	}
+	session := f.createSession
+	session.UserID = input.Session.UserID
+	session.TokenHash = input.Session.TokenHash
+	session.ExpiresAt = input.Session.ExpiresAt
+	session.UserAgent = input.Session.UserAgent
+	session.IPAddress = input.Session.IPAddress
+	auditInput := input.AuditEvent
+	entityType := "session"
+	auditInput.EntityType = &entityType
+	entityID := strconv.FormatInt(session.ID, 10)
+	auditInput.EntityID = &entityID
+	if auditInput.Metadata == nil {
+		auditInput.Metadata = map[string]any{}
+	}
+	auditInput.Metadata["sessionId"] = session.ID
+	if f.sessionAuditInput != nil {
+		*f.sessionAuditInput = store.CreateSessionWithAuditInput{
+			Session:    input.Session,
+			AuditEvent: auditInput,
+		}
+	}
+	if f.auditCalls != nil {
+		*f.auditCalls++
+	}
+	if f.auditInput != nil {
+		*f.auditInput = auditInput
+	}
+	return session, f.createSessionAudit, f.createSessionWithAuditErr
+}
+
+func (f fakeStore) CreateAuditEvent(_ context.Context, input store.CreateAuditEventInput) (store.AuditEvent, error) {
+	if f.auditCalls != nil {
+		*f.auditCalls++
+	}
+	if f.auditInput != nil {
+		*f.auditInput = input
+	}
+	return f.createAuditEvent, f.auditErr
 }
 
 func (f fakeStore) GetSessionByTokenHash(_ context.Context, tokenHash string) (store.Session, store.User, error) {

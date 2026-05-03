@@ -37,7 +37,7 @@ type ClinicStore interface {
 	CreatePendingReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, error)
 	ReviewReportTx(ctx context.Context, input store.ReviewReportInput) (store.Report, *store.CurrentStatus, error)
 	GetUserByEmail(ctx context.Context, email string) (store.User, error)
-	CreateSession(ctx context.Context, input store.CreateSessionInput) (store.Session, error)
+	CreateSessionWithAuditTx(ctx context.Context, input store.CreateSessionWithAuditInput) (store.Session, store.AuditEvent, error)
 	GetSessionByTokenHash(ctx context.Context, tokenHash string) (store.Session, store.User, error)
 	RevokeSession(ctx context.Context, tokenHash string) error
 	ListMembershipsForUser(ctx context.Context, userID int64) ([]store.OrganisationMembership, error)
@@ -191,6 +191,8 @@ func (h Handler) CreateReport(w nethttp.ResponseWriter, r *nethttp.Request) {
 	input := payload.toReportInput()
 	if principal, ok := PrincipalFromContext(r.Context()); ok {
 		input.StoreInput.SubmittedByUserID = &principal.UserID
+		actor := auditActorForPrincipal(principal)
+		input.Actor = &actor
 	}
 	report, err := service.CreateReport(r.Context(), h.store, input)
 	if err != nil {
@@ -226,6 +228,7 @@ func (h Handler) ReviewReport(w nethttp.ResponseWriter, r *nethttp.Request) {
 		return
 	}
 
+	actor := auditActorForPrincipal(principal)
 	report, status, err := service.ReviewReport(r.Context(), h.store, service.ReviewReportInput{
 		ReportID:       reportID,
 		ReviewerUserID: principal.UserID,
@@ -233,6 +236,7 @@ func (h Handler) ReviewReport(w nethttp.ResponseWriter, r *nethttp.Request) {
 		Decision:       payload.Decision,
 		Notes:          payload.Notes,
 		Scope:          reviewScopeForPrincipal(principal),
+		Actor:          &actor,
 	})
 	if err != nil {
 		var validationErr service.ValidationError
@@ -314,12 +318,23 @@ func (h Handler) Login(w nethttp.ResponseWriter, r *nethttp.Request) {
 	}
 
 	expiresAt := time.Now().UTC().Add(sessionDuration)
-	session, err := h.store.CreateSession(r.Context(), store.CreateSessionInput{
+	userAgent := optionalString(r.UserAgent())
+	ipAddress := remoteIPAddress(r.RemoteAddr)
+	principal, ok := PrincipalForMemberships(user, store.Session{}, memberships)
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+	session, err := service.CreateLoginSessionWithAudit(r.Context(), h.store, store.CreateSessionInput{
 		UserID:    user.ID,
 		TokenHash: tokenHash,
 		ExpiresAt: expiresAt,
-		UserAgent: optionalString(r.UserAgent()),
-		IPAddress: remoteIPAddress(r.RemoteAddr),
+		UserAgent: userAgent,
+		IPAddress: ipAddress,
+	}, service.LoginAuditInput{
+		Actor:     auditActorForPrincipal(principal),
+		UserAgent: userAgent,
+		IPAddress: ipAddress,
 	})
 	if err != nil {
 		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
@@ -516,6 +531,15 @@ func reviewScopeForPrincipal(principal Principal) store.ReportReviewScope {
 	return store.ReportReviewScope{
 		Role:     principal.Role,
 		District: principal.DistrictScope,
+	}
+}
+
+func auditActorForPrincipal(principal Principal) service.AuditActor {
+	return service.AuditActor{
+		UserID:         principal.UserID,
+		Name:           principal.DisplayName,
+		Role:           principal.Role,
+		OrganisationID: principal.OrganisationID,
 	}
 }
 

@@ -65,13 +65,19 @@ type Report struct {
 }
 
 type AuditEvent struct {
-	ID         int64     `json:"id"`
-	ExternalID *string   `json:"externalId,omitempty"`
-	ClinicID   string    `json:"clinicId"`
-	ActorName  *string   `json:"actorName,omitempty"`
-	EventType  string    `json:"eventType"`
-	Summary    string    `json:"summary"`
-	CreatedAt  time.Time `json:"createdAt"`
+	ID             int64          `json:"id"`
+	ExternalID     *string        `json:"externalId,omitempty"`
+	ClinicID       string         `json:"clinicId"`
+	ActorName      *string        `json:"actorName,omitempty"`
+	EventType      string         `json:"eventType"`
+	Summary        string         `json:"summary"`
+	CreatedAt      time.Time      `json:"createdAt"`
+	ActorUserID    *int64         `json:"actorUserId,omitempty"`
+	ActorRole      *string        `json:"actorRole,omitempty"`
+	OrganisationID *int64         `json:"organisationId,omitempty"`
+	EntityType     *string        `json:"entityType,omitempty"`
+	EntityID       *string        `json:"entityId,omitempty"`
+	Metadata       map[string]any `json:"metadata,omitempty"`
 }
 
 type User struct {
@@ -140,6 +146,7 @@ type CreateReportInput struct {
 	AuditEventType    string    `json:"auditEventType,omitempty"`
 	AuditSummary      string    `json:"auditSummary,omitempty"`
 	SubmittedByUserID *int64    `json:"submittedByUserId,omitempty"`
+	AuditEvent        *CreateAuditEventInput
 }
 
 type ReviewReportInput struct {
@@ -149,6 +156,7 @@ type ReviewReportInput struct {
 	Decision       string
 	Notes          *string
 	Scope          ReportReviewScope
+	AuditEvent     *CreateAuditEventInput
 }
 
 type ReportReviewScope struct {
@@ -162,4 +170,24 @@ type CreateSessionInput struct {
 	ExpiresAt time.Time `json:"expiresAt"`
 	UserAgent *string   `json:"userAgent,omitempty"`
 	IPAddress *string   `json:"ipAddress,omitempty"`
+}
+
+type CreateSessionWithAuditInput struct {
+	Session    CreateSessionInput
+	AuditEvent CreateAuditEventInput
+}
+
+type CreateAuditEventInput struct {
+	ExternalID     *string
+	ClinicID       *string
+	ActorName      *string
+	EventType      string
+	Summary        string
+	CreatedAt      time.Time
+	ActorUserID    *int64
+	ActorRole      *string
+	OrganisationID *int64
+	EntityType     *string
+	EntityID       *string
+	Metadata       map[string]any
 }

@@ -23,6 +23,7 @@ type ReportInput struct {
 	StoreInput      store.CreateReportInput
 	Confidence      *int
 	ConfidenceScore *float64
+	Actor           *AuditActor
 }
 
 type ReviewReportInput struct {
@@ -32,6 +33,7 @@ type ReviewReportInput struct {
 	Decision       string
 	Notes          *string
 	Scope          store.ReportReviewScope
+	Actor          *AuditActor
 }
 
 type ValidationError struct {
@@ -118,6 +120,9 @@ func createReportAt(ctx context.Context, creator ReportCreator, input ReportInpu
 
 	storeInput := input.toStoreInput()
 	storeInput.ReviewState = "pending"
+	if input.Actor != nil {
+		storeInput.AuditEvent = ptr(ReportSubmissionAudit(storeInput, *input.Actor))
+	}
 	return creator.CreatePendingReportTx(ctx, storeInput)
 }
 
@@ -126,14 +131,18 @@ func ReviewReport(ctx context.Context, reviewer ReportReviewer, input ReviewRepo
 	if err := ValidateReviewReportInput(normalized); err != nil {
 		return store.Report{}, nil, err
 	}
-	return reviewer.ReviewReportTx(ctx, store.ReviewReportInput{
+	storeInput := store.ReviewReportInput{
 		ReportID:       normalized.ReportID,
 		ReviewerUserID: normalized.ReviewerUserID,
 		OrganisationID: normalized.OrganisationID,
 		Decision:       normalized.Decision,
 		Notes:          normalized.Notes,
 		Scope:          normalized.Scope,
-	})
+	}
+	if normalized.Actor != nil {
+		storeInput.AuditEvent = ptr(ReportReviewAudit(normalized, *normalized.Actor))
+	}
+	return reviewer.ReviewReportTx(ctx, storeInput)
 }
 
 func fieldMessage(field string, message string) string {
@@ -220,4 +229,8 @@ var allowedReportSources = map[string]bool{
 var allowedReviewDecisions = map[string]bool{
 	"accepted": true,
 	"rejected": true,
+}
+
+func ptr[T any](value T) *T {
+	return &value
 }

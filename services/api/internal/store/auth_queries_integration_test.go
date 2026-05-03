@@ -61,6 +61,58 @@ func TestAuthStoreQueriesIntegration(t *testing.T) {
 		t.Fatalf("expected nullable session fields to remain nil, got %+v", nullOptional)
 	}
 
+	loginAuditRole := "org_admin"
+	sessionWithAudit, loginAudit, err := store.CreateSessionWithAuditTx(ctx, CreateSessionWithAuditInput{
+		Session: CreateSessionInput{
+			UserID:    activeUserID,
+			TokenHash: strings.Repeat("f", 64),
+			ExpiresAt: time.Now().Add(time.Hour),
+			UserAgent: &userAgent,
+			IPAddress: &ipAddress,
+		},
+		AuditEvent: CreateAuditEventInput{
+			ActorUserID: &activeUserID,
+			ActorRole:   &loginAuditRole,
+			EventType:   "auth.login.succeeded",
+			Summary:     "User signed in.",
+			EntityType:  stringPtr("session"),
+			Metadata: map[string]any{
+				"userAgent": userAgent,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateSessionWithAuditTx returned error: %v", err)
+	}
+	if loginAudit.EntityID == nil || *loginAudit.EntityID != fmt.Sprintf("%d", sessionWithAudit.ID) {
+		t.Fatalf("expected login audit session entity id %d, got %+v", sessionWithAudit.ID, loginAudit.EntityID)
+	}
+	if loginAudit.Metadata["sessionId"] != float64(sessionWithAudit.ID) {
+		t.Fatalf("expected login audit session id metadata %d, got %#v", sessionWithAudit.ID, loginAudit.Metadata)
+	}
+
+	invalidRole := "not_a_role"
+	rolledBackTokenHash := strings.Repeat("g", 64)
+	if _, _, err := store.CreateSessionWithAuditTx(ctx, CreateSessionWithAuditInput{
+		Session: CreateSessionInput{
+			UserID:    activeUserID,
+			TokenHash: rolledBackTokenHash,
+			ExpiresAt: time.Now().Add(time.Hour),
+		},
+		AuditEvent: CreateAuditEventInput{
+			ActorUserID: &activeUserID,
+			ActorRole:   &invalidRole,
+			EventType:   "auth.login.succeeded",
+			Summary:     "User signed in.",
+			EntityType:  stringPtr("session"),
+		},
+	}); err == nil {
+		t.Fatal("expected invalid audit row to fail session audit transaction")
+	}
+	if _, _, err := store.GetSessionByTokenHash(ctx, rolledBackTokenHash); err != pgx.ErrNoRows {
+		t.Fatalf("expected failed session audit transaction to roll back session, got %v", err)
+	}
+
 	session, sessionUser, err := store.GetSessionByTokenHash(ctx, active.TokenHash)
 	if err != nil {
 		t.Fatalf("GetSessionByTokenHash active returned error: %v", err)

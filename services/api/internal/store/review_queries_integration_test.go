@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -32,6 +33,9 @@ func TestReportReviewQueriesIntegration(t *testing.T) {
 	stockPressure := "low"
 	queuePressure := "moderate"
 	submittedAt := time.Date(2026, 5, 3, 10, 0, 0, 0, time.UTC)
+	reporterRole := "reporter"
+	reviewerRole := "district_manager"
+	reportEntityType := "report"
 	report, err := store.CreatePendingReportTx(ctx, CreateReportInput{
 		ClinicID:          "clinic-review-accept",
 		ReporterName:      stringPtr("Field Reporter"),
@@ -43,6 +47,20 @@ func TestReportReviewQueriesIntegration(t *testing.T) {
 		StockPressure:     &stockPressure,
 		QueuePressure:     &queuePressure,
 		SubmittedByUserID: &reporterID,
+		AuditEvent: &CreateAuditEventInput{
+			ClinicID:       stringPtr("clinic-review-accept"),
+			ActorName:      stringPtr("Review Reporter"),
+			EventType:      "report.submitted",
+			Summary:        "Report submitted for review.",
+			ActorUserID:    &reporterID,
+			ActorRole:      &reporterRole,
+			OrganisationID: &orgID,
+			EntityType:     &reportEntityType,
+			Metadata: map[string]any{
+				"reviewState": "pending",
+				"status":      "degraded",
+			},
+		},
 	})
 	if err != nil {
 		t.Fatalf("CreatePendingReportTx returned error: %v", err)
@@ -52,6 +70,16 @@ func TestReportReviewQueriesIntegration(t *testing.T) {
 	}
 	if _, err := store.GetCurrentStatus(ctx, "clinic-review-accept"); err != pgx.ErrNoRows {
 		t.Fatalf("expected pending create not to update current status, got %v", err)
+	}
+	submissionAudit := assertIntegrationAuditEvent(t, ctx, store, "clinic-review-accept", "report.submitted")
+	if submissionAudit.ActorUserID == nil || *submissionAudit.ActorUserID != reporterID {
+		t.Fatalf("expected submission actor user id %d, got %+v", reporterID, submissionAudit.ActorUserID)
+	}
+	if submissionAudit.EntityID == nil || *submissionAudit.EntityID != strconv.FormatInt(report.ID, 10) {
+		t.Fatalf("expected submission entity id %d, got %+v", report.ID, submissionAudit.EntityID)
+	}
+	if submissionAudit.Metadata["reviewState"] != "pending" {
+		t.Fatalf("expected pending submission audit metadata, got %#v", submissionAudit.Metadata)
 	}
 
 	pending, err := store.ListPendingReports(ctx, ReportReviewScope{Role: "system_admin"})
@@ -115,6 +143,20 @@ func TestReportReviewQueriesIntegration(t *testing.T) {
 		Decision:       "accepted",
 		Notes:          &notes,
 		Scope:          ReportReviewScope{Role: "system_admin"},
+		AuditEvent: &CreateAuditEventInput{
+			ClinicID:       stringPtr("clinic-review-accept"),
+			ActorName:      stringPtr("District Reviewer"),
+			EventType:      "report.reviewed",
+			Summary:        "Report accepted.",
+			ActorUserID:    &reviewerID,
+			ActorRole:      &reviewerRole,
+			OrganisationID: &orgID,
+			EntityType:     &reportEntityType,
+			EntityID:       stringPtr(strconv.FormatInt(report.ID, 10)),
+			Metadata: map[string]any{
+				"decision": "accepted",
+			},
+		},
 	})
 	if err != nil {
 		t.Fatalf("ReviewReportTx accept returned error: %v", err)
@@ -129,6 +171,35 @@ func TestReportReviewQueriesIntegration(t *testing.T) {
 		t.Fatalf("expected accepted review to update current status, got %+v", status)
 	}
 	assertIntegrationReviewRow(t, ctx, store, report.ID, reviewerID, orgID, "accepted", &notes)
+	eventsAfterReview, err := store.ListClinicAuditEvents(ctx, "clinic-review-accept")
+	if err != nil {
+		t.Fatalf("ListClinicAuditEvents after review returned error: %v", err)
+	}
+	if len(eventsAfterReview) != 2 {
+		t.Fatalf("expected submission and review audit rows, got %+v", eventsAfterReview)
+	}
+	var submissionAfterReview *AuditEvent
+	var reviewAudit *AuditEvent
+	for i := range eventsAfterReview {
+		switch eventsAfterReview[i].EventType {
+		case "report.submitted":
+			submissionAfterReview = &eventsAfterReview[i]
+		case "report.reviewed":
+			reviewAudit = &eventsAfterReview[i]
+		}
+	}
+	if submissionAfterReview == nil || reviewAudit == nil {
+		t.Fatalf("expected submission and review audit events, got %+v", eventsAfterReview)
+	}
+	if submissionAfterReview.ID != submissionAudit.ID {
+		t.Fatalf("expected original submission audit row to remain append-only, before=%+v after=%+v", submissionAudit, *submissionAfterReview)
+	}
+	if submissionAfterReview.Metadata["reviewState"] != "pending" || submissionAfterReview.Metadata["decision"] != nil {
+		t.Fatalf("expected review not to mutate submission audit metadata, got %#v", submissionAfterReview.Metadata)
+	}
+	if reviewAudit.Metadata["decision"] != "accepted" {
+		t.Fatalf("expected review decision metadata, got %#v", reviewAudit.Metadata)
+	}
 	if _, _, err := store.ReviewReportTx(ctx, ReviewReportInput{
 		ReportID:       report.ID,
 		ReviewerUserID: reviewerID,
@@ -224,4 +295,20 @@ WHERE report_id = $1`, reportID).Scan(&gotReviewerID, &gotOrgID, &gotDecision, &
 	if !gotNotes.Valid || gotNotes.String != *notes {
 		t.Fatalf("expected review notes %q, got %v", *notes, gotNotes)
 	}
+}
+
+func assertIntegrationAuditEvent(t *testing.T, ctx context.Context, store Store, clinicID string, eventType string) AuditEvent {
+	t.Helper()
+
+	events, err := store.ListClinicAuditEvents(ctx, clinicID)
+	if err != nil {
+		t.Fatalf("ListClinicAuditEvents returned error: %v", err)
+	}
+	for _, event := range events {
+		if event.EventType == eventType {
+			return event
+		}
+	}
+	t.Fatalf("expected audit event type %q, got %+v", eventType, events)
+	return AuditEvent{}
 }

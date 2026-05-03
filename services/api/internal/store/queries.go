@@ -3,8 +3,10 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -141,7 +143,13 @@ SELECT
     actor_name,
     event_type,
     summary,
-    created_at
+    created_at,
+    actor_user_id,
+    actor_role,
+    organisation_id,
+    entity_type,
+    entity_id,
+    metadata
 FROM audit_events
 WHERE clinic_id = $1
 ORDER BY created_at DESC, id DESC`
@@ -241,9 +249,15 @@ INSERT INTO audit_events (
     actor_name,
     event_type,
     summary,
-    created_at
+    created_at,
+    actor_user_id,
+    actor_role,
+    organisation_id,
+    entity_type,
+    entity_id,
+    metadata
 )
-VALUES ($1, $2, $3, $4, $5, $6)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb)
 RETURNING
     id,
     external_id,
@@ -251,7 +265,13 @@ RETURNING
     actor_name,
     event_type,
     summary,
-	created_at`
+	created_at,
+	actor_user_id,
+	actor_role,
+	organisation_id,
+	entity_type,
+	entity_id,
+	metadata`
 
 	getReportForReviewSQL = `
 SELECT
@@ -422,6 +442,10 @@ func (s Store) ListClinicAuditEvents(ctx context.Context, clinicID string) ([]Au
 	})
 }
 
+func (s Store) CreateAuditEvent(ctx context.Context, input CreateAuditEventInput) (AuditEvent, error) {
+	return insertAuditEvent(ctx, s.pool, input)
+}
+
 func (s Store) CreateReportTx(ctx context.Context, input CreateReportInput) (Report, CurrentStatus, AuditEvent, error) {
 	normalized := normalizeCreateReportInput(input)
 	if normalized.ReviewState != "accepted" {
@@ -482,14 +506,12 @@ func (s Store) CreateReportTx(ctx context.Context, input CreateReportInput) (Rep
 		return Report{}, CurrentStatus{}, AuditEvent{}, err
 	}
 
-	event, err := scanAuditEvent(tx.QueryRow(ctx, insertAuditEventSQL,
-		normalized.AuditExternalID,
-		normalized.ClinicID,
-		normalized.ReporterName,
-		normalized.AuditEventType,
-		normalized.AuditSummary,
-		normalized.ReceivedAt,
-	))
+	auditInput := acceptedReportAuditEventInput(normalized)
+	if normalized.AuditEvent != nil {
+		auditInput = *normalized.AuditEvent
+	}
+	auditInput = auditEventForReport(auditInput, report, normalized.ReceivedAt)
+	event, err := insertAuditEvent(ctx, tx, auditInput)
 	if err != nil {
 		return Report{}, CurrentStatus{}, AuditEvent{}, err
 	}
@@ -538,6 +560,13 @@ func (s Store) CreatePendingReportTx(ctx context.Context, input CreateReportInpu
 	))
 	if err != nil {
 		return Report{}, err
+	}
+
+	if normalized.AuditEvent != nil {
+		auditInput := auditEventForReport(*normalized.AuditEvent, report, normalized.ReceivedAt)
+		if _, err := insertAuditEvent(ctx, tx, auditInput); err != nil {
+			return Report{}, err
+		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -623,6 +652,13 @@ func (s Store) ReviewReportTx(ctx context.Context, input ReviewReportInput) (Rep
 			return Report{}, nil, err
 		}
 		status = &current
+	}
+
+	if input.AuditEvent != nil {
+		auditInput := auditEventForReport(*input.AuditEvent, report, reviewedAt)
+		if _, err := insertAuditEvent(ctx, tx, auditInput); err != nil {
+			return Report{}, nil, err
+		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -806,24 +842,114 @@ func scanReport(row pgx.Row) (Report, error) {
 func scanAuditEvent(row pgx.Row) (AuditEvent, error) {
 	var event AuditEvent
 	var externalID sql.NullString
+	var clinicID sql.NullString
 	var actorName sql.NullString
+	var actorUserID sql.NullInt64
+	var actorRole sql.NullString
+	var organisationID sql.NullInt64
+	var entityType sql.NullString
+	var entityID sql.NullString
+	var metadataJSON []byte
 
 	if err := row.Scan(
 		&event.ID,
 		&externalID,
-		&event.ClinicID,
+		&clinicID,
 		&actorName,
 		&event.EventType,
 		&event.Summary,
 		&event.CreatedAt,
+		&actorUserID,
+		&actorRole,
+		&organisationID,
+		&entityType,
+		&entityID,
+		&metadataJSON,
 	); err != nil {
 		return AuditEvent{}, err
 	}
 
 	event.ExternalID = nullStringPtr(externalID)
+	if clinicID.Valid {
+		event.ClinicID = clinicID.String
+	}
 	event.ActorName = nullStringPtr(actorName)
+	event.ActorUserID = nullInt64Ptr(actorUserID)
+	event.ActorRole = nullStringPtr(actorRole)
+	event.OrganisationID = nullInt64Ptr(organisationID)
+	event.EntityType = nullStringPtr(entityType)
+	event.EntityID = nullStringPtr(entityID)
+	if len(metadataJSON) == 0 {
+		metadataJSON = []byte("{}")
+	}
+	if err := json.Unmarshal(metadataJSON, &event.Metadata); err != nil {
+		return AuditEvent{}, err
+	}
 
 	return event, nil
+}
+
+type auditEventInserter interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
+func insertAuditEvent(ctx context.Context, queryer auditEventInserter, input CreateAuditEventInput) (AuditEvent, error) {
+	normalized := normalizeCreateAuditEventInput(input)
+	metadataJSON, err := json.Marshal(normalized.Metadata)
+	if err != nil {
+		return AuditEvent{}, err
+	}
+
+	return scanAuditEvent(queryer.QueryRow(ctx, insertAuditEventSQL,
+		normalized.ExternalID,
+		normalized.ClinicID,
+		normalized.ActorName,
+		normalized.EventType,
+		normalized.Summary,
+		normalized.CreatedAt,
+		normalized.ActorUserID,
+		normalized.ActorRole,
+		normalized.OrganisationID,
+		normalized.EntityType,
+		normalized.EntityID,
+		string(metadataJSON),
+	))
+}
+
+func normalizeCreateAuditEventInput(input CreateAuditEventInput) CreateAuditEventInput {
+	if input.CreatedAt.IsZero() {
+		input.CreatedAt = time.Now().UTC()
+	}
+	if input.Metadata == nil {
+		input.Metadata = map[string]any{}
+	}
+	return input
+}
+
+func acceptedReportAuditEventInput(input CreateReportInput) CreateAuditEventInput {
+	clinicID := input.ClinicID
+	return CreateAuditEventInput{
+		ExternalID: input.AuditExternalID,
+		ClinicID:   &clinicID,
+		ActorName:  input.ReporterName,
+		EventType:  input.AuditEventType,
+		Summary:    input.AuditSummary,
+		CreatedAt:  input.ReceivedAt,
+	}
+}
+
+func auditEventForReport(input CreateAuditEventInput, report Report, createdAt time.Time) CreateAuditEventInput {
+	if input.ClinicID == nil && report.ClinicID != "" {
+		input.ClinicID = &report.ClinicID
+	}
+	if input.EntityType != nil && *input.EntityType == "report" && input.EntityID == nil {
+		entityID := strconv.FormatInt(report.ID, 10)
+		input.EntityID = &entityID
+	}
+	if input.CreatedAt.IsZero() {
+		input.CreatedAt = createdAt
+	}
+	return input
 }
 
 func normalizeCreateReportInput(input CreateReportInput) CreateReportInput {
