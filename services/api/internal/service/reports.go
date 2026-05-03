@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"clinicpulse/services/api/internal/store"
 )
+
+const maxSubmittedAtFutureSkew = 5 * time.Minute
 
 type ReportCreator interface {
 	CreateReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, store.CurrentStatus, store.AuditEvent, error)
@@ -27,7 +30,11 @@ func (e ValidationError) Error() string {
 }
 
 func ValidateCreateReportInput(input ReportInput) error {
-	fields := make([]string, 0, 9)
+	return ValidateCreateReportInputAt(input, time.Now().UTC())
+}
+
+func ValidateCreateReportInputAt(input ReportInput, validationTime time.Time) error {
+	fields := make([]string, 0, 10)
 	storeInput := input.StoreInput
 
 	if strings.TrimSpace(storeInput.ClinicID) == "" {
@@ -57,6 +64,9 @@ func ValidateCreateReportInput(input ReportInput) error {
 	if confidenceScore := reportInputConfidenceScore(input); confidenceScore != nil && (*confidenceScore < 0 || *confidenceScore > 1) {
 		fields = append(fields, fieldMessage("confidenceScore", "confidenceScore must be between 0 and 1"))
 	}
+	if !storeInput.SubmittedAt.IsZero() && storeInput.SubmittedAt.After(validationTime.Add(maxSubmittedAtFutureSkew)) {
+		fields = append(fields, fieldMessage("submittedAt", "submittedAt cannot be more than 5 minutes in the future"))
+	}
 
 	if len(fields) > 0 {
 		return ValidationError{Fields: fields}
@@ -65,7 +75,11 @@ func ValidateCreateReportInput(input ReportInput) error {
 }
 
 func CreateReport(ctx context.Context, creator ReportCreator, input ReportInput) (store.Report, store.CurrentStatus, store.AuditEvent, error) {
-	if err := ValidateCreateReportInput(input); err != nil {
+	return createReportAt(ctx, creator, input, time.Now().UTC())
+}
+
+func createReportAt(ctx context.Context, creator ReportCreator, input ReportInput, validationTime time.Time) (store.Report, store.CurrentStatus, store.AuditEvent, error) {
+	if err := ValidateCreateReportInputAt(input, validationTime); err != nil {
 		return store.Report{}, store.CurrentStatus{}, store.AuditEvent{}, err
 	}
 

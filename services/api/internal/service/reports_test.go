@@ -199,6 +199,47 @@ func TestValidateCreateReportInputAcceptsAllowedValues(t *testing.T) {
 	}
 }
 
+func TestValidateCreateReportInputRejectsSubmittedAtBeyondFutureSkew(t *testing.T) {
+	validationTime := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
+	input := validReportInput()
+	input.StoreInput.SubmittedAt = validationTime.Add(6 * time.Minute)
+
+	err := ValidateCreateReportInputAt(input, validationTime)
+
+	var validationErr ValidationError
+	if !errors.As(err, &validationErr) {
+		t.Fatalf("expected ValidationError, got %v", err)
+	}
+	want := "submittedAt: submittedAt cannot be more than 5 minutes in the future"
+	if !containsField(validationErr.Fields, want) {
+		t.Fatalf("expected validation field message %q, got %#v", want, validationErr.Fields)
+	}
+}
+
+func TestValidateCreateReportInputAcceptsAbsentAndNormalSubmittedAt(t *testing.T) {
+	validationTime := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name        string
+		submittedAt time.Time
+	}{
+		{name: "absent submitted at"},
+		{name: "past submitted at", submittedAt: validationTime.Add(-24 * time.Hour)},
+		{name: "within future skew", submittedAt: validationTime.Add(5 * time.Minute)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := validReportInput()
+			input.StoreInput.SubmittedAt = tt.submittedAt
+
+			if err := ValidateCreateReportInputAt(input, validationTime); err != nil {
+				t.Fatalf("expected nil error, got %v", err)
+			}
+		})
+	}
+}
+
 func TestCreateReportRejectsInvalidInputWithoutCallingCreator(t *testing.T) {
 	creator := &fakeReportCreator{}
 	input := validReportInput()
@@ -209,6 +250,27 @@ func TestCreateReportRejectsInvalidInputWithoutCallingCreator(t *testing.T) {
 	var validationErr ValidationError
 	if !errors.As(err, &validationErr) {
 		t.Fatalf("expected ValidationError, got %v", err)
+	}
+	if creator.called {
+		t.Fatal("expected invalid input not to call creator")
+	}
+}
+
+func TestCreateReportRejectsFarFutureSubmittedAtWithoutCallingCreator(t *testing.T) {
+	validationTime := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
+	creator := &fakeReportCreator{}
+	input := validReportInput()
+	input.StoreInput.SubmittedAt = validationTime.Add(6 * time.Minute)
+
+	_, _, _, err := createReportAt(context.Background(), creator, input, validationTime)
+
+	var validationErr ValidationError
+	if !errors.As(err, &validationErr) {
+		t.Fatalf("expected ValidationError, got %v", err)
+	}
+	want := "submittedAt: submittedAt cannot be more than 5 minutes in the future"
+	if !containsField(validationErr.Fields, want) {
+		t.Fatalf("expected validation field message %q, got %#v", want, validationErr.Fields)
 	}
 	if creator.called {
 		t.Fatal("expected invalid input not to call creator")
