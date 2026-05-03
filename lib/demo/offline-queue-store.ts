@@ -5,6 +5,18 @@ export const OFFLINE_REPORT_QUEUE_STORE = "reports";
 export const OFFLINE_REPORT_QUEUE_SCHEMA_VERSION = 1;
 
 const SYNCED_REPORT_RETENTION_MS = 5 * 60 * 1000;
+const CLINIC_STATUSES = ["operational", "degraded", "non_functional", "unknown"];
+const STAFF_PRESSURES = ["normal", "strained", "critical", "unknown"];
+const STOCK_PRESSURES = ["normal", "low", "stockout", "unknown"];
+const QUEUE_PRESSURES = ["low", "moderate", "high", "unknown"];
+const SYNC_STATUSES = [
+  "queued",
+  "syncing",
+  "synced",
+  "retry_wait",
+  "conflict",
+  "failed",
+];
 
 type OfflineReportQueueAdapter = {
   put(item: OfflineReportQueueItem): Promise<void>;
@@ -29,7 +41,52 @@ function isOfflineReportQueueItem(value: unknown): value is OfflineReportQueueIt
     return false;
   }
 
-  return (value as { schemaVersion?: unknown }).schemaVersion === OFFLINE_REPORT_QUEUE_SCHEMA_VERSION;
+  const record = value as Record<string, unknown>;
+
+  return (
+    record.schemaVersion === OFFLINE_REPORT_QUEUE_SCHEMA_VERSION &&
+    isNonEmptyString(record.clientReportId) &&
+    isNonEmptyString(record.clinicId) &&
+    isOneOf(record.status, CLINIC_STATUSES) &&
+    isNonEmptyString(record.reason) &&
+    isOneOf(record.staffPressure, STAFF_PRESSURES) &&
+    isOneOf(record.stockPressure, STOCK_PRESSURES) &&
+    isOneOf(record.queuePressure, QUEUE_PRESSURES) &&
+    isNonEmptyString(record.notes) &&
+    isDateString(record.submittedAt) &&
+    isDateString(record.queuedAt) &&
+    isDateString(record.updatedAt) &&
+    isOneOf(record.syncStatus, SYNC_STATUSES) &&
+    typeof record.attemptCount === "number" &&
+    Number.isFinite(record.attemptCount) &&
+    record.attemptCount >= 0 &&
+    isNullableString(record.nextRetryAt) &&
+    isNullableString(record.lastAttemptAt) &&
+    isNullableString(record.lastError) &&
+    isNullableNumber(record.lastServerReportId) &&
+    isNullableString(record.lastServerReviewState) &&
+    isNullableString(record.conflictReason)
+  );
+}
+
+function isNonEmptyString(value: unknown) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isNullableString(value: unknown) {
+  return value === null || typeof value === "string";
+}
+
+function isNullableNumber(value: unknown) {
+  return value === null || (typeof value === "number" && Number.isFinite(value));
+}
+
+function isDateString(value: unknown) {
+  return typeof value === "string" && !Number.isNaN(Date.parse(value));
+}
+
+function isOneOf(value: unknown, allowedValues: string[]) {
+  return typeof value === "string" && allowedValues.includes(value);
 }
 
 function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {

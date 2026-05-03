@@ -149,10 +149,45 @@ describe("offline sync item transitions", () => {
 
     expect(markQueuedItemNetworkFailure(item, "Network unavailable", now)).toMatchObject({
       syncStatus: "retry_wait",
-      attemptCount: 2,
+      attemptCount: 1,
       lastAttemptAt: now.toISOString(),
-      nextRetryAt: "2026-05-03T08:00:30.000Z",
+      nextRetryAt: "2026-05-03T08:00:00.000Z",
       lastError: "Network unavailable",
+      updatedAt: now.toISOString(),
+    });
+  });
+
+  it("does not double-count a failed sync attempt after marking syncing", () => {
+    const syncing = markQueuedItemSyncing(queueItem(), now);
+
+    expect(markQueuedItemNetworkFailure(syncing, "Network unavailable", now)).toMatchObject({
+      syncStatus: "retry_wait",
+      attemptCount: 1,
+      nextRetryAt: now.toISOString(),
+    });
+  });
+
+  it("fails sync results whose client id does not match the queued item", () => {
+    const item = queueItem({
+      clientReportId: "queued-client-report",
+      lastServerReportId: null,
+      lastServerReviewState: null,
+    });
+    const result: OfflineSyncApiResult = {
+      clientReportId: "different-client-report",
+      result: "created",
+      report: { id: 42, reviewState: "pending_review" },
+    };
+
+    expect(applyOfflineSyncResult(item, result, now)).toMatchObject({
+      clientReportId: "queued-client-report",
+      syncStatus: "failed",
+      lastError:
+        "Offline sync result client id mismatch: expected queued-client-report, received different-client-report.",
+      lastServerReportId: null,
+      lastServerReviewState: null,
+      nextRetryAt: null,
+      conflictReason: null,
       updatedAt: now.toISOString(),
     });
   });

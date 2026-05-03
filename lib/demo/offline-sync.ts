@@ -51,6 +51,19 @@ export function applyOfflineSyncResult(
 ): OfflineReportQueueItem {
   const updatedAt = now.toISOString();
 
+  if (result.clientReportId !== item.clientReportId) {
+    return {
+      ...item,
+      syncStatus: "failed",
+      updatedAt,
+      nextRetryAt: null,
+      lastError: `Offline sync result client id mismatch: expected ${item.clientReportId}, received ${result.clientReportId}.`,
+      lastServerReportId: null,
+      lastServerReviewState: null,
+      conflictReason: null,
+    };
+  }
+
   if (result.result === "created" || result.result === "duplicate") {
     return {
       ...item,
@@ -93,15 +106,12 @@ export function markQueuedItemNetworkFailure(
   message: string,
   now: Date,
 ): OfflineReportQueueItem {
-  const attemptCount = item.attemptCount + 1;
-
   return {
     ...item,
     syncStatus: "retry_wait",
-    attemptCount,
     updatedAt: now.toISOString(),
     lastAttemptAt: now.toISOString(),
-    nextRetryAt: getNextRetryAt(attemptCount, now),
+    nextRetryAt: getNextRetryAt(item.attemptCount, now),
     lastError: message,
   };
 }

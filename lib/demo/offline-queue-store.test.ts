@@ -10,11 +10,9 @@ import {
 } from "@/lib/demo/offline-queue-store";
 import type { OfflineReportQueueItem } from "@/lib/demo/types";
 
-type StoredRecord = OfflineReportQueueItem | { schemaVersion: number; clientReportId: string };
-
 class FakeOfflineReportQueueAdapter {
-  records = new Map<string, StoredRecord>();
-  putCalls: StoredRecord[] = [];
+  records = new Map<string, unknown>();
+  putCalls: OfflineReportQueueItem[] = [];
   deleteCalls: string[] = [];
   getAllCalls = 0;
 
@@ -126,6 +124,37 @@ describe("offline report queue store", () => {
     adapter.records.set("schema-v2-report", {
       clientReportId: "schema-v2-report",
       schemaVersion: 2,
+    });
+
+    expect(await listOfflineReports()).toEqual([supported]);
+  });
+
+  it("ignores malformed schema version 1 records", async () => {
+    const supported = queueItem({ clientReportId: "valid-schema-v1-report" });
+    const malformedRecords = [
+      { ...queueItem({ clientReportId: "" }), clientReportId: "" },
+      { ...queueItem(), clinicId: "" },
+      { ...queueItem(), status: "closed" },
+      { ...queueItem(), staffPressure: "severe" },
+      { ...queueItem(), stockPressure: "empty" },
+      { ...queueItem(), queuePressure: "extreme" },
+      { ...queueItem(), syncStatus: "done" },
+      { ...queueItem(), attemptCount: -1 },
+      { ...queueItem(), nextRetryAt: 123 },
+      { ...queueItem(), lastAttemptAt: false },
+      { ...queueItem(), lastError: 404 },
+      { ...queueItem(), lastServerReportId: "server-report" },
+      { ...queueItem(), lastServerReviewState: 2 },
+      { ...queueItem(), conflictReason: ["conflict"] },
+      { ...queueItem(), submittedAt: "not-a-date" },
+      { ...queueItem(), queuedAt: "not-a-date" },
+      { ...queueItem(), updatedAt: "not-a-date" },
+      { schemaVersion: 1, clientReportId: "missing-fields" },
+    ];
+
+    adapter.records.set("valid-schema-v1-report", supported);
+    malformedRecords.forEach((record, index) => {
+      adapter.records.set(`malformed-${index}`, record);
     });
 
     expect(await listOfflineReports()).toEqual([supported]);
