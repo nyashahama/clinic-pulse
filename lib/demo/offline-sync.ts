@@ -106,12 +106,15 @@ export function markQueuedItemNetworkFailure(
   message: string,
   now: Date,
 ): OfflineReportQueueItem {
+  const attemptCount = item.attemptCount > 0 ? item.attemptCount : 1;
+
   return {
     ...item,
     syncStatus: "retry_wait",
+    attemptCount,
     updatedAt: now.toISOString(),
     lastAttemptAt: now.toISOString(),
-    nextRetryAt: getNextRetryAt(item.attemptCount, now),
+    nextRetryAt: getNextRetryAt(attemptCount, now),
     lastError: message,
   };
 }

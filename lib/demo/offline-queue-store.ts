@@ -52,7 +52,7 @@ function isOfflineReportQueueItem(value: unknown): value is OfflineReportQueueIt
     isOneOf(record.staffPressure, STAFF_PRESSURES) &&
     isOneOf(record.stockPressure, STOCK_PRESSURES) &&
     isOneOf(record.queuePressure, QUEUE_PRESSURES) &&
-    isNonEmptyString(record.notes) &&
+    typeof record.notes === "string" &&
     isDateString(record.submittedAt) &&
     isDateString(record.queuedAt) &&
     isDateString(record.updatedAt) &&
@@ -60,8 +60,8 @@ function isOfflineReportQueueItem(value: unknown): value is OfflineReportQueueIt
     typeof record.attemptCount === "number" &&
     Number.isFinite(record.attemptCount) &&
     record.attemptCount >= 0 &&
-    isNullableString(record.nextRetryAt) &&
-    isNullableString(record.lastAttemptAt) &&
+    isNullableDateString(record.nextRetryAt) &&
+    isNullableDateString(record.lastAttemptAt) &&
     isNullableString(record.lastError) &&
     isNullableNumber(record.lastServerReportId) &&
     isNullableString(record.lastServerReviewState) &&
@@ -83,6 +83,10 @@ function isNullableNumber(value: unknown) {
 
 function isDateString(value: unknown) {
   return typeof value === "string" && !Number.isNaN(Date.parse(value));
+}
+
+function isNullableDateString(value: unknown) {
+  return value === null || isDateString(value);
 }
 
 function isOneOf(value: unknown, allowedValues: string[]) {

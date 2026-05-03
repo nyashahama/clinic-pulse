@@ -144,14 +144,27 @@ describe("offline sync item transitions", () => {
     });
   });
 
-  it("marks network failures for retry with incremented attempts", () => {
-    const item = queueItem({ attemptCount: 1 });
+  it("normalizes direct queued item network failures to a first failed attempt", () => {
+    const item = queueItem({ attemptCount: 0 });
 
     expect(markQueuedItemNetworkFailure(item, "Network unavailable", now)).toMatchObject({
       syncStatus: "retry_wait",
       attemptCount: 1,
       lastAttemptAt: now.toISOString(),
       nextRetryAt: "2026-05-03T08:00:00.000Z",
+      lastError: "Network unavailable",
+      updatedAt: now.toISOString(),
+    });
+  });
+
+  it("does not increment network failures that already have an attempt count", () => {
+    const item = queueItem({ attemptCount: 2 });
+
+    expect(markQueuedItemNetworkFailure(item, "Network unavailable", now)).toMatchObject({
+      syncStatus: "retry_wait",
+      attemptCount: 2,
+      lastAttemptAt: now.toISOString(),
+      nextRetryAt: "2026-05-03T08:00:30.000Z",
       lastError: "Network unavailable",
       updatedAt: now.toISOString(),
     });

@@ -129,6 +129,16 @@ describe("offline report queue store", () => {
     expect(await listOfflineReports()).toEqual([supported]);
   });
 
+  it("accepts queued reports with blank notes", async () => {
+    const supported = queueItem({
+      clientReportId: "blank-notes-report",
+      notes: "",
+    });
+    adapter.records.set("blank-notes-report", supported);
+
+    expect(await listOfflineReports()).toEqual([supported]);
+  });
+
   it("ignores malformed schema version 1 records", async () => {
     const supported = queueItem({ clientReportId: "valid-schema-v1-report" });
     const malformedRecords = [
@@ -141,7 +151,9 @@ describe("offline report queue store", () => {
       { ...queueItem(), syncStatus: "done" },
       { ...queueItem(), attemptCount: -1 },
       { ...queueItem(), nextRetryAt: 123 },
+      { ...queueItem(), nextRetryAt: "not-a-date" },
       { ...queueItem(), lastAttemptAt: false },
+      { ...queueItem(), lastAttemptAt: "not-a-date" },
       { ...queueItem(), lastError: 404 },
       { ...queueItem(), lastServerReportId: "server-report" },
       { ...queueItem(), lastServerReviewState: 2 },
