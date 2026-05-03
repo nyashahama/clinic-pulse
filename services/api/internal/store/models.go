@@ -64,6 +64,51 @@ type Report struct {
 	ReviewNotes       *string    `json:"reviewNotes,omitempty"`
 }
 
+type ReportSyncAttempt struct {
+	ID                 int64          `json:"id"`
+	ExternalID         string         `json:"externalId"`
+	ReportID           *int64         `json:"reportId,omitempty"`
+	SubmittedByUserID  *int64         `json:"submittedByUserId,omitempty"`
+	OrganisationID     *int64         `json:"organisationId,omitempty"`
+	ClinicID           string         `json:"clinicId"`
+	Result             string         `json:"result"`
+	ClientAttemptCount int            `json:"clientAttemptCount"`
+	QueuedAt           *time.Time     `json:"queuedAt,omitempty"`
+	SubmittedAt        *time.Time     `json:"submittedAt,omitempty"`
+	ReceivedAt         time.Time      `json:"receivedAt"`
+	ErrorCode          *string        `json:"errorCode,omitempty"`
+	ErrorMessage       *string        `json:"errorMessage,omitempty"`
+	Metadata           map[string]any `json:"metadata,omitempty"`
+}
+
+type CreateReportSyncAttemptInput struct {
+	ExternalID         string
+	ReportID           *int64
+	SubmittedByUserID  *int64
+	OrganisationID     *int64
+	ClinicID           string
+	Result             string
+	ClientAttemptCount int
+	QueuedAt           *time.Time
+	SubmittedAt        *time.Time
+	ReceivedAt         time.Time
+	ErrorCode          *string
+	ErrorMessage       *string
+	Metadata           map[string]any
+}
+
+type SyncSummary struct {
+	WindowStartedAt             time.Time `json:"windowStartedAt"`
+	OfflineReportsReceived      int       `json:"offlineReportsReceived"`
+	DuplicateSyncsHandled       int       `json:"duplicateSyncsHandled"`
+	ConflictsNeedingAttention   int       `json:"conflictsNeedingAttention"`
+	ValidationFailures          int       `json:"validationFailures"`
+	PendingOfflineReports       int       `json:"pendingOfflineReports"`
+	NeedsConfirmationClinics    int       `json:"needsConfirmationClinics"`
+	StaleClinics                int       `json:"staleClinics"`
+	MedianCurrentStatusAgeHours *float64  `json:"medianCurrentStatusAgeHours,omitempty"`
+}
+
 type AuditEvent struct {
 	ID             int64          `json:"id"`
 	ExternalID     *string        `json:"externalId,omitempty"`
