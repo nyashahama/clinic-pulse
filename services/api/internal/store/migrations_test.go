@@ -86,6 +86,21 @@ func TestOfflineSyncMigrationAddsPilotReadinessTables(t *testing.T) {
 	}
 }
 
+func TestOfflineSyncLedgerClinicIDMigrationAllowsMalformedValidationAttempts(t *testing.T) {
+	t.Parallel()
+
+	migrationSQL := readMigrationFile(t, "0007_nullable_sync_attempt_clinic_id.sql")
+	required := []string{
+		"ALTER TABLE report_sync_attempts",
+		"ALTER COLUMN clinic_id DROP NOT NULL",
+	}
+	for _, value := range required {
+		if !strings.Contains(migrationSQL, value) {
+			t.Fatalf("expected nullable sync attempt clinic migration to contain %q", value)
+		}
+	}
+}
+
 func readIntegrationMigrationSQL(t *testing.T) string {
 	t.Helper()
 

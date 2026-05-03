@@ -387,7 +387,7 @@ func (h Handler) offlineSyncValidationResult(ctx context.Context, actor service.
 		OrganisationID:     actor.OrganisationID,
 		ClinicID:           input.ClinicID,
 		Result:             itemResult.Result,
-		ClientAttemptCount: input.ClientAttemptCount,
+		ClientAttemptCount: normalizedOfflineSyncAttemptCount(input.ClientAttemptCount),
 		QueuedAt:           input.QueuedAt,
 		ReceivedAt:         now,
 		ErrorCode:          &itemResult.Error.Code,
@@ -405,6 +405,13 @@ func (h Handler) offlineSyncValidationResult(ctx context.Context, actor service.
 		}
 	}
 	return itemResult
+}
+
+func normalizedOfflineSyncAttemptCount(count int) int {
+	if count <= 0 {
+		return 1
+	}
+	return count
 }
 
 func (h Handler) GetSyncSummary(w nethttp.ResponseWriter, r *nethttp.Request) {

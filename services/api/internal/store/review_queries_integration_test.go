@@ -378,6 +378,40 @@ VALUES
 	}
 }
 
+func TestCreateReportSyncAttemptAllowsValidationAttemptWithoutClinicID(t *testing.T) {
+	databaseURL := os.Getenv("AUTH_STORE_TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("set AUTH_STORE_TEST_DATABASE_URL to run offline sync store integration tests")
+	}
+
+	ctx := context.Background()
+	store := newIntegrationStore(t, ctx, databaseURL)
+	errorCode := "validation_error"
+	errorMessage := "offline report failed validation"
+
+	attempt, err := store.CreateReportSyncAttempt(ctx, CreateReportSyncAttemptInput{
+		ExternalID:         "offline-sync-no-clinic",
+		Result:             "validation_error",
+		ClientAttemptCount: -2,
+		ErrorCode:          &errorCode,
+		ErrorMessage:       &errorMessage,
+		Metadata:           map[string]any{"fields": []string{"clinicId: clinicId is required"}},
+	})
+	if err != nil {
+		t.Fatalf("CreateReportSyncAttempt without clinic id returned error: %v", err)
+	}
+
+	if attempt.ClinicID != "" {
+		t.Fatalf("expected nullable clinic id to scan as empty string, got %+v", attempt)
+	}
+	if attempt.ClientAttemptCount != 1 {
+		t.Fatalf("expected normalized client attempt count 1, got %+v", attempt)
+	}
+	if attempt.Result != "validation_error" || attempt.ErrorCode == nil || *attempt.ErrorCode != errorCode {
+		t.Fatalf("unexpected validation attempt: %+v", attempt)
+	}
+}
+
 func insertIntegrationClinic(t *testing.T, ctx context.Context, store Store, id string, name string) {
 	t.Helper()
 	insertIntegrationClinicInDistrict(t, ctx, store, id, name, "Review District")

@@ -1375,6 +1375,88 @@ func TestOfflineSyncContinuesAfterItemTimestampValidationError(t *testing.T) {
 	}
 }
 
+func TestOfflineSyncTimestampValidationNormalizesNegativeAttemptCount(t *testing.T) {
+	var syncAttemptInput store.CreateReportSyncAttemptInput
+	router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{
+		syncAttemptInput: &syncAttemptInput,
+	}))
+	body := `{"items":[{
+		"clientReportId":"offline-report-bad-attempt",
+		"clinicId":"clinic-1",
+		"status":"degraded",
+		"reason":"Queued while offline.",
+		"staffPressure":"strained",
+		"stockPressure":"low",
+		"queuePressure":"high",
+		"submittedAt":"not-a-timestamp",
+		"attemptCount":-2
+	}]}`
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports/offline-sync", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	var got struct {
+		Results []struct {
+			Result string `json:"result"`
+			Error  *struct {
+				Code string `json:"code"`
+			} `json:"error,omitempty"`
+		} `json:"results"`
+	}
+	decodeJSON(t, rec, &got)
+	if len(got.Results) != 1 || got.Results[0].Result != "validation_error" || got.Results[0].Error == nil || got.Results[0].Error.Code != "validation_error" {
+		t.Fatalf("expected validation_error result, got %#v", got.Results)
+	}
+	if syncAttemptInput.ClientAttemptCount != 1 {
+		t.Fatalf("expected normalized attempt count 1, got %#v", syncAttemptInput)
+	}
+}
+
+func TestOfflineSyncTimestampValidationAllowsBlankClinicIDAttempt(t *testing.T) {
+	var syncAttemptInput store.CreateReportSyncAttemptInput
+	router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{
+		syncAttemptInput: &syncAttemptInput,
+	}))
+	body := `{"items":[{
+		"clientReportId":"offline-report-no-clinic",
+		"clinicId":"",
+		"status":"degraded",
+		"reason":"Queued while offline.",
+		"staffPressure":"strained",
+		"stockPressure":"low",
+		"queuePressure":"high",
+		"submittedAt":"not-a-timestamp",
+		"attemptCount":1
+	}]}`
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports/offline-sync", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	var got struct {
+		Results []struct {
+			Result string `json:"result"`
+			Error  *struct {
+				Code string `json:"code"`
+			} `json:"error,omitempty"`
+		} `json:"results"`
+	}
+	decodeJSON(t, rec, &got)
+	if len(got.Results) != 1 || got.Results[0].Result != "validation_error" || got.Results[0].Error == nil || got.Results[0].Error.Code != "validation_error" {
+		t.Fatalf("expected validation_error result, got %#v", got.Results)
+	}
+	if syncAttemptInput.ClinicID != "" {
+		t.Fatalf("expected blank clinic id to be passed through for nullable ledger insert, got %#v", syncAttemptInput)
+	}
+}
+
 func TestOfflineSyncRejectsInvalidJSON(t *testing.T) {
 	for _, tt := range []struct {
 		name string

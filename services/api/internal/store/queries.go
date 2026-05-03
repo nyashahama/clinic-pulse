@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -581,7 +582,7 @@ func (s Store) CreateReportSyncAttempt(ctx context.Context, input CreateReportSy
 		normalized.ReportID,
 		normalized.SubmittedByUserID,
 		normalized.OrganisationID,
-		normalized.ClinicID,
+		nullableTrimmedStringArg(normalized.ClinicID),
 		normalized.Result,
 		normalized.ClientAttemptCount,
 		normalized.QueuedAt,
@@ -1105,6 +1106,7 @@ func scanReportSyncAttempt(row pgx.Row) (ReportSyncAttempt, error) {
 	var reportID sql.NullInt64
 	var submittedByUserID sql.NullInt64
 	var organisationID sql.NullInt64
+	var clinicID sql.NullString
 	var queuedAt sql.NullTime
 	var submittedAt sql.NullTime
 	var errorCode sql.NullString
@@ -1117,7 +1119,7 @@ func scanReportSyncAttempt(row pgx.Row) (ReportSyncAttempt, error) {
 		&reportID,
 		&submittedByUserID,
 		&organisationID,
-		&attempt.ClinicID,
+		&clinicID,
 		&attempt.Result,
 		&attempt.ClientAttemptCount,
 		&queuedAt,
@@ -1133,6 +1135,9 @@ func scanReportSyncAttempt(row pgx.Row) (ReportSyncAttempt, error) {
 	attempt.ReportID = nullInt64Ptr(reportID)
 	attempt.SubmittedByUserID = nullInt64Ptr(submittedByUserID)
 	attempt.OrganisationID = nullInt64Ptr(organisationID)
+	if clinicID.Valid {
+		attempt.ClinicID = clinicID.String
+	}
 	attempt.QueuedAt = nullTimePtr(queuedAt)
 	attempt.SubmittedAt = nullTimePtr(submittedAt)
 	attempt.ErrorCode = nullStringPtr(errorCode)
@@ -1238,7 +1243,7 @@ func normalizeCreateReportSyncAttemptInput(input CreateReportSyncAttemptInput) (
 	if !allowedSyncAttemptResults[input.Result] {
 		return CreateReportSyncAttemptInput{}, ErrInvalidSyncAttemptResult
 	}
-	if input.ClientAttemptCount == 0 {
+	if input.ClientAttemptCount <= 0 {
 		input.ClientAttemptCount = 1
 	}
 	if input.ReceivedAt.IsZero() {
@@ -1322,6 +1327,14 @@ func nullStringPtr(value sql.NullString) *string {
 	}
 
 	return &value.String
+}
+
+func nullableTrimmedStringArg(value string) *string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
 }
 
 func nullFloat64Ptr(value sql.NullFloat64) *float64 {
