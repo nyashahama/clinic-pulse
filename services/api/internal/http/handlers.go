@@ -59,11 +59,18 @@ func Healthz(w nethttp.ResponseWriter, r *nethttp.Request) {
 }
 
 func (h Handler) ListClinics(w nethttp.ResponseWriter, r *nethttp.Request) {
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
 	clinics, err := h.store.ListClinics(r.Context())
 	if err != nil {
 		respondStoreError(w, err, "failed to list clinics")
 		return
 	}
+	clinics = filterClinicDetailsForOperationalRead(principal, clinics)
 	if clinics == nil {
 		clinics = []store.ClinicDetail{}
 	}
@@ -77,12 +84,37 @@ func (h Handler) GetClinic(w nethttp.ResponseWriter, r *nethttp.Request) {
 		respondStoreError(w, err, "clinic not found")
 		return
 	}
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+	if !canReadClinicOperationalRecords(principal, clinic.Clinic.District) {
+		RespondError(w, nethttp.StatusForbidden, "forbidden", "forbidden")
+		return
+	}
 
 	RespondJSON(w, nethttp.StatusOK, clinic)
 }
 
 func (h Handler) GetClinicStatus(w nethttp.ResponseWriter, r *nethttp.Request) {
-	status, err := h.store.GetCurrentStatus(r.Context(), chi.URLParam(r, "clinicId"))
+	clinicID := chi.URLParam(r, "clinicId")
+	clinic, err := h.store.GetClinic(r.Context(), clinicID)
+	if err != nil {
+		respondStoreError(w, err, "clinic not found")
+		return
+	}
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+	if !canReadClinicOperationalRecords(principal, clinic.Clinic.District) {
+		RespondError(w, nethttp.StatusForbidden, "forbidden", "forbidden")
+		return
+	}
+
+	status, err := h.store.GetCurrentStatus(r.Context(), clinicID)
 	if err != nil {
 		respondStoreError(w, err, "clinic status not found")
 		return
@@ -185,12 +217,22 @@ func (h Handler) ListAlternatives(w nethttp.ResponseWriter, r *nethttp.Request) 
 		respondStoreError(w, err, "clinic not found")
 		return
 	}
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+	if !canReadClinicOperationalRecords(principal, source.Clinic.District) {
+		RespondError(w, nethttp.StatusForbidden, "forbidden", "forbidden")
+		return
+	}
 
 	candidates, err := h.store.ListClinics(r.Context())
 	if err != nil {
 		respondStoreError(w, err, "failed to list clinic alternatives")
 		return
 	}
+	candidates = filterClinicDetailsForOperationalRead(principal, candidates)
 
 	RespondJSON(w, nethttp.StatusOK, service.RankAlternatives(source, candidates, serviceName))
 }
@@ -213,6 +255,10 @@ func (h Handler) CreateReport(w nethttp.ResponseWriter, r *nethttp.Request) {
 		input.StoreInput.SubmittedByUserID = &principal.UserID
 		actor := auditActorForPrincipal(principal)
 		input.Actor = &actor
+		if principal.Role == "reporter" {
+			input.StoreInput.Source = "field_worker"
+			input.StoreInput.ReporterName = derivedReporterName(principal)
+		}
 	}
 	report, err := service.CreateReport(r.Context(), h.store, input)
 	if err != nil {
@@ -565,6 +611,23 @@ func canReadClinicOperationalRecords(principal Principal, clinicDistrict string)
 	}
 }
 
+func filterClinicDetailsForOperationalRead(principal Principal, clinics []store.ClinicDetail) []store.ClinicDetail {
+	if principal.Role != "district_manager" {
+		return clinics
+	}
+	if principal.DistrictScope == nil || strings.TrimSpace(*principal.DistrictScope) == "" {
+		return []store.ClinicDetail{}
+	}
+
+	filtered := make([]store.ClinicDetail, 0, len(clinics))
+	for _, clinic := range clinics {
+		if clinic.Clinic.District == *principal.DistrictScope {
+			filtered = append(filtered, clinic)
+		}
+	}
+	return filtered
+}
+
 func auditActorForPrincipal(principal Principal) service.AuditActor {
 	return service.AuditActor{
 		UserID:         principal.UserID,
@@ -572,6 +635,17 @@ func auditActorForPrincipal(principal Principal) service.AuditActor {
 		Role:           principal.Role,
 		OrganisationID: principal.OrganisationID,
 	}
+}
+
+func derivedReporterName(principal Principal) *string {
+	name := strings.TrimSpace(principal.DisplayName)
+	if name == "" {
+		name = strings.TrimSpace(principal.Email)
+	}
+	if name == "" {
+		return nil
+	}
+	return &name
 }
 
 type createReportRequest struct {

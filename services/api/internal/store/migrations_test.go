@@ -25,6 +25,46 @@ func TestAuditEventsMigrationDeclaresImmutabilityTriggers(t *testing.T) {
 	}
 }
 
+func TestAuthRolesMigrationDoesNotSeedLocalPrivilegedUsers(t *testing.T) {
+	t.Parallel()
+
+	migrationSQL := readMigrationFile(t, "0003_auth_roles_workflows.sql")
+	forbidden := []string{
+		"@clinicpulse.local",
+		"system-admin@clinicpulse.local",
+		"org-admin@clinicpulse.local",
+		"district-manager@clinicpulse.local",
+		"reporter@clinicpulse.local",
+		"$2a$",
+		"$2b$",
+		"$2y$",
+	}
+	for _, value := range forbidden {
+		if strings.Contains(migrationSQL, value) {
+			t.Fatalf("expected auth roles migration not to contain local seed value %q", value)
+		}
+	}
+}
+
+func TestLocalPhase3AuthSeedExistsOutsideMigrations(t *testing.T) {
+	t.Parallel()
+
+	seedSQL := readSeedFile(t, "local_phase3_auth_users.sql")
+	required := []string{
+		"@clinicpulse.local",
+		"system-admin@clinicpulse.local",
+		"org-admin@clinicpulse.local",
+		"district-manager@clinicpulse.local",
+		"reporter@clinicpulse.local",
+		"$2a$",
+	}
+	for _, value := range required {
+		if !strings.Contains(seedSQL, value) {
+			t.Fatalf("expected local auth seed to contain %q", value)
+		}
+	}
+}
+
 func readIntegrationMigrationSQL(t *testing.T) string {
 	t.Helper()
 
@@ -47,4 +87,24 @@ func readIntegrationMigrationSQL(t *testing.T) string {
 	}
 
 	return builder.String()
+}
+
+func readMigrationFile(t *testing.T, name string) string {
+	t.Helper()
+
+	sqlBytes, err := os.ReadFile(filepath.Join("..", "..", "migrations", name))
+	if err != nil {
+		t.Fatalf("read migration %s: %v", name, err)
+	}
+	return string(sqlBytes)
+}
+
+func readSeedFile(t *testing.T, name string) string {
+	t.Helper()
+
+	sqlBytes, err := os.ReadFile(filepath.Join("..", "..", "seeds", name))
+	if err != nil {
+		t.Fatalf("read seed %s: %v", name, err)
+	}
+	return string(sqlBytes)
 }

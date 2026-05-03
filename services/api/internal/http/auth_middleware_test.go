@@ -108,6 +108,10 @@ func TestReporterCannotReadOperationalStreams(t *testing.T) {
 		name string
 		path string
 	}{
+		{name: "alternatives", path: "/v1/alternatives?clinicId=clinic-1&service=Primary%20care"},
+		{name: "clinics", path: "/v1/clinics"},
+		{name: "clinic detail", path: "/v1/clinics/clinic-1"},
+		{name: "clinic status", path: "/v1/clinics/clinic-1/status"},
 		{name: "reports", path: "/v1/clinics/clinic-1/reports"},
 		{name: "audit events", path: "/v1/clinics/clinic-1/audit-events"},
 	}

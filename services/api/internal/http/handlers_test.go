@@ -47,7 +47,7 @@ func TestListClinicsReturnsOK(t *testing.T) {
 				Name:               "Central Clinic",
 				FacilityCode:       "C001",
 				Province:           "Gauteng",
-				District:           "Johannesburg",
+				District:           defaultTestDistrict,
 				FacilityType:       "clinic",
 				VerificationStatus: "verified",
 				CreatedAt:          updatedAt,
@@ -450,6 +450,83 @@ func TestClinicOperationalReadsDenyDistrictManagerOutsideDistrict(t *testing.T) 
 	}
 }
 
+func TestListClinicsScopesDistrictManagerToTheirDistrict(t *testing.T) {
+	managerDistrict := defaultTestDistrict
+	otherDistrict := "Ekurhuleni East District"
+	router := apihttp.NewRouter(authenticatedStore(t, "district_manager", fakeStore{
+		memberships: []store.OrganisationMembership{{
+			ID:        1,
+			UserID:    42,
+			Role:      "district_manager",
+			District:  &managerDistrict,
+			CreatedAt: time.Date(2026, 5, 3, 11, 0, 0, 0, time.UTC),
+		}},
+		clinics: []store.ClinicDetail{
+			clinicDetailInDistrict("clinic-in-scope", managerDistrict),
+			clinicDetailInDistrict("clinic-out-of-scope", otherDistrict),
+		},
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/clinics", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	var got []store.ClinicDetail
+	decodeJSON(t, rec, &got)
+	if len(got) != 1 || got[0].Clinic.ID != "clinic-in-scope" {
+		t.Fatalf("expected only in-scope clinic, got %#v", got)
+	}
+}
+
+func TestClinicOperationalReadsDenyDistrictManagerOutsideDistrictForDetailStatusAndAlternatives(t *testing.T) {
+	managerDistrict := defaultTestDistrict
+	clinicDistrict := "Ekurhuleni East District"
+	now := time.Date(2026, 5, 3, 11, 0, 0, 0, time.UTC)
+	memberships := []store.OrganisationMembership{{
+		ID:        1,
+		UserID:    42,
+		Role:      "district_manager",
+		District:  &managerDistrict,
+		CreatedAt: now,
+	}}
+
+	tests := []struct {
+		name string
+		path string
+	}{
+		{name: "clinic detail", path: "/v1/clinics/clinic-1"},
+		{name: "clinic status", path: "/v1/clinics/clinic-1/status"},
+		{name: "alternatives", path: "/v1/alternatives?clinicId=clinic-1&service=Primary%20care"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := apihttp.NewRouter(authenticatedStore(t, "district_manager", fakeStore{
+				memberships: memberships,
+				clinic:      clinicDetailInDistrict("clinic-1", clinicDistrict),
+				clinics: []store.ClinicDetail{
+					clinicDetailInDistrict("clinic-1", clinicDistrict),
+					clinicDetailInDistrict("clinic-2", managerDistrict),
+				},
+			}))
+			req := newAuthenticatedRequest(t, http.MethodGet, tt.path, nil)
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusForbidden {
+				t.Fatalf("expected status %d, got %d with body %s", http.StatusForbidden, rec.Code, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), `"code":"forbidden"`) {
+				t.Fatalf("expected forbidden error code, got %q", rec.Body.String())
+			}
+		})
+	}
+}
+
 func TestClinicOperationalReadsAllowAdminRolesAcrossDistricts(t *testing.T) {
 	clinicDistrict := "Ekurhuleni East District"
 	tests := []struct {
@@ -778,6 +855,50 @@ func TestCreateReportAssociatesAuthenticatedReporter(t *testing.T) {
 	}
 	if createInput.SubmittedByUserID == nil || *createInput.SubmittedByUserID != 42 {
 		t.Fatalf("expected submittedByUserId 42, got %v", createInput.SubmittedByUserID)
+	}
+}
+
+func TestCreateReportDerivesAttributionForAuthenticatedReporter(t *testing.T) {
+	for _, spoofedSource := range []string{"demo_control", "seed"} {
+		t.Run(spoofedSource, func(t *testing.T) {
+			var createInput store.CreateReportInput
+			now := time.Date(2026, 5, 3, 11, 0, 0, 0, time.UTC)
+			router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{
+				sessionUser: store.User{
+					ID:          42,
+					Email:       "real-reporter@example.test",
+					DisplayName: "Real Reporter",
+					CreatedAt:   now,
+					UpdatedAt:   now,
+				},
+				createReport: store.Report{ID: 100, ClinicID: "clinic-1", ReviewState: "pending"},
+				createInput:  &createInput,
+			}))
+			body := `{
+				"clinicId":"clinic-1",
+				"status":"operational",
+				"staffPressure":"normal",
+				"stockPressure":"normal",
+				"queuePressure":"low",
+				"reason":"Daily facility check",
+				"source":"` + spoofedSource + `",
+				"reporterName":"Spoofed Manager"
+			}`
+			req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports", strings.NewReader(body))
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusCreated {
+				t.Fatalf("expected status %d, got %d with body %s", http.StatusCreated, rec.Code, rec.Body.String())
+			}
+			if createInput.Source != "field_worker" {
+				t.Fatalf("expected reporter source field_worker, got %q", createInput.Source)
+			}
+			if createInput.ReporterName == nil || *createInput.ReporterName != "Real Reporter" {
+				t.Fatalf("expected reporterName from authenticated principal, got %v", createInput.ReporterName)
+			}
+		})
 	}
 }
 
@@ -2291,6 +2412,7 @@ func clinicDetail(id, name string, latitude, longitude float64, status, freshnes
 		Clinic: store.Clinic{
 			ID:                 id,
 			Name:               name,
+			District:           defaultTestDistrict,
 			Latitude:           &latitude,
 			Longitude:          &longitude,
 			FacilityType:       "clinic",
