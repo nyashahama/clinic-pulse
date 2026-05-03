@@ -150,6 +150,24 @@ export type OfflineSyncApiResponse = {
   };
 };
 
+export type SyncSummaryApiResponse = {
+  windowStartedAt: string;
+  offlineReportsReceived: number;
+  duplicateSyncsHandled: number;
+  conflictsNeedingAttention: number;
+  validationFailures: number;
+  pendingOfflineReports: number;
+  needsConfirmationClinics: number;
+  staleClinics: number;
+  medianCurrentStatusAgeHours?: number | null;
+};
+
+export type StalenessReconciliationApiResponse = {
+  checked: number;
+  markedNeedsConfirmation: number;
+  markedStale: number;
+};
+
 export type ApiErrorResponse = {
   error?: {
     code?: string;

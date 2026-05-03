@@ -4,19 +4,19 @@ import {
   fetchClinicReports,
   fetchClinics,
   fetchOperationalClinics,
+  fetchSyncSummary,
   type ClinicPulseApiClientOptions,
 } from "@/lib/demo/api-client";
 import {
   type ApiDemoHydrationPayload,
   mapApiDemoHydrationToState,
 } from "@/lib/demo/api-mappers";
+import type { SyncSummaryApiResponse } from "@/lib/demo/api-types";
 import { allowsSeededDemoFallback } from "@/lib/demo/demo-hydration";
+import { createEmptySyncSummary } from "@/lib/demo/pilot-readiness";
 import { createInitialDemoState } from "@/lib/demo/scenarios";
-import type { DemoState } from "@/lib/demo/types";
 
-async function withSeededFallback(load: () => Promise<DemoState>) {
-  const fallbackState = createInitialDemoState();
-
+async function withSeededFallback<T>(load: () => Promise<T>, getFallback: () => T) {
   try {
     return await load();
   } catch (error) {
@@ -25,10 +25,10 @@ async function withSeededFallback(load: () => Promise<DemoState>) {
     }
 
     console.warn(
-      "Using seeded demo fallback for local recovery because ClinicPulse API hydration failed.",
+      "Using seeded demo fallback for local recovery because a ClinicPulse API load failed.",
       error,
     );
-    return fallbackState;
+    return getFallback();
   }
 }
 
@@ -43,7 +43,7 @@ export async function loadPublicDemoHydration(options?: ClinicPulseApiClientOpti
     };
 
     return mapApiDemoHydrationToState(payload, fallbackState);
-  });
+  }, createInitialDemoState);
 }
 
 export async function loadOperationalDemoHydration(options?: ClinicPulseApiClientOptions) {
@@ -69,7 +69,7 @@ export async function loadOperationalDemoHydration(options?: ClinicPulseApiClien
     };
 
     return mapApiDemoHydrationToState(payload, fallbackState);
-  });
+  }, createInitialDemoState);
 }
 
 export function loadDemoHydrationForRole(
@@ -81,4 +81,24 @@ export function loadDemoHydrationForRole(
   }
 
   return loadOperationalDemoHydration(options);
+}
+
+export async function loadOperationalSyncSummary(
+  options?: ClinicPulseApiClientOptions,
+): Promise<SyncSummaryApiResponse> {
+  return withSeededFallback(
+    () => fetchSyncSummary(options),
+    () => createEmptySyncSummary(),
+  );
+}
+
+export function loadSyncSummaryForRole(
+  role: AuthRole,
+  options?: ClinicPulseApiClientOptions,
+) {
+  if (role === "reporter") {
+    return Promise.resolve(null);
+  }
+
+  return loadOperationalSyncSummary(options);
 }

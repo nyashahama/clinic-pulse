@@ -11,7 +11,9 @@ import {
   fetchClinicStatus,
   fetchClinics,
   fetchOperationalClinics,
+  fetchSyncSummary,
   requestClinicPulseApi,
+  reconcileStatusStaleness,
   syncOfflineReportsApi,
 } from "@/lib/demo/api-client";
 import type { CreateReportApiInput } from "@/lib/demo/api-types";
@@ -114,6 +116,46 @@ describe("ClinicPulse API client", () => {
 
     expect(fetchImpl.mock.calls[0][0]).toBe(
       "https://api.example.test/v1/reports/offline-sync",
+    );
+    expect(fetchImpl.mock.calls[0][1]).toMatchObject({ method: "POST" });
+  });
+
+  it("fetches the sync summary endpoint", async () => {
+    const fetchImpl = mockFetch({
+      windowStartedAt: "2026-05-03T00:00:00.000Z",
+      offlineReportsReceived: 0,
+      duplicateSyncsHandled: 0,
+      conflictsNeedingAttention: 0,
+      validationFailures: 0,
+      pendingOfflineReports: 0,
+      needsConfirmationClinics: 0,
+      staleClinics: 0,
+      medianCurrentStatusAgeHours: null,
+    });
+
+    await fetchSyncSummary({
+      baseUrl: "https://api.example.test",
+      fetch: fetchImpl,
+    });
+
+    expect(fetchImpl.mock.calls[0][0]).toBe("https://api.example.test/v1/sync/summary");
+    expect(fetchImpl.mock.calls[0][1]).toMatchObject({ method: "GET" });
+  });
+
+  it("posts status staleness reconciliation", async () => {
+    const fetchImpl = mockFetch({
+      checked: 4,
+      markedNeedsConfirmation: 1,
+      markedStale: 1,
+    });
+
+    await reconcileStatusStaleness({
+      baseUrl: "https://api.example.test",
+      fetch: fetchImpl,
+    });
+
+    expect(fetchImpl.mock.calls[0][0]).toBe(
+      "https://api.example.test/v1/status/reconcile-staleness",
     );
     expect(fetchImpl.mock.calls[0][1]).toMatchObject({ method: "POST" });
   });

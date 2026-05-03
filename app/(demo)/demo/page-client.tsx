@@ -9,9 +9,11 @@ import { ClinicMap } from "@/components/demo/clinic-map";
 import { ClinicSidePanel } from "@/components/demo/clinic-side-panel";
 import { ClinicTable } from "@/components/demo/clinic-table";
 import { DemoControls } from "@/components/demo/demo-controls";
+import { PilotReadinessPanel } from "@/components/demo/pilot-readiness-panel";
 import { ReportStream } from "@/components/demo/report-stream";
 import { StatusSummary } from "@/components/demo/status-summary";
 import { buttonVariants } from "@/components/ui/button";
+import type { SyncSummaryApiResponse } from "@/lib/demo/api-types";
 import {
   STAFFING_TRIGGER_CLINIC_ID,
   STOCKOUT_TRIGGER_CLINIC_ID,
@@ -42,7 +44,11 @@ function formatStatusTransition(from: string, to: string) {
   return `${from.replaceAll("_", " ")} → ${to.replaceAll("_", " ")}`;
 }
 
-export default function DistrictConsolePage() {
+type DistrictConsolePageProps = {
+  syncSummary: SyncSummaryApiResponse | null;
+};
+
+export default function DistrictConsolePage({ syncSummary }: DistrictConsolePageProps) {
   const searchParams = useSearchParams();
   const {
     state,
@@ -247,6 +253,7 @@ export default function DistrictConsolePage() {
         offlineQueueCount={state.offlineQueue.length}
         lastSyncAt={state.lastSyncAt}
       />
+      {syncSummary ? <PilotReadinessPanel summary={syncSummary} /> : null}
       {hasStatusFilter ? (
         <section className="rounded-lg border border-amber-200/80 bg-amber-50/70 px-4 py-3 text-sm text-amber-950">
           <div className="flex flex-wrap items-center justify-between gap-2">
