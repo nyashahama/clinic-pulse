@@ -1,0 +1,42 @@
+name: PR Hygiene
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-hygiene-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hygiene:
+    name: Hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check whitespace
+        run: git diff --check origin/main...HEAD
+
+      - name: Keep local docs out of tracked changes
+        shell: bash
+        run: |
+          if git diff --name-only origin/main...HEAD | grep -E '^docs/'; then
+            echo "docs/ is local-only for this project. Do not force-add docs into public commits."
+            exit 1
+          fi
+
+      - name: Check workflow syntax shape
+        run: |
+          test -f .github/workflows/ci.yml
+          test -f .github/workflows/api-smoke.yml
+          test -f .github/workflows/pr-hygiene.yml
+          test -f .github/workflows/dependency-review.yml
