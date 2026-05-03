@@ -12,6 +12,9 @@ func NewRouter(store ClinicStore) nethttp.Handler {
 
 	router.Get("/healthz", Healthz)
 	router.Get("/v1/alternatives", handler.ListAlternatives)
+	router.Post("/v1/auth/login", handler.Login)
+	router.Post("/v1/auth/logout", handler.Logout)
+	router.Get("/v1/auth/me", handler.Me)
 	router.Get("/v1/clinics", handler.ListClinics)
 	router.Get("/v1/clinics/{clinicId}", handler.GetClinic)
 	router.Get("/v1/clinics/{clinicId}/status", handler.GetClinicStatus)

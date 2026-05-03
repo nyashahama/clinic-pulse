@@ -5,15 +5,24 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net"
 	nethttp "net/http"
+	"net/netip"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 
+	"clinicpulse/services/api/internal/auth"
 	"clinicpulse/services/api/internal/service"
 	"clinicpulse/services/api/internal/store"
+)
+
+const (
+	sessionCookieName = "clinicpulse_session"
+	sessionDuration   = 12 * time.Hour
+	dummyPasswordHash = "$2a$10$7EqJtq98hPqEX7fNZaFWoOhiYv4gfyJ5v5e26nnbuoJ6PmwKzJxYy"
 )
 
 type ClinicStore interface {
@@ -23,6 +32,11 @@ type ClinicStore interface {
 	ListClinicReports(ctx context.Context, clinicID string) ([]store.Report, error)
 	ListClinicAuditEvents(ctx context.Context, clinicID string) ([]store.AuditEvent, error)
 	CreateReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, store.CurrentStatus, store.AuditEvent, error)
+	GetUserByEmail(ctx context.Context, email string) (store.User, error)
+	CreateSession(ctx context.Context, input store.CreateSessionInput) (store.Session, error)
+	GetSessionByTokenHash(ctx context.Context, tokenHash string) (store.Session, store.User, error)
+	RevokeSession(ctx context.Context, tokenHash string) error
+	ListMembershipsForUser(ctx context.Context, userID int64) ([]store.OrganisationMembership, error)
 }
 
 type Handler struct {
@@ -170,6 +184,130 @@ func (h Handler) CreateReport(w nethttp.ResponseWriter, r *nethttp.Request) {
 	})
 }
 
+func (h Handler) Login(w nethttp.ResponseWriter, r *nethttp.Request) {
+	var payload loginRequest
+	if !decodeSingleJSON(w, r, &payload) {
+		return
+	}
+
+	email := strings.ToLower(strings.TrimSpace(payload.Email))
+	if email == "" || payload.Password == "" {
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "email and password are required")
+		return
+	}
+
+	user, err := h.store.GetUserByEmail(r.Context(), email)
+	validLoginUser := false
+	passwordHash := dummyPasswordHash
+	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+			return
+		}
+	} else if user.DisabledAt == nil && user.PasswordHash != nil {
+		validLoginUser = true
+		passwordHash = *user.PasswordHash
+	}
+
+	ok, err := auth.VerifyPassword(payload.Password, passwordHash)
+	if err != nil || !validLoginUser || !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	memberships, err := h.store.ListMembershipsForUser(r.Context(), user.ID)
+	if err != nil {
+		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	if memberships == nil {
+		memberships = []store.OrganisationMembership{}
+	}
+
+	token, err := auth.GenerateSessionToken()
+	if err != nil {
+		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	tokenHash, err := auth.HashSessionToken(token)
+	if err != nil {
+		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+
+	expiresAt := time.Now().UTC().Add(sessionDuration)
+	session, err := h.store.CreateSession(r.Context(), store.CreateSessionInput{
+		UserID:    user.ID,
+		TokenHash: tokenHash,
+		ExpiresAt: expiresAt,
+		UserAgent: optionalString(r.UserAgent()),
+		IPAddress: remoteIPAddress(r.RemoteAddr),
+	})
+	if err != nil {
+		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+
+	setSessionCookie(w, token, session.ExpiresAt, secureSessionCookie(r))
+	RespondJSON(w, nethttp.StatusOK, authLoginResponse{
+		User:        publicUser(user),
+		Memberships: memberships,
+	})
+}
+
+func (h Handler) Me(w nethttp.ResponseWriter, r *nethttp.Request) {
+	cookie, err := r.Cookie(sessionCookieName)
+	if err != nil || cookie.Value == "" {
+		respondUnauthorized(w)
+		return
+	}
+
+	tokenHash, err := auth.HashSessionToken(cookie.Value)
+	if err != nil {
+		respondUnauthorized(w)
+		return
+	}
+
+	session, user, err := h.store.GetSessionByTokenHash(r.Context(), tokenHash)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			respondUnauthorized(w)
+			return
+		}
+		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+
+	memberships, err := h.store.ListMembershipsForUser(r.Context(), user.ID)
+	if err != nil {
+		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	if memberships == nil {
+		memberships = []store.OrganisationMembership{}
+	}
+
+	RespondJSON(w, nethttp.StatusOK, authMeResponse{
+		User:        publicUser(user),
+		Session:     publicSession(session),
+		Memberships: memberships,
+	})
+}
+
+func (h Handler) Logout(w nethttp.ResponseWriter, r *nethttp.Request) {
+	if cookie, err := r.Cookie(sessionCookieName); err == nil {
+		if tokenHash, err := auth.HashSessionToken(cookie.Value); err == nil {
+			if err := h.store.RevokeSession(r.Context(), tokenHash); err != nil {
+				RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+				return
+			}
+		}
+	}
+
+	clearSessionCookie(w, secureSessionCookie(r))
+	w.WriteHeader(nethttp.StatusNoContent)
+}
+
 func respondStoreError(w nethttp.ResponseWriter, err error, notFoundMessage string) {
 	if errors.Is(err, pgx.ErrNoRows) {
 		RespondError(w, nethttp.StatusNotFound, "not_found", notFoundMessage)
@@ -177,6 +315,110 @@ func respondStoreError(w nethttp.ResponseWriter, err error, notFoundMessage stri
 	}
 
 	RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+}
+
+func decodeSingleJSON(w nethttp.ResponseWriter, r *nethttp.Request, target any) bool {
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(target); err != nil {
+		RespondError(w, nethttp.StatusBadRequest, "invalid_json", "invalid JSON request body")
+		return false
+	}
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		RespondError(w, nethttp.StatusBadRequest, "invalid_json", "invalid JSON request body")
+		return false
+	}
+	return true
+}
+
+func respondUnauthorized(w nethttp.ResponseWriter) {
+	RespondError(w, nethttp.StatusUnauthorized, "unauthorized", "invalid credentials")
+}
+
+func setSessionCookie(w nethttp.ResponseWriter, token string, expiresAt time.Time, secure bool) {
+	nethttp.SetCookie(w, &nethttp.Cookie{
+		Name:     sessionCookieName,
+		Value:    token,
+		Path:     "/",
+		Expires:  expiresAt,
+		Secure:   secure,
+		HttpOnly: true,
+		SameSite: nethttp.SameSiteLaxMode,
+	})
+}
+
+func clearSessionCookie(w nethttp.ResponseWriter, secure bool) {
+	nethttp.SetCookie(w, &nethttp.Cookie{
+		Name:     sessionCookieName,
+		Value:    "",
+		Path:     "/",
+		Expires:  time.Unix(0, 0).UTC(),
+		MaxAge:   -1,
+		Secure:   secure,
+		HttpOnly: true,
+		SameSite: nethttp.SameSiteLaxMode,
+	})
+}
+
+func secureSessionCookie(r *nethttp.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+	return !isLocalDevHost(r.Host)
+}
+
+func isLocalDevHost(hostport string) bool {
+	if hostport == "" {
+		return false
+	}
+
+	host, _, err := net.SplitHostPort(hostport)
+	if err != nil {
+		host = hostport
+	}
+	host = strings.Trim(strings.ToLower(host), "[]")
+	if host == "localhost" {
+		return true
+	}
+	ip, err := netip.ParseAddr(host)
+	if err != nil {
+		return false
+	}
+	return ip.IsLoopback()
+}
+
+func optionalString(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
+}
+
+func remoteIPAddress(remoteAddr string) *string {
+	if remoteAddr == "" {
+		return nil
+	}
+
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		host = remoteAddr
+	}
+	ip, err := netip.ParseAddr(host)
+	if err != nil {
+		return nil
+	}
+	normalized := ip.String()
+	return &normalized
+}
+
+func publicUser(user store.User) store.User {
+	user.PasswordHash = nil
+	return user
+}
+
+func publicSession(session store.Session) store.Session {
+	session.TokenHash = ""
+	return session
 }
 
 type createReportRequest struct {
@@ -225,4 +467,20 @@ type createReportResponse struct {
 	Report        store.Report        `json:"report"`
 	CurrentStatus store.CurrentStatus `json:"currentStatus"`
 	AuditEvent    store.AuditEvent    `json:"auditEvent"`
+}
+
+type loginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type authLoginResponse struct {
+	User        store.User                     `json:"user"`
+	Memberships []store.OrganisationMembership `json:"memberships"`
+}
+
+type authMeResponse struct {
+	User        store.User                     `json:"user"`
+	Session     store.Session                  `json:"session"`
+	Memberships []store.OrganisationMembership `json:"memberships"`
 }
