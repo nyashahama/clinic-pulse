@@ -7,6 +7,7 @@ const appDir = path.join(process.cwd(), "app");
 const publicFinderPage = path.join(appDir, "finder", "page.tsx");
 const publicFinderClient = path.join(appDir, "finder", "page-client.tsx");
 const demoFinderPage = path.join(appDir, "(demo)", "finder", "page.tsx");
+const demoLayout = path.join(appDir, "(demo)", "layout.tsx");
 const publicClinicDetailPage = path.join(appDir, "clinics", "[clinicId]", "page.tsx");
 const legacyDemoClinicDetailPage = path.join(
   appDir,
@@ -52,6 +53,16 @@ describe("public finder route boundary", () => {
     expect(pageSource).not.toContain("fetchClinicAuditEvents");
     expect(clientSource).not.toContain("useDemoStore");
     expect(clientSource).not.toContain("DemoShell");
+  });
+
+  it("uses role-aware authenticated hydration for the demo shell", () => {
+    expect(existsSync(demoLayout)).toBe(true);
+
+    const layoutSource = readFileSync(demoLayout, "utf8");
+
+    expect(layoutSource).toContain("loadDemoHydrationForRole");
+    expect(layoutSource).toContain("getSessionCookieHeader");
+    expect(layoutSource).not.toContain("fetchClinics");
   });
 
   it("separates public clinic detail from authenticated operational clinic detail", () => {

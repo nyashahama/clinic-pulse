@@ -10,6 +10,7 @@ import {
   fetchClinicReports,
   fetchClinicStatus,
   fetchClinics,
+  fetchOperationalClinics,
   requestClinicPulseApi,
 } from "@/lib/demo/api-client";
 import type { CreateReportApiInput } from "@/lib/demo/api-types";
@@ -35,6 +36,7 @@ describe("ClinicPulse API client", () => {
     };
 
     await fetchClinics(options);
+    await fetchOperationalClinics(options);
     await fetchClinic("clinic/a b", options);
     await fetchClinicStatus("clinic/a b", options);
     await fetchClinicReports("clinic/a b", options);
@@ -42,6 +44,7 @@ describe("ClinicPulse API client", () => {
 
     expect(fetchImpl.mock.calls.map(([url]) => url)).toEqual([
       "https://api.example.test/root/v1/public/clinics",
+      "https://api.example.test/root/v1/clinics",
       "https://api.example.test/root/v1/public/clinics/clinic%2Fa%20b",
       "https://api.example.test/root/v1/clinics/clinic%2Fa%20b/status",
       "https://api.example.test/root/v1/clinics/clinic%2Fa%20b/reports",

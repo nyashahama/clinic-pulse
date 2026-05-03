@@ -3,6 +3,7 @@ import type {
   ApiErrorResponse,
   CreateReportApiInput,
   CreateReportApiResponse,
+  ClinicDetailApiResponse,
   CurrentStatusApiResponse,
   PublicClinicDetailApiResponse,
   ReportApiResponse,
@@ -152,6 +153,10 @@ export function fetchClinics(options?: ClinicPulseApiClientOptions) {
     ["v1", "public", "clinics"],
     options,
   );
+}
+
+export function fetchOperationalClinics(options?: ClinicPulseApiClientOptions) {
+  return requestClinicPulseApi<ClinicDetailApiResponse[]>(["v1", "clinics"], options);
 }
 
 export function fetchClinic(clinicId: string, options?: ClinicPulseApiClientOptions) {

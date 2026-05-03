@@ -12,41 +12,8 @@ import {
   requireRole,
   toClientAuthSession,
 } from "@/lib/auth/session";
-import { fetchClinics } from "@/lib/demo/api-client";
-import {
-  type ApiDemoHydrationPayload,
-  mapApiDemoHydrationToState,
-} from "@/lib/demo/api-mappers";
-import { allowsSeededDemoFallback } from "@/lib/demo/demo-hydration";
 import { DemoStoreProvider } from "@/lib/demo/demo-store";
-import { createInitialDemoState } from "@/lib/demo/scenarios";
-
-async function loadDemoHydration() {
-  const fallbackState = createInitialDemoState();
-
-  try {
-    const clinics = await fetchClinics();
-    const payload: ApiDemoHydrationPayload = {
-      clinics,
-      reportsByClinicId: {},
-      auditEventsByClinicId: {},
-    };
-
-    return mapApiDemoHydrationToState(payload, fallbackState);
-  } catch (error) {
-    // Demo routes call connection(), so builds do not need mock recovery.
-    // Production runtime failures should surface unless operators opt in explicitly.
-    if (!allowsSeededDemoFallback()) {
-      throw error;
-    }
-
-    console.warn(
-      "Using seeded demo fallback for local recovery because ClinicPulse API hydration failed.",
-      error,
-    );
-    return fallbackState;
-  }
-}
+import { loadDemoHydrationForRole } from "@/lib/demo/server-hydration";
 
 async function logoutAction() {
   "use server";
@@ -73,13 +40,22 @@ async function logoutAction() {
 
 export default async function DemoLayout({ children }: { children: ReactNode }) {
   await connection();
-  const currentSession = await getCurrentSession();
+  const cookieHeader = await getSessionCookieHeader();
+  const currentSession = await getCurrentSession({ cookieHeader });
   if (!currentSession) {
     redirect("/login");
   }
 
   const session = requireRole(currentSession, AUTH_ROLES);
-  const initialState = await loadDemoHydration();
+  const initialState = await loadDemoHydrationForRole(session.role, {
+    init: cookieHeader
+      ? {
+          headers: {
+            cookie: cookieHeader,
+          },
+        }
+      : undefined,
+  });
 
   return (
     <DemoStoreProvider initialState={initialState}>
