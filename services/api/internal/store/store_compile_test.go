@@ -34,6 +34,16 @@ func TestStorePublicAPICompiles(t *testing.T) {
 	var _ func(Store) = Store.Close
 }
 
+func TestOfflineSyncStoreMethodSignatures(t *testing.T) {
+	t.Parallel()
+
+	var _ func(Store, context.Context, string) (Report, error) = Store.GetReportByExternalID
+	var _ func(Store, context.Context, CreateReportSyncAttemptInput) (ReportSyncAttempt, error) = Store.CreateReportSyncAttempt
+	var _ func(Store, context.Context, time.Time) (SyncSummary, error) = Store.GetSyncSummarySince
+	var _ func(Store, context.Context) ([]CurrentStatus, error) = Store.ListCurrentStatuses
+	var _ func(Store, context.Context, string, string, time.Time, *CreateAuditEventInput) (CurrentStatus, bool, error) = Store.UpdateCurrentStatusFreshness
+}
+
 func TestNormalizeCreateReportInputDoesNotInventRequiredReportFields(t *testing.T) {
 	t.Parallel()
 
@@ -86,6 +96,20 @@ func TestReviewReportTxRejectsInvalidDecisionBeforeDatabaseWork(t *testing.T) {
 
 	if !errors.Is(err, ErrInvalidReviewDecision) {
 		t.Fatalf("expected ErrInvalidReviewDecision, got %v", err)
+	}
+}
+
+func TestCreateReportSyncAttemptRejectsInvalidResultBeforeDatabaseWork(t *testing.T) {
+	t.Parallel()
+
+	_, err := Store{}.CreateReportSyncAttempt(context.Background(), CreateReportSyncAttemptInput{
+		ExternalID: "offline-sync-invalid-result",
+		ClinicID:   "clinic-id",
+		Result:     "unexpected",
+	})
+
+	if !errors.Is(err, ErrInvalidSyncAttemptResult) {
+		t.Fatalf("expected ErrInvalidSyncAttemptResult, got %v", err)
 	}
 }
 
