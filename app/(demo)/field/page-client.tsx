@@ -216,7 +216,18 @@ export default function FieldPageClient() {
           return;
         }
 
-        await loadOfflineReports();
+        try {
+          await loadOfflineReports();
+        } catch (error) {
+          const message = `Local queue read failed after marking reports syncing: ${getErrorMessage(error)}.`;
+          await bestEffortRecoverSyncingReports(syncingReports, message);
+          try {
+            await loadOfflineReports();
+          } catch {
+            // The queue will refresh on the next successful IndexedDB read.
+          }
+          return;
+        }
 
         try {
           const response = await syncQueuedFieldReports(syncingReports);
