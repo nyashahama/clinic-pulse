@@ -9,6 +9,13 @@ export type StaffPressure = "normal" | "strained" | "critical" | "unknown";
 export type StockPressure = "normal" | "low" | "stockout" | "unknown";
 export type QueuePressure = "low" | "moderate" | "high" | "unknown";
 export type AlertSeverity = "low" | "medium" | "high" | "critical";
+export type OfflineReportQueueStatus =
+  | "queued"
+  | "syncing"
+  | "synced"
+  | "retry_wait"
+  | "conflict"
+  | "failed";
 export type DemoRole =
   | "founder_admin"
   | "district_manager"
@@ -57,6 +64,29 @@ export type ReportEvent = {
   stockPressure: StockPressure;
   queuePressure: QueuePressure;
   notes: string;
+};
+
+export type OfflineReportQueueItem = {
+  clientReportId: string;
+  schemaVersion: 1;
+  clinicId: string;
+  status: ClinicStatus;
+  reason: string;
+  staffPressure: StaffPressure;
+  stockPressure: StockPressure;
+  queuePressure: QueuePressure;
+  notes: string;
+  submittedAt: string;
+  queuedAt: string;
+  updatedAt: string;
+  syncStatus: OfflineReportQueueStatus;
+  attemptCount: number;
+  nextRetryAt: string | null;
+  lastAttemptAt: string | null;
+  lastError: string | null;
+  lastServerReportId: number | null;
+  lastServerReviewState: string | null;
+  conflictReason: string | null;
 };
 
 export type Alert = {
