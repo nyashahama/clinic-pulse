@@ -113,6 +113,15 @@ func syncOfflineReport(
 		}
 		return resultWithSyncAttempt(ctx, syncStore, actor, item, now, result, nil)
 	}
+	if item.ClientAttemptCount < 0 {
+		result.Result = "validation_error"
+		result.Error = &SyncItemError{
+			Code:    "validation_error",
+			Message: "offline report failed validation",
+			Fields:  []string{fieldMessage("clientAttemptCount", "clientAttemptCount must be greater than or equal to zero")},
+		}
+		return resultWithSyncAttempt(ctx, syncStore, actor, item, now, result, nil)
+	}
 
 	if err := ValidateCreateReportInputAt(ReportInput{StoreInput: storeInput}, now); err != nil {
 		result.Result = "validation_error"
@@ -262,6 +271,9 @@ func recordOfflineSyncAttempt(
 	result OfflineSyncResult,
 	reportID *int64,
 ) error {
+	if strings.TrimSpace(item.ClientReportID) == "" {
+		return nil
+	}
 	submittedAt := item.SubmittedAt
 	input := store.CreateReportSyncAttemptInput{
 		ExternalID:         item.ClientReportID,
@@ -270,7 +282,7 @@ func recordOfflineSyncAttempt(
 		OrganisationID:     actor.OrganisationID,
 		ClinicID:           item.ClinicID,
 		Result:             result.Result,
-		ClientAttemptCount: item.ClientAttemptCount,
+		ClientAttemptCount: normalizedClientAttemptCount(item.ClientAttemptCount),
 		QueuedAt:           item.QueuedAt,
 		SubmittedAt:        &submittedAt,
 		ReceivedAt:         now,
@@ -294,7 +306,7 @@ func sameOfflineReportPayload(existing store.Report, input store.CreateReportInp
 		sameStringPtr(existing.StockPressure, input.StockPressure) &&
 		sameStringPtr(existing.QueuePressure, input.QueuePressure) &&
 		sameStringPtr(existing.Notes, input.Notes) &&
-		existing.SubmittedAt.Equal(input.SubmittedAt)
+		samePostgresTimestamp(existing.SubmittedAt, input.SubmittedAt)
 }
 
 func sameStringPtr(left *string, right *string) bool {
@@ -302,4 +314,15 @@ func sameStringPtr(left *string, right *string) bool {
 		return left == right
 	}
 	return *left == *right
+}
+
+func normalizedClientAttemptCount(count int) int {
+	if count < 0 {
+		return 0
+	}
+	return count
+}
+
+func samePostgresTimestamp(left time.Time, right time.Time) bool {
+	return left.Truncate(time.Microsecond).Equal(right.Truncate(time.Microsecond))
 }

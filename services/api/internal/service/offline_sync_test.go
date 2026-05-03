@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -143,7 +144,7 @@ func TestSyncOfflineReportsReturnsPerItemValidationErrors(t *testing.T) {
 	if len(fake.created) != 0 {
 		t.Fatalf("expected invalid reports not to be created, got %#v", fake.created)
 	}
-	if len(fake.attempts) != 2 {
+	if len(fake.attempts) != 1 {
 		t.Fatalf("expected validation sync attempts, got %#v", fake.attempts)
 	}
 	if fake.attempts[0].ErrorCode == nil || *fake.attempts[0].ErrorCode != "validation_error" {
@@ -151,6 +152,76 @@ func TestSyncOfflineReportsReturnsPerItemValidationErrors(t *testing.T) {
 	}
 	if got.Summary.Failed != 2 {
 		t.Fatalf("expected failed summary count, got %#v", got.Summary)
+	}
+}
+
+func TestSyncOfflineReportsKeepsBlankClientReportIDValidationWhenAttemptCannotBeRecorded(t *testing.T) {
+	now := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
+	fake := newFakeOfflineSyncStore()
+	fake.enforceAttemptConstraints = true
+	item := validOfflineSyncItem("   ")
+
+	got := SyncOfflineReports(context.Background(), fake, validOfflineSyncActor(), []OfflineSyncItemInput{item}, now)
+
+	if got.Results[0].Result != "validation_error" {
+		t.Fatalf("expected validation_error result, got %#v", got.Results[0])
+	}
+	if got.Results[0].Error == nil || got.Results[0].Error.Code != "validation_error" {
+		t.Fatalf("expected validation error details, got %#v", got.Results[0].Error)
+	}
+	if len(fake.created) != 0 {
+		t.Fatalf("expected blank client id not to create report, got %#v", fake.created)
+	}
+	if len(fake.attempts) != 0 {
+		t.Fatalf("expected invalid external id not to be sent to attempt store, got %#v", fake.attempts)
+	}
+	if got.Summary.Failed != 1 {
+		t.Fatalf("expected failed summary count, got %#v", got.Summary)
+	}
+}
+
+func TestSyncOfflineReportsRejectsNegativeClientAttemptCountBeforeCreate(t *testing.T) {
+	now := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
+	fake := newFakeOfflineSyncStore()
+	fake.enforceAttemptConstraints = true
+	item := validOfflineSyncItem("offline-negative-attempt")
+	item.ClientAttemptCount = -1
+
+	got := SyncOfflineReports(context.Background(), fake, validOfflineSyncActor(), []OfflineSyncItemInput{item}, now)
+
+	if got.Results[0].Result != "validation_error" {
+		t.Fatalf("expected validation_error result, got %#v", got.Results[0])
+	}
+	if got.Results[0].Error == nil || got.Results[0].Error.Code != "validation_error" {
+		t.Fatalf("expected validation error details, got %#v", got.Results[0].Error)
+	}
+	if !containsField(got.Results[0].Error.Fields, "clientAttemptCount: clientAttemptCount must be greater than or equal to zero") {
+		t.Fatalf("expected clientAttemptCount validation field, got %#v", got.Results[0].Error.Fields)
+	}
+	if len(fake.created) != 0 {
+		t.Fatalf("expected negative attempt count not to create report, got %#v", fake.created)
+	}
+	if len(fake.attempts) != 1 || fake.attempts[0].ClientAttemptCount != 0 {
+		t.Fatalf("expected validation attempt with normalized attempt count, got %#v", fake.attempts)
+	}
+}
+
+func TestSyncOfflineReportsTreatsDuplicateWithPostgresMicrosecondPrecisionAsSuccess(t *testing.T) {
+	now := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
+	fake := newFakeOfflineSyncStore()
+	item := validOfflineSyncItem("offline-report-microsecond-duplicate")
+	item.SubmittedAt = time.Date(2026, 5, 3, 11, 0, 0, 123456789, time.UTC)
+	existing := reportFromOfflineItem(11, item)
+	existing.SubmittedAt = item.SubmittedAt.Truncate(time.Microsecond)
+	fake.existing[item.ClientReportID] = existing
+
+	got := SyncOfflineReports(context.Background(), fake, validOfflineSyncActor(), []OfflineSyncItemInput{item}, now)
+
+	if got.Results[0].Result != "duplicate" {
+		t.Fatalf("expected duplicate result, got %#v", got.Results[0])
+	}
+	if len(fake.created) != 0 {
+		t.Fatalf("expected duplicate not to create report, got %#v", fake.created)
 	}
 }
 
@@ -329,12 +400,13 @@ func reportFromOfflineItem(id int64, item OfflineSyncItemInput) store.Report {
 }
 
 type fakeOfflineSyncStore struct {
-	existing        map[string]store.Report
-	currentStatuses map[string]store.CurrentStatus
-	createErrors    map[string]error
-	created         []store.CreateReportInput
-	attempts        []store.CreateReportSyncAttemptInput
-	attemptErr      error
+	existing                  map[string]store.Report
+	currentStatuses           map[string]store.CurrentStatus
+	createErrors              map[string]error
+	created                   []store.CreateReportInput
+	attempts                  []store.CreateReportSyncAttemptInput
+	attemptErr                error
+	enforceAttemptConstraints bool
 }
 
 func newFakeOfflineSyncStore() *fakeOfflineSyncStore {
@@ -390,6 +462,14 @@ func (f *fakeOfflineSyncStore) GetCurrentStatus(_ context.Context, clinicID stri
 }
 
 func (f *fakeOfflineSyncStore) CreateReportSyncAttempt(_ context.Context, input store.CreateReportSyncAttemptInput) (store.ReportSyncAttempt, error) {
+	if f.enforceAttemptConstraints {
+		if strings.TrimSpace(input.ExternalID) == "" {
+			return store.ReportSyncAttempt{}, errors.New("external_id is required")
+		}
+		if input.ClientAttemptCount < 0 {
+			return store.ReportSyncAttempt{}, errors.New("client_attempt_count must be positive")
+		}
+	}
 	f.attempts = append(f.attempts, input)
 	if f.attemptErr != nil {
 		return store.ReportSyncAttempt{}, f.attemptErr
