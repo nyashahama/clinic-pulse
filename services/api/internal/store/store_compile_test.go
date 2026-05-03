@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -20,6 +21,11 @@ func TestStorePublicAPICompiles(t *testing.T) {
 	var _ func(Store, context.Context, string) ([]Report, error) = Store.ListClinicReports
 	var _ func(Store, context.Context, string) ([]AuditEvent, error) = Store.ListClinicAuditEvents
 	var _ func(Store, context.Context, CreateReportInput) (Report, CurrentStatus, AuditEvent, error) = Store.CreateReportTx
+	var _ func(Store, context.Context, string) (User, error) = Store.GetUserByEmail
+	var _ func(Store, context.Context, CreateSessionInput) (Session, error) = Store.CreateSession
+	var _ func(Store, context.Context, string) (Session, User, error) = Store.GetSessionByTokenHash
+	var _ func(Store, context.Context, string) error = Store.RevokeSession
+	var _ func(Store, context.Context, int64) ([]OrganisationMembership, error) = Store.ListMembershipsForUser
 	var _ func(Store) = Store.Close
 }
 
@@ -48,6 +54,23 @@ func TestCreateReportTxRejectsNonAcceptedReportsBeforeDatabaseWork(t *testing.T)
 
 	if !errors.Is(err, ErrReportNotAccepted) {
 		t.Fatalf("expected ErrReportNotAccepted, got %v", err)
+	}
+}
+
+func TestCreateSessionRejectsCIDRIPAddressBeforeDatabaseWork(t *testing.T) {
+	t.Parallel()
+
+	ipAddress := "192.0.2.10/24"
+
+	_, err := Store{}.CreateSession(context.Background(), CreateSessionInput{
+		UserID:    1,
+		TokenHash: strings.Repeat("a", 64),
+		ExpiresAt: time.Now().Add(time.Hour),
+		IPAddress: &ipAddress,
+	})
+
+	if !errors.Is(err, ErrInvalidSessionIPAddress) {
+		t.Fatalf("expected ErrInvalidSessionIPAddress, got %v", err)
 	}
 }
 

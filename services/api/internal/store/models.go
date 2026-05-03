@@ -70,6 +70,45 @@ type AuditEvent struct {
 	CreatedAt  time.Time `json:"createdAt"`
 }
 
+type User struct {
+	ID           int64      `json:"id"`
+	Email        string     `json:"email"`
+	DisplayName  string     `json:"displayName"`
+	PasswordHash *string    `json:"-"`
+	DisabledAt   *time.Time `json:"disabledAt,omitempty"`
+	CreatedAt    time.Time  `json:"createdAt"`
+	UpdatedAt    time.Time  `json:"updatedAt"`
+}
+
+type Organisation struct {
+	ID        int64     `json:"id"`
+	Name      string    `json:"name"`
+	Slug      string    `json:"slug"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+type OrganisationMembership struct {
+	ID             int64     `json:"id"`
+	OrganisationID *int64    `json:"organisationId,omitempty"`
+	UserID         int64     `json:"userId"`
+	Role           string    `json:"role"`
+	District       *string   `json:"district,omitempty"`
+	CreatedAt      time.Time `json:"createdAt"`
+}
+
+type Session struct {
+	ID         int64      `json:"id"`
+	UserID     int64      `json:"userId"`
+	TokenHash  string     `json:"-"`
+	CreatedAt  time.Time  `json:"createdAt"`
+	ExpiresAt  time.Time  `json:"expiresAt"`
+	RevokedAt  *time.Time `json:"revokedAt,omitempty"`
+	LastSeenAt *time.Time `json:"lastSeenAt,omitempty"`
+	UserAgent  *string    `json:"userAgent,omitempty"`
+	IPAddress  *string    `json:"ipAddress,omitempty"`
+}
+
 type ClinicDetail struct {
 	Clinic        Clinic          `json:"clinic"`
 	Services      []ClinicService `json:"services"`
@@ -96,4 +135,12 @@ type CreateReportInput struct {
 	AuditExternalID *string   `json:"auditExternalId,omitempty"`
 	AuditEventType  string    `json:"auditEventType,omitempty"`
 	AuditSummary    string    `json:"auditSummary,omitempty"`
+}
+
+type CreateSessionInput struct {
+	UserID    int64     `json:"userId"`
+	TokenHash string    `json:"-"`
+	ExpiresAt time.Time `json:"expiresAt"`
+	UserAgent *string   `json:"userAgent,omitempty"`
+	IPAddress *string   `json:"ipAddress,omitempty"`
 }
