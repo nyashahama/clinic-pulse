@@ -181,6 +181,35 @@ func TestReconcileStatusFreshnessWritesAuditForTransitions(t *testing.T) {
 	}
 }
 
+func TestReconcileStatusFreshnessForReviewScopeListsOnlyScopedStatuses(t *testing.T) {
+	now := fixedStalenessNow()
+	lastReportedAt := now.Add(-24 * time.Hour)
+	district := "Review District"
+	scope := store.ReportReviewScope{Role: "district_manager", District: &district}
+	fake := &fakeStalenessStore{
+		statuses: []store.CurrentStatus{{
+			ClinicID:       "clinic-in-district",
+			Freshness:      "fresh",
+			LastReportedAt: &lastReportedAt,
+		}},
+	}
+
+	result, err := ReconcileStatusFreshnessForReviewScope(context.Background(), fake, scope, AuditActor{}, now)
+	if err != nil {
+		t.Fatalf("ReconcileStatusFreshnessForReviewScope returned error: %v", err)
+	}
+
+	if fake.scope == nil || fake.scope.Role != "district_manager" || fake.scope.District == nil || *fake.scope.District != district {
+		t.Fatalf("expected store to receive review scope %#v, got %#v", scope, fake.scope)
+	}
+	if result.Checked != 1 || result.MarkedStale != 1 {
+		t.Fatalf("unexpected reconciliation result: %#v", result)
+	}
+	if len(fake.updates) != 1 || fake.updates[0].clinicID != "clinic-in-district" {
+		t.Fatalf("expected only scoped status to be reconciled, got %#v", fake.updates)
+	}
+}
+
 func fixedStalenessNow() time.Time {
 	return time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
 }
@@ -188,6 +217,7 @@ func fixedStalenessNow() time.Time {
 type fakeStalenessStore struct {
 	statuses  []store.CurrentStatus
 	updates   []stalenessUpdate
+	scope     *store.ReportReviewScope
 	listErr   error
 	updateErr error
 }
@@ -200,6 +230,11 @@ type stalenessUpdate struct {
 }
 
 func (f *fakeStalenessStore) ListCurrentStatuses(context.Context) ([]store.CurrentStatus, error) {
+	return f.statuses, f.listErr
+}
+
+func (f *fakeStalenessStore) ListCurrentStatusesForReviewScope(_ context.Context, scope store.ReportReviewScope) ([]store.CurrentStatus, error) {
+	f.scope = &scope
 	return f.statuses, f.listErr
 }
 

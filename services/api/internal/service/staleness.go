@@ -12,6 +12,11 @@ type StalenessStore interface {
 	UpdateCurrentStatusFreshness(ctx context.Context, clinicID string, freshness string, updatedAt time.Time, audit *store.CreateAuditEventInput) (store.CurrentStatus, bool, error)
 }
 
+type ReviewScopedStalenessStore interface {
+	StalenessStore
+	ListCurrentStatusesForReviewScope(ctx context.Context, scope store.ReportReviewScope) ([]store.CurrentStatus, error)
+}
+
 type StalenessReconciliationResult struct {
 	Checked                 int `json:"checked"`
 	MarkedNeedsConfirmation int `json:"markedNeedsConfirmation"`
@@ -29,12 +34,25 @@ func FreshnessForStatusAge(age time.Duration) string {
 	}
 }
 
-func ReconcileStatusFreshness(ctx context.Context, store StalenessStore, actor AuditActor, now time.Time) (StalenessReconciliationResult, error) {
-	statuses, err := store.ListCurrentStatuses(ctx)
+func ReconcileStatusFreshness(ctx context.Context, stalenessStore StalenessStore, actor AuditActor, now time.Time) (StalenessReconciliationResult, error) {
+	statuses, err := stalenessStore.ListCurrentStatuses(ctx)
 	if err != nil {
 		return StalenessReconciliationResult{}, err
 	}
 
+	return reconcileStatuses(ctx, stalenessStore, statuses, actor, now)
+}
+
+func ReconcileStatusFreshnessForReviewScope(ctx context.Context, stalenessStore ReviewScopedStalenessStore, scope store.ReportReviewScope, actor AuditActor, now time.Time) (StalenessReconciliationResult, error) {
+	statuses, err := stalenessStore.ListCurrentStatusesForReviewScope(ctx, scope)
+	if err != nil {
+		return StalenessReconciliationResult{}, err
+	}
+
+	return reconcileStatuses(ctx, stalenessStore, statuses, actor, now)
+}
+
+func reconcileStatuses(ctx context.Context, stalenessStore StalenessStore, statuses []store.CurrentStatus, actor AuditActor, now time.Time) (StalenessReconciliationResult, error) {
 	result := StalenessReconciliationResult{Checked: len(statuses)}
 	for _, status := range statuses {
 		if status.LastReportedAt == nil {
@@ -46,7 +64,7 @@ func ReconcileStatusFreshness(ctx context.Context, store StalenessStore, actor A
 		}
 
 		audit := stalenessTransitionAudit(status.ClinicID, freshness, actor)
-		_, updated, err := store.UpdateCurrentStatusFreshness(ctx, status.ClinicID, freshness, now, &audit)
+		_, updated, err := stalenessStore.UpdateCurrentStatusFreshness(ctx, status.ClinicID, freshness, now, &audit)
 		if err != nil {
 			return StalenessReconciliationResult{}, err
 		}

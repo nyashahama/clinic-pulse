@@ -40,7 +40,9 @@ func TestOfflineSyncStoreMethodSignatures(t *testing.T) {
 	var _ func(Store, context.Context, string) (Report, error) = Store.GetReportByExternalID
 	var _ func(Store, context.Context, CreateReportSyncAttemptInput) (ReportSyncAttempt, error) = Store.CreateReportSyncAttempt
 	var _ func(Store, context.Context, time.Time) (SyncSummary, error) = Store.GetSyncSummarySince
+	var _ func(Store, context.Context, time.Time, ReportReviewScope) (SyncSummary, error) = Store.GetSyncSummarySinceForReviewScope
 	var _ func(Store, context.Context) ([]CurrentStatus, error) = Store.ListCurrentStatuses
+	var _ func(Store, context.Context, ReportReviewScope) ([]CurrentStatus, error) = Store.ListCurrentStatusesForReviewScope
 	var _ func(Store, context.Context, string, string, time.Time, *CreateAuditEventInput) (CurrentStatus, bool, error) = Store.UpdateCurrentStatusFreshness
 }
 
@@ -55,6 +57,40 @@ func TestSyncSummarySinceScopesPendingOfflineReportsToWindow(t *testing.T) {
 	pendingOfflineCTE := syncSummarySinceSQL[start:end]
 	if !strings.Contains(pendingOfflineCTE, "AND received_at >= $1") {
 		t.Fatal("expected pending_offline CTE to filter reports by the summary window")
+	}
+}
+
+func TestSyncSummaryForReviewScopeSQLScopesClinicRowsForDistrictManagers(t *testing.T) {
+	t.Parallel()
+
+	if !strings.Contains(syncSummarySinceForReviewScopeSQL, "LEFT JOIN clinics") {
+		t.Fatal("expected sync attempt counts to join clinics so district summaries can scope by clinic district")
+	}
+	if !strings.Contains(syncSummarySinceForReviewScopeSQL, "report_sync_attempts.clinic_id IS NOT NULL") {
+		t.Fatal("expected district summaries to exclude sync attempts without clinic ids")
+	}
+	if !strings.Contains(syncSummarySinceForReviewScopeSQL, "JOIN clinics ON clinics.id = reports.clinic_id") {
+		t.Fatal("expected pending offline reports to join clinics for district scope")
+	}
+	if !strings.Contains(syncSummarySinceForReviewScopeSQL, "JOIN clinics ON clinics.id = current_status.clinic_id") {
+		t.Fatal("expected current status counts to join clinics for district scope")
+	}
+	if !strings.Contains(syncSummarySinceForReviewScopeSQL, "($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)") {
+		t.Fatal("expected review scope role and district parameters in scoped summary SQL")
+	}
+}
+
+func TestListCurrentStatusesForReviewScopeSQLScopesByClinicDistrict(t *testing.T) {
+	t.Parallel()
+
+	if !strings.Contains(listCurrentStatusesForReviewScopeSQL, "JOIN clinics ON clinics.id = current_status.clinic_id") {
+		t.Fatal("expected scoped current status list to join clinics")
+	}
+	if !strings.Contains(listCurrentStatusesForReviewScopeSQL, "($1 = 'district_manager' AND $2::text IS NOT NULL AND clinics.district = $2)") {
+		t.Fatal("expected district manager current status scope predicate")
+	}
+	if !strings.Contains(listCurrentStatusesForReviewScopeSQL, "$1 IN ('org_admin', 'system_admin')") {
+		t.Fatal("expected org/system admins to retain all-district current status access")
 	}
 }
 

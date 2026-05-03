@@ -165,6 +165,28 @@ SELECT
 FROM current_status
 ORDER BY clinic_id`
 
+	listCurrentStatusesForReviewScopeSQL = `
+SELECT
+    current_status.clinic_id,
+    current_status.status,
+    current_status.reason,
+    current_status.freshness,
+    current_status.last_reported_at,
+    current_status.reporter_name,
+    current_status.source,
+    current_status.staff_pressure,
+    current_status.stock_pressure,
+    current_status.queue_pressure,
+    current_status.confidence_score::double precision,
+    current_status.updated_at
+FROM current_status
+JOIN clinics ON clinics.id = current_status.clinic_id
+WHERE (
+    ($1 = 'district_manager' AND $2::text IS NOT NULL AND clinics.district = $2)
+    OR $1 IN ('org_admin', 'system_admin')
+)
+ORDER BY current_status.clinic_id`
+
 	listPendingReportsSQL = `
 SELECT
     reports.id,
@@ -400,6 +422,57 @@ SELECT
     stale_count
 FROM attempt_counts, pending_offline, current_status_counts`
 
+	syncSummarySinceForReviewScopeSQL = `
+WITH attempt_counts AS (
+    SELECT
+        (COUNT(*) FILTER (WHERE report_sync_attempts.result = 'created'))::int AS created_count,
+        (COUNT(*) FILTER (WHERE report_sync_attempts.result = 'duplicate'))::int AS duplicate_count,
+        (COUNT(*) FILTER (WHERE report_sync_attempts.result = 'conflict'))::int AS conflict_count,
+        (COUNT(*) FILTER (WHERE report_sync_attempts.result = 'validation_error'))::int AS validation_error_count
+    FROM report_sync_attempts
+    LEFT JOIN clinics ON clinics.id = report_sync_attempts.clinic_id
+    WHERE report_sync_attempts.received_at >= $1
+        AND (
+            (
+                report_sync_attempts.clinic_id IS NOT NULL
+                AND ($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)
+            )
+            OR $2 IN ('org_admin', 'system_admin')
+        )
+),
+pending_offline AS (
+    SELECT COUNT(*)::int AS pending_count
+    FROM reports
+    JOIN clinics ON clinics.id = reports.clinic_id
+    WHERE reports.offline_created = true
+        AND reports.review_state = 'pending'
+        AND reports.received_at >= $1
+        AND (
+            ($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)
+            OR $2 IN ('org_admin', 'system_admin')
+        )
+),
+current_status_counts AS (
+    SELECT
+        (COUNT(*) FILTER (WHERE current_status.freshness = 'needs_confirmation'))::int AS needs_confirmation_count,
+        (COUNT(*) FILTER (WHERE current_status.freshness = 'stale'))::int AS stale_count
+    FROM current_status
+    JOIN clinics ON clinics.id = current_status.clinic_id
+    WHERE (
+        ($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)
+        OR $2 IN ('org_admin', 'system_admin')
+    )
+)
+SELECT
+    created_count,
+    duplicate_count,
+    conflict_count,
+    validation_error_count,
+    pending_count,
+    needs_confirmation_count,
+    stale_count
+FROM attempt_counts, pending_offline, current_status_counts`
+
 	getReportForReviewSQL = `
 SELECT
     id,
@@ -614,8 +687,39 @@ func (s Store) GetSyncSummarySince(ctx context.Context, since time.Time) (SyncSu
 	return summary, nil
 }
 
+func (s Store) GetSyncSummarySinceForReviewScope(ctx context.Context, since time.Time, scope ReportReviewScope) (SyncSummary, error) {
+	var summary SyncSummary
+	summary.WindowStartedAt = since
+
+	if err := s.pool.QueryRow(ctx, syncSummarySinceForReviewScopeSQL, since, scope.Role, scope.District).Scan(
+		&summary.OfflineReportsReceived,
+		&summary.DuplicateSyncsHandled,
+		&summary.ConflictsNeedingAttention,
+		&summary.ValidationFailures,
+		&summary.PendingOfflineReports,
+		&summary.NeedsConfirmationClinics,
+		&summary.StaleClinics,
+	); err != nil {
+		return SyncSummary{}, err
+	}
+
+	return summary, nil
+}
+
 func (s Store) ListCurrentStatuses(ctx context.Context) ([]CurrentStatus, error) {
 	rows, err := s.pool.Query(ctx, listCurrentStatusesSQL)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (CurrentStatus, error) {
+		return scanCurrentStatus(row)
+	})
+}
+
+func (s Store) ListCurrentStatusesForReviewScope(ctx context.Context, scope ReportReviewScope) ([]CurrentStatus, error) {
+	rows, err := s.pool.Query(ctx, listCurrentStatusesForReviewScopeSQL, scope.Role, scope.District)
 	if err != nil {
 		return nil, err
 	}

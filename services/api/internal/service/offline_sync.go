@@ -8,6 +8,7 @@ import (
 
 	"clinicpulse/services/api/internal/store"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // missingClientReportIDExternalID is the ledger sentinel used when a received
@@ -135,18 +136,7 @@ func syncOfflineReport(
 
 	existing, err := syncStore.GetReportByExternalID(ctx, item.ClientReportID)
 	if err == nil {
-		if sameOfflineReportPayload(existing, storeInput) {
-			result.Result = "duplicate"
-			result.Report = &existing
-			result.Warning = offlineCurrentStatusWarning(ctx, syncStore, item)
-			return resultWithSyncAttempt(ctx, syncStore, actor, item, now, result, &existing.ID)
-		}
-		result.Result = "conflict"
-		result.Report = &existing
-		result.Error = &SyncItemError{
-			Code:    "conflict",
-			Message: "client report id already exists with a different payload",
-		}
+		result = offlineSyncExistingReportResult(ctx, syncStore, item, storeInput, existing)
 		return resultWithSyncAttempt(ctx, syncStore, actor, item, now, result, &existing.ID)
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
@@ -160,6 +150,13 @@ func syncOfflineReport(
 
 	report, err := syncStore.CreatePendingReportTx(ctx, storeInput)
 	if err != nil {
+		if isReportExternalIDUniqueViolation(err) {
+			existing, lookupErr := syncStore.GetReportByExternalID(ctx, item.ClientReportID)
+			if lookupErr == nil {
+				result = offlineSyncExistingReportResult(ctx, syncStore, item, storeInput, existing)
+				return resultWithSyncAttempt(ctx, syncStore, actor, item, now, result, &existing.ID)
+			}
+		}
 		result.Result = "server_error"
 		result.Error = &SyncItemError{
 			Code:    "server_error",
@@ -172,6 +169,31 @@ func syncOfflineReport(
 	result.Report = &report
 	result.Warning = offlineCurrentStatusWarning(ctx, syncStore, item)
 	return resultWithSyncAttempt(ctx, syncStore, actor, item, now, result, &report.ID)
+}
+
+func offlineSyncExistingReportResult(
+	ctx context.Context,
+	syncStore OfflineSyncStore,
+	item OfflineSyncItemInput,
+	input store.CreateReportInput,
+	existing store.Report,
+) OfflineSyncResult {
+	result := OfflineSyncResult{
+		ClientReportID: item.ClientReportID,
+		Report:         &existing,
+	}
+	if sameOfflineReportPayload(existing, input) {
+		result.Result = "duplicate"
+		result.Warning = offlineCurrentStatusWarning(ctx, syncStore, item)
+		return result
+	}
+
+	result.Result = "conflict"
+	result.Error = &SyncItemError{
+		Code:    "conflict",
+		Message: "client report id already exists with a different payload",
+	}
+	return result
 }
 
 func offlineItemStoreInput(item OfflineSyncItemInput, actor OfflineSyncActor, now time.Time) store.CreateReportInput {
@@ -304,6 +326,15 @@ func syncAttemptExternalID(clientReportID string) string {
 		return missingClientReportIDExternalID
 	}
 	return clientReportID
+}
+
+func isReportExternalIDUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		return false
+	}
+
+	return pgErr.Code == "23505" && pgErr.ConstraintName == "reports_external_id_key"
 }
 
 func sameOfflineReportPayload(existing store.Report, input store.CreateReportInput) bool {

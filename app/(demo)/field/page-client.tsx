@@ -27,6 +27,7 @@ import {
   isOfflineReportReadyForSync,
   markQueuedItemNetworkFailure,
   markQueuedItemSyncing,
+  recoverStaleSyncingReports,
 } from "@/lib/demo/offline-sync";
 import { getClinicRows } from "@/lib/demo/selectors";
 import type { OfflineReportQueueItem } from "@/lib/demo/types";
@@ -110,6 +111,18 @@ async function bestEffortRecoverSyncingReports(
   }
 }
 
+async function loadRecoverableOfflineReports(now = new Date()) {
+  const reports = await listOfflineReports();
+  const recoveredReports = recoverStaleSyncingReports(reports, now);
+  const recoveredItems = recoveredReports.filter((item, index) => item !== reports[index]);
+
+  if (recoveredItems.length > 0) {
+    await persistOfflineReportUpdates(recoveredItems);
+  }
+
+  return recoveredReports;
+}
+
 function createOfflineReportQueueItem(
   clinicId: string,
   report: OnlineFieldReportInput,
@@ -160,7 +173,7 @@ export default function FieldPageClient() {
   const [syncing, setSyncing] = useState(false);
 
   const loadOfflineReports = useCallback(async () => {
-    const reports = await listOfflineReports();
+    const reports = await loadRecoverableOfflineReports();
     setOfflineReports(reports);
     return reports;
   }, []);
@@ -313,7 +326,7 @@ export default function FieldPageClient() {
   useEffect(() => {
     let isMounted = true;
 
-    void listOfflineReports().then((reports) => {
+    void loadRecoverableOfflineReports().then((reports) => {
       if (isMounted) {
         setOfflineReports(reports);
       }

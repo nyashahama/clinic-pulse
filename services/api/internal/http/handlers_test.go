@@ -1540,6 +1540,25 @@ func TestSyncSummaryRequiresDistrictManagerOrHigher(t *testing.T) {
 	assertGenericUnauthorized(t, rec)
 }
 
+func TestSyncSummaryPassesReviewScopeForDistrictManager(t *testing.T) {
+	var scope store.ReportReviewScope
+	router := apihttp.NewRouter(authenticatedStore(t, "district_manager", fakeStore{
+		syncSummary:      &store.SyncSummary{OfflineReportsReceived: 1},
+		syncSummaryScope: &scope,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/sync/summary", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if scope.Role != "district_manager" || scope.District == nil || *scope.District != defaultTestDistrict {
+		t.Fatalf("expected district-manager review scope, got %#v", scope)
+	}
+}
+
 func TestReconcileStalenessRequiresDistrictManagerOrHigher(t *testing.T) {
 	for _, tt := range []struct {
 		name     string
@@ -1571,6 +1590,31 @@ func TestReconcileStalenessRequiresDistrictManagerOrHigher(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	assertGenericUnauthorized(t, rec)
+}
+
+func TestReconcileStalenessPassesReviewScopeForDistrictManager(t *testing.T) {
+	now := time.Now().UTC()
+	lastReportedAt := now.Add(-24 * time.Hour)
+	var scope store.ReportReviewScope
+	router := apihttp.NewRouter(authenticatedStore(t, "district_manager", fakeStore{
+		currentStatuses: []store.CurrentStatus{{
+			ClinicID:       "clinic-1",
+			Freshness:      "fresh",
+			LastReportedAt: &lastReportedAt,
+		}},
+		currentStatusScope: &scope,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/status/reconcile-staleness", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if scope.Role != "district_manager" || scope.District == nil || *scope.District != defaultTestDistrict {
+		t.Fatalf("expected district-manager review scope, got %#v", scope)
+	}
 }
 
 func TestReconcileStalenessReturnsSummary(t *testing.T) {
@@ -2457,6 +2501,8 @@ type fakeStore struct {
 	updateFreshnessInput        *store.CreateAuditEventInput
 	updateFreshnessCalled       *bool
 	pendingScope                *store.ReportReviewScope
+	currentStatusScope          *store.ReportReviewScope
+	syncSummaryScope            *store.ReportReviewScope
 	summarySince                *time.Time
 	getUserEmail                *string
 	createSessionInput          *store.CreateSessionInput
@@ -2526,6 +2572,13 @@ func (f fakeStore) ListCurrentStatuses(context.Context) ([]store.CurrentStatus, 
 	return f.currentStatuses, f.currentStatusesErr
 }
 
+func (f fakeStore) ListCurrentStatusesForReviewScope(_ context.Context, scope store.ReportReviewScope) ([]store.CurrentStatus, error) {
+	if f.currentStatusScope != nil {
+		*f.currentStatusScope = scope
+	}
+	return f.currentStatuses, f.currentStatusesErr
+}
+
 func (f fakeStore) UpdateCurrentStatusFreshness(_ context.Context, clinicID string, freshness string, updatedAt time.Time, audit *store.CreateAuditEventInput) (store.CurrentStatus, bool, error) {
 	if f.updateFreshnessCalled != nil {
 		*f.updateFreshnessCalled = true
@@ -2573,6 +2626,21 @@ func (f fakeStore) CreateReportSyncAttempt(_ context.Context, input store.Create
 func (f fakeStore) GetSyncSummarySince(_ context.Context, since time.Time) (store.SyncSummary, error) {
 	if f.summarySince != nil {
 		*f.summarySince = since
+	}
+	if f.syncSummary != nil {
+		summary := *f.syncSummary
+		summary.WindowStartedAt = since
+		return summary, f.syncSummaryErr
+	}
+	return store.SyncSummary{WindowStartedAt: since}, f.syncSummaryErr
+}
+
+func (f fakeStore) GetSyncSummarySinceForReviewScope(_ context.Context, since time.Time, scope store.ReportReviewScope) (store.SyncSummary, error) {
+	if f.summarySince != nil {
+		*f.summarySince = since
+	}
+	if f.syncSummaryScope != nil {
+		*f.syncSummaryScope = scope
 	}
 	if f.syncSummary != nil {
 		summary := *f.syncSummary

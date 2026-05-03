@@ -32,6 +32,7 @@ type ClinicStore interface {
 	GetClinic(ctx context.Context, clinicID string) (store.ClinicDetail, error)
 	GetCurrentStatus(ctx context.Context, clinicID string) (store.CurrentStatus, error)
 	ListCurrentStatuses(ctx context.Context) ([]store.CurrentStatus, error)
+	ListCurrentStatusesForReviewScope(ctx context.Context, scope store.ReportReviewScope) ([]store.CurrentStatus, error)
 	UpdateCurrentStatusFreshness(ctx context.Context, clinicID string, freshness string, updatedAt time.Time, audit *store.CreateAuditEventInput) (store.CurrentStatus, bool, error)
 	ListClinicReports(ctx context.Context, clinicID string) ([]store.Report, error)
 	ListPendingReports(ctx context.Context, scope store.ReportReviewScope) ([]store.Report, error)
@@ -42,6 +43,7 @@ type ClinicStore interface {
 	GetReportByExternalID(ctx context.Context, externalID string) (store.Report, error)
 	CreateReportSyncAttempt(ctx context.Context, input store.CreateReportSyncAttemptInput) (store.ReportSyncAttempt, error)
 	GetSyncSummarySince(ctx context.Context, since time.Time) (store.SyncSummary, error)
+	GetSyncSummarySinceForReviewScope(ctx context.Context, since time.Time, scope store.ReportReviewScope) (store.SyncSummary, error)
 	GetUserByEmail(ctx context.Context, email string) (store.User, error)
 	CreateSessionWithAuditTx(ctx context.Context, input store.CreateSessionWithAuditInput) (store.Session, store.AuditEvent, error)
 	GetSessionByTokenHash(ctx context.Context, tokenHash string) (store.Session, store.User, error)
@@ -417,8 +419,14 @@ func normalizedOfflineSyncAttemptCount(count int) int {
 }
 
 func (h Handler) GetSyncSummary(w nethttp.ResponseWriter, r *nethttp.Request) {
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
 	since := time.Now().UTC().Add(-24 * time.Hour)
-	summary, err := h.store.GetSyncSummarySince(r.Context(), since)
+	summary, err := h.store.GetSyncSummarySinceForReviewScope(r.Context(), since, reviewScopeForPrincipal(principal))
 	if err != nil {
 		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
 		return
@@ -434,7 +442,7 @@ func (h Handler) ReconcileStatusStaleness(w nethttp.ResponseWriter, r *nethttp.R
 		return
 	}
 
-	result, err := service.ReconcileStatusFreshness(r.Context(), h.store, auditActorForPrincipal(principal), time.Now().UTC())
+	result, err := service.ReconcileStatusFreshnessForReviewScope(r.Context(), h.store, reviewScopeForPrincipal(principal), auditActorForPrincipal(principal), time.Now().UTC())
 	if err != nil {
 		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
 		return

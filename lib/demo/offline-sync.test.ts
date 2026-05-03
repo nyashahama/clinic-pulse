@@ -6,6 +6,8 @@ import {
   isOfflineReportReadyForSync,
   markQueuedItemNetworkFailure,
   markQueuedItemSyncing,
+  recoverStaleSyncingItem,
+  recoverStaleSyncingReports,
 } from "@/lib/demo/offline-sync";
 import type { OfflineSyncApiResult } from "@/lib/demo/offline-sync-types";
 import type { OfflineReportQueueItem } from "@/lib/demo/types";
@@ -179,6 +181,71 @@ describe("offline sync item transitions", () => {
       attemptCount: 1,
       nextRetryAt: now.toISOString(),
     });
+  });
+
+  it("recovers stale syncing items after a reload without incrementing attempts", () => {
+    const item = queueItem({
+      syncStatus: "syncing",
+      attemptCount: 3,
+      lastAttemptAt: "2026-05-03T07:57:59.000Z",
+      nextRetryAt: null,
+      lastError: null,
+      updatedAt: "2026-05-03T07:57:59.000Z",
+    });
+
+    expect(recoverStaleSyncingItem(item, now)).toMatchObject({
+      syncStatus: "retry_wait",
+      attemptCount: 3,
+      lastAttemptAt: "2026-05-03T07:57:59.000Z",
+      nextRetryAt: "2026-05-03T08:02:00.000Z",
+      lastError: "Previous offline sync was interrupted before completion.",
+      updatedAt: now.toISOString(),
+    });
+  });
+
+  it("recovers syncing items with missing or invalid attempt timestamps immediately", () => {
+    expect(
+      recoverStaleSyncingItem(
+        queueItem({
+          syncStatus: "syncing",
+          attemptCount: 2,
+          lastAttemptAt: null,
+        }),
+        now,
+      ),
+    ).toMatchObject({
+      syncStatus: "retry_wait",
+      nextRetryAt: "2026-05-03T08:00:30.000Z",
+      lastError: "Previous offline sync was interrupted before completion.",
+    });
+    expect(
+      recoverStaleSyncingItem(
+        queueItem({
+          syncStatus: "syncing",
+          attemptCount: 1,
+          lastAttemptAt: "not-a-date",
+        }),
+        now,
+      ),
+    ).toMatchObject({
+      syncStatus: "retry_wait",
+      nextRetryAt: "2026-05-03T08:00:00.000Z",
+      lastError: "Previous offline sync was interrupted before completion.",
+    });
+  });
+
+  it("leaves recent syncing and non-syncing items unchanged during recovery", () => {
+    const recentSyncing = queueItem({
+      syncStatus: "syncing",
+      attemptCount: 1,
+      lastAttemptAt: "2026-05-03T07:58:01.000Z",
+    });
+    const queued = queueItem({ syncStatus: "queued" });
+
+    expect(recoverStaleSyncingReports([recentSyncing, queued], now)).toEqual([
+      recentSyncing,
+      queued,
+    ]);
   });
 
   it("fails sync results whose client id does not match the queued item", () => {

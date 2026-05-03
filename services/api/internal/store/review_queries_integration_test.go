@@ -376,6 +376,82 @@ VALUES
 	if summary.StaleClinics != baselineSummary.StaleClinics+1 {
 		t.Fatalf("expected stale snapshot baseline + fixture, baseline=%+v got=%+v", baselineSummary, summary)
 	}
+
+	district := "Review District"
+	districtScope := ReportReviewScope{Role: "district_manager", District: &district}
+	districtBaselineSummary, err := store.GetSyncSummarySinceForReviewScope(ctx, windowStart, districtScope)
+	if err != nil {
+		t.Fatalf("GetSyncSummarySinceForReviewScope district baseline returned error: %v", err)
+	}
+	districtBaselineStatuses, err := store.ListCurrentStatusesForReviewScope(ctx, districtScope)
+	if err != nil {
+		t.Fatalf("ListCurrentStatusesForReviewScope district baseline returned error: %v", err)
+	}
+
+	insertIntegrationClinicInDistrict(t, ctx, store, "clinic-offline-sync-other-district", "Other District Offline Sync Clinic", "Other District")
+	otherDistrictReport, err := store.CreatePendingReportTx(ctx, CreateReportInput{
+		ExternalID:     stringPtr("offline-sync-other-district-pending"),
+		ClinicID:       "clinic-offline-sync-other-district",
+		ReporterName:   stringPtr("Offline Reporter"),
+		Source:         "field_worker",
+		OfflineCreated: true,
+		SubmittedAt:    baseTime.Add(-10 * time.Minute),
+		ReceivedAt:     baseTime,
+		Status:         "degraded",
+		ReviewState:    "pending",
+	})
+	if err != nil {
+		t.Fatalf("CreatePendingReportTx other district report returned error: %v", err)
+	}
+	if _, err := store.CreateReportSyncAttempt(ctx, CreateReportSyncAttemptInput{
+		ExternalID: "offline-sync-other-district-created",
+		ReportID:   &otherDistrictReport.ID,
+		ClinicID:   "clinic-offline-sync-other-district",
+		Result:     "created",
+		ReceivedAt: baseTime,
+	}); err != nil {
+		t.Fatalf("CreateReportSyncAttempt other district created returned error: %v", err)
+	}
+	if _, err := store.CreateReportSyncAttempt(ctx, CreateReportSyncAttemptInput{
+		ExternalID: "offline-sync-null-clinic-validation",
+		Result:     "validation_error",
+		ReceivedAt: baseTime,
+	}); err != nil {
+		t.Fatalf("CreateReportSyncAttempt null clinic validation returned error: %v", err)
+	}
+	if _, err := store.pool.Exec(ctx, `
+INSERT INTO current_status (
+    clinic_id,
+    status,
+    freshness,
+    last_reported_at,
+    source,
+    updated_at
+)
+VALUES
+    ('clinic-offline-sync-other-district', 'unknown', 'stale', $1, 'integration_test', $1)`, baseTime); err != nil {
+		t.Fatalf("insert other district current_status fixture: %v", err)
+	}
+
+	districtSummary, err := store.GetSyncSummarySinceForReviewScope(ctx, windowStart, districtScope)
+	if err != nil {
+		t.Fatalf("GetSyncSummarySinceForReviewScope district returned error: %v", err)
+	}
+	if districtSummary != districtBaselineSummary {
+		t.Fatalf("expected district summary to exclude out-of-district and null-clinic rows, baseline=%+v got=%+v", districtBaselineSummary, districtSummary)
+	}
+	districtStatuses, err := store.ListCurrentStatusesForReviewScope(ctx, districtScope)
+	if err != nil {
+		t.Fatalf("ListCurrentStatusesForReviewScope district returned error: %v", err)
+	}
+	if len(districtStatuses) != len(districtBaselineStatuses) {
+		t.Fatalf("expected district statuses to exclude other district row, baseline=%+v got=%+v", districtBaselineStatuses, districtStatuses)
+	}
+	for _, status := range districtStatuses {
+		if status.ClinicID == "clinic-offline-sync-other-district" {
+			t.Fatalf("expected other district status to be excluded, got %+v", districtStatuses)
+		}
+	}
 }
 
 func TestCreateReportSyncAttemptAllowsValidationAttemptWithoutClinicID(t *testing.T) {

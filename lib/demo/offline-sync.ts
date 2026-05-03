@@ -7,6 +7,9 @@ const MANUAL_RETRY_STATUSES = new Set<OfflineReportQueueStatus>([
   "failed",
   "conflict",
 ]);
+const STALE_SYNCING_RECOVERY_MS = 2 * 60 * 1000;
+const INTERRUPTED_SYNC_ERROR =
+  "Previous offline sync was interrupted before completion.";
 
 function addMilliseconds(date: Date, milliseconds: number) {
   return new Date(date.getTime() + milliseconds).toISOString();
@@ -144,4 +147,39 @@ export function markQueuedItemNetworkFailure(
     nextRetryAt: getNextRetryAt(attemptCount, now),
     lastError: message,
   };
+}
+
+export function recoverStaleSyncingItem(
+  item: OfflineReportQueueItem,
+  now: Date,
+): OfflineReportQueueItem {
+  if (item.syncStatus !== "syncing") {
+    return item;
+  }
+
+  const lastAttemptMs =
+    item.lastAttemptAt === null ? Number.NaN : Date.parse(item.lastAttemptAt);
+  const shouldRecover =
+    Number.isNaN(lastAttemptMs) ||
+    now.getTime() - lastAttemptMs >= STALE_SYNCING_RECOVERY_MS;
+
+  if (!shouldRecover) {
+    return item;
+  }
+
+  return {
+    ...item,
+    syncStatus: "retry_wait",
+    nextRetryAt: getNextRetryAt(item.attemptCount, now),
+    lastAttemptAt: Number.isNaN(lastAttemptMs) ? null : item.lastAttemptAt,
+    lastError: INTERRUPTED_SYNC_ERROR,
+    updatedAt: now.toISOString(),
+  };
+}
+
+export function recoverStaleSyncingReports(
+  items: OfflineReportQueueItem[],
+  now: Date,
+): OfflineReportQueueItem[] {
+  return items.map((item) => recoverStaleSyncingItem(item, now));
 }

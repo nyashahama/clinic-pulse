@@ -10,6 +10,7 @@ import (
 
 	"clinicpulse/services/api/internal/store"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func TestSyncOfflineReportsCreatesPendingReports(t *testing.T) {
@@ -114,6 +115,68 @@ func TestSyncOfflineReportsTreatsDuplicateDifferentPayloadAsConflict(t *testing.
 	}
 	if got.Summary.Conflict != 1 {
 		t.Fatalf("expected conflict summary count, got %#v", got.Summary)
+	}
+}
+
+func TestSyncOfflineReportsHandlesExternalIDUniqueRaceAsDuplicate(t *testing.T) {
+	now := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
+	fake := newFakeOfflineSyncStore()
+	item := validOfflineSyncItem("offline-report-race-duplicate")
+	existing := reportFromOfflineItem(15, item)
+	fake.createErrors[item.ClientReportID] = &pgconn.PgError{
+		Code:           "23505",
+		ConstraintName: "reports_external_id_key",
+	}
+	fake.existingAfterCreateRace[item.ClientReportID] = existing
+
+	got := SyncOfflineReports(context.Background(), fake, validOfflineSyncActor(), []OfflineSyncItemInput{item}, now)
+
+	if got.Results[0].Result != "duplicate" {
+		t.Fatalf("expected duplicate result after unique race, got %#v", got.Results[0])
+	}
+	if got.Results[0].Report == nil || got.Results[0].Report.ID != existing.ID {
+		t.Fatalf("expected existing report in result, got %#v", got.Results[0].Report)
+	}
+	if len(fake.attempts) != 1 || fake.attempts[0].Result != "duplicate" {
+		t.Fatalf("expected duplicate sync attempt, got %#v", fake.attempts)
+	}
+	if fake.attempts[0].ReportID == nil || *fake.attempts[0].ReportID != existing.ID {
+		t.Fatalf("expected sync attempt to reference existing report, got %#v", fake.attempts[0])
+	}
+	if got.Summary.Duplicate != 1 || got.Summary.Failed != 0 {
+		t.Fatalf("expected duplicate summary without failure, got %#v", got.Summary)
+	}
+}
+
+func TestSyncOfflineReportsHandlesExternalIDUniqueRaceAsConflict(t *testing.T) {
+	now := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
+	fake := newFakeOfflineSyncStore()
+	item := validOfflineSyncItem("offline-report-race-conflict")
+	existing := reportFromOfflineItem(16, item)
+	existing.Status = "operational"
+	item.Status = "degraded"
+	fake.createErrors[item.ClientReportID] = &pgconn.PgError{
+		Code:           "23505",
+		ConstraintName: "reports_external_id_key",
+	}
+	fake.existingAfterCreateRace[item.ClientReportID] = existing
+
+	got := SyncOfflineReports(context.Background(), fake, validOfflineSyncActor(), []OfflineSyncItemInput{item}, now)
+
+	if got.Results[0].Result != "conflict" {
+		t.Fatalf("expected conflict result after unique race, got %#v", got.Results[0])
+	}
+	if got.Results[0].Error == nil || got.Results[0].Error.Code != "conflict" {
+		t.Fatalf("expected conflict error, got %#v", got.Results[0].Error)
+	}
+	if len(fake.attempts) != 1 || fake.attempts[0].Result != "conflict" {
+		t.Fatalf("expected conflict sync attempt, got %#v", fake.attempts)
+	}
+	if fake.attempts[0].ReportID == nil || *fake.attempts[0].ReportID != existing.ID {
+		t.Fatalf("expected sync attempt to reference existing report, got %#v", fake.attempts[0])
+	}
+	if got.Summary.Conflict != 1 || got.Summary.Failed != 0 {
+		t.Fatalf("expected conflict summary without failure, got %#v", got.Summary)
 	}
 }
 
@@ -410,6 +473,8 @@ func reportFromOfflineItem(id int64, item OfflineSyncItemInput) store.Report {
 
 type fakeOfflineSyncStore struct {
 	existing                  map[string]store.Report
+	existingAfterCreateRace   map[string]store.Report
+	externalIDLookupCount     map[string]int
 	currentStatuses           map[string]store.CurrentStatus
 	createErrors              map[string]error
 	created                   []store.CreateReportInput
@@ -420,9 +485,11 @@ type fakeOfflineSyncStore struct {
 
 func newFakeOfflineSyncStore() *fakeOfflineSyncStore {
 	return &fakeOfflineSyncStore{
-		existing:        map[string]store.Report{},
-		currentStatuses: map[string]store.CurrentStatus{},
-		createErrors:    map[string]error{},
+		existing:                map[string]store.Report{},
+		existingAfterCreateRace: map[string]store.Report{},
+		externalIDLookupCount:   map[string]int{},
+		currentStatuses:         map[string]store.CurrentStatus{},
+		createErrors:            map[string]error{},
 	}
 }
 
@@ -455,6 +522,10 @@ func (f *fakeOfflineSyncStore) CreatePendingReportTx(_ context.Context, input st
 }
 
 func (f *fakeOfflineSyncStore) GetReportByExternalID(_ context.Context, externalID string) (store.Report, error) {
+	f.externalIDLookupCount[externalID]++
+	if report, ok := f.existingAfterCreateRace[externalID]; ok && f.externalIDLookupCount[externalID] > 1 {
+		return report, nil
+	}
 	report, ok := f.existing[externalID]
 	if !ok {
 		return store.Report{}, pgx.ErrNoRows
