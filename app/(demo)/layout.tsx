@@ -1,64 +1,67 @@
 import type { ReactNode } from "react";
+import { redirect } from "next/navigation";
 import { connection } from "next/server";
 
 import { DemoShell } from "@/components/demo/demo-shell";
-import { fetchClinicAuditEvents, fetchClinicReports, fetchClinics } from "@/lib/demo/api-client";
+import { AUTH_ROLES, logout } from "@/lib/auth/api";
 import {
-  type ApiDemoHydrationPayload,
-  mapApiDemoHydrationToState,
-} from "@/lib/demo/api-mappers";
-import { allowsSeededDemoFallback } from "@/lib/demo/demo-hydration";
+  applySessionCookieFromHeader,
+  clearSessionCookie,
+  getCurrentSession,
+  getSessionCookieHeader,
+  requireRole,
+  toClientAuthSession,
+} from "@/lib/auth/session";
 import { DemoStoreProvider } from "@/lib/demo/demo-store";
-import { createInitialDemoState } from "@/lib/demo/scenarios";
+import { loadDemoHydrationForRole } from "@/lib/demo/server-hydration";
 
-async function loadDemoHydration() {
-  const fallbackState = createInitialDemoState();
+async function logoutAction() {
+  "use server";
 
-  try {
-    const clinics = await fetchClinics();
-    const clinicPayloads = await Promise.all(
-      clinics.map(async (clinic) => {
-        const [reports, auditEvents] = await Promise.all([
-          fetchClinicReports(clinic.clinic.id),
-          fetchClinicAuditEvents(clinic.clinic.id),
-        ]);
+  const cookieHeader = await getSessionCookieHeader();
+  const result = await logout({
+    init: cookieHeader
+      ? {
+          headers: {
+            cookie: cookieHeader,
+          },
+        }
+      : undefined,
+  });
 
-        return [clinic.clinic.id, reports, auditEvents] as const;
-      }),
-    );
-    const payload: ApiDemoHydrationPayload = {
-      clinics,
-      reportsByClinicId: Object.fromEntries(
-        clinicPayloads.map(([clinicId, reports]) => [clinicId, reports]),
-      ),
-      auditEventsByClinicId: Object.fromEntries(
-        clinicPayloads.map(([clinicId, , auditEvents]) => [clinicId, auditEvents]),
-      ),
-    };
-
-    return mapApiDemoHydrationToState(payload, fallbackState);
-  } catch (error) {
-    // Demo routes call connection(), so builds do not need mock recovery.
-    // Production runtime failures should surface unless operators opt in explicitly.
-    if (!allowsSeededDemoFallback()) {
-      throw error;
-    }
-
-    console.warn(
-      "Using seeded demo fallback for local recovery because ClinicPulse API hydration failed.",
-      error,
-    );
-    return fallbackState;
+  if (result.setCookie) {
+    await applySessionCookieFromHeader(result.setCookie);
+  } else {
+    await clearSessionCookie();
   }
+
+  redirect("/login");
 }
 
 export default async function DemoLayout({ children }: { children: ReactNode }) {
   await connection();
-  const initialState = await loadDemoHydration();
+  const cookieHeader = await getSessionCookieHeader();
+  const currentSession = await getCurrentSession({ cookieHeader });
+  if (!currentSession) {
+    redirect("/login");
+  }
+
+  const session = requireRole(currentSession, AUTH_ROLES);
+  const initialState = await loadDemoHydrationForRole(session.role, {
+    init: cookieHeader
+      ? {
+          headers: {
+            cookie: cookieHeader,
+          },
+        }
+      : undefined,
+  });
 
   return (
     <DemoStoreProvider initialState={initialState}>
-      <DemoShell>{children}</DemoShell>
+      <DemoShell session={toClientAuthSession(session)} logoutAction={logoutAction}>
+        {children}
+      </DemoShell>
     </DemoStoreProvider>
   );
 }

@@ -50,6 +50,11 @@ const systemResponseByType: Record<AuditEvent["eventType"], SystemResponseTone> 
     action: "Report stream updated and clinic health summary recalculated from the new signal.",
     icon: Workflow,
   },
+  "report.reviewed": {
+    title: "Report reviewed",
+    action: "Review decision was recorded and the audit history now links status changes to the reviewer.",
+    icon: Workflow,
+  },
   "report.received_offline": {
     title: "Offline report received",
     action: "Offline report was queued locally so the district surface can continue operating.",
@@ -111,9 +116,14 @@ function formatStatusChange(event: AuditEvent) {
 
   if (
     event.eventType === "report.submitted" ||
+    event.eventType === "report.reviewed" ||
     event.eventType === "report.synced" ||
     event.eventType === "report.received_offline"
   ) {
+    if (event.eventType === "report.reviewed") {
+      return `${event.actorName} reviewed a submitted report and recorded the decision for the clinic timeline.`;
+    }
+
     return `${event.actorName} submitted a new operating report used to update the clinic status context.`;
   }
 

@@ -10,6 +10,7 @@ import {
   fetchClinicReports,
   fetchClinicStatus,
   fetchClinics,
+  fetchOperationalClinics,
   requestClinicPulseApi,
 } from "@/lib/demo/api-client";
 import type { CreateReportApiInput } from "@/lib/demo/api-types";
@@ -35,14 +36,16 @@ describe("ClinicPulse API client", () => {
     };
 
     await fetchClinics(options);
+    await fetchOperationalClinics(options);
     await fetchClinic("clinic/a b", options);
     await fetchClinicStatus("clinic/a b", options);
     await fetchClinicReports("clinic/a b", options);
     await fetchClinicAuditEvents("clinic/a b", options);
 
     expect(fetchImpl.mock.calls.map(([url]) => url)).toEqual([
+      "https://api.example.test/root/v1/public/clinics",
       "https://api.example.test/root/v1/clinics",
-      "https://api.example.test/root/v1/clinics/clinic%2Fa%20b",
+      "https://api.example.test/root/v1/public/clinics/clinic%2Fa%20b",
       "https://api.example.test/root/v1/clinics/clinic%2Fa%20b/status",
       "https://api.example.test/root/v1/clinics/clinic%2Fa%20b/reports",
       "https://api.example.test/root/v1/clinics/clinic%2Fa%20b/audit-events",
@@ -58,7 +61,7 @@ describe("ClinicPulse API client", () => {
     });
 
     expect(fetchImpl).toHaveBeenCalledWith(
-      "https://api.example.test/v1/alternatives?clinicId=clinic%2Fa+b&service=Maternal+health+%26+HIV",
+      "https://api.example.test/v1/public/alternatives?clinicId=clinic%2Fa+b&service=Maternal+health+%26+HIV",
       expect.objectContaining({ method: "GET" }),
     );
   });
@@ -195,7 +198,7 @@ describe("ClinicPulse API client", () => {
       }
     }
 
-    expect(fetchImpl.mock.calls[0][0]).toBe("https://env-api.example.test/base/v1/clinics");
+    expect(fetchImpl.mock.calls[0][0]).toBe("https://env-api.example.test/base/v1/public/clinics");
   });
 
   it("does not add JSON content type for URLSearchParams bodies", async () => {

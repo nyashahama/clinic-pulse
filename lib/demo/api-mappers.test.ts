@@ -5,6 +5,7 @@ import {
   mapApiAuditEvent,
   mapApiClinicDetailToClinicRow,
   mapApiDemoHydrationToState,
+  mapApiReport,
   mapApiReportToReportStreamItem,
 } from "@/lib/demo/api-mappers";
 import { createInitialDemoState } from "@/lib/demo/scenarios";
@@ -16,7 +17,7 @@ import type {
   ReportApiResponse,
 } from "@/lib/demo/api-types";
 import { getDemoImage } from "@/lib/demo/images";
-import type { AuditEvent, ClinicRow, ReportStreamItem } from "@/lib/demo/types";
+import type { AuditEvent, ClinicRow, QueuedOfflineReport, ReportStreamItem } from "@/lib/demo/types";
 
 const clinicDetail: ClinicDetailApiResponse = {
   clinic: {
@@ -93,6 +94,12 @@ describe("ClinicPulse API mappers", () => {
       summary: "Clinic status changed after the latest field report.",
       createdAt: "2026-05-01T06:42:00.000Z",
     };
+    const queuedReport = {
+      ...mapApiReport(report),
+      id: "queued-report-1",
+      queuedAt: "2026-05-01T06:41:00.000Z",
+      syncStatus: "queued",
+    } satisfies QueuedOfflineReport;
 
     const state = mapApiDemoHydrationToState(
       {
@@ -106,14 +113,7 @@ describe("ClinicPulse API mappers", () => {
       },
       {
         ...baseState,
-        offlineQueue: [
-          {
-            ...report,
-            id: "queued-report-1",
-            queuedAt: "2026-05-01T06:41:00.000Z",
-            syncStatus: "queued",
-          },
-        ],
+        offlineQueue: [queuedReport],
       },
     );
 
@@ -279,6 +279,27 @@ describe("ClinicPulse API mappers", () => {
     } satisfies AuditEvent);
   });
 
+  it("preserves reviewed-report audit events for operational timelines", () => {
+    const event: AuditEventApiResponse = {
+      id: 11,
+      externalId: "audit-review-11",
+      clinicId: "clinic-mamelodi-east",
+      actorName: "District Manager",
+      eventType: "report.reviewed",
+      summary: "Report accepted.",
+      createdAt: "2026-05-01T06:43:00.000Z",
+    };
+
+    expect(mapApiAuditEvent(event)).toEqual({
+      id: "audit-review-11",
+      clinicId: "clinic-mamelodi-east",
+      actorName: "District Manager",
+      eventType: "report.reviewed",
+      summary: "Report accepted.",
+      createdAt: "2026-05-01T06:43:00.000Z",
+    } satisfies AuditEvent);
+  });
+
   it("maps backend audit events missing nullable actor names to defaults", () => {
     const event: AuditEventApiResponse = {
       id: 10,
@@ -361,6 +382,29 @@ describe("ClinicPulse API mappers", () => {
       staffPressure: "unknown",
       stockPressure: "unknown",
       queuePressure: "unknown",
+    } satisfies Partial<ClinicRow>);
+  });
+
+  it("maps public status payloads without reporter or source fields safely", () => {
+    const status = {
+      clinicId: "clinic-mamelodi-east",
+      status: "degraded",
+      reason: "Public status omits internal attribution.",
+      freshness: "needs_confirmation",
+      staffPressure: "strained",
+      stockPressure: "low",
+      queuePressure: "moderate",
+      updatedAt: "2026-05-01T06:41:00.000Z",
+    } satisfies CurrentStatusApiResponse;
+
+    expect(mapApiClinicDetailToClinicRow({ ...clinicDetail, currentStatus: status })).toMatchObject({
+      status: "degraded",
+      reason: "Public status omits internal attribution.",
+      reporterName: "ClinicPulse API",
+      source: "seed",
+      staffPressure: "strained",
+      stockPressure: "low",
+      queuePressure: "moderate",
     } satisfies Partial<ClinicRow>);
   });
 });

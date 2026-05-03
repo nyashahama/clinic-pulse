@@ -28,7 +28,7 @@ export const phaseOneDemoRouteChecklist: DemoRouteChecklistEntry[] = [
     viewports: ["desktop", "mobile"],
   },
   {
-    path: "/clinics/clinic-mamelodi-east",
+    path: "/demo/clinics/clinic-mamelodi-east",
     proofMoment: "Clinic detail explains status evidence and can escalate context into admin.",
     viewports: ["desktop", "mobile"],
   },

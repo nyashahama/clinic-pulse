@@ -12,13 +12,28 @@ import (
 const maxSubmittedAtFutureSkew = 5 * time.Minute
 
 type ReportCreator interface {
-	CreateReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, store.CurrentStatus, store.AuditEvent, error)
+	CreatePendingReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, error)
+}
+
+type ReportReviewer interface {
+	ReviewReportTx(ctx context.Context, input store.ReviewReportInput) (store.Report, *store.CurrentStatus, error)
 }
 
 type ReportInput struct {
 	StoreInput      store.CreateReportInput
 	Confidence      *int
 	ConfidenceScore *float64
+	Actor           *AuditActor
+}
+
+type ReviewReportInput struct {
+	ReportID       int64
+	ReviewerUserID int64
+	OrganisationID *int64
+	Decision       string
+	Notes          *string
+	Scope          store.ReportReviewScope
+	Actor          *AuditActor
 }
 
 type ValidationError struct {
@@ -31,6 +46,26 @@ func (e ValidationError) Error() string {
 
 func ValidateCreateReportInput(input ReportInput) error {
 	return ValidateCreateReportInputAt(input, time.Now().UTC())
+}
+
+func ValidateReviewReportInput(input ReviewReportInput) error {
+	fields := make([]string, 0, 3)
+	if input.ReportID <= 0 {
+		fields = append(fields, fieldMessage("reportId", "reportId is required"))
+	}
+	if input.ReviewerUserID <= 0 {
+		fields = append(fields, fieldMessage("reviewer", "authenticated reviewer is required"))
+	}
+	if !allowedReviewDecisions[input.Decision] {
+		fields = append(fields, fieldMessage("decision", "decision must be one of: accepted, rejected"))
+	}
+	if input.Notes != nil && *input.Notes != "" && strings.TrimSpace(*input.Notes) == "" {
+		fields = append(fields, fieldMessage("notes", "notes cannot be blank"))
+	}
+	if len(fields) > 0 {
+		return ValidationError{Fields: fields}
+	}
+	return nil
 }
 
 func ValidateCreateReportInputAt(input ReportInput, validationTime time.Time) error {
@@ -74,16 +109,40 @@ func ValidateCreateReportInputAt(input ReportInput, validationTime time.Time) er
 	return nil
 }
 
-func CreateReport(ctx context.Context, creator ReportCreator, input ReportInput) (store.Report, store.CurrentStatus, store.AuditEvent, error) {
+func CreateReport(ctx context.Context, creator ReportCreator, input ReportInput) (store.Report, error) {
 	return createReportAt(ctx, creator, input, time.Now().UTC())
 }
 
-func createReportAt(ctx context.Context, creator ReportCreator, input ReportInput, validationTime time.Time) (store.Report, store.CurrentStatus, store.AuditEvent, error) {
+func createReportAt(ctx context.Context, creator ReportCreator, input ReportInput, validationTime time.Time) (store.Report, error) {
 	if err := ValidateCreateReportInputAt(input, validationTime); err != nil {
-		return store.Report{}, store.CurrentStatus{}, store.AuditEvent{}, err
+		return store.Report{}, err
 	}
 
-	return creator.CreateReportTx(ctx, input.toStoreInput())
+	storeInput := input.toStoreInput()
+	storeInput.ReviewState = "pending"
+	if input.Actor != nil {
+		storeInput.AuditEvent = ptr(ReportSubmissionAudit(storeInput, *input.Actor))
+	}
+	return creator.CreatePendingReportTx(ctx, storeInput)
+}
+
+func ReviewReport(ctx context.Context, reviewer ReportReviewer, input ReviewReportInput) (store.Report, *store.CurrentStatus, error) {
+	normalized := normalizeReviewReportInput(input)
+	if err := ValidateReviewReportInput(normalized); err != nil {
+		return store.Report{}, nil, err
+	}
+	storeInput := store.ReviewReportInput{
+		ReportID:       normalized.ReportID,
+		ReviewerUserID: normalized.ReviewerUserID,
+		OrganisationID: normalized.OrganisationID,
+		Decision:       normalized.Decision,
+		Notes:          normalized.Notes,
+		Scope:          normalized.Scope,
+	}
+	if normalized.Actor != nil {
+		storeInput.AuditEvent = ptr(ReportReviewAudit(normalized, *normalized.Actor))
+	}
+	return reviewer.ReviewReportTx(ctx, storeInput)
 }
 
 func fieldMessage(field string, message string) string {
@@ -108,6 +167,21 @@ func reportInputConfidenceScore(input ReportInput) *float64 {
 		return input.ConfidenceScore
 	}
 	return input.StoreInput.ConfidenceScore
+}
+
+func normalizeReviewReportInput(input ReviewReportInput) ReviewReportInput {
+	input.Decision = strings.TrimSpace(input.Decision)
+	if input.Notes != nil {
+		trimmed := strings.TrimSpace(*input.Notes)
+		if trimmed == "" {
+			if *input.Notes == "" {
+				input.Notes = nil
+			}
+		} else {
+			input.Notes = &trimmed
+		}
+	}
+	return input
 }
 
 func allowedStringPtr(value *string, allowed map[string]bool) bool {
@@ -150,4 +224,13 @@ var allowedReportSources = map[string]bool{
 	"clinic_coordinator": true,
 	"demo_control":       true,
 	"seed":               true,
+}
+
+var allowedReviewDecisions = map[string]bool{
+	"accepted": true,
+	"rejected": true,
+}
+
+func ptr[T any](value T) *T {
+	return &value
 }

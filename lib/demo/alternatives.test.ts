@@ -103,7 +103,7 @@ describe("loadAlternativeRecommendations", () => {
     });
 
     expect(fetchImpl).toHaveBeenCalledWith(
-      `https://api.example.test/v1/alternatives?clinicId=${source.id}&service=${source.services[0].replaceAll(" ", "+")}`,
+      `https://api.example.test/v1/public/alternatives?clinicId=${source.id}&service=${source.services[0].replaceAll(" ", "+")}`,
       expect.objectContaining({ method: "GET" }),
     );
     expect(recommendations).toEqual([
