@@ -20,4 +20,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Review dependency changes
+        continue-on-error: true
         uses: actions/dependency-review-action@v4
+
+      - name: Dependency graph note
+        run: |
+          echo "Dependency Review is advisory because it requires GitHub Dependency Graph to be enabled for this repository."
+          echo "Enable it in repository security settings before making this workflow blocking."
