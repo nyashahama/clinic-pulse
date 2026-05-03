@@ -245,7 +245,7 @@ func TestCreateReportRejectsInvalidInputWithoutCallingCreator(t *testing.T) {
 	input := validReportInput()
 	input.StoreInput.ClinicID = ""
 
-	_, _, _, err := CreateReport(context.Background(), creator, input)
+	_, err := CreateReport(context.Background(), creator, input)
 
 	var validationErr ValidationError
 	if !errors.As(err, &validationErr) {
@@ -262,7 +262,7 @@ func TestCreateReportRejectsFarFutureSubmittedAtWithoutCallingCreator(t *testing
 	input := validReportInput()
 	input.StoreInput.SubmittedAt = validationTime.Add(6 * time.Minute)
 
-	_, _, _, err := createReportAt(context.Background(), creator, input, validationTime)
+	_, err := createReportAt(context.Background(), creator, input, validationTime)
 
 	var validationErr ValidationError
 	if !errors.As(err, &validationErr) {
@@ -279,13 +279,11 @@ func TestCreateReportRejectsFarFutureSubmittedAtWithoutCallingCreator(t *testing
 
 func TestCreateReportCallsCreatorForValidInput(t *testing.T) {
 	submittedAt := time.Date(2026, 5, 2, 9, 15, 0, 0, time.UTC)
-	report := store.Report{ID: 101, ClinicID: "clinic-1", SubmittedAt: submittedAt}
-	status := store.CurrentStatus{ClinicID: "clinic-1", Status: "operational", UpdatedAt: submittedAt}
-	event := store.AuditEvent{ID: 201, ClinicID: "clinic-1", EventType: "report.submitted", CreatedAt: submittedAt}
-	creator := &fakeReportCreator{report: report, status: status, event: event}
+	report := store.Report{ID: 101, ClinicID: "clinic-1", SubmittedAt: submittedAt, ReviewState: "pending"}
+	creator := &fakeReportCreator{report: report}
 	input := validReportInput()
 
-	gotReport, gotStatus, gotEvent, err := CreateReport(context.Background(), creator, input)
+	gotReport, err := CreateReport(context.Background(), creator, input)
 
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
@@ -296,8 +294,11 @@ func TestCreateReportCallsCreatorForValidInput(t *testing.T) {
 	if creator.input.ClinicID != input.StoreInput.ClinicID || creator.input.Status != input.StoreInput.Status {
 		t.Fatalf("unexpected creator input: %#v", creator.input)
 	}
-	if gotReport.ID != report.ID || gotStatus.ClinicID != status.ClinicID || gotEvent.ID != event.ID {
-		t.Fatalf("unexpected create results: %#v %#v %#v", gotReport, gotStatus, gotEvent)
+	if creator.input.ReviewState != "pending" {
+		t.Fatalf("expected pending review state, got %q", creator.input.ReviewState)
+	}
+	if gotReport.ID != report.ID {
+		t.Fatalf("unexpected create result: %#v", gotReport)
 	}
 }
 
@@ -307,7 +308,7 @@ func TestCreateReportConvertsConfidenceToScore(t *testing.T) {
 	confidence := 86
 	input.Confidence = &confidence
 
-	_, _, _, err := CreateReport(context.Background(), creator, input)
+	_, err := CreateReport(context.Background(), creator, input)
 
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
@@ -325,7 +326,7 @@ func TestCreateReportPrefersConfidenceScoreOverConfidence(t *testing.T) {
 	input.Confidence = &confidence
 	input.ConfidenceScore = &score
 
-	_, _, _, err := CreateReport(context.Background(), creator, input)
+	_, err := CreateReport(context.Background(), creator, input)
 
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
@@ -339,10 +340,107 @@ func TestCreateReportPropagatesCreatorError(t *testing.T) {
 	creatorErr := errors.New("store unavailable")
 	creator := &fakeReportCreator{err: creatorErr}
 
-	_, _, _, err := CreateReport(context.Background(), creator, validReportInput())
+	_, err := CreateReport(context.Background(), creator, validReportInput())
 
 	if !errors.Is(err, creatorErr) {
 		t.Fatalf("expected creator error %v, got %v", creatorErr, err)
+	}
+}
+
+func TestValidateReviewReportInputRejectsInvalidDecision(t *testing.T) {
+	input := ReviewReportInput{ReportID: 100, Decision: "maybe", ReviewerUserID: 42}
+
+	err := ValidateReviewReportInput(input)
+
+	var validationErr ValidationError
+	if !errors.As(err, &validationErr) {
+		t.Fatalf("expected ValidationError, got %v", err)
+	}
+	want := "decision: decision must be one of: accepted, rejected"
+	if !containsField(validationErr.Fields, want) {
+		t.Fatalf("expected validation field message %q, got %#v", want, validationErr.Fields)
+	}
+}
+
+func TestValidateReviewReportInputRejectsMissingReviewer(t *testing.T) {
+	input := ReviewReportInput{ReportID: 100, Decision: "accepted"}
+
+	err := ValidateReviewReportInput(input)
+
+	var validationErr ValidationError
+	if !errors.As(err, &validationErr) {
+		t.Fatalf("expected ValidationError, got %v", err)
+	}
+	want := "reviewer: authenticated reviewer is required"
+	if !containsField(validationErr.Fields, want) {
+		t.Fatalf("expected validation field message %q, got %#v", want, validationErr.Fields)
+	}
+}
+
+func TestReviewReportTrimsWhitespaceNotes(t *testing.T) {
+	notes := "  reviewed by district  "
+	reviewerOrgID := int64(7)
+	reviewer := &fakeReportReviewer{report: store.Report{ID: 100, ReviewState: "accepted"}}
+	input := ReviewReportInput{
+		ReportID:       100,
+		Decision:       "accepted",
+		Notes:          &notes,
+		ReviewerUserID: 42,
+		OrganisationID: &reviewerOrgID,
+	}
+
+	_, _, err := ReviewReport(context.Background(), reviewer, input)
+
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if reviewer.input.Notes == nil || *reviewer.input.Notes != "reviewed by district" {
+		t.Fatalf("expected trimmed notes, got %v", reviewer.input.Notes)
+	}
+}
+
+func TestReviewReportConvertsEmptyNotesToNil(t *testing.T) {
+	notes := ""
+	reviewer := &fakeReportReviewer{report: store.Report{ID: 100, ReviewState: "rejected"}}
+	input := ReviewReportInput{
+		ReportID:       100,
+		Decision:       "rejected",
+		Notes:          &notes,
+		ReviewerUserID: 42,
+	}
+
+	_, _, err := ReviewReport(context.Background(), reviewer, input)
+
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if reviewer.input.Notes != nil {
+		t.Fatalf("expected nil notes, got %q", *reviewer.input.Notes)
+	}
+}
+
+func TestReviewReportRejectsWhitespaceOnlyNotes(t *testing.T) {
+	notes := "  "
+	reviewer := &fakeReportReviewer{report: store.Report{ID: 100, ReviewState: "rejected"}}
+	input := ReviewReportInput{
+		ReportID:       100,
+		Decision:       "rejected",
+		Notes:          &notes,
+		ReviewerUserID: 42,
+	}
+
+	_, _, err := ReviewReport(context.Background(), reviewer, input)
+
+	var validationErr ValidationError
+	if !errors.As(err, &validationErr) {
+		t.Fatalf("expected ValidationError, got %v", err)
+	}
+	want := "notes: notes cannot be blank"
+	if !containsField(validationErr.Fields, want) {
+		t.Fatalf("expected validation field message %q, got %#v", want, validationErr.Fields)
+	}
+	if reviewer.called {
+		t.Fatal("expected invalid notes not to call reviewer")
 	}
 }
 
@@ -378,13 +476,25 @@ type fakeReportCreator struct {
 	called bool
 	input  store.CreateReportInput
 	report store.Report
-	status store.CurrentStatus
-	event  store.AuditEvent
 	err    error
 }
 
-func (f *fakeReportCreator) CreateReportTx(_ context.Context, input store.CreateReportInput) (store.Report, store.CurrentStatus, store.AuditEvent, error) {
+func (f *fakeReportCreator) CreatePendingReportTx(_ context.Context, input store.CreateReportInput) (store.Report, error) {
 	f.called = true
 	f.input = input
-	return f.report, f.status, f.event, f.err
+	return f.report, f.err
+}
+
+type fakeReportReviewer struct {
+	called bool
+	input  store.ReviewReportInput
+	report store.Report
+	status *store.CurrentStatus
+	err    error
+}
+
+func (f *fakeReportReviewer) ReviewReportTx(_ context.Context, input store.ReviewReportInput) (store.Report, *store.CurrentStatus, error) {
+	f.called = true
+	f.input = input
+	return f.report, f.status, f.err
 }

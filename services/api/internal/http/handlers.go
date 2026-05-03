@@ -8,6 +8,7 @@ import (
 	"net"
 	nethttp "net/http"
 	"net/netip"
+	"strconv"
 	"strings"
 	"time"
 
@@ -30,8 +31,11 @@ type ClinicStore interface {
 	GetClinic(ctx context.Context, clinicID string) (store.ClinicDetail, error)
 	GetCurrentStatus(ctx context.Context, clinicID string) (store.CurrentStatus, error)
 	ListClinicReports(ctx context.Context, clinicID string) ([]store.Report, error)
+	ListPendingReports(ctx context.Context, scope store.ReportReviewScope) ([]store.Report, error)
 	ListClinicAuditEvents(ctx context.Context, clinicID string) ([]store.AuditEvent, error)
 	CreateReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, store.CurrentStatus, store.AuditEvent, error)
+	CreatePendingReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, error)
+	ReviewReportTx(ctx context.Context, input store.ReviewReportInput) (store.Report, *store.CurrentStatus, error)
 	GetUserByEmail(ctx context.Context, email string) (store.User, error)
 	CreateSession(ctx context.Context, input store.CreateSessionInput) (store.Session, error)
 	GetSessionByTokenHash(ctx context.Context, tokenHash string) (store.Session, store.User, error)
@@ -106,6 +110,25 @@ func (h Handler) ListClinicReports(w nethttp.ResponseWriter, r *nethttp.Request)
 	RespondJSON(w, nethttp.StatusOK, reports)
 }
 
+func (h Handler) ListPendingReports(w nethttp.ResponseWriter, r *nethttp.Request) {
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	reports, err := h.store.ListPendingReports(r.Context(), reviewScopeForPrincipal(principal))
+	if err != nil {
+		respondStoreError(w, err, "failed to list pending reports")
+		return
+	}
+	if reports == nil {
+		reports = []store.Report{}
+	}
+
+	RespondJSON(w, nethttp.StatusOK, reports)
+}
+
 func (h Handler) ListClinicAuditEvents(w nethttp.ResponseWriter, r *nethttp.Request) {
 	clinicID := chi.URLParam(r, "clinicId")
 	if _, err := h.store.GetClinic(r.Context(), clinicID); err != nil {
@@ -166,7 +189,10 @@ func (h Handler) CreateReport(w nethttp.ResponseWriter, r *nethttp.Request) {
 	}
 
 	input := payload.toReportInput()
-	report, status, event, err := service.CreateReport(r.Context(), h.store, input)
+	if principal, ok := PrincipalFromContext(r.Context()); ok {
+		input.StoreInput.SubmittedByUserID = &principal.UserID
+	}
+	report, err := service.CreateReport(r.Context(), h.store, input)
 	if err != nil {
 		var validationErr service.ValidationError
 		if errors.As(err, &validationErr) {
@@ -178,9 +204,57 @@ func (h Handler) CreateReport(w nethttp.ResponseWriter, r *nethttp.Request) {
 	}
 
 	RespondJSON(w, nethttp.StatusCreated, createReportResponse{
+		Report: report,
+	})
+}
+
+func (h Handler) ReviewReport(w nethttp.ResponseWriter, r *nethttp.Request) {
+	reportID, err := strconv.ParseInt(chi.URLParam(r, "reportId"), 10, 64)
+	if err != nil || reportID <= 0 {
+		RespondError(w, nethttp.StatusNotFound, "not_found", "report not found")
+		return
+	}
+
+	var payload reviewReportRequest
+	if !decodeSingleJSON(w, r, &payload) {
+		return
+	}
+
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	report, status, err := service.ReviewReport(r.Context(), h.store, service.ReviewReportInput{
+		ReportID:       reportID,
+		ReviewerUserID: principal.UserID,
+		OrganisationID: principal.OrganisationID,
+		Decision:       payload.Decision,
+		Notes:          payload.Notes,
+		Scope:          reviewScopeForPrincipal(principal),
+	})
+	if err != nil {
+		var validationErr service.ValidationError
+		if errors.As(err, &validationErr) {
+			RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", validationErr.Fields...)
+			return
+		}
+		if errors.Is(err, store.ErrReportAlreadyReviewed) {
+			RespondError(w, nethttp.StatusConflict, "conflict", "report already reviewed")
+			return
+		}
+		if errors.Is(err, store.ErrReportReviewForbidden) {
+			RespondError(w, nethttp.StatusForbidden, "forbidden", "forbidden")
+			return
+		}
+		respondStoreError(w, err, "report not found")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusOK, reviewReportResponse{
 		Report:        report,
 		CurrentStatus: status,
-		AuditEvent:    event,
 	})
 }
 
@@ -438,6 +512,13 @@ func publicSession(session store.Session) store.Session {
 	return session
 }
 
+func reviewScopeForPrincipal(principal Principal) store.ReportReviewScope {
+	return store.ReportReviewScope{
+		Role:     principal.Role,
+		District: principal.DistrictScope,
+	}
+}
+
 type createReportRequest struct {
 	ExternalID      *string    `json:"externalId,omitempty"`
 	ClinicID        string     `json:"clinicId"`
@@ -481,9 +562,19 @@ func (p createReportRequest) toReportInput() service.ReportInput {
 }
 
 type createReportResponse struct {
-	Report        store.Report        `json:"report"`
-	CurrentStatus store.CurrentStatus `json:"currentStatus"`
-	AuditEvent    store.AuditEvent    `json:"auditEvent"`
+	Report        store.Report         `json:"report"`
+	CurrentStatus *store.CurrentStatus `json:"currentStatus,omitempty"`
+	AuditEvent    *store.AuditEvent    `json:"auditEvent,omitempty"`
+}
+
+type reviewReportRequest struct {
+	Decision string  `json:"decision"`
+	Notes    *string `json:"notes,omitempty"`
+}
+
+type reviewReportResponse struct {
+	Report        store.Report         `json:"report"`
+	CurrentStatus *store.CurrentStatus `json:"currentStatus,omitempty"`
 }
 
 type loginRequest struct {

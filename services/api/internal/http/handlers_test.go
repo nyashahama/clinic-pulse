@@ -540,7 +540,7 @@ func TestAlternativesReturnsInternalErrorForUnexpectedStoreErrors(t *testing.T) 
 	}
 }
 
-func TestCreateReportReturnsCreatedReportStatusAndAuditEvent(t *testing.T) {
+func TestCreateReportReturnsCreatedPendingReportWithoutStatusOrAuditEvent(t *testing.T) {
 	reason := "Generator failed"
 	staffPressure := "strained"
 	stockPressure := "low"
@@ -562,23 +562,8 @@ func TestCreateReportReturnsCreatedReportStatusAndAuditEvent(t *testing.T) {
 			StaffPressure:  &staffPressure,
 			StockPressure:  &stockPressure,
 			QueuePressure:  &queuePressure,
-			ReviewState:    "accepted",
+			ReviewState:    "pending",
 			OfflineCreated: true,
-		},
-		createStatus: store.CurrentStatus{
-			ClinicID:       "clinic-1",
-			Status:         "degraded",
-			Reason:         &reason,
-			Freshness:      "fresh",
-			LastReportedAt: &submittedAt,
-			UpdatedAt:      receivedAt,
-		},
-		createAuditEvent: store.AuditEvent{
-			ID:        200,
-			ClinicID:  "clinic-1",
-			EventType: "report.submitted",
-			Summary:   "Report submitted with degraded status.",
-			CreatedAt: receivedAt,
 		},
 		createInput: &createInput,
 	})
@@ -606,13 +591,19 @@ func TestCreateReportReturnsCreatedReportStatusAndAuditEvent(t *testing.T) {
 	}
 
 	var got struct {
-		Report        store.Report        `json:"report"`
-		CurrentStatus store.CurrentStatus `json:"currentStatus"`
-		AuditEvent    store.AuditEvent    `json:"auditEvent"`
+		Report        store.Report         `json:"report"`
+		CurrentStatus *store.CurrentStatus `json:"currentStatus,omitempty"`
+		AuditEvent    *store.AuditEvent    `json:"auditEvent,omitempty"`
 	}
 	decodeJSON(t, rec, &got)
-	if got.Report.ID != 100 || got.CurrentStatus.ClinicID != "clinic-1" || got.AuditEvent.ID != 200 {
+	if got.Report.ID != 100 || got.Report.ReviewState != "pending" || got.CurrentStatus != nil || got.AuditEvent != nil {
 		t.Fatalf("unexpected create report response: %#v", got)
+	}
+	if strings.Contains(rec.Body.String(), "currentStatus") || strings.Contains(rec.Body.String(), "auditEvent") {
+		t.Fatalf("expected create response not to claim status or audit event, got %s", rec.Body.String())
+	}
+	if createInput.ReviewState != "pending" {
+		t.Fatalf("expected pending review state in store input, got %q", createInput.ReviewState)
 	}
 	if createInput.SubmittedAt != submittedAt {
 		t.Fatalf("expected submittedAt %s, got %s", submittedAt, createInput.SubmittedAt)
@@ -628,6 +619,25 @@ func TestCreateReportReturnsCreatedReportStatusAndAuditEvent(t *testing.T) {
 	}
 	if createInput.ConfidenceScore == nil || *createInput.ConfidenceScore != 0.86 {
 		t.Fatalf("expected confidence score 0.86, got %v", createInput.ConfidenceScore)
+	}
+}
+
+func TestCreateReportAssociatesAuthenticatedReporter(t *testing.T) {
+	var createInput store.CreateReportInput
+	router := newAuthenticatedTestRouter(t, fakeStore{
+		createReport: store.Report{ID: 100, ClinicID: "clinic-1", ReviewState: "pending"},
+		createInput:  &createInput,
+	})
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports", strings.NewReader(validReportJSON()))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusCreated, rec.Code, rec.Body.String())
+	}
+	if createInput.SubmittedByUserID == nil || *createInput.SubmittedByUserID != 42 {
+		t.Fatalf("expected submittedByUserId 42, got %v", createInput.SubmittedByUserID)
 	}
 }
 
@@ -810,6 +820,265 @@ func TestCreateReportReturnsInternalErrorForUnexpectedStoreError(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	assertInternalError(t, rec, storeErr)
+}
+
+func TestListPendingReportsReturnsPendingReports(t *testing.T) {
+	newer := time.Date(2026, 5, 3, 9, 0, 0, 0, time.UTC)
+	older := time.Date(2026, 5, 3, 8, 0, 0, 0, time.UTC)
+	router := newAuthenticatedTestRouter(t, fakeStore{
+		pendingReports: []store.Report{
+			{ID: 20, ClinicID: "clinic-1", ReviewState: "pending", ReceivedAt: newer},
+			{ID: 19, ClinicID: "clinic-2", ReviewState: "pending", ReceivedAt: older},
+		},
+	})
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/reports/pending", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	var got []store.Report
+	decodeJSON(t, rec, &got)
+	if len(got) != 2 || got[0].ID != 20 || got[1].ID != 19 {
+		t.Fatalf("unexpected pending reports response: %#v", got)
+	}
+}
+
+func TestListPendingReportsPassesDistrictManagerScope(t *testing.T) {
+	var scope store.ReportReviewScope
+	district := "Tshwane North Demo District"
+	router := apihttp.NewRouter(authenticatedStore(t, "district_manager", fakeStore{
+		memberships: []store.OrganisationMembership{{
+			ID:        1,
+			UserID:    42,
+			Role:      "district_manager",
+			District:  &district,
+			CreatedAt: time.Date(2026, 5, 3, 11, 0, 0, 0, time.UTC),
+		}},
+		pendingScope: &scope,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/reports/pending", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if scope.Role != "district_manager" || scope.District == nil || *scope.District != district {
+		t.Fatalf("unexpected pending scope: %#v", scope)
+	}
+}
+
+func TestReporterCannotListPendingOrReviewReports(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		method string
+		path   string
+		body   string
+	}{
+		{name: "list pending", method: http.MethodGet, path: "/v1/reports/pending"},
+		{name: "review", method: http.MethodPost, path: "/v1/reports/100/review", body: `{"decision":"accepted"}`},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{}))
+			req := newAuthenticatedRequest(t, tt.method, tt.path, strings.NewReader(tt.body))
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusForbidden {
+				t.Fatalf("expected status %d, got %d with body %s", http.StatusForbidden, rec.Code, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestReviewReportRequiresAuthenticatedPrincipal(t *testing.T) {
+	router := apihttp.NewRouter(fakeStore{})
+	req := httptest.NewRequest(http.MethodPost, "/v1/reports/100/review", strings.NewReader(`{"decision":"accepted"}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assertGenericUnauthorized(t, rec)
+}
+
+func TestAcceptPendingReportReturnsUpdatedReportAndCurrentStatus(t *testing.T) {
+	notes := "District verified"
+	district := "Tshwane North Demo District"
+	status := store.CurrentStatus{ClinicID: "clinic-1", Status: "degraded"}
+	var reviewInput store.ReviewReportInput
+	router := newAuthenticatedTestRouter(t, fakeStore{
+		reviewReport: store.Report{ID: 100, ClinicID: "clinic-1", ReviewState: "accepted", Status: "degraded"},
+		reviewStatus: &status,
+		reviewInput:  &reviewInput,
+		memberships: []store.OrganisationMembership{{
+			ID:        1,
+			UserID:    42,
+			Role:      "district_manager",
+			District:  &district,
+			CreatedAt: time.Date(2026, 5, 3, 11, 0, 0, 0, time.UTC),
+		}},
+	})
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports/100/review", strings.NewReader(`{"decision":"accepted","notes":"  District verified  "}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	var got struct {
+		Report        store.Report         `json:"report"`
+		CurrentStatus *store.CurrentStatus `json:"currentStatus,omitempty"`
+	}
+	decodeJSON(t, rec, &got)
+	if got.Report.ID != 100 || got.Report.ReviewState != "accepted" || got.CurrentStatus == nil || got.CurrentStatus.Status != "degraded" {
+		t.Fatalf("unexpected review response: %#v", got)
+	}
+	if reviewInput.ReportID != 100 || reviewInput.Decision != "accepted" || reviewInput.ReviewerUserID != 42 {
+		t.Fatalf("unexpected review input: %#v", reviewInput)
+	}
+	if reviewInput.Notes == nil || *reviewInput.Notes != notes {
+		t.Fatalf("expected trimmed notes %q, got %v", notes, reviewInput.Notes)
+	}
+	if reviewInput.Scope.Role != "district_manager" {
+		t.Fatalf("expected review scope role district_manager, got %#v", reviewInput.Scope)
+	}
+	if reviewInput.Scope.District == nil || *reviewInput.Scope.District != district {
+		t.Fatalf("expected review scope district %q, got %#v", district, reviewInput.Scope)
+	}
+}
+
+func TestRejectPendingReportReturnsNoCurrentStatus(t *testing.T) {
+	router := newAuthenticatedTestRouter(t, fakeStore{
+		reviewReport: store.Report{ID: 100, ClinicID: "clinic-1", ReviewState: "rejected"},
+	})
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports/100/review", strings.NewReader(`{"decision":"rejected"}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	var got struct {
+		Report        store.Report         `json:"report"`
+		CurrentStatus *store.CurrentStatus `json:"currentStatus,omitempty"`
+	}
+	decodeJSON(t, rec, &got)
+	if got.Report.ID != 100 || got.Report.ReviewState != "rejected" || got.CurrentStatus != nil {
+		t.Fatalf("unexpected review response: %#v", got)
+	}
+}
+
+func TestReviewReportReturnsConflictForAlreadyReviewed(t *testing.T) {
+	router := newAuthenticatedTestRouter(t, fakeStore{reviewErr: store.ErrReportAlreadyReviewed})
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports/100/review", strings.NewReader(`{"decision":"accepted"}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusConflict, rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"code":"conflict"`) {
+		t.Fatalf("expected conflict error code, got %q", rec.Body.String())
+	}
+}
+
+func TestReviewReportReturnsBadRequestForInvalidJSONAndDecision(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		body string
+		code string
+	}{
+		{name: "invalid json", body: `{"decision":`, code: "invalid_json"},
+		{name: "trailing json", body: `{"decision":"accepted"} {}`, code: "invalid_json"},
+		{name: "invalid decision", body: `{"decision":"maybe"}`, code: "validation_error"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			router := newAuthenticatedTestRouter(t, fakeStore{})
+			req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports/100/review", strings.NewReader(tt.body))
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("expected status %d, got %d with body %s", http.StatusBadRequest, rec.Code, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), `"code":"`+tt.code+`"`) {
+				t.Fatalf("expected %s error code, got %q", tt.code, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestReviewReportReturnsBadRequestForWhitespaceOnlyNotes(t *testing.T) {
+	router := newAuthenticatedTestRouter(t, fakeStore{})
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports/100/review", strings.NewReader(`{"decision":"accepted","notes":"   "}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusBadRequest, rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "notes: notes cannot be blank") {
+		t.Fatalf("expected notes validation error, got %q", rec.Body.String())
+	}
+}
+
+func TestReviewReportAllowsEmptyStringNotesAsNil(t *testing.T) {
+	var reviewInput store.ReviewReportInput
+	router := newAuthenticatedTestRouter(t, fakeStore{
+		reviewReport: store.Report{ID: 100, ClinicID: "clinic-1", ReviewState: "accepted"},
+		reviewInput:  &reviewInput,
+	})
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports/100/review", strings.NewReader(`{"decision":"accepted","notes":""}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if reviewInput.Notes != nil {
+		t.Fatalf("expected empty notes to become nil, got %q", *reviewInput.Notes)
+	}
+}
+
+func TestReviewReportReturnsForbiddenForOutOfScopeDistrictManager(t *testing.T) {
+	router := newAuthenticatedTestRouter(t, fakeStore{reviewErr: store.ErrReportReviewForbidden})
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports/100/review", strings.NewReader(`{"decision":"accepted"}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusForbidden, rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"code":"forbidden"`) {
+		t.Fatalf("expected forbidden error code, got %q", rec.Body.String())
+	}
+}
+
+func TestReviewReportReturnsNotFoundForMissingReport(t *testing.T) {
+	router := newAuthenticatedTestRouter(t, fakeStore{reviewErr: pgx.ErrNoRows})
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports/404/review", strings.NewReader(`{"decision":"accepted"}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusNotFound, rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"code":"not_found"`) {
+		t.Fatalf("expected not_found error code, got %q", rec.Body.String())
+	}
 }
 
 func TestLoginSuccessSetsSessionCookieAndReturnsUserMemberships(t *testing.T) {
@@ -1292,16 +1561,21 @@ type fakeStore struct {
 	clinic              store.ClinicDetail
 	status              store.CurrentStatus
 	reports             []store.Report
+	pendingReports      []store.Report
 	auditEvents         []store.AuditEvent
 	createReport        store.Report
 	createStatus        store.CurrentStatus
 	createAuditEvent    store.AuditEvent
+	reviewReport        store.Report
+	reviewStatus        *store.CurrentStatus
 	user                store.User
 	createSession       store.Session
 	session             store.Session
 	sessionUser         store.User
 	memberships         []store.OrganisationMembership
 	createInput         *store.CreateReportInput
+	reviewInput         *store.ReviewReportInput
+	pendingScope        *store.ReportReviewScope
 	getUserEmail        *string
 	createSessionInput  *store.CreateSessionInput
 	getSessionTokenHash *string
@@ -1314,8 +1588,10 @@ type fakeStore struct {
 	getClinicErr        error
 	statusErr           error
 	reportsErr          error
+	pendingReportsErr   error
 	auditEventsErr      error
 	createErr           error
+	reviewErr           error
 	getUserErr          error
 	createSessionErr    error
 	getSessionErr       error
@@ -1339,6 +1615,13 @@ func (f fakeStore) ListClinicReports(context.Context, string) ([]store.Report, e
 	return f.reports, f.reportsErr
 }
 
+func (f fakeStore) ListPendingReports(_ context.Context, scope store.ReportReviewScope) ([]store.Report, error) {
+	if f.pendingScope != nil {
+		*f.pendingScope = scope
+	}
+	return f.pendingReports, f.pendingReportsErr
+}
+
 func (f fakeStore) ListClinicAuditEvents(context.Context, string) ([]store.AuditEvent, error) {
 	return f.auditEvents, f.auditEventsErr
 }
@@ -1351,6 +1634,23 @@ func (f fakeStore) CreateReportTx(_ context.Context, input store.CreateReportInp
 		*f.createInput = input
 	}
 	return f.createReport, f.createStatus, f.createAuditEvent, f.createErr
+}
+
+func (f fakeStore) CreatePendingReportTx(_ context.Context, input store.CreateReportInput) (store.Report, error) {
+	if f.createCalls != nil {
+		*f.createCalls++
+	}
+	if f.createInput != nil {
+		*f.createInput = input
+	}
+	return f.createReport, f.createErr
+}
+
+func (f fakeStore) ReviewReportTx(_ context.Context, input store.ReviewReportInput) (store.Report, *store.CurrentStatus, error) {
+	if f.reviewInput != nil {
+		*f.reviewInput = input
+	}
+	return f.reviewReport, f.reviewStatus, f.reviewErr
 }
 
 func (f fakeStore) GetUserByEmail(_ context.Context, email string) (store.User, error) {

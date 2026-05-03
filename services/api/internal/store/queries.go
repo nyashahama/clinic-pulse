@@ -3,10 +3,12 @@ package store
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 const (
@@ -89,12 +91,47 @@ SELECT
     staff_pressure,
     stock_pressure,
     queue_pressure,
-    notes,
-    review_state,
-    confidence_score::double precision
+	notes,
+	review_state,
+	confidence_score::double precision,
+	submitted_by_user_id,
+	reviewed_by_user_id,
+	reviewed_at,
+	review_notes
 FROM reports
 WHERE clinic_id = $1
 ORDER BY received_at DESC, id DESC`
+
+	listPendingReportsSQL = `
+SELECT
+    reports.id,
+    reports.external_id,
+    reports.clinic_id,
+    reports.reporter_name,
+    reports.source,
+    reports.offline_created,
+    reports.submitted_at,
+    reports.received_at,
+    reports.status,
+    reports.reason,
+    reports.staff_pressure,
+    reports.stock_pressure,
+    reports.queue_pressure,
+    reports.notes,
+    reports.review_state,
+    reports.confidence_score::double precision,
+    reports.submitted_by_user_id,
+    reports.reviewed_by_user_id,
+    reports.reviewed_at,
+    reports.review_notes
+FROM reports
+JOIN clinics ON clinics.id = reports.clinic_id
+WHERE reports.review_state = 'pending'
+    AND (
+        ($1 = 'district_manager' AND $2::text IS NOT NULL AND clinics.district = $2)
+        OR $1 IN ('org_admin', 'system_admin')
+    )
+ORDER BY reports.received_at DESC, reports.id DESC`
 
 	listClinicAuditEventsSQL = `
 SELECT
@@ -125,11 +162,12 @@ INSERT INTO reports (
     staff_pressure,
     stock_pressure,
     queue_pressure,
-    notes,
-    review_state,
-    confidence_score
+	notes,
+	review_state,
+	confidence_score,
+	submitted_by_user_id
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 RETURNING
     id,
     external_id,
@@ -146,7 +184,11 @@ RETURNING
     queue_pressure,
     notes,
     review_state,
-    confidence_score::double precision`
+    confidence_score::double precision,
+    submitted_by_user_id,
+    reviewed_by_user_id,
+    reviewed_at,
+    review_notes`
 
 	upsertCurrentStatusSQL = `
 INSERT INTO current_status (
@@ -209,7 +251,75 @@ RETURNING
     actor_name,
     event_type,
     summary,
-    created_at`
+	created_at`
+
+	getReportForReviewSQL = `
+SELECT
+    id,
+    external_id,
+    clinic_id,
+    reporter_name,
+    source,
+    offline_created,
+    submitted_at,
+    received_at,
+    status,
+    reason,
+    staff_pressure,
+    stock_pressure,
+    queue_pressure,
+    notes,
+    review_state,
+    confidence_score::double precision,
+    submitted_by_user_id,
+    reviewed_by_user_id,
+    reviewed_at,
+    review_notes
+FROM reports
+WHERE id = $1
+FOR UPDATE`
+
+	insertReportReviewSQL = `
+INSERT INTO report_reviews (
+    report_id,
+    reviewer_user_id,
+    organisation_id,
+    decision,
+    notes,
+    metadata,
+    created_at
+)
+VALUES ($1, $2, $3, $4, $5, '{}'::jsonb, $6)`
+
+	updateReportReviewStateSQL = `
+UPDATE reports
+SET
+    review_state = $2,
+    reviewed_by_user_id = $3,
+    reviewed_at = $4,
+    review_notes = $5
+WHERE id = $1
+RETURNING
+    id,
+    external_id,
+    clinic_id,
+    reporter_name,
+    source,
+    offline_created,
+    submitted_at,
+    received_at,
+    status,
+    reason,
+    staff_pressure,
+    stock_pressure,
+    queue_pressure,
+    notes,
+    review_state,
+    confidence_score::double precision,
+    submitted_by_user_id,
+    reviewed_by_user_id,
+    reviewed_at,
+    review_notes`
 )
 
 func (s Store) ListClinics(ctx context.Context) ([]ClinicDetail, error) {
@@ -288,6 +398,18 @@ func (s Store) ListClinicReports(ctx context.Context, clinicID string) ([]Report
 	})
 }
 
+func (s Store) ListPendingReports(ctx context.Context, scope ReportReviewScope) ([]Report, error) {
+	rows, err := s.pool.Query(ctx, listPendingReportsSQL, scope.Role, scope.District)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (Report, error) {
+		return scanReport(row)
+	})
+}
+
 func (s Store) ListClinicAuditEvents(ctx context.Context, clinicID string) ([]AuditEvent, error) {
 	rows, err := s.pool.Query(ctx, listClinicAuditEventsSQL, clinicID)
 	if err != nil {
@@ -333,6 +455,7 @@ func (s Store) CreateReportTx(ctx context.Context, input CreateReportInput) (Rep
 		normalized.Notes,
 		normalized.ReviewState,
 		normalized.ConfidenceScore,
+		normalized.SubmittedByUserID,
 	))
 	if err != nil {
 		return Report{}, CurrentStatus{}, AuditEvent{}, err
@@ -376,6 +499,150 @@ func (s Store) CreateReportTx(ctx context.Context, input CreateReportInput) (Rep
 	}
 
 	return report, status, event, nil
+}
+
+func (s Store) CreatePendingReportTx(ctx context.Context, input CreateReportInput) (Report, error) {
+	normalized := normalizePendingCreateReportInput(input)
+	if normalized.ReviewState != "pending" {
+		return Report{}, ErrReportNotPending
+	}
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return Report{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	var clinicID string
+	if err := tx.QueryRow(ctx, verifyClinicExistsSQL, normalized.ClinicID).Scan(&clinicID); err != nil {
+		return Report{}, err
+	}
+
+	report, err := scanReport(tx.QueryRow(ctx, insertReportSQL,
+		normalized.ExternalID,
+		normalized.ClinicID,
+		normalized.ReporterName,
+		normalized.Source,
+		normalized.OfflineCreated,
+		normalized.SubmittedAt,
+		normalized.ReceivedAt,
+		normalized.Status,
+		normalized.Reason,
+		normalized.StaffPressure,
+		normalized.StockPressure,
+		normalized.QueuePressure,
+		normalized.Notes,
+		normalized.ReviewState,
+		normalized.ConfidenceScore,
+		normalized.SubmittedByUserID,
+	))
+	if err != nil {
+		return Report{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return Report{}, err
+	}
+
+	return report, nil
+}
+
+func (s Store) ReviewReportTx(ctx context.Context, input ReviewReportInput) (Report, *CurrentStatus, error) {
+	if input.Decision != "accepted" && input.Decision != "rejected" {
+		return Report{}, nil, ErrInvalidReviewDecision
+	}
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return Report{}, nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	locked, err := scanReport(tx.QueryRow(ctx, getReportForReviewSQL, input.ReportID))
+	if err != nil {
+		return Report{}, nil, err
+	}
+	var district string
+	if err := tx.QueryRow(ctx, `SELECT district FROM clinics WHERE id = $1`, locked.ClinicID).Scan(&district); err != nil {
+		return Report{}, nil, err
+	}
+	if !reviewScopeCanAccessDistrict(input.Scope, district) {
+		return Report{}, nil, ErrReportReviewForbidden
+	}
+	if locked.ReviewState != "pending" {
+		return Report{}, nil, ErrReportAlreadyReviewed
+	}
+
+	reviewedAt := time.Now().UTC()
+	if _, err := tx.Exec(ctx, insertReportReviewSQL,
+		input.ReportID,
+		input.ReviewerUserID,
+		input.OrganisationID,
+		input.Decision,
+		input.Notes,
+		reviewedAt,
+	); err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return Report{}, nil, ErrReportAlreadyReviewed
+		}
+		return Report{}, nil, err
+	}
+
+	report, err := scanReport(tx.QueryRow(ctx, updateReportReviewStateSQL,
+		input.ReportID,
+		input.Decision,
+		input.ReviewerUserID,
+		reviewedAt,
+		input.Notes,
+	))
+	if err != nil {
+		return Report{}, nil, err
+	}
+
+	var status *CurrentStatus
+	if input.Decision == "accepted" {
+		current, err := scanCurrentStatus(tx.QueryRow(ctx, upsertCurrentStatusSQL,
+			report.ClinicID,
+			report.Status,
+			report.Reason,
+			"fresh",
+			report.SubmittedAt,
+			report.ReporterName,
+			report.Source,
+			report.StaffPressure,
+			report.StockPressure,
+			report.QueuePressure,
+			report.ConfidenceScore,
+			reviewedAt,
+		))
+		if err == pgx.ErrNoRows {
+			current, err = scanCurrentStatus(tx.QueryRow(ctx, getCurrentStatusSQL, report.ClinicID))
+		}
+		if err != nil {
+			return Report{}, nil, err
+		}
+		status = &current
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return Report{}, nil, err
+	}
+
+	return report, status, nil
+}
+
+func reviewScopeCanAccessDistrict(scope ReportReviewScope, district string) bool {
+	switch scope.Role {
+	case "district_manager":
+		return scope.District != nil && *scope.District == district
+	case "org_admin", "system_admin":
+		// Temporary until clinics can be mapped to organisations; these roles
+		// retain all-district review access for Task 6.
+		return true
+	default:
+		return false
+	}
 }
 
 func (s Store) listClinicServices(ctx context.Context, clinicID string) ([]ClinicService, error) {
@@ -490,6 +757,10 @@ func scanReport(row pgx.Row) (Report, error) {
 	var queuePressure sql.NullString
 	var notes sql.NullString
 	var confidence sql.NullFloat64
+	var submittedByUserID sql.NullInt64
+	var reviewedByUserID sql.NullInt64
+	var reviewedAt sql.NullTime
+	var reviewNotes sql.NullString
 
 	if err := row.Scan(
 		&report.ID,
@@ -508,6 +779,10 @@ func scanReport(row pgx.Row) (Report, error) {
 		&notes,
 		&report.ReviewState,
 		&confidence,
+		&submittedByUserID,
+		&reviewedByUserID,
+		&reviewedAt,
+		&reviewNotes,
 	); err != nil {
 		return Report{}, err
 	}
@@ -520,6 +795,10 @@ func scanReport(row pgx.Row) (Report, error) {
 	report.QueuePressure = nullStringPtr(queuePressure)
 	report.Notes = nullStringPtr(notes)
 	report.ConfidenceScore = nullFloat64Ptr(confidence)
+	report.SubmittedByUserID = nullInt64Ptr(submittedByUserID)
+	report.ReviewedByUserID = nullInt64Ptr(reviewedByUserID)
+	report.ReviewedAt = nullTimePtr(reviewedAt)
+	report.ReviewNotes = nullStringPtr(reviewNotes)
 
 	return report, nil
 }
@@ -575,6 +854,18 @@ func normalizeCreateReportInput(input CreateReportInput) CreateReportInput {
 	return input
 }
 
+func normalizePendingCreateReportInput(input CreateReportInput) CreateReportInput {
+	if input.ReviewState != "" && input.ReviewState != "pending" {
+		return input
+	}
+	if input.ReviewState == "" {
+		input.ReviewState = "pending"
+	}
+	input = normalizeCreateReportInput(input)
+	input.ReviewState = "pending"
+	return input
+}
+
 func nullStringPtr(value sql.NullString) *string {
 	if !value.Valid {
 		return nil
@@ -597,6 +888,14 @@ func nullTimePtr(value sql.NullTime) *time.Time {
 	}
 
 	return &value.Time
+}
+
+func nullInt64Ptr(value sql.NullInt64) *int64 {
+	if !value.Valid {
+		return nil
+	}
+
+	return &value.Int64
 }
 
 func float64Ptr(value float64) *float64 {

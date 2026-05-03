@@ -21,6 +21,9 @@ func TestStorePublicAPICompiles(t *testing.T) {
 	var _ func(Store, context.Context, string) ([]Report, error) = Store.ListClinicReports
 	var _ func(Store, context.Context, string) ([]AuditEvent, error) = Store.ListClinicAuditEvents
 	var _ func(Store, context.Context, CreateReportInput) (Report, CurrentStatus, AuditEvent, error) = Store.CreateReportTx
+	var _ func(Store, context.Context, CreateReportInput) (Report, error) = Store.CreatePendingReportTx
+	var _ func(Store, context.Context, ReportReviewScope) ([]Report, error) = Store.ListPendingReports
+	var _ func(Store, context.Context, ReviewReportInput) (Report, *CurrentStatus, error) = Store.ReviewReportTx
 	var _ func(Store, context.Context, string) (User, error) = Store.GetUserByEmail
 	var _ func(Store, context.Context, CreateSessionInput) (Session, error) = Store.CreateSession
 	var _ func(Store, context.Context, string) (Session, User, error) = Store.GetSessionByTokenHash
@@ -54,6 +57,60 @@ func TestCreateReportTxRejectsNonAcceptedReportsBeforeDatabaseWork(t *testing.T)
 
 	if !errors.Is(err, ErrReportNotAccepted) {
 		t.Fatalf("expected ErrReportNotAccepted, got %v", err)
+	}
+}
+
+func TestCreatePendingReportTxRejectsAcceptedReportsBeforeDatabaseWork(t *testing.T) {
+	t.Parallel()
+
+	_, err := Store{}.CreatePendingReportTx(context.Background(), CreateReportInput{
+		ClinicID:    "clinic-id",
+		ReviewState: "accepted",
+	})
+
+	if !errors.Is(err, ErrReportNotPending) {
+		t.Fatalf("expected ErrReportNotPending, got %v", err)
+	}
+}
+
+func TestReviewReportTxRejectsInvalidDecisionBeforeDatabaseWork(t *testing.T) {
+	t.Parallel()
+
+	_, _, err := Store{}.ReviewReportTx(context.Background(), ReviewReportInput{
+		ReportID:       1,
+		ReviewerUserID: 42,
+		Decision:       "maybe",
+	})
+
+	if !errors.Is(err, ErrInvalidReviewDecision) {
+		t.Fatalf("expected ErrInvalidReviewDecision, got %v", err)
+	}
+}
+
+func TestReviewScopeCanAccessDistrictUsesExplicitAllowlist(t *testing.T) {
+	t.Parallel()
+
+	district := "Tshwane North Demo District"
+
+	tests := []struct {
+		name  string
+		scope ReportReviewScope
+		want  bool
+	}{
+		{name: "district manager matching district", scope: ReportReviewScope{Role: "district_manager", District: &district}, want: true},
+		{name: "district manager missing district", scope: ReportReviewScope{Role: "district_manager"}, want: false},
+		{name: "system admin", scope: ReportReviewScope{Role: "system_admin"}, want: true},
+		{name: "org admin", scope: ReportReviewScope{Role: "org_admin"}, want: true},
+		{name: "empty role denied", scope: ReportReviewScope{}, want: false},
+		{name: "unknown role denied", scope: ReportReviewScope{Role: "reporter"}, want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := reviewScopeCanAccessDistrict(tt.scope, district); got != tt.want {
+				t.Fatalf("expected access %t, got %t", tt.want, got)
+			}
+		})
 	}
 }
 
