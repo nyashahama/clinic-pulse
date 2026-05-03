@@ -58,8 +58,9 @@ jobs:
 
       - name: Apply migrations
         run: |
-          psql "$DATABASE_URL" < services/api/migrations/0001_init.sql
-          psql "$DATABASE_URL" < services/api/migrations/0002_seed_demo_data.sql
+          for migration in services/api/migrations/*.sql; do
+            psql -v ON_ERROR_STOP=1 --single-transaction "$DATABASE_URL" < "$migration"
+          done
 
       - name: Start API
         working-directory: services/api
