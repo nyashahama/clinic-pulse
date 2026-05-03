@@ -7,6 +7,7 @@ import {
   useMemo,
   useReducer,
   useRef,
+  useState,
 } from "react";
 
 import {
@@ -49,7 +50,8 @@ type DemoStoreValue = {
 };
 
 type DemoAction =
-  | { type: "reset" }
+  | { type: "reset"; state: DemoState }
+  | { type: "refresh_backend_hydration"; state: DemoState }
   | { type: "trigger_stockout"; clinicId: string }
   | { type: "trigger_staffing_shortage"; clinicId: string }
   | { type: "queue_offline_report"; report: QueueOfflineReportInput }
@@ -66,8 +68,55 @@ function buildLeadId() {
   return `lead-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function createReducerState(): DemoState {
-  return createInitialDemoState();
+function cloneDemoState(state: DemoState): DemoState {
+  return {
+    ...state,
+    clinics: state.clinics.map((clinic) => ({ ...clinic, services: [...clinic.services] })),
+    clinicStates: state.clinicStates.map((clinicState) => ({ ...clinicState })),
+    reports: state.reports.map((report) => ({ ...report })),
+    alerts: state.alerts.map((alert) => ({ ...alert })),
+    auditEvents: state.auditEvents.map((event) => ({ ...event })),
+    leads: state.leads.map((lead) => ({ ...lead })),
+    offlineQueue: state.offlineQueue.map((report) => ({ ...report })),
+  };
+}
+
+export function createDemoStoreInitialState(initialState?: DemoState): DemoState {
+  return cloneDemoState(initialState ?? createInitialDemoState());
+}
+
+export function mergeDemoBackendHydrationState(
+  currentState: DemoState,
+  backendState: DemoState,
+): DemoState {
+  const nextBackendState = createDemoStoreInitialState(backendState);
+
+  return {
+    ...currentState,
+    province: nextBackendState.province,
+    district: nextBackendState.district,
+    clinics: nextBackendState.clinics,
+    clinicStates: nextBackendState.clinicStates,
+    reports: nextBackendState.reports,
+    auditEvents: nextBackendState.auditEvents,
+  };
+}
+
+export function getDemoBackendHydrationSignature(state?: DemoState): string {
+  const backendState = state ?? createInitialDemoState();
+
+  return JSON.stringify({
+    province: backendState.province,
+    district: backendState.district,
+    clinics: backendState.clinics,
+    clinicStates: backendState.clinicStates,
+    reports: backendState.reports,
+    auditEvents: backendState.auditEvents,
+  });
+}
+
+function createReducerState(initialState?: DemoState): DemoState {
+  return createDemoStoreInitialState(initialState);
 }
 
 function demoReducer(state: DemoState, action: DemoAction): DemoState {
@@ -75,7 +124,9 @@ function demoReducer(state: DemoState, action: DemoAction): DemoState {
 
   switch (action.type) {
     case "reset":
-      return createInitialDemoState();
+      return createDemoStoreInitialState(action.state);
+    case "refresh_backend_hydration":
+      return mergeDemoBackendHydrationState(state, action.state);
     case "trigger_stockout":
       return triggerStockoutScenario(state, action.clinicId, now);
     case "trigger_staffing_shortage":
@@ -166,9 +217,29 @@ function demoReducer(state: DemoState, action: DemoAction): DemoState {
   }
 }
 
-export function DemoStoreProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(demoReducer, undefined, createReducerState);
+export function DemoStoreProvider({
+  children,
+  initialState,
+}: {
+  children: React.ReactNode;
+  initialState?: DemoState;
+}) {
+  const hydrationSignature = getDemoBackendHydrationSignature(initialState);
+  const [resetState, setResetState] = useState(() => createDemoStoreInitialState(initialState));
+  const [state, dispatch] = useReducer(demoReducer, resetState, createReducerState);
   const hasHydrated = useRef(false);
+  const lastHydrationSignature = useRef(hydrationSignature);
+
+  useEffect(() => {
+    if (lastHydrationSignature.current === hydrationSignature) {
+      return;
+    }
+
+    lastHydrationSignature.current = hydrationSignature;
+    const nextResetState = createDemoStoreInitialState(initialState);
+    setResetState(nextResetState);
+    dispatch({ type: "refresh_backend_hydration", state: nextResetState });
+  }, [hydrationSignature, initialState]);
 
   useEffect(() => {
     if (hasHydrated.current) {
@@ -205,7 +276,10 @@ export function DemoStoreProvider({ children }: { children: React.ReactNode }) {
       state,
       resetDemo: () => {
         clearDemoStorage();
-        dispatch({ type: "reset" });
+        dispatch({
+          type: "reset",
+          state: resetState,
+        });
       },
       triggerStockout: (clinicId: string) =>
         dispatch({ type: "trigger_stockout", clinicId }),
@@ -222,7 +296,7 @@ export function DemoStoreProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: "update_lead_status", leadId, status }),
       setRole: (role: DemoRole) => dispatch({ type: "set_role", role }),
     }),
-    [state],
+    [resetState, state],
   );
 
   return (

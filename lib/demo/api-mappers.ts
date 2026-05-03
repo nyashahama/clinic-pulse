@@ -13,6 +13,7 @@ import type {
   ClinicCurrentState,
   ClinicRow,
   ClinicStatus,
+  DemoState,
   DemoImageKey,
   Freshness,
   QueuePressure,
@@ -96,6 +97,12 @@ export type MapApiClinicOptions = {
   imageKey?: DemoImageKey;
 };
 
+export type ApiDemoHydrationPayload = {
+  clinics: ClinicDetailApiResponse[];
+  reportsByClinicId: Partial<Record<string, ReportApiResponse[]>>;
+  auditEventsByClinicId: Partial<Record<string, AuditEventApiResponse[]>>;
+};
+
 export type ApiFinderAlternative = Omit<
   FinderAlternative,
   "distanceKm" | "estimatedMinutes" | "reason"
@@ -173,6 +180,50 @@ export function mapApiClinicDetailToClinicRow(
     ...clinic,
     ...status,
     image: getDemoImage(clinic.imageKey),
+  };
+}
+
+function getHydrationClinicImageKey(
+  detail: ClinicDetailApiResponse,
+  index: number,
+  baseState: DemoState,
+) {
+  return (
+    baseState.clinics.find((clinic) => clinic.id === detail.clinic.id)?.imageKey ??
+    (index % 2 === 0 ? "clinic-front-01" : "clinic-front-02")
+  );
+}
+
+export function mapApiDemoHydrationToState(
+  payload: ApiDemoHydrationPayload,
+  baseState: DemoState,
+): DemoState {
+  const clinics = payload.clinics.map((detail, index) =>
+    mapApiClinicDetailToClinic(detail, {
+      imageKey: getHydrationClinicImageKey(detail, index, baseState),
+    }),
+  );
+  const clinicStates = payload.clinics.map((detail) =>
+    mapApiCurrentStatus(detail.currentStatus, detail.clinic.id, detail.clinic.updatedAt),
+  );
+  const reports = payload.clinics.flatMap((detail) =>
+    (payload.reportsByClinicId[detail.clinic.id] ?? []).map(mapApiReport),
+  );
+  const auditEvents = payload.clinics.flatMap((detail) =>
+    (payload.auditEventsByClinicId[detail.clinic.id] ?? []).map(mapApiAuditEvent),
+  );
+  const clinicIds = new Set(clinics.map((clinic) => clinic.id));
+
+  return {
+    ...baseState,
+    province: clinics[0]?.province ?? baseState.province,
+    district: clinics[0]?.district ?? baseState.district,
+    clinics,
+    clinicStates,
+    reports,
+    // Alerts stay seeded Phase 2 demo context until the backend exposes alert hydration.
+    alerts: baseState.alerts.filter((alert) => clinicIds.has(alert.clinicId)),
+    auditEvents,
   };
 }
 

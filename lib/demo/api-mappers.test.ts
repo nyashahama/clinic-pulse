@@ -4,8 +4,10 @@ import {
   mapApiAlternative,
   mapApiAuditEvent,
   mapApiClinicDetailToClinicRow,
+  mapApiDemoHydrationToState,
   mapApiReportToReportStreamItem,
 } from "@/lib/demo/api-mappers";
+import { createInitialDemoState } from "@/lib/demo/scenarios";
 import type {
   AlternativeApiResponse,
   AuditEventApiResponse,
@@ -63,6 +65,81 @@ const clinicDetail: ClinicDetailApiResponse = {
 };
 
 describe("ClinicPulse API mappers", () => {
+  it("maps backend hydration payloads into the stable demo state shape", () => {
+    const baseState = createInitialDemoState();
+    const report: ReportApiResponse = {
+      id: 42,
+      externalId: "mobile-report-42",
+      clinicId: "clinic-mamelodi-east",
+      reporterName: "Nomsa Dlamini",
+      source: "field_worker",
+      offlineCreated: false,
+      submittedAt: "2026-05-01T06:35:00.000Z",
+      receivedAt: "2026-05-01T06:40:00.000Z",
+      status: "degraded",
+      reason: "Lab courier delayed and queues are stacking.",
+      staffPressure: "strained",
+      stockPressure: "low",
+      queuePressure: "high",
+      notes: "Pharmacy queue moving within target.",
+      reviewState: "accepted",
+    };
+    const auditEvent: AuditEventApiResponse = {
+      id: 9,
+      externalId: "audit-mobile-9",
+      clinicId: "clinic-mamelodi-east",
+      actorName: "District Ops Desk",
+      eventType: "clinic.status_changed",
+      summary: "Clinic status changed after the latest field report.",
+      createdAt: "2026-05-01T06:42:00.000Z",
+    };
+
+    const state = mapApiDemoHydrationToState(
+      {
+        clinics: [clinicDetail],
+        reportsByClinicId: {
+          "clinic-mamelodi-east": [report],
+        },
+        auditEventsByClinicId: {
+          "clinic-mamelodi-east": [auditEvent],
+        },
+      },
+      {
+        ...baseState,
+        offlineQueue: [
+          {
+            ...report,
+            id: "queued-report-1",
+            queuedAt: "2026-05-01T06:41:00.000Z",
+            syncStatus: "queued",
+          },
+        ],
+      },
+    );
+
+    expect(state).toMatchObject({
+      province: "Gauteng",
+      district: "Tshwane North Demo District",
+      leads: baseState.leads,
+      role: baseState.role,
+      lastSyncAt: baseState.lastSyncAt,
+    });
+    expect(state.clinics).toHaveLength(1);
+    expect(state.clinics[0]).toMatchObject({
+      id: "clinic-mamelodi-east",
+      name: "Mamelodi East Community Clinic",
+    });
+    expect(state.clinicStates).toEqual([
+      expect.objectContaining({
+        clinicId: "clinic-mamelodi-east",
+        status: "degraded",
+      }),
+    ]);
+    expect(state.reports).toEqual([expect.objectContaining({ id: "mobile-report-42" })]);
+    expect(state.auditEvents).toEqual([expect.objectContaining({ id: "audit-mobile-9" })]);
+    expect(state.offlineQueue).toHaveLength(1);
+  });
+
   it("maps backend clinic detail and status to ClinicRow-compatible data", () => {
     const row = mapApiClinicDetailToClinicRow(clinicDetail, {
       imageKey: "clinic-front-02",
