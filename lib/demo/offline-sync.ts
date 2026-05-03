@@ -49,7 +49,11 @@ export function isOfflineReportReadyForSync(
     return true;
   }
 
-  return item.nextRetryAt !== null && Date.parse(item.nextRetryAt) <= now.getTime();
+  return (
+    item.syncStatus === "retry_wait" &&
+    item.nextRetryAt !== null &&
+    Date.parse(item.nextRetryAt) <= now.getTime()
+  );
 }
 
 export function markQueuedItemSyncing(

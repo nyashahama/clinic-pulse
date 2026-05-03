@@ -233,6 +233,23 @@ describe("offline sync item selection", () => {
     ).toBe(false);
   });
 
+  it("does not automatically select manual-only statuses with stale retry times", () => {
+    const nextRetryAt = "2026-05-03T07:59:59.000Z";
+
+    expect(
+      isOfflineReportReadyForSync(queueItem({ syncStatus: "failed", nextRetryAt }), now),
+    ).toBe(false);
+    expect(
+      isOfflineReportReadyForSync(queueItem({ syncStatus: "conflict", nextRetryAt }), now),
+    ).toBe(false);
+    expect(
+      isOfflineReportReadyForSync(queueItem({ syncStatus: "synced", nextRetryAt }), now),
+    ).toBe(false);
+    expect(
+      isOfflineReportReadyForSync(queueItem({ syncStatus: "syncing", nextRetryAt }), now),
+    ).toBe(false);
+  });
+
   it("allows manual retry for queued, retry-wait, failed, and conflict reports", () => {
     expect(isOfflineReportReadyForSync(queueItem({ syncStatus: "queued" }), now, true)).toBe(true);
     expect(isOfflineReportReadyForSync(queueItem({ syncStatus: "retry_wait" }), now, true)).toBe(true);

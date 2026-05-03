@@ -79,6 +79,37 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "The request failed.";
 }
 
+async function persistOfflineReportUpdates(items: OfflineReportQueueItem[]) {
+  const persisted: OfflineReportQueueItem[] = [];
+  const failed: Array<{ item: OfflineReportQueueItem; error: unknown }> = [];
+
+  for (const item of items) {
+    try {
+      await updateOfflineReport(item);
+      persisted.push(item);
+    } catch (error) {
+      failed.push({ item, error });
+    }
+  }
+
+  return { failed, persisted };
+}
+
+async function bestEffortRecoverSyncingReports(
+  items: OfflineReportQueueItem[],
+  message: string,
+) {
+  const now = new Date();
+
+  for (const item of items) {
+    try {
+      await updateOfflineReport(markQueuedItemNetworkFailure(item, message, now));
+    } catch {
+      // If this write also fails, the next queue load will show the last persisted state.
+    }
+  }
+}
+
 function createOfflineReportQueueItem(
   clinicId: string,
   report: OnlineFieldReportInput,
@@ -177,7 +208,14 @@ export default function FieldPageClient() {
         const syncingReports = selectedReports.map((item) =>
           markQueuedItemSyncing(item, new Date()),
         );
-        await Promise.all(syncingReports.map((item) => updateOfflineReport(item)));
+        const syncingPersistence = await persistOfflineReportUpdates(syncingReports);
+        if (syncingPersistence.failed.length > 0) {
+          const message = `Local queue update failed before sync: ${getErrorMessage(syncingPersistence.failed[0]?.error)}.`;
+          await bestEffortRecoverSyncingReports(syncingPersistence.persisted, message);
+          await loadOfflineReports();
+          return;
+        }
+
         await loadOfflineReports();
 
         try {
@@ -203,7 +241,15 @@ export default function FieldPageClient() {
             return applyOfflineSyncResult(item, result, new Date());
           });
 
-          await Promise.all(updatedReports.map((item) => updateOfflineReport(item)));
+          const resultPersistence = await persistOfflineReportUpdates(updatedReports);
+          if (resultPersistence.failed.length > 0) {
+            const message = `Local queue persistence failed after sync: ${getErrorMessage(resultPersistence.failed[0]?.error)}.`;
+            await bestEffortRecoverSyncingReports(
+              resultPersistence.failed.map(({ item }) => item),
+              message,
+            );
+          }
+
           await loadOfflineReports();
 
           if (updatedReports.some((item) => item.syncStatus === "synced")) {
@@ -225,7 +271,15 @@ export default function FieldPageClient() {
                 conflictReason: null,
               }));
 
-          await Promise.all(updatedReports.map((item) => updateOfflineReport(item)));
+          const failurePersistence = await persistOfflineReportUpdates(updatedReports);
+          if (failurePersistence.failed.length > 0) {
+            const message = `Local queue persistence failed after sync error: ${getErrorMessage(failurePersistence.failed[0]?.error)}.`;
+            await bestEffortRecoverSyncingReports(
+              failurePersistence.failed.map(({ item }) => item),
+              message,
+            );
+          }
+
           await loadOfflineReports();
         }
       } finally {

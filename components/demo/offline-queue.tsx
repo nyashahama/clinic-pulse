@@ -97,7 +97,7 @@ export function OfflineQueue({
                   </span>
                 </div>
 
-                <div className="mt-2 grid gap-1 text-xs text-content-subtle">
+                <div className="mt-2 grid gap-1 break-words text-xs text-content-subtle">
                   <p>
                     Submitted {formatTime(item.submittedAt)}; queued{" "}
                     {formatTime(item.queuedAt)}
@@ -114,7 +114,9 @@ export function OfflineQueue({
                   ) : null}
                 </div>
 
-                <p className="mt-2 text-sm leading-6">{item.notes}</p>
+                {item.notes.trim() ? (
+                  <p className="mt-2 break-words text-sm leading-6">{item.notes}</p>
+                ) : null}
               </div>
 
               <div className="flex items-start gap-2 sm:justify-end">
