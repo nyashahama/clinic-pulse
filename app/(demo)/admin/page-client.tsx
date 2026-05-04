@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertCircle,
   ArrowLeft,
@@ -18,16 +18,25 @@ import { ExportPreview } from "@/components/demo/export-preview";
 import { APIPreview } from "@/components/demo/api-preview";
 import { RoadmapModules } from "@/components/demo/roadmap-modules";
 import { MetricTile } from "@/components/demo/metric-tile";
+import { PartnerReadinessPanel } from "@/components/demo/partner-readiness-panel";
 import { PilotReadinessPanel } from "@/components/demo/pilot-readiness-panel";
 import { SectionHeader } from "@/components/demo/section-header";
 import { Button, buttonVariants } from "@/components/ui/button";
-import type { SyncSummaryApiResponse } from "@/lib/demo/api-types";
+import type {
+  PartnerReadinessApiResponse,
+  SyncSummaryApiResponse,
+} from "@/lib/demo/api-types";
 import { adminWorkspaceSections } from "@/lib/demo/admin-layout";
 import { useDemoStore } from "@/lib/demo/demo-store";
 import { getClinicRows } from "@/lib/demo/selectors";
 import type { DemoLeadFormInput } from "@/components/demo/demo-lead-form";
 import type { DemoLead } from "@/lib/demo/types";
 import type { DemoState } from "@/lib/demo/types";
+import {
+  createPartnerApiKeyAction,
+  createPartnerExportAction,
+  testPartnerWebhookAction,
+} from "./actions";
 
 type LeadStatusCount = Record<DemoLead["status"], number>;
 
@@ -82,9 +91,14 @@ function buildExportPayload(state: DemoState) {
 
 type AdminPageProps = {
   syncSummary: SyncSummaryApiResponse | null;
+  partnerReadiness: PartnerReadinessApiResponse;
 };
 
-export default function AdminPage({ syncSummary }: AdminPageProps) {
+export default function AdminPage({
+  syncSummary,
+  partnerReadiness,
+}: AdminPageProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const {
     state,
@@ -119,6 +133,26 @@ export default function AdminPage({ syncSummary }: AdminPageProps) {
       status: "new",
     });
     setManualLeadOpen(false);
+  };
+
+  const handleCreateDemoKey = () => {
+    void createPartnerApiKeyAction({
+      name: "Demo partner integration",
+      environment: "demo",
+      scopes: ["clinics:read", "status:read", "alternatives:read", "exports:read"],
+      allowedDistricts: [state.district],
+    }).then(() => router.refresh());
+  };
+
+  const handleGeneratePartnerExport = () => {
+    void createPartnerExportAction({
+      format: "json",
+      scope: { district: state.district },
+    }).then(() => router.refresh());
+  };
+
+  const handleTestPartnerWebhook = (subscriptionId: number) => {
+    void testPartnerWebhookAction(subscriptionId).then(() => router.refresh());
   };
 
   useEffect(() => {
@@ -205,6 +239,12 @@ export default function AdminPage({ syncSummary }: AdminPageProps) {
         </div>
 
         {syncSummary ? <PilotReadinessPanel summary={syncSummary} /> : null}
+        <PartnerReadinessPanel
+          readiness={partnerReadiness}
+          onCreateDemoKey={handleCreateDemoKey}
+          onGenerateExport={handleGeneratePartnerExport}
+          onTestWebhook={handleTestPartnerWebhook}
+        />
       </div>
 
       {selectedClinic ? (
