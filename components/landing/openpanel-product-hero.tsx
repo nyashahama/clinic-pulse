@@ -1,9 +1,9 @@
 "use client";
 
+import type { LucideIcon } from "lucide-react";
 import {
   Activity,
   ArrowRight,
-  ClipboardCheck,
   MapPin,
   Radio,
   Route,
@@ -26,6 +26,12 @@ const statusStyles = {
   warning: "border-amber-200 bg-amber-50 text-amber-800",
   healthy: "border-emerald-200 bg-emerald-50 text-emerald-800",
 } as const;
+
+const heroStatIcons = {
+  "demo clinics": Activity,
+  "offline syncs": Radio,
+  "freshness target": ShieldCheck,
+} satisfies Record<(typeof heroStats)[number]["label"], LucideIcon>;
 
 export function OpenPanelProductHero({ onBookDemo }: OpenPanelProductHeroProps) {
   return (
@@ -81,22 +87,22 @@ function ProductPreview() {
   return (
     <div className="relative">
       <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl">
-        <div className="flex h-12 items-center justify-between border-b border-neutral-200 bg-neutral-50 px-4">
-          <div className="flex items-center gap-2">
+        <div className="flex h-12 min-w-0 items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50 px-4">
+          <div className="flex shrink-0 items-center gap-2">
             <span className="size-3 rounded-full bg-red-400" />
             <span className="size-3 rounded-full bg-amber-400" />
             <span className="size-3 rounded-full bg-emerald-400" />
           </div>
-          <div className="rounded-md border border-neutral-200 bg-white px-3 py-1 font-mono text-xs text-neutral-500">
+          <div className="min-w-0 flex-1 truncate rounded-md border border-neutral-200 bg-white px-3 py-1 font-mono text-xs text-neutral-500">
             clinicpulse.demo/district-console
           </div>
-          <span className="hidden text-xs font-semibold text-neutral-500 sm:block">
+          <span className="hidden shrink-0 text-xs font-semibold text-neutral-500 sm:block">
             Live demo
           </span>
         </div>
 
         <div className="grid gap-0 lg:grid-cols-[0.92fr_1.08fr]">
-          <div className="border-b border-neutral-200 bg-[#f8faf9] p-4 lg:border-b-0 lg:border-r">
+          <div className="hidden border-b border-neutral-200 bg-[#f8faf9] p-4 sm:block lg:border-b-0 lg:border-r">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
@@ -157,10 +163,13 @@ function ProductPreview() {
             </div>
 
             <div className="mt-4 space-y-2.5">
-              {heroClinicRows.map((row) => (
+              {heroClinicRows.map((row, index) => (
                 <div
                   key={row.clinic}
-                  className="rounded-xl border border-neutral-200 bg-white p-3.5 shadow-sm"
+                  className={cn(
+                    "rounded-xl border border-neutral-200 bg-white p-3.5 shadow-sm",
+                    index > 1 && "max-sm:hidden",
+                  )}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -191,10 +200,9 @@ function ProductPreview() {
               ))}
             </div>
 
-            <div className="mt-4 grid grid-cols-3 gap-2.5">
-              {heroStats.map((stat, index) => {
-                const icons = [Activity, Radio, ShieldCheck] as const;
-                const Icon = icons[index] ?? ClipboardCheck;
+            <div className="mt-4 hidden grid-cols-3 gap-2.5 sm:grid">
+              {heroStats.map((stat) => {
+                const Icon = heroStatIcons[stat.label];
 
                 return (
                   <div
