@@ -1,0 +1,72 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  featureCards,
+  heroClinicRows,
+  landingHero,
+  stakeholderProofItems,
+  trustObjects,
+  workflowSteps,
+} from "@/lib/landing/openpanel-refactor-content";
+
+function collectText(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(collectText).join(" ");
+  }
+
+  if (value && typeof value === "object") {
+    return Object.values(value).map(collectText).join(" ");
+  }
+
+  return "";
+}
+
+describe("OpenPanel-first landing content", () => {
+  it("keeps the approved Clinic Pulse hero and booking CTAs", () => {
+    expect(landingHero.title).toBe("Clinic Pulse");
+    expect(landingHero.primaryCta.href).toBe("/?booking=1");
+    expect(landingHero.secondaryCta.href).toBe("#flow");
+    expect(landingHero.description).toContain("Live clinic availability");
+  });
+
+  it("covers the approved stakeholder, workflow, feature, and trust sections", () => {
+    expect(stakeholderProofItems.map((item) => item.title)).toEqual([
+      "District teams",
+      "Field workers",
+      "Clinic coordinators",
+      "Patients",
+    ]);
+    expect(workflowSteps).toHaveLength(5);
+    expect(featureCards.map((card) => card.title)).toEqual([
+      "Field reports",
+      "District console",
+      "Patient rerouting",
+    ]);
+    expect(trustObjects.map((object) => object.label)).toEqual([
+      "Freshness",
+      "Source and permissions",
+      "Audit ledger",
+      "Exports and API",
+      "Webhook readiness",
+      "Offline queue",
+    ]);
+  });
+
+  it("does not leak OpenPanel reference copy or unsupported claims", () => {
+    const text = collectText([
+      landingHero,
+      stakeholderProofItems,
+      workflowSteps,
+      featureCards,
+      trustObjects,
+      heroClinicRows,
+    ]);
+
+    expect(text).not.toMatch(/OpenPanel|Mixpanel|GDPR|SOC 2|customers love us/i);
+    expect(text).toMatch(/Clinic Pulse|ClinicPulse/);
+  });
+});
