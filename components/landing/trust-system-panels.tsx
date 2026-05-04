@@ -41,7 +41,7 @@ export function TrustSystemPanels() {
               {panel.lines.map((line) => (
                 <p
                   key={line}
-                  className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2"
+                  className="min-w-0 break-words rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2"
                 >
                   {line}
                 </p>
