@@ -34,11 +34,14 @@ import type { DemoLead } from "@/lib/demo/types";
 import type { DemoState } from "@/lib/demo/types";
 import {
   createOneTimePartnerApiKeySecret,
+  createOneTimePartnerWebhookSecret,
   type OneTimePartnerApiKeySecret,
+  type OneTimePartnerWebhookSecret,
 } from "@/lib/demo/partner-readiness";
 import {
   createPartnerApiKeyAction,
   createPartnerExportAction,
+  createPartnerWebhookAction,
   testPartnerWebhookAction,
 } from "./actions";
 
@@ -98,7 +101,11 @@ type AdminPageProps = {
   partnerReadiness: PartnerReadinessApiResponse;
 };
 
-type PartnerReadinessAction = "create-key" | "generate-export" | "test-webhook";
+type PartnerReadinessAction =
+  | "create-key"
+  | "create-webhook"
+  | "generate-export"
+  | "test-webhook";
 
 function getPartnerActionErrorMessage(error: unknown) {
   if (error instanceof Error && error.message.trim()) {
@@ -139,6 +146,8 @@ export default function AdminPage({
   const [partnerActionError, setPartnerActionError] = useState<string | null>(null);
   const [oneTimeApiKeySecret, setOneTimeApiKeySecret] =
     useState<OneTimePartnerApiKeySecret | null>(null);
+  const [oneTimeWebhookSecret, setOneTimeWebhookSecret] =
+    useState<OneTimePartnerWebhookSecret | null>(null);
   const partnerActionPendingRef = useRef<PartnerReadinessAction | null>(null);
 
   const leadSorted = useMemo(
@@ -196,6 +205,23 @@ export default function AdminPage({
           allowedDistricts: [state.district],
         }),
       (result) => setOneTimeApiKeySecret(createOneTimePartnerApiKeySecret(result)),
+    );
+  };
+
+  const handleCreatePartnerWebhook = () => {
+    if (partnerActionPendingRef.current) {
+      return;
+    }
+    setOneTimeWebhookSecret(null);
+    void runPartnerAction(
+      "create-webhook",
+      () =>
+        createPartnerWebhookAction({
+          name: "Demo partner webhook",
+          targetUrl: "https://partner.example.test/webhooks/clinicpulse",
+          eventTypes: ["clinic.status_changed"],
+        }),
+      (result) => setOneTimeWebhookSecret(createOneTimePartnerWebhookSecret(result)),
     );
   };
 
@@ -299,16 +325,20 @@ export default function AdminPage({
         <PartnerReadinessPanel
           readiness={partnerReadiness}
           onCreateDemoKey={handleCreateDemoKey}
+          onCreateWebhook={handleCreatePartnerWebhook}
           onGenerateExport={handleGeneratePartnerExport}
           onTestWebhook={handleTestPartnerWebhook}
           pendingActions={{
             createDemoKey: partnerActionInFlight,
+            createWebhook: partnerActionInFlight,
             generateExport: partnerActionInFlight,
             testWebhook: partnerActionInFlight,
           }}
           actionError={partnerActionError}
           oneTimeApiKeySecret={oneTimeApiKeySecret}
+          oneTimeWebhookSecret={oneTimeWebhookSecret}
           onClearOneTimeApiKeySecret={() => setOneTimeApiKeySecret(null)}
+          onClearOneTimeWebhookSecret={() => setOneTimeWebhookSecret(null)}
         />
       </div>
 

@@ -1,5 +1,6 @@
 import type {
   CreatePartnerApiKeyApiResponse,
+  CreatePartnerWebhookApiResponse,
   IntegrationStatusCheckApiResponse,
   PartnerApiKeyApiResponse,
   PartnerReadinessApiResponse,
@@ -28,6 +29,13 @@ export type OneTimePartnerApiKeySecret = {
   secret: string;
 };
 
+export type OneTimePartnerWebhookSecret = {
+  id: number;
+  name: string;
+  targetUrl: string;
+  secret: string;
+};
+
 const numberFormatter = new Intl.NumberFormat("en-ZA");
 const requiredPartnerReadinessScopes = [
   "clinics:read",
@@ -53,6 +61,17 @@ export function createOneTimePartnerApiKeySecret(
     id: response.apiKey.id,
     name: response.apiKey.name,
     keyPrefix: response.apiKey.keyPrefix,
+    secret: response.secret,
+  };
+}
+
+export function createOneTimePartnerWebhookSecret(
+  response: CreatePartnerWebhookApiResponse,
+): OneTimePartnerWebhookSecret {
+  return {
+    id: response.subscription.id,
+    name: response.subscription.name,
+    targetUrl: response.subscription.targetUrl,
     secret: response.secret,
   };
 }
