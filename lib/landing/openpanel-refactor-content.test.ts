@@ -66,6 +66,29 @@ describe("OpenPanel-first landing content", () => {
     ]);
   });
 
+  it("gives every product feature card a product miniature contract", () => {
+    const miniatures = featureCards.map(
+      (card) =>
+        (
+          card as {
+            miniature?: {
+              type: string;
+              rows: readonly string[];
+            };
+          }
+        ).miniature,
+    );
+
+    expect(miniatures.map((miniature) => miniature?.type)).toEqual([
+      "field-report",
+      "district-console",
+      "patient-reroute",
+    ]);
+    miniatures.forEach((miniature) => {
+      expect(miniature?.rows.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
   it("does not leak OpenPanel reference copy or unsupported claims", () => {
     const text = collectText([
       landingHero,

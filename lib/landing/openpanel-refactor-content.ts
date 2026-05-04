@@ -134,18 +134,48 @@ export const featureCards = [
     description:
       "Offline-capable facility updates capture service pressure, source, sync state, and notes from the operating day.",
     icon: "wifi-off",
+    miniature: {
+      type: "field-report",
+      label: "Mobile report",
+      badge: "queued",
+      rows: [
+        "Mamelodi East Community Clinic",
+        "Pharmacy stockout reported",
+        "Offline sync pending",
+      ],
+    },
   },
   {
     title: "District console",
     description:
       "Clinic status, freshness, alerts, and routing readiness sit in one workspace for district teams.",
     icon: "layout-dashboard",
+    miniature: {
+      type: "district-console",
+      label: "District console",
+      badge: "live",
+      rows: [
+        "42 demo clinics monitored",
+        "17 offline syncs reconciled",
+        "3 min freshness target",
+      ],
+    },
   },
   {
     title: "Patient rerouting",
     description:
       "Unavailable clinic context is paired with a compatible alternative so patients avoid wasted trips.",
     icon: "navigation",
+    miniature: {
+      type: "patient-reroute",
+      label: "Public route",
+      badge: "ready",
+      rows: [
+        "From Mamelodi East",
+        "To Akasia Hills Clinic",
+        "ARV pickup accepting now",
+      ],
+    },
   },
 ] as const;
 
