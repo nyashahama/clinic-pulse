@@ -15,6 +15,8 @@ export default function BookDemoThanksPage() {
   const searchParams = useSearchParams();
   const name = getParam(searchParams, "name");
   const organization = getParam(searchParams, "organization");
+  const meetUrl = getParam(searchParams, "meetUrl");
+  const calendarUrl = getParam(searchParams, "calendarUrl");
 
   const greeting = name ? `Thanks, ${name}` : "Thanks for booking";
 
@@ -32,13 +34,34 @@ export default function BookDemoThanksPage() {
             <CheckCircle2 className="mt-0.5 size-5" />
             <div>
               <p className="font-medium">
-                Demo booking created successfully.
+                Google Meet booking created successfully.
                 {organization ? ` Your team from ${organization} will be routed to admin lead follow-up.` : ""}
               </p>
               <p className="mt-2 text-sm leading-6">
-                You can now continue to the product surfaces and keep momentum: district console,
-                finder, field reporting, and admin handoff are all live in one flow.
+                A calendar invite has been created for the selected slot. You can now continue to
+                the product surfaces and keep momentum: district console, finder, field reporting,
+                and admin handoff are all live in one flow.
               </p>
+              {meetUrl || calendarUrl ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {meetUrl ? (
+                    <Link
+                      href={meetUrl}
+                      className={buttonVariants({ size: "sm", variant: "default" })}
+                    >
+                      Open Google Meet
+                    </Link>
+                  ) : null}
+                  {calendarUrl ? (
+                    <Link
+                      href={calendarUrl}
+                      className={buttonVariants({ size: "sm", variant: "outline" })}
+                    >
+                      View calendar event
+                    </Link>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
