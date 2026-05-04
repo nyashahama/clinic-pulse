@@ -36,8 +36,8 @@ const heroStatIcons = {
 export function OpenPanelProductHero({ onBookDemo }: OpenPanelProductHeroProps) {
   return (
     <section className="relative overflow-hidden border-b border-neutral-200 bg-[#eef3f2]">
-      <div className="mx-auto grid w-full max-w-screen-xl gap-10 px-4 py-12 sm:px-6 lg:min-h-[640px] lg:grid-cols-[0.88fr_1.12fr] lg:items-center lg:px-10 lg:py-16">
-        <div className="max-w-xl">
+      <div className="mx-auto grid min-w-0 w-full max-w-screen-xl gap-10 px-4 py-12 sm:px-6 lg:min-h-[640px] lg:grid-cols-[0.88fr_1.12fr] lg:items-center lg:px-10 lg:py-16">
+        <div className="min-w-0 max-w-xl">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
             {landingHero.eyebrow}
           </p>
@@ -52,14 +52,14 @@ export function OpenPanelProductHero({ onBookDemo }: OpenPanelProductHeroProps) 
             <button
               type="button"
               onClick={onBookDemo}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-neutral-950 px-5 text-sm font-semibold text-white transition hover:bg-neutral-800"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-neutral-950 px-5 text-sm font-semibold text-white transition hover:bg-neutral-800 sm:w-auto"
             >
               {landingHero.primaryCta.label}
               <ArrowRight className="size-4" />
             </button>
             <a
               href={landingHero.secondaryCta.href}
-              className="inline-flex h-11 items-center justify-center rounded-lg border border-neutral-300 bg-white px-5 text-sm font-semibold text-neutral-950 transition hover:border-neutral-400 hover:bg-neutral-50"
+              className="inline-flex h-11 w-full items-center justify-center rounded-lg border border-neutral-300 bg-white px-5 text-sm font-semibold text-neutral-950 transition hover:border-neutral-400 hover:bg-neutral-50 sm:w-auto"
             >
               {landingHero.secondaryCta.label}
             </a>
@@ -85,8 +85,8 @@ export function OpenPanelProductHero({ onBookDemo }: OpenPanelProductHeroProps) 
 
 function ProductPreview() {
   return (
-    <div className="relative">
-      <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl">
+    <div className="relative min-w-0 max-w-full">
+      <div className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl">
         <div className="flex h-12 min-w-0 items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50 px-4">
           <div className="flex shrink-0 items-center gap-2">
             <span className="size-3 rounded-full bg-red-400" />
@@ -101,7 +101,7 @@ function ProductPreview() {
           </span>
         </div>
 
-        <div className="grid gap-0 lg:grid-cols-[0.92fr_1.08fr]">
+        <div className="grid min-w-0 gap-0 lg:grid-cols-[0.92fr_1.08fr]">
           <div className="hidden border-b border-neutral-200 bg-[#f8faf9] p-4 sm:block lg:border-b-0 lg:border-r">
             <div className="flex items-center justify-between">
               <div>
@@ -145,10 +145,10 @@ function ProductPreview() {
             </div>
           </div>
 
-          <div className="p-4">
+          <div className="min-w-0 p-4">
             <div className="rounded-xl border border-violet-200 bg-violet-50 p-3.5 shadow-sm">
-              <div className="flex items-start justify-between gap-4">
-                <div>
+              <div className="flex min-w-0 items-start justify-between gap-4">
+                <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-[0.14em] text-violet-700">
                     Route alert
                   </p>
@@ -156,7 +156,7 @@ function ProductPreview() {
                     Mamelodi East cannot accept ARV visits
                   </h3>
                 </div>
-                <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-primary">
+                <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-primary">
                   fresh
                 </span>
               </div>
@@ -167,30 +167,30 @@ function ProductPreview() {
                 <div
                   key={row.clinic}
                   className={cn(
-                    "rounded-xl border border-neutral-200 bg-white p-3.5 shadow-sm",
+                    "min-w-0 rounded-xl border border-neutral-200 bg-white p-3.5 shadow-sm",
                     index > 1 && "max-sm:hidden",
                   )}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
                       <p className="text-sm font-semibold text-neutral-950">
                         {row.clinic}
                       </p>
-                      <p className="mt-1 text-xs text-neutral-500">
+                      <p className="mt-1 break-words text-xs text-neutral-500">
                         {row.reason}
                       </p>
                     </div>
                     <span
                       className={cn(
-                        "rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+                        "shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold",
                         statusStyles[row.tone],
                       )}
                     >
                       {row.status}
                     </span>
                   </div>
-                  <div className="mt-3 flex items-center justify-between text-xs font-semibold text-primary">
-                    <span className="inline-flex items-center gap-1.5">
+                  <div className="mt-3 flex min-w-0 items-center justify-between gap-3 text-xs font-semibold text-primary">
+                    <span className="inline-flex min-w-0 items-center gap-1.5">
                       <Route className="size-3.5" />
                       {row.action}
                     </span>
