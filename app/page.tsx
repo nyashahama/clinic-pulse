@@ -1,39 +1,40 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { Background } from "@/components/ui/background";
-import { Nav } from "@/components/landing/nav";
-import { Footer } from "@/components/landing/footer";
-import { BookingHero } from "@/components/landing/booking-hero";
 import { DemoBookingCTA } from "@/components/landing/demo-booking-cta";
-import { ProblemContrast } from "@/components/landing/problem-contrast";
-import { ProductFlow } from "@/components/landing/product-flow";
-import { ProofStrip } from "@/components/landing/proof-strip";
-import { RoutingMoment } from "@/components/landing/routing-moment";
+import { Footer } from "@/components/landing/footer";
+import { Nav } from "@/components/landing/nav";
+import { BookingDemoController } from "@/components/landing/booking-demo-controller";
+import { OpenPanelProductHero } from "@/components/landing/openpanel-product-hero";
+import { OperatingGap } from "@/components/landing/operating-gap";
+import { ProductFeatureCards } from "@/components/landing/product-feature-cards";
+import { StakeholderProof } from "@/components/landing/stakeholder-proof";
 import { TrustInfrastructure } from "@/components/landing/trust-infrastructure";
+import { WorkflowTimeline } from "@/components/landing/workflow-timeline";
 import { DemoStoreProvider } from "@/lib/demo/demo-store";
 
 export const metadata: Metadata = {
-  title: "ClinicPulse | Live clinic availability for district teams",
+  title: "Clinic Pulse | Clinic operations platform",
   description:
-    "ClinicPulse shows which clinics can serve patients right now, verifies report freshness, and reroutes patients before wasted trips happen.",
+    "Clinic Pulse gives district teams live clinic availability, offline field reporting, patient rerouting, and audit-ready operating records.",
 };
 
 export default function Home() {
   return (
     <>
-      <Background />
       <Nav />
       <main>
         <DemoStoreProvider>
           <Suspense fallback={null}>
-            <BookingHero />
+            <BookingDemoController>
+              {({ openBooking }) => <OpenPanelProductHero onBookDemo={openBooking} />}
+            </BookingDemoController>
           </Suspense>
         </DemoStoreProvider>
-        <ProofStrip />
-        <ProblemContrast />
-        <ProductFlow />
-        <RoutingMoment />
+        <StakeholderProof />
+        <OperatingGap />
+        <WorkflowTimeline />
+        <ProductFeatureCards />
         <TrustInfrastructure />
         <DemoBookingCTA />
       </main>
