@@ -1,10 +1,12 @@
 package http_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -35,6 +37,118 @@ func TestHealthzReturnsOK(t *testing.T) {
 
 	if !strings.Contains(rec.Body.String(), `"status":"ok"`) {
 		t.Fatalf("expected response to contain status ok, got %q", rec.Body.String())
+	}
+}
+
+func TestReadyzChecksDatabase(t *testing.T) {
+	router := apihttp.NewRouter(fakeStore{})
+
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	var got map[string]string
+	decodeJSON(t, rec, &got)
+	if got["database"] != "ok" {
+		t.Fatalf("expected database ok readiness response, got %#v", got)
+	}
+}
+
+func TestReadyzReturnsUnavailableWhenDatabaseCheckFails(t *testing.T) {
+	router := apihttp.NewRouter(fakeStore{readyErr: errors.New("database down")})
+
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusServiceUnavailable, rec.Code, rec.Body.String())
+	}
+	var got map[string]string
+	decodeJSON(t, rec, &got)
+	if got["database"] != "unavailable" {
+		t.Fatalf("expected unavailable database readiness response, got %#v", got)
+	}
+	if strings.Contains(rec.Body.String(), "database down") {
+		t.Fatalf("expected readiness response not to leak store error, got %s", rec.Body.String())
+	}
+}
+
+func TestRequestLoggerCapturesStatusAndRequestID(t *testing.T) {
+	var logOutput bytes.Buffer
+	logger := log.New(&logOutput, "", 0)
+	handler := apihttp.RequestLogger(logger)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTeapot)
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/logged", nil)
+	req.Header.Set("X-Request-Id", "request-123")
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusTeapot {
+		t.Fatalf("expected status %d, got %d", http.StatusTeapot, rec.Code)
+	}
+	if rec.Header().Get("X-Request-Id") != "request-123" {
+		t.Fatalf("expected response request id request-123, got %q", rec.Header().Get("X-Request-Id"))
+	}
+	logLine := logOutput.String()
+	for _, want := range []string{
+		"method=GET",
+		"path=/logged",
+		"status=418",
+		"principal_type=anonymous",
+		"request_id=request-123",
+		"duration_ms=",
+	} {
+		if !strings.Contains(logLine, want) {
+			t.Fatalf("expected log to contain %q, got %q", want, logLine)
+		}
+	}
+}
+
+func TestRequestLoggerLogsPrincipalTypeFromContext(t *testing.T) {
+	tests := []struct {
+		name string
+		ctx  context.Context
+		want string
+	}{
+		{
+			name: "session",
+			ctx:  apihttp.ContextWithPrincipal(context.Background(), apihttp.Principal{UserID: 42}),
+			want: "principal_type=session",
+		},
+		{
+			name: "partner",
+			ctx:  apihttp.ContextWithPartnerPrincipal(context.Background(), apihttp.PartnerPrincipal{APIKeyID: 10}),
+			want: "principal_type=partner",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var logOutput bytes.Buffer
+			logger := log.New(&logOutput, "", 0)
+			handler := apihttp.RequestLogger(logger)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusNoContent)
+			}))
+			req := httptest.NewRequest(http.MethodGet, "/logged", nil).WithContext(tt.ctx)
+			rec := httptest.NewRecorder()
+
+			handler.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusNoContent {
+				t.Fatalf("expected status %d, got %d", http.StatusNoContent, rec.Code)
+			}
+			if !strings.Contains(logOutput.String(), tt.want) {
+				t.Fatalf("expected log to contain %q, got %q", tt.want, logOutput.String())
+			}
+		})
 	}
 }
 
@@ -3245,6 +3359,11 @@ type fakeStore struct {
 	partnerReadinessErr                   error
 	partnerExportRunErr                   error
 	integrationStatusChecksErr            error
+	readyErr                              error
+}
+
+func (f fakeStore) Ready(context.Context) error {
+	return f.readyErr
 }
 
 func (f fakeStore) ListClinics(context.Context) ([]store.ClinicDetail, error) {

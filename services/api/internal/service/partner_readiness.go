@@ -60,6 +60,19 @@ type PartnerExportPayload struct {
 	Checksum     string
 }
 
+type IntegrationCheckInput struct {
+	OrganisationID                     *int64
+	APIKeyActive                       bool
+	ExportGenerated                    bool
+	WebhookTestRecorded                bool
+	OfflineSyncHealthAvailable         bool
+	StaleStatusReconciliationAvailable bool
+	DeploymentEnvironment              string
+	APIKeyPepper                       string
+	WebhookDeliveryEnabled             bool
+	CheckedAt                          time.Time
+}
+
 type PartnerExportPayloadReader interface {
 	ListClinics(ctx context.Context) ([]store.ClinicDetail, error)
 	ListIntegrationStatusChecks(ctx context.Context, organisationID *int64) ([]store.IntegrationStatusCheck, error)
@@ -135,7 +148,11 @@ func BuildPartnerExportPayload(ctx context.Context, reader PartnerExportPayloadR
 	}
 	clinics = filterPartnerExportClinics(clinics, scope)
 	safeClinics := make([]PartnerSafeClinicDetailResponse, 0, len(clinics))
+	statusCount := 0
 	for _, clinic := range clinics {
+		if clinic.CurrentStatus != nil {
+			statusCount++
+		}
 		safeClinics = append(safeClinics, PartnerSafeClinicDetail(clinic))
 	}
 
@@ -147,6 +164,7 @@ func BuildPartnerExportPayload(ctx context.Context, reader PartnerExportPayloadR
 
 	recordCounts := map[string]any{
 		"clinics":           len(safeClinics),
+		"statuses":          statusCount,
 		"integrationChecks": len(safeChecks),
 	}
 	payload := map[string]any{
@@ -167,6 +185,67 @@ func BuildPartnerExportPayload(ctx context.Context, reader PartnerExportPayloadR
 		RecordCounts: recordCounts,
 		Checksum:     "sha256:" + hex.EncodeToString(checksum[:]),
 	}, nil
+}
+
+func BuildIntegrationChecks(input IntegrationCheckInput) []store.UpsertIntegrationStatusCheckInput {
+	return []store.UpsertIntegrationStatusCheckInput{
+		integrationCheck(input, "api_key_active", input.APIKeyActive,
+			"At least one active partner API key is available.",
+			"Create or activate a partner API key."),
+		integrationCheck(input, "export_generated", input.ExportGenerated,
+			"A partner export has been generated.",
+			"Generate a partner export."),
+		integrationCheck(input, "webhook_test_recorded", input.WebhookTestRecorded,
+			"A webhook test event has been recorded.",
+			"Record a webhook test event."),
+		integrationCheck(input, "offline_sync_health_available", input.OfflineSyncHealthAvailable,
+			"Offline sync health data is available.",
+			"Make offline sync health data available."),
+		integrationCheck(input, "stale_status_reconciliation_available", input.StaleStatusReconciliationAvailable,
+			"Stale status reconciliation is available.",
+			"Make stale status reconciliation available."),
+		deploymentEnvCheck(input),
+	}
+}
+
+func integrationCheck(input IntegrationCheckInput, name string, passing bool, passingSummary string, attentionSummary string) store.UpsertIntegrationStatusCheckInput {
+	status := "passing"
+	summary := passingSummary
+	if !passing {
+		status = "attention"
+		summary = attentionSummary
+	}
+	return store.UpsertIntegrationStatusCheckInput{
+		OrganisationID: input.OrganisationID,
+		CheckName:      name,
+		Status:         status,
+		Summary:        summary,
+		Metadata:       map[string]any{},
+		CheckedAt:      input.CheckedAt,
+	}
+}
+
+func deploymentEnvCheck(input IntegrationCheckInput) store.UpsertIntegrationStatusCheckInput {
+	environment := strings.TrimSpace(strings.ToLower(input.DeploymentEnvironment))
+	missing := []string{}
+	if environment == "" {
+		missing = append(missing, "deployment environment")
+	}
+	if environment == "live" && strings.TrimSpace(input.APIKeyPepper) == "" {
+		missing = append(missing, "API key pepper")
+	}
+	if environment == "live" && !input.WebhookDeliveryEnabled {
+		missing = append(missing, "webhook delivery")
+	}
+
+	if len(missing) == 0 {
+		return integrationCheck(input, "deployment_env_configured", true,
+			"Deployment environment is configured.",
+			"")
+	}
+	return integrationCheck(input, "deployment_env_configured", false,
+		"",
+		"Missing readiness configuration: "+strings.Join(missing, ", ")+".")
 }
 
 func PartnerSafeIntegrationStatusCheck(input store.IntegrationStatusCheck) PartnerSafeIntegrationStatusCheckResponse {

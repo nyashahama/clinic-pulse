@@ -969,6 +969,13 @@ var allowedIntegrationStatuses = map[string]bool{
 	"failing":   true,
 }
 
+func (s Store) Ready(ctx context.Context) error {
+	if s.pool == nil {
+		return errors.New("store: database pool is not configured")
+	}
+	return s.pool.Ping(ctx)
+}
+
 func (s Store) ListClinics(ctx context.Context) ([]ClinicDetail, error) {
 	rows, err := s.pool.Query(ctx, listClinicsSQL)
 	if err != nil {

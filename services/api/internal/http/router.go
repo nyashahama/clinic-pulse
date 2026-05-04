@@ -1,6 +1,7 @@
 package http
 
 import (
+	"log"
 	nethttp "net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -32,6 +33,7 @@ func NewRouter(store ClinicStore, options ...RouterOption) nethttp.Handler {
 	}
 
 	router := chi.NewRouter()
+	router.Use(RequestLogger(log.Default()))
 	handler := NewHandler(store, HandlerConfig{
 		APIKeyPepper:           config.APIKeyPepper,
 		WebhookDeliveryEnabled: config.WebhookDeliveryEnabled,
@@ -43,6 +45,7 @@ func NewRouter(store ClinicStore, options ...RouterOption) nethttp.Handler {
 	orgAdminOrSystemAdmin := RequireRole("org_admin", "system_admin")
 
 	router.Get("/healthz", Healthz)
+	router.Get("/readyz", handler.Readyz)
 	router.Post("/v1/auth/login", handler.Login)
 	router.Post("/v1/auth/logout", handler.Logout)
 	router.With(requireAuth).Get("/v1/auth/me", handler.Me)

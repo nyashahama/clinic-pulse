@@ -185,6 +185,62 @@ func TestBuildPartnerExportPayloadBuildsSafePayloadAndChecksum(t *testing.T) {
 	}
 }
 
+func TestBuildPartnerExportPayloadCountsClinicsAndStatuses(t *testing.T) {
+	now := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
+	reader := &partnerExportPayloadStore{
+		clinics: []store.ClinicDetail{
+			{
+				Clinic: store.Clinic{
+					ID:       "clinic-1",
+					Name:     "Central Clinic",
+					District: "Tshwane North Demo District",
+				},
+				CurrentStatus: &store.CurrentStatus{
+					ClinicID:  "clinic-1",
+					Status:    "operational",
+					Freshness: "fresh",
+					UpdatedAt: now,
+				},
+			},
+			{
+				Clinic: store.Clinic{
+					ID:       "clinic-2",
+					Name:     "Mamelodi Clinic",
+					District: "Tshwane North Demo District",
+				},
+			},
+		},
+		integrationStatusChecks: []store.IntegrationStatusCheck{
+			{CheckName: "api_key_active", Status: "passing", CheckedAt: now},
+			{CheckName: "export_generated", Status: "passing", CheckedAt: now},
+		},
+	}
+
+	payload, err := BuildPartnerExportPayload(context.Background(), reader, PartnerExportPayloadInput{
+		Format:      "json",
+		GeneratedAt: now,
+	})
+	if err != nil {
+		t.Fatalf("BuildPartnerExportPayload returned error: %v", err)
+	}
+
+	if payload.RecordCounts["clinics"] != 2 {
+		t.Fatalf("expected 2 clinic records, got %#v", payload.RecordCounts)
+	}
+	if payload.RecordCounts["statuses"] != 1 {
+		t.Fatalf("expected 1 status record, got %#v", payload.RecordCounts)
+	}
+	if payload.RecordCounts["integrationChecks"] != 2 {
+		t.Fatalf("expected 2 integration check records, got %#v", payload.RecordCounts)
+	}
+	if payload.Payload["generatedAt"] != now.Format(time.RFC3339) {
+		t.Fatalf("expected generatedAt %s, got %#v", now.Format(time.RFC3339), payload.Payload["generatedAt"])
+	}
+	if !strings.HasPrefix(payload.Checksum, "sha256:") {
+		t.Fatalf("expected sha256 checksum, got %q", payload.Checksum)
+	}
+}
+
 func TestBuildPartnerExportPayloadRejectsUnsupportedFormat(t *testing.T) {
 	_, err := BuildPartnerExportPayload(context.Background(), &partnerExportPayloadStore{}, PartnerExportPayloadInput{
 		Format:      "xml",
@@ -196,6 +252,77 @@ func TestBuildPartnerExportPayloadRejectsUnsupportedFormat(t *testing.T) {
 	}
 	if len(validationErr.Fields) == 0 || !strings.Contains(validationErr.Fields[0], "format") {
 		t.Fatalf("expected format validation field, got %#v", validationErr.Fields)
+	}
+}
+
+func TestBuildIntegrationChecksBuildsRequiredChecks(t *testing.T) {
+	orgID := int64(77)
+	checkedAt := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
+
+	checks := BuildIntegrationChecks(IntegrationCheckInput{
+		OrganisationID:                     &orgID,
+		APIKeyActive:                       true,
+		ExportGenerated:                    true,
+		WebhookTestRecorded:                true,
+		OfflineSyncHealthAvailable:         true,
+		StaleStatusReconciliationAvailable: true,
+		DeploymentEnvironment:              "live",
+		APIKeyPepper:                       "test-pepper",
+		WebhookDeliveryEnabled:             true,
+		CheckedAt:                          checkedAt,
+	})
+
+	if len(checks) != 6 {
+		t.Fatalf("expected 6 integration checks, got %#v", checks)
+	}
+	for _, check := range checks {
+		if check.OrganisationID == nil || *check.OrganisationID != orgID {
+			t.Fatalf("expected check scoped to org %d, got %#v", orgID, check)
+		}
+		if check.Status != "passing" {
+			t.Fatalf("expected check %s to pass, got %#v", check.CheckName, check)
+		}
+		if check.Summary == "" {
+			t.Fatalf("expected check %s to include summary", check.CheckName)
+		}
+		if len(check.Metadata) != 0 {
+			t.Fatalf("expected empty metadata for check %s, got %#v", check.CheckName, check.Metadata)
+		}
+		if !check.CheckedAt.Equal(checkedAt) {
+			t.Fatalf("expected checkedAt %s, got %s", checkedAt, check.CheckedAt)
+		}
+	}
+}
+
+func TestBuildIntegrationChecksFlagsMissingPepperForLiveReadiness(t *testing.T) {
+	checkedAt := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
+
+	checks := BuildIntegrationChecks(IntegrationCheckInput{
+		APIKeyActive:                       true,
+		ExportGenerated:                    true,
+		WebhookTestRecorded:                true,
+		OfflineSyncHealthAvailable:         true,
+		StaleStatusReconciliationAvailable: true,
+		DeploymentEnvironment:              "live",
+		WebhookDeliveryEnabled:             true,
+		CheckedAt:                          checkedAt,
+	})
+
+	byName := map[string]store.UpsertIntegrationStatusCheckInput{}
+	for _, check := range checks {
+		byName[check.CheckName] = check
+	}
+	if byName["deployment_env_configured"].Status != "attention" {
+		t.Fatalf("expected missing live pepper to need attention, got %#v", byName["deployment_env_configured"])
+	}
+	if !strings.Contains(byName["deployment_env_configured"].Summary, "API key pepper") {
+		t.Fatalf("expected deployment summary to mention API key pepper, got %#v", byName["deployment_env_configured"])
+	}
+	if byName["api_key_active"].Status != "passing" {
+		t.Fatalf("expected unrelated passing check to remain passing, got %#v", byName["api_key_active"])
+	}
+	if !byName["deployment_env_configured"].CheckedAt.Equal(checkedAt) {
+		t.Fatalf("expected checkedAt %s, got %s", checkedAt, byName["deployment_env_configured"].CheckedAt)
 	}
 }
 

@@ -32,6 +32,7 @@ const (
 )
 
 type ClinicStore interface {
+	Ready(ctx context.Context) error
 	ListClinics(ctx context.Context) ([]store.ClinicDetail, error)
 	GetClinic(ctx context.Context, clinicID string) (store.ClinicDetail, error)
 	GetCurrentStatus(ctx context.Context, clinicID string) (store.CurrentStatus, error)
@@ -93,6 +94,18 @@ func Healthz(w nethttp.ResponseWriter, r *nethttp.Request) {
 	RespondJSON(w, nethttp.StatusOK, map[string]string{
 		"status":  "ok",
 		"service": "clinicpulse-api",
+	})
+}
+
+func (h Handler) Readyz(w nethttp.ResponseWriter, r *nethttp.Request) {
+	if err := h.store.Ready(r.Context()); err != nil {
+		RespondJSON(w, nethttp.StatusServiceUnavailable, map[string]string{
+			"database": "unavailable",
+		})
+		return
+	}
+	RespondJSON(w, nethttp.StatusOK, map[string]string{
+		"database": "ok",
 	})
 }
 
