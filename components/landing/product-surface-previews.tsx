@@ -8,6 +8,7 @@ import {
 import { productSurfacePreviewRows } from "@/lib/landing/openpanel-refactor-content";
 
 type PreviewType = keyof typeof productSurfacePreviewRows;
+type PreviewRow = (typeof productSurfacePreviewRows)[PreviewType][number];
 type PreviewTone =
   (typeof productSurfacePreviewRows)[PreviewType][number]["tone"];
 type StatusTone = NonNullable<ComponentProps<typeof StatusPill>["tone"]>;
@@ -20,15 +21,27 @@ const toneMap: Record<PreviewTone, StatusTone> = {
 } as const;
 
 export function ProductSurfacePreview({ type }: { type: PreviewType }) {
-  if (type === "field-report") {
-    return <FieldReportPreview />;
+  switch (type) {
+    case "field-report":
+      return <FieldReportPreview />;
+    case "district-console":
+      return <DistrictConsolePreview />;
+    case "patient-reroute":
+      return <PatientReroutePreview />;
+    default: {
+      const exhaustiveType: never = type;
+      return exhaustiveType;
+    }
   }
+}
 
-  if (type === "district-console") {
-    return <DistrictConsolePreview />;
-  }
-
-  return <PatientReroutePreview />;
+function PreviewRowContent({ row }: { row: PreviewRow }) {
+  return (
+    <div className="flex min-w-0 flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+      <span className="min-w-0 text-neutral-500">{row.label}</span>
+      <StatusPill tone={toneMap[row.tone]}>{row.value}</StatusPill>
+    </div>
+  );
 }
 
 function FieldReportPreview() {
@@ -45,10 +58,7 @@ function FieldReportPreview() {
         <div className="mt-2 grid gap-2">
           {productSurfacePreviewRows["field-report"].map((row) => (
             <ProductRow key={row.label}>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-neutral-500">{row.label}</span>
-                <StatusPill tone={toneMap[row.tone]}>{row.value}</StatusPill>
-              </div>
+              <PreviewRowContent row={row} />
             </ProductRow>
           ))}
         </div>
@@ -71,10 +81,7 @@ function DistrictConsolePreview() {
         <div className="mt-3 grid gap-2">
           {productSurfacePreviewRows["district-console"].map((row, index) => (
             <ProductRow key={row.label} active={index === 0}>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-neutral-500">{row.label}</span>
-                <StatusPill tone={toneMap[row.tone]}>{row.value}</StatusPill>
-              </div>
+              <PreviewRowContent row={row} />
             </ProductRow>
           ))}
         </div>
@@ -94,10 +101,7 @@ function PatientReroutePreview() {
         <div className="mt-3 grid gap-2">
           {productSurfacePreviewRows["patient-reroute"].map((row, index) => (
             <ProductRow key={row.label} active={index === 0}>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-neutral-500">{row.label}</span>
-                <StatusPill tone={toneMap[row.tone]}>{row.value}</StatusPill>
-              </div>
+              <PreviewRowContent row={row} />
             </ProductRow>
           ))}
         </div>
