@@ -76,7 +76,7 @@ func TestHashAPIKeyUsesPepperAndRejectsInvalidSecret(t *testing.T) {
 	}
 }
 
-func TestAPIKeyEnvironmentParsesValidGeneratedLikeKeys(t *testing.T) {
+func TestAPIKeyEnvironmentParsesKnownPrefixes(t *testing.T) {
 	t.Parallel()
 
 	for _, tt := range []struct {
