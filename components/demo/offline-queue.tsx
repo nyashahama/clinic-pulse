@@ -10,6 +10,7 @@ import type {
   OfflineReportQueueItem,
   OfflineReportQueueStatus,
 } from "@/lib/demo/types";
+import { countWaitingOfflineReports } from "@/lib/demo/offline-sync";
 
 type OfflineQueueProps = {
   queue: OfflineReportQueueItem[];
@@ -56,6 +57,8 @@ export function OfflineQueue({
   onRetryItem,
   onRemoveItem,
 }: OfflineQueueProps) {
+  const waitingReportCount = countWaitingOfflineReports(queue);
+
   return (
     <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
       <SectionHeader
@@ -67,7 +70,7 @@ export function OfflineQueue({
             variant={canSync ? "default" : "outline"}
             size="sm"
             onClick={onSync}
-            disabled={queue.length === 0 || !canSync || syncing}
+            disabled={waitingReportCount === 0 || !canSync || syncing}
             className="inline-flex"
           >
             {syncing ? "Syncing…" : "Sync queued"}
@@ -153,7 +156,7 @@ export function OfflineQueue({
           {canSync ? <Wifi className="size-4 text-emerald-600" /> : <AlertCircle className="size-4 text-amber-600" />}
           {canSync ? "Connectivity restored" : "Offline mode active"}
         </span>
-        <span className="text-content-subtle">{queue.length} queued</span>
+        <span className="text-content-subtle">{waitingReportCount} waiting</span>
       </div>
     </section>
   );

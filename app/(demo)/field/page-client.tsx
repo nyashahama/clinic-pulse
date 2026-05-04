@@ -18,12 +18,13 @@ import {
 } from "@/lib/demo/field-report";
 import {
   addOfflineReport,
-  listOfflineReports,
+  listActiveOfflineReports,
   removeOfflineReport,
   updateOfflineReport,
 } from "@/lib/demo/offline-queue-store";
 import {
   applyOfflineSyncResult,
+  countWaitingOfflineReports,
   findMatchingOpenOfflineReport,
   isOfflineReportReadyForSync,
   markQueuedItemNetworkFailure,
@@ -115,7 +116,7 @@ async function bestEffortRecoverSyncingReports(
 }
 
 async function loadRecoverableOfflineReports(now = new Date()) {
-  const reports = await listOfflineReports();
+  const reports = await listActiveOfflineReports(now);
   const recoveredReports = recoverStaleSyncingReports(reports, now);
   const recoveredItems = recoveredReports.filter((item, index) => item !== reports[index]);
 
@@ -333,6 +334,10 @@ export default function FieldPageClient() {
         .at(-1) ?? state.lastSyncAt,
     [offlineReports, state.lastSyncAt],
   );
+  const waitingOfflineReportCount = useMemo(
+    () => countWaitingOfflineReports(offlineReports),
+    [offlineReports],
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -493,12 +498,12 @@ export default function FieldPageClient() {
 
         <SyncStatus
           isOnline={isOnline}
-          queuedReports={offlineReports.length}
+          queuedReports={waitingOfflineReportCount}
           lastSyncedAt={lastSyncedAt}
           onToggleOnline={handleToggleOnline}
-          canRetry={offlineReports.length > 0}
+          canRetry={waitingOfflineReportCount > 0}
           onRetry={
-            offlineReports.length > 0
+            waitingOfflineReportCount > 0
               ? () => void syncQueuedReports({ manual: true })
               : undefined
           }

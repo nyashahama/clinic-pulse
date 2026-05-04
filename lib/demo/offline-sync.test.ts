@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   applyOfflineSyncResult,
+  countWaitingOfflineReports,
   findMatchingOpenOfflineReport,
   getNextRetryAt,
   isOfflineReportReadyForSync,
@@ -276,6 +277,19 @@ describe("offline sync item transitions", () => {
 });
 
 describe("offline sync item selection", () => {
+  it("counts only reports still waiting for sync action", () => {
+    expect(
+      countWaitingOfflineReports([
+        queueItem({ clientReportId: "queued-report", syncStatus: "queued" }),
+        queueItem({ clientReportId: "retry-report", syncStatus: "retry_wait" }),
+        queueItem({ clientReportId: "failed-report", syncStatus: "failed" }),
+        queueItem({ clientReportId: "conflict-report", syncStatus: "conflict" }),
+        queueItem({ clientReportId: "syncing-report", syncStatus: "syncing" }),
+        queueItem({ clientReportId: "synced-report", syncStatus: "synced" }),
+      ]),
+    ).toBe(5);
+  });
+
   it("selects queued reports for automatic sync", () => {
     expect(isOfflineReportReadyForSync(queueItem({ syncStatus: "queued" }), now)).toBe(true);
   });

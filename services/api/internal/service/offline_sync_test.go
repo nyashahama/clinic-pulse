@@ -47,6 +47,15 @@ func TestSyncOfflineReportsCreatesPendingReports(t *testing.T) {
 	if fake.created[0].ReceivedAt != now {
 		t.Fatalf("expected received at %v, got %v", now, fake.created[0].ReceivedAt)
 	}
+	if fake.created[0].AuditEvent == nil {
+		t.Fatal("expected offline sync report to include a submission audit event")
+	}
+	if fake.created[0].AuditEvent.ActorUserID == nil || *fake.created[0].AuditEvent.ActorUserID != 42 {
+		t.Fatalf("expected audit actor user id 42, got %#v", fake.created[0].AuditEvent.ActorUserID)
+	}
+	if fake.created[0].AuditEvent.Metadata["offlineCreated"] != true {
+		t.Fatalf("expected offline submission audit metadata, got %#v", fake.created[0].AuditEvent.Metadata)
+	}
 	if len(fake.attempts) != 1 || fake.attempts[0].Result != "created" {
 		t.Fatalf("expected created sync attempt, got %#v", fake.attempts)
 	}

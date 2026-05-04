@@ -451,7 +451,7 @@ current_status_counts AS (
 median_status_age AS (
     SELECT
         percentile_cont(0.5) WITHIN GROUP (
-            ORDER BY EXTRACT(EPOCH FROM (now() - updated_at)) / 3600.0
+            ORDER BY EXTRACT(EPOCH FROM (now() - COALESCE(last_reported_at, updated_at))) / 3600.0
         )::double precision AS median_current_status_age_hours
     FROM current_status
 )
@@ -510,7 +510,7 @@ current_status_counts AS (
 median_status_age AS (
     SELECT
         percentile_cont(0.5) WITHIN GROUP (
-            ORDER BY EXTRACT(EPOCH FROM (now() - current_status.updated_at)) / 3600.0
+            ORDER BY EXTRACT(EPOCH FROM (now() - COALESCE(current_status.last_reported_at, current_status.updated_at))) / 3600.0
         )::double precision AS median_current_status_age_hours
     FROM current_status
     JOIN clinics ON clinics.id = current_status.clinic_id

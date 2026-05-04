@@ -85,16 +85,34 @@ func TestSyncSummaryForReviewScopeSQLScopesClinicRowsForDistrictManagers(t *test
 func TestSyncSummarySQLComputesMedianCurrentStatusAge(t *testing.T) {
 	t.Parallel()
 
-	for name, query := range map[string]string{
-		"unscoped": syncSummarySinceSQL,
-		"scoped":   syncSummarySinceForReviewScopeSQL,
+	for name, tt := range map[string]struct {
+		query              string
+		expectedAgeOperand string
+		forbiddenOperand   string
+	}{
+		"unscoped": {
+			query:              syncSummarySinceSQL,
+			expectedAgeOperand: "COALESCE(last_reported_at, updated_at)",
+			forbiddenOperand:   "now() - updated_at",
+		},
+		"scoped": {
+			query:              syncSummarySinceForReviewScopeSQL,
+			expectedAgeOperand: "COALESCE(current_status.last_reported_at, current_status.updated_at)",
+			forbiddenOperand:   "now() - current_status.updated_at",
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			if !strings.Contains(query, "median_current_status_age_hours") {
+			if !strings.Contains(tt.query, "median_current_status_age_hours") {
 				t.Fatal("expected sync summary SQL to select median current status age")
 			}
-			if !strings.Contains(query, "percentile_cont(0.5)") {
+			if !strings.Contains(tt.query, "percentile_cont(0.5)") {
 				t.Fatal("expected sync summary SQL to compute a median, not leave status age empty")
+			}
+			if !strings.Contains(tt.query, tt.expectedAgeOperand) {
+				t.Fatalf("expected median status age to use %q", tt.expectedAgeOperand)
+			}
+			if strings.Contains(tt.query, tt.forbiddenOperand) {
+				t.Fatalf("expected median status age not to use freshness update timestamp operand %q", tt.forbiddenOperand)
 			}
 		})
 	}

@@ -4,6 +4,7 @@ import {
   __setOfflineReportQueueAdapterForTests,
   addOfflineReport,
   clearSyncedOfflineReports,
+  listActiveOfflineReports,
   listOfflineReports,
   removeOfflineReport,
   updateOfflineReport,
@@ -192,5 +193,21 @@ describe("offline report queue store", () => {
 
     expect(adapter.deleteCalls).toEqual(["old-synced-report"]);
     expect(await listOfflineReports()).toEqual([recentSynced, queued]);
+  });
+
+  it("cleans expired synced reports during the normal active queue load", async () => {
+    const oldSynced = queueItem({
+      clientReportId: "old-synced-report",
+      syncStatus: "synced",
+      updatedAt: "2026-05-03T08:00:00.000Z",
+    });
+    const queued = queueItem({ clientReportId: "queued-report" });
+    await addOfflineReport(oldSynced);
+    await addOfflineReport(queued);
+
+    expect(await listActiveOfflineReports(new Date("2026-05-03T08:10:00.000Z"))).toEqual([
+      queued,
+    ]);
+    expect(adapter.deleteCalls).toEqual(["old-synced-report"]);
   });
 });

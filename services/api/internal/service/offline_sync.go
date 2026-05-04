@@ -163,6 +163,7 @@ func syncOfflineReport(
 		return resultWithSyncAttempt(ctx, syncStore, actor, item, now, result, nil)
 	}
 
+	storeInput.AuditEvent = ptr(ReportSubmissionAudit(storeInput, offlineSyncAuditActor(actor)))
 	report, err := syncStore.CreatePendingReportTx(ctx, storeInput)
 	if err != nil {
 		if isReportExternalIDUniqueViolation(err) {
@@ -270,6 +271,19 @@ func offlineActorUserID(actor OfflineSyncActor) *int64 {
 		return nil
 	}
 	return &actor.UserID
+}
+
+func offlineSyncAuditActor(actor OfflineSyncActor) AuditActor {
+	name := strings.TrimSpace(actor.DisplayName)
+	if name == "" {
+		name = strings.TrimSpace(actor.Email)
+	}
+	return AuditActor{
+		UserID:         actor.UserID,
+		Name:           name,
+		Role:           actor.Role,
+		OrganisationID: actor.OrganisationID,
+	}
 }
 
 func syncValidationError(err error) *SyncItemError {

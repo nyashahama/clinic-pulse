@@ -218,3 +218,8 @@ export async function clearSyncedOfflineReports(now = new Date()): Promise<void>
     expiredSyncedReports.map((report) => adapter.delete(report.clientReportId)),
   );
 }
+
+export async function listActiveOfflineReports(now = new Date()): Promise<OfflineReportQueueItem[]> {
+  await clearSyncedOfflineReports(now);
+  return listOfflineReports();
+}

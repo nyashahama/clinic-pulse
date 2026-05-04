@@ -26,6 +26,10 @@ function getResultErrorMessage(result: OfflineSyncApiResult) {
   return result.error?.message ?? result.error?.code ?? result.warning ?? result.result;
 }
 
+export function countWaitingOfflineReports(items: OfflineReportQueueItem[]) {
+  return items.filter((item) => item.syncStatus !== "synced").length;
+}
+
 function normalizedText(value: string) {
   return value.trim();
 }
