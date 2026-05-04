@@ -235,6 +235,71 @@ func TestPublicAlternativesWorksWithoutCookieAndSanitizesNestedClinics(t *testin
 	}
 }
 
+func TestPartnerStatusEndpointRequiresStatusScopeAndSanitizesResponse(t *testing.T) {
+	secret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey returned error: %v", err)
+	}
+	hash, err := auth.HashAPIKey(secret, "")
+	if err != nil {
+		t.Fatalf("HashAPIKey returned error: %v", err)
+	}
+	reporterName := "Nomsa Dlamini"
+	source := "field_worker"
+	now := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
+	router := apihttp.NewRouter(fakeStore{
+		partnerAPIKey: store.PartnerAPIKey{
+			ID: 10, Name: "Demo partner", KeyHash: hash,
+			Scopes:           []string{"status:read"},
+			AllowedDistricts: []string{defaultTestDistrict},
+		},
+		clinic: store.ClinicDetail{Clinic: store.Clinic{ID: "clinic-1", District: defaultTestDistrict}},
+		status: store.CurrentStatus{
+			ClinicID: "clinic-1", Status: "degraded", Freshness: "fresh",
+			ReporterName: &reporterName, Source: &source, UpdatedAt: now,
+		},
+	})
+	req := httptest.NewRequest(http.MethodGet, "/v1/partner/clinics/clinic-1/status", nil)
+	req.Header.Set("Authorization", "Bearer "+secret)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	assertPublicSafeResponse(t, rec.Body.String())
+	if strings.Contains(rec.Body.String(), "Nomsa") || strings.Contains(rec.Body.String(), "reporterName") {
+		t.Fatalf("expected partner response to hide reporter identity, got %s", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"sourceCategory":"field_worker"`) {
+		t.Fatalf("expected partner source category, got %s", rec.Body.String())
+	}
+}
+
+func TestPartnerEndpointRejectsMissingScope(t *testing.T) {
+	secret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey returned error: %v", err)
+	}
+	hash, err := auth.HashAPIKey(secret, "")
+	if err != nil {
+		t.Fatalf("HashAPIKey returned error: %v", err)
+	}
+	router := apihttp.NewRouter(fakeStore{
+		partnerAPIKey: store.PartnerAPIKey{ID: 10, Name: "Demo partner", KeyHash: hash, Scopes: []string{"clinics:read"}},
+	})
+	req := httptest.NewRequest(http.MethodGet, "/v1/partner/clinics/clinic-1/status", nil)
+	req.Header.Set("Authorization", "Bearer "+secret)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusForbidden, rec.Code, rec.Body.String())
+	}
+}
+
 func TestRestrictedClinicRoutesStillRequireCookie(t *testing.T) {
 	router := apihttp.NewRouter(fakeStore{})
 	for _, path := range []string{
@@ -2496,6 +2561,8 @@ type fakeStore struct {
 	memberships                 []store.OrganisationMembership
 	syncSummary                 *store.SyncSummary
 	partnerAPIKey               store.PartnerAPIKey
+	partnerExportRun            store.PartnerExportRun
+	integrationStatusChecks     []store.IntegrationStatusCheck
 	createInput                 *store.CreateReportInput
 	reviewInput                 *store.ReviewReportInput
 	syncAttemptInput            *store.CreateReportSyncAttemptInput
@@ -2542,6 +2609,8 @@ type fakeStore struct {
 	revokeErr                   error
 	membershipsErr              error
 	partnerKeyErr               error
+	partnerExportRunErr         error
+	integrationStatusChecksErr  error
 }
 
 func (f fakeStore) ListClinics(context.Context) ([]store.ClinicDetail, error) {
@@ -2785,6 +2854,14 @@ func (f fakeStore) TouchPartnerAPIKey(context.Context, int64, string, time.Time)
 		*f.partnerTouchCalls++
 	}
 	return f.partnerTouchErr
+}
+
+func (f fakeStore) GetLatestPartnerExportRun(context.Context, *int64) (store.PartnerExportRun, error) {
+	return f.partnerExportRun, f.partnerExportRunErr
+}
+
+func (f fakeStore) ListIntegrationStatusChecks(context.Context, *int64) ([]store.IntegrationStatusCheck, error) {
+	return f.integrationStatusChecks, f.integrationStatusChecksErr
 }
 
 func validReportJSON() string {

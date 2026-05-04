@@ -52,6 +52,8 @@ type ClinicStore interface {
 	ListMembershipsForUser(ctx context.Context, userID int64) ([]store.OrganisationMembership, error)
 	GetPartnerAPIKeyByHash(ctx context.Context, keyHash string) (store.PartnerAPIKey, error)
 	TouchPartnerAPIKey(ctx context.Context, keyID int64, ipAddress string, usedAt time.Time) error
+	GetLatestPartnerExportRun(ctx context.Context, organisationID *int64) (store.PartnerExportRun, error)
+	ListIntegrationStatusChecks(ctx context.Context, organisationID *int64) ([]store.IntegrationStatusCheck, error)
 }
 
 type HandlerConfig struct {
@@ -112,7 +114,7 @@ func (h Handler) ListPartnerClinics(w nethttp.ResponseWriter, r *nethttp.Request
 		return
 	}
 	clinics = filterClinicDetailsForPartner(principal, clinics)
-	RespondJSON(w, nethttp.StatusOK, sanitizePartnerClinicDetails(clinics))
+	RespondJSON(w, nethttp.StatusOK, partnerClinicDetails(clinics))
 }
 
 func filterClinicDetailsForPartner(principal PartnerPrincipal, clinics []store.ClinicDetail) []store.ClinicDetail {
@@ -132,15 +134,136 @@ func filterClinicDetailsForPartner(principal PartnerPrincipal, clinics []store.C
 	return filtered
 }
 
-func sanitizePartnerClinicDetails(clinics []store.ClinicDetail) []publicClinicDetailResponse {
+func partnerClinicDetails(clinics []store.ClinicDetail) []service.PartnerSafeClinicDetailResponse {
 	if clinics == nil {
-		return []publicClinicDetailResponse{}
+		return []service.PartnerSafeClinicDetailResponse{}
 	}
-	result := make([]publicClinicDetailResponse, 0, len(clinics))
+	result := make([]service.PartnerSafeClinicDetailResponse, 0, len(clinics))
 	for _, clinic := range clinics {
-		result = append(result, publicClinicDetail(clinic))
+		result = append(result, service.PartnerSafeClinicDetail(clinic))
 	}
 	return result
+}
+
+func (h Handler) GetPartnerClinicStatus(w nethttp.ResponseWriter, r *nethttp.Request) {
+	principal, ok := PartnerPrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	clinicID := chi.URLParam(r, "clinicId")
+	clinic, err := h.store.GetClinic(r.Context(), clinicID)
+	if err != nil {
+		respondStoreError(w, err, "clinic not found")
+		return
+	}
+	if !service.PartnerScopeAllowsDistrict(principal.AllowedDistricts, clinic.Clinic.District) {
+		RespondError(w, nethttp.StatusForbidden, "forbidden", "forbidden")
+		return
+	}
+
+	status, err := h.store.GetCurrentStatus(r.Context(), clinicID)
+	if err != nil {
+		respondStoreError(w, err, "clinic status not found")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusOK, service.PartnerSafeStatus(&status))
+}
+
+type partnerAlternativeResponse struct {
+	Clinic         service.PartnerSafeClinicDetailResponse `json:"clinic"`
+	DistanceKm     *float64                                `json:"distanceKm"`
+	ReasonCode     string                                  `json:"reasonCode"`
+	RankReason     string                                  `json:"rankReason"`
+	MatchedService string                                  `json:"matchedService"`
+}
+
+func (h Handler) ListPartnerAlternatives(w nethttp.ResponseWriter, r *nethttp.Request) {
+	clinicID := strings.TrimSpace(r.URL.Query().Get("clinicId"))
+	serviceName := strings.TrimSpace(r.URL.Query().Get("service"))
+	if clinicID == "" {
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "clinicId: clinicId is required")
+		return
+	}
+	if serviceName == "" {
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "service: service is required")
+		return
+	}
+
+	principal, ok := PartnerPrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+	source, err := h.store.GetClinic(r.Context(), clinicID)
+	if err != nil {
+		respondStoreError(w, err, "clinic not found")
+		return
+	}
+	if !service.PartnerScopeAllowsDistrict(principal.AllowedDistricts, source.Clinic.District) {
+		RespondError(w, nethttp.StatusForbidden, "forbidden", "forbidden")
+		return
+	}
+
+	candidates, err := h.store.ListClinics(r.Context())
+	if err != nil {
+		respondStoreError(w, err, "failed to list clinic alternatives")
+		return
+	}
+	candidates = filterClinicDetailsForPartner(principal, candidates)
+
+	RespondJSON(w, nethttp.StatusOK, partnerAlternatives(service.RankAlternatives(source, candidates, serviceName)))
+}
+
+func partnerAlternatives(alternatives []service.Alternative) []partnerAlternativeResponse {
+	responses := make([]partnerAlternativeResponse, 0, len(alternatives))
+	for _, alternative := range alternatives {
+		responses = append(responses, partnerAlternativeResponse{
+			Clinic:         service.PartnerSafeClinicDetail(alternative.Clinic),
+			DistanceKm:     alternative.DistanceKm,
+			ReasonCode:     alternative.ReasonCode,
+			RankReason:     alternative.RankReason,
+			MatchedService: alternative.MatchedService,
+		})
+	}
+	return responses
+}
+
+func (h Handler) GetPartnerLatestExport(w nethttp.ResponseWriter, r *nethttp.Request) {
+	principal, ok := PartnerPrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	exportRun, err := h.store.GetLatestPartnerExportRun(r.Context(), principal.OrganisationID)
+	if err != nil {
+		respondStoreError(w, err, "partner export not found")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusOK, exportRun)
+}
+
+func (h Handler) GetPartnerIntegrationStatus(w nethttp.ResponseWriter, r *nethttp.Request) {
+	principal, ok := PartnerPrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	checks, err := h.store.ListIntegrationStatusChecks(r.Context(), principal.OrganisationID)
+	if err != nil {
+		respondStoreError(w, err, "failed to list integration status checks")
+		return
+	}
+	if checks == nil {
+		checks = []store.IntegrationStatusCheck{}
+	}
+
+	RespondJSON(w, nethttp.StatusOK, checks)
 }
 
 func (h Handler) GetClinic(w nethttp.ResponseWriter, r *nethttp.Request) {
