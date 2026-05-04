@@ -4,8 +4,7 @@ import { Suspense } from "react";
 import { DemoBookingCTA } from "@/components/landing/demo-booking-cta";
 import { Footer } from "@/components/landing/footer";
 import { Nav } from "@/components/landing/nav";
-import { BookingDemoController } from "@/components/landing/booking-demo-controller";
-import { OpenPanelProductHero } from "@/components/landing/openpanel-product-hero";
+import { LandingHeroBooking } from "@/components/landing/landing-hero-booking";
 import { OperatingGap } from "@/components/landing/operating-gap";
 import { ProductFeatureCards } from "@/components/landing/product-feature-cards";
 import { StakeholderProof } from "@/components/landing/stakeholder-proof";
@@ -26,9 +25,7 @@ export default function Home() {
       <main>
         <DemoStoreProvider>
           <Suspense fallback={null}>
-            <BookingDemoController>
-              {({ openBooking }) => <OpenPanelProductHero onBookDemo={openBooking} />}
-            </BookingDemoController>
+            <LandingHeroBooking />
           </Suspense>
         </DemoStoreProvider>
         <StakeholderProof />
