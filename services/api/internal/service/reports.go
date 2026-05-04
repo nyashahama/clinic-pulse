@@ -2,16 +2,19 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"clinicpulse/services/api/internal/store"
+	"github.com/jackc/pgx/v5"
 )
 
 const maxSubmittedAtFutureSkew = 5 * time.Minute
 
 type ReportCreator interface {
+	GetPendingReportByPayload(ctx context.Context, input store.CreateReportInput) (store.Report, error)
 	CreatePendingReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, error)
 }
 
@@ -120,6 +123,14 @@ func createReportAt(ctx context.Context, creator ReportCreator, input ReportInpu
 
 	storeInput := input.toStoreInput()
 	storeInput.ReviewState = "pending"
+	existing, err := creator.GetPendingReportByPayload(ctx, storeInput)
+	if err == nil {
+		return existing, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return store.Report{}, err
+	}
+
 	if input.Actor != nil {
 		storeInput.AuditEvent = ptr(ReportSubmissionAudit(storeInput, *input.Actor))
 	}

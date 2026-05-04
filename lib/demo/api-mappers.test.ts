@@ -122,7 +122,7 @@ describe("ClinicPulse API mappers", () => {
       district: "Tshwane North Demo District",
       leads: baseState.leads,
       role: baseState.role,
-      lastSyncAt: baseState.lastSyncAt,
+      lastSyncAt: "2026-05-01T06:42:00.000Z",
     });
     expect(state.clinics).toHaveLength(1);
     expect(state.clinics[0]).toMatchObject({

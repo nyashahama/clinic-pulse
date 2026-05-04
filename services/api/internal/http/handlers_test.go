@@ -2489,6 +2489,7 @@ type fakeStore struct {
 	createSession               store.Session
 	createSessionAudit          store.AuditEvent
 	externalReport              store.Report
+	pendingPayloadReport        store.Report
 	syncAttempt                 store.ReportSyncAttempt
 	session                     store.Session
 	sessionUser                 store.User
@@ -2531,6 +2532,7 @@ type fakeStore struct {
 	createSessionWithAuditErr   error
 	auditErr                    error
 	externalReportErr           error
+	pendingPayloadErr           error
 	syncAttemptErr              error
 	syncSummaryErr              error
 	getSessionErr               error
@@ -2611,6 +2613,16 @@ func (f fakeStore) CreatePendingReportTx(_ context.Context, input store.CreateRe
 
 func (f fakeStore) GetReportByExternalID(context.Context, string) (store.Report, error) {
 	return f.externalReport, f.externalReportErr
+}
+
+func (f fakeStore) GetPendingReportByPayload(context.Context, store.CreateReportInput) (store.Report, error) {
+	if f.pendingPayloadErr != nil {
+		return store.Report{}, f.pendingPayloadErr
+	}
+	if f.pendingPayloadReport.ID == 0 {
+		return store.Report{}, pgx.ErrNoRows
+	}
+	return f.pendingPayloadReport, nil
 }
 
 func (f fakeStore) CreateReportSyncAttempt(_ context.Context, input store.CreateReportSyncAttemptInput) (store.ReportSyncAttempt, error) {

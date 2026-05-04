@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildPilotReadinessModel,
   createEmptySyncSummary,
   getPilotReadinessSeverity,
 } from "@/lib/demo/pilot-readiness";
@@ -48,5 +49,19 @@ describe("pilot readiness helpers", () => {
         duplicateSyncsHandled: 5,
       }),
     ).toBe("clear");
+  });
+
+  it("labels pending offline reports as review backlog, not unsynced queue backlog", () => {
+    const model = buildPilotReadinessModel({
+      ...createEmptySyncSummary("2026-05-03T00:00:00.000Z"),
+      pendingOfflineReports: 4,
+    });
+
+    expect(model.metrics.map((metric) => metric.label)).toContain(
+      "Offline reports pending review",
+    );
+    expect(model.metrics.map((metric) => metric.label)).not.toContain(
+      "Pending offline reports",
+    );
   });
 });

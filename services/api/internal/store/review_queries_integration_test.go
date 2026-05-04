@@ -353,6 +353,18 @@ VALUES
 	if gotReport.ID != report.ID || !gotReport.OfflineCreated || gotReport.ReviewState != "pending" {
 		t.Fatalf("unexpected offline report: %+v", gotReport)
 	}
+	gotPendingDuplicate, err := store.GetPendingReportByPayload(ctx, CreateReportInput{
+		ClinicID:   "clinic-offline-sync",
+		Source:     "field_worker",
+		Status:     "degraded",
+		ReceivedAt: baseTime.Add(time.Minute),
+	})
+	if err != nil {
+		t.Fatalf("GetPendingReportByPayload returned error: %v", err)
+	}
+	if gotPendingDuplicate.ID != report.ID {
+		t.Fatalf("expected semantic pending duplicate report %d, got %+v", report.ID, gotPendingDuplicate)
+	}
 
 	summary, err := store.GetSyncSummarySince(ctx, windowStart)
 	if err != nil {
@@ -375,6 +387,9 @@ VALUES
 	}
 	if summary.StaleClinics != baselineSummary.StaleClinics+1 {
 		t.Fatalf("expected stale snapshot baseline + fixture, baseline=%+v got=%+v", baselineSummary, summary)
+	}
+	if summary.MedianCurrentStatusAgeHours == nil {
+		t.Fatalf("expected median current status age to be calculated, got %+v", summary)
 	}
 
 	district := "Review District"
@@ -437,8 +452,11 @@ VALUES
 	if err != nil {
 		t.Fatalf("GetSyncSummarySinceForReviewScope district returned error: %v", err)
 	}
-	if districtSummary != districtBaselineSummary {
+	if !sameSyncSummaryCounts(districtSummary, districtBaselineSummary) {
 		t.Fatalf("expected district summary to exclude out-of-district and null-clinic rows, baseline=%+v got=%+v", districtBaselineSummary, districtSummary)
+	}
+	if districtSummary.MedianCurrentStatusAgeHours == nil {
+		t.Fatalf("expected district summary median age to remain populated, got %+v", districtSummary)
 	}
 	districtStatuses, err := store.ListCurrentStatusesForReviewScope(ctx, districtScope)
 	if err != nil {
@@ -570,4 +588,15 @@ func assertAuditEventMutationRejected(t *testing.T, ctx context.Context, store S
 	if _, err := tx.Exec(ctx, statement, args...); err == nil {
 		t.Fatalf("expected audit_events mutation to be rejected for statement %q", statement)
 	}
+}
+
+func sameSyncSummaryCounts(left SyncSummary, right SyncSummary) bool {
+	return left.WindowStartedAt == right.WindowStartedAt &&
+		left.OfflineReportsReceived == right.OfflineReportsReceived &&
+		left.DuplicateSyncsHandled == right.DuplicateSyncsHandled &&
+		left.ConflictsNeedingAttention == right.ConflictsNeedingAttention &&
+		left.ValidationFailures == right.ValidationFailures &&
+		left.PendingOfflineReports == right.PendingOfflineReports &&
+		left.NeedsConfirmationClinics == right.NeedsConfirmationClinics &&
+		left.StaleClinics == right.StaleClinics
 }

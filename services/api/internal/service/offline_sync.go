@@ -18,6 +18,7 @@ const missingClientReportIDExternalID = "missing-client-report-id"
 type OfflineSyncStore interface {
 	CreatePendingReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, error)
 	GetReportByExternalID(ctx context.Context, externalID string) (store.Report, error)
+	GetPendingReportByPayload(ctx context.Context, input store.CreateReportInput) (store.Report, error)
 	GetCurrentStatus(ctx context.Context, clinicID string) (store.CurrentStatus, error)
 	CreateReportSyncAttempt(ctx context.Context, input store.CreateReportSyncAttemptInput) (store.ReportSyncAttempt, error)
 }
@@ -148,6 +149,20 @@ func syncOfflineReport(
 		return resultWithSyncAttempt(ctx, syncStore, actor, item, now, result, nil)
 	}
 
+	existingPending, err := syncStore.GetPendingReportByPayload(ctx, storeInput)
+	if err == nil {
+		result = offlineSyncPendingDuplicateResult(ctx, syncStore, item, existingPending)
+		return resultWithSyncAttempt(ctx, syncStore, actor, item, now, result, &existingPending.ID)
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		result.Result = "server_error"
+		result.Error = &SyncItemError{
+			Code:    "server_error",
+			Message: "failed to check pending offline duplicates",
+		}
+		return resultWithSyncAttempt(ctx, syncStore, actor, item, now, result, nil)
+	}
+
 	report, err := syncStore.CreatePendingReportTx(ctx, storeInput)
 	if err != nil {
 		if isReportExternalIDUniqueViolation(err) {
@@ -169,6 +184,20 @@ func syncOfflineReport(
 	result.Report = &report
 	result.Warning = offlineCurrentStatusWarning(ctx, syncStore, item)
 	return resultWithSyncAttempt(ctx, syncStore, actor, item, now, result, &report.ID)
+}
+
+func offlineSyncPendingDuplicateResult(
+	ctx context.Context,
+	syncStore OfflineSyncStore,
+	item OfflineSyncItemInput,
+	existing store.Report,
+) OfflineSyncResult {
+	return OfflineSyncResult{
+		ClientReportID: item.ClientReportID,
+		Result:         "duplicate",
+		Report:         &existing,
+		Warning:        offlineCurrentStatusWarning(ctx, syncStore, item),
+	}
 }
 
 func offlineSyncExistingReportResult(

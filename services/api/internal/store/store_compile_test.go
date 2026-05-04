@@ -23,6 +23,7 @@ func TestStorePublicAPICompiles(t *testing.T) {
 	var _ func(Store, context.Context, CreateAuditEventInput) (AuditEvent, error) = Store.CreateAuditEvent
 	var _ func(Store, context.Context, CreateReportInput) (Report, CurrentStatus, AuditEvent, error) = Store.CreateReportTx
 	var _ func(Store, context.Context, CreateReportInput) (Report, error) = Store.CreatePendingReportTx
+	var _ func(Store, context.Context, CreateReportInput) (Report, error) = Store.GetPendingReportByPayload
 	var _ func(Store, context.Context, ReportReviewScope) ([]Report, error) = Store.ListPendingReports
 	var _ func(Store, context.Context, ReviewReportInput) (Report, *CurrentStatus, error) = Store.ReviewReportTx
 	var _ func(Store, context.Context, string) (User, error) = Store.GetUserByEmail
@@ -38,6 +39,7 @@ func TestOfflineSyncStoreMethodSignatures(t *testing.T) {
 	t.Parallel()
 
 	var _ func(Store, context.Context, string) (Report, error) = Store.GetReportByExternalID
+	var _ func(Store, context.Context, CreateReportInput) (Report, error) = Store.GetPendingReportByPayload
 	var _ func(Store, context.Context, CreateReportSyncAttemptInput) (ReportSyncAttempt, error) = Store.CreateReportSyncAttempt
 	var _ func(Store, context.Context, time.Time) (SyncSummary, error) = Store.GetSyncSummarySince
 	var _ func(Store, context.Context, time.Time, ReportReviewScope) (SyncSummary, error) = Store.GetSyncSummarySinceForReviewScope
@@ -77,6 +79,24 @@ func TestSyncSummaryForReviewScopeSQLScopesClinicRowsForDistrictManagers(t *test
 	}
 	if !strings.Contains(syncSummarySinceForReviewScopeSQL, "($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)") {
 		t.Fatal("expected review scope role and district parameters in scoped summary SQL")
+	}
+}
+
+func TestSyncSummarySQLComputesMedianCurrentStatusAge(t *testing.T) {
+	t.Parallel()
+
+	for name, query := range map[string]string{
+		"unscoped": syncSummarySinceSQL,
+		"scoped":   syncSummarySinceForReviewScopeSQL,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if !strings.Contains(query, "median_current_status_age_hours") {
+				t.Fatal("expected sync summary SQL to select median current status age")
+			}
+			if !strings.Contains(query, "percentile_cont(0.5)") {
+				t.Fatal("expected sync summary SQL to compute a median, not leave status age empty")
+			}
+		})
 	}
 }
 

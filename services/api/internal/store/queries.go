@@ -122,6 +122,42 @@ SELECT
 FROM reports
 WHERE external_id = $1`
 
+	getPendingReportByPayloadSQL = `
+SELECT
+    id,
+    external_id,
+    clinic_id,
+    reporter_name,
+    source,
+    offline_created,
+    submitted_at,
+    received_at,
+    status,
+    reason,
+    staff_pressure,
+    stock_pressure,
+    queue_pressure,
+    notes,
+    review_state,
+    confidence_score::double precision,
+    submitted_by_user_id,
+    reviewed_by_user_id,
+    reviewed_at,
+    review_notes
+FROM reports
+WHERE review_state = 'pending'
+    AND clinic_id = $1
+    AND source = $2
+    AND status = $3
+    AND reason IS NOT DISTINCT FROM $4::text
+    AND staff_pressure IS NOT DISTINCT FROM $5::text
+    AND stock_pressure IS NOT DISTINCT FROM $6::text
+    AND queue_pressure IS NOT DISTINCT FROM $7::text
+    AND notes IS NOT DISTINCT FROM $8::text
+    AND submitted_by_user_id IS NOT DISTINCT FROM $9::bigint
+ORDER BY received_at DESC, id DESC
+LIMIT 1`
+
 	listClinicReportsSQL = `
 SELECT
     id,
@@ -411,6 +447,13 @@ current_status_counts AS (
         (COUNT(*) FILTER (WHERE freshness = 'needs_confirmation'))::int AS needs_confirmation_count,
         (COUNT(*) FILTER (WHERE freshness = 'stale'))::int AS stale_count
     FROM current_status
+),
+median_status_age AS (
+    SELECT
+        percentile_cont(0.5) WITHIN GROUP (
+            ORDER BY EXTRACT(EPOCH FROM (now() - updated_at)) / 3600.0
+        )::double precision AS median_current_status_age_hours
+    FROM current_status
 )
 SELECT
     created_count,
@@ -419,8 +462,9 @@ SELECT
     validation_error_count,
     pending_count,
     needs_confirmation_count,
-    stale_count
-FROM attempt_counts, pending_offline, current_status_counts`
+    stale_count,
+    median_current_status_age_hours
+FROM attempt_counts, pending_offline, current_status_counts, median_status_age`
 
 	syncSummarySinceForReviewScopeSQL = `
 WITH attempt_counts AS (
@@ -462,6 +506,18 @@ current_status_counts AS (
         ($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)
         OR $2 IN ('org_admin', 'system_admin')
     )
+),
+median_status_age AS (
+    SELECT
+        percentile_cont(0.5) WITHIN GROUP (
+            ORDER BY EXTRACT(EPOCH FROM (now() - current_status.updated_at)) / 3600.0
+        )::double precision AS median_current_status_age_hours
+    FROM current_status
+    JOIN clinics ON clinics.id = current_status.clinic_id
+    WHERE (
+        ($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)
+        OR $2 IN ('org_admin', 'system_admin')
+    )
 )
 SELECT
     created_count,
@@ -470,8 +526,9 @@ SELECT
     validation_error_count,
     pending_count,
     needs_confirmation_count,
-    stale_count
-FROM attempt_counts, pending_offline, current_status_counts`
+    stale_count,
+    median_current_status_age_hours
+FROM attempt_counts, pending_offline, current_status_counts, median_status_age`
 
 	getReportForReviewSQL = `
 SELECT
@@ -640,6 +697,21 @@ func (s Store) GetReportByExternalID(ctx context.Context, externalID string) (Re
 	return scanReport(s.pool.QueryRow(ctx, getReportByExternalIDSQL, externalID))
 }
 
+func (s Store) GetPendingReportByPayload(ctx context.Context, input CreateReportInput) (Report, error) {
+	normalized := normalizePendingCreateReportInput(input)
+	return scanReport(s.pool.QueryRow(ctx, getPendingReportByPayloadSQL,
+		normalized.ClinicID,
+		normalized.Source,
+		normalized.Status,
+		normalized.Reason,
+		normalized.StaffPressure,
+		normalized.StockPressure,
+		normalized.QueuePressure,
+		normalized.Notes,
+		normalized.SubmittedByUserID,
+	))
+}
+
 func (s Store) CreateReportSyncAttempt(ctx context.Context, input CreateReportSyncAttemptInput) (ReportSyncAttempt, error) {
 	normalized, err := normalizeCreateReportSyncAttemptInput(input)
 	if err != nil {
@@ -670,6 +742,7 @@ func (s Store) CreateReportSyncAttempt(ctx context.Context, input CreateReportSy
 
 func (s Store) GetSyncSummarySince(ctx context.Context, since time.Time) (SyncSummary, error) {
 	var summary SyncSummary
+	var medianAge sql.NullFloat64
 	summary.WindowStartedAt = since
 
 	if err := s.pool.QueryRow(ctx, syncSummarySinceSQL, since).Scan(
@@ -680,15 +753,18 @@ func (s Store) GetSyncSummarySince(ctx context.Context, since time.Time) (SyncSu
 		&summary.PendingOfflineReports,
 		&summary.NeedsConfirmationClinics,
 		&summary.StaleClinics,
+		&medianAge,
 	); err != nil {
 		return SyncSummary{}, err
 	}
+	summary.MedianCurrentStatusAgeHours = nullFloat64Ptr(medianAge)
 
 	return summary, nil
 }
 
 func (s Store) GetSyncSummarySinceForReviewScope(ctx context.Context, since time.Time, scope ReportReviewScope) (SyncSummary, error) {
 	var summary SyncSummary
+	var medianAge sql.NullFloat64
 	summary.WindowStartedAt = since
 
 	if err := s.pool.QueryRow(ctx, syncSummarySinceForReviewScopeSQL, since, scope.Role, scope.District).Scan(
@@ -699,9 +775,11 @@ func (s Store) GetSyncSummarySinceForReviewScope(ctx context.Context, since time
 		&summary.PendingOfflineReports,
 		&summary.NeedsConfirmationClinics,
 		&summary.StaleClinics,
+		&medianAge,
 	); err != nil {
 		return SyncSummary{}, err
 	}
+	summary.MedianCurrentStatusAgeHours = nullFloat64Ptr(medianAge)
 
 	return summary, nil
 }

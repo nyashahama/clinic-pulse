@@ -39,6 +39,7 @@ type ClinicStore interface {
 	ListClinicAuditEvents(ctx context.Context, clinicID string) ([]store.AuditEvent, error)
 	CreateReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, store.CurrentStatus, store.AuditEvent, error)
 	CreatePendingReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, error)
+	GetPendingReportByPayload(ctx context.Context, input store.CreateReportInput) (store.Report, error)
 	ReviewReportTx(ctx context.Context, input store.ReviewReportInput) (store.Report, *store.CurrentStatus, error)
 	GetReportByExternalID(ctx context.Context, externalID string) (store.Report, error)
 	CreateReportSyncAttempt(ctx context.Context, input store.CreateReportSyncAttemptInput) (store.ReportSyncAttempt, error)

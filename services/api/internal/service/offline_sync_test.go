@@ -87,6 +87,36 @@ func TestSyncOfflineReportsTreatsDuplicateSamePayloadAsSuccess(t *testing.T) {
 	}
 }
 
+func TestSyncOfflineReportsTreatsSamePendingPayloadWithNewClientIDAsDuplicate(t *testing.T) {
+	now := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
+	fake := newFakeOfflineSyncStore()
+	item := validOfflineSyncItem("offline-report-new-client-id")
+	existingItem := item
+	existingItem.ClientReportID = "offline-report-existing-client-id"
+	existing := reportFromOfflineItem(12, existingItem)
+	actor := validOfflineSyncActor()
+	existing.SubmittedByUserID = &actor.UserID
+	fake.pendingPayloadMatches = append(fake.pendingPayloadMatches, existing)
+
+	got := SyncOfflineReports(context.Background(), fake, actor, []OfflineSyncItemInput{item}, now)
+
+	if got.Results[0].Result != "duplicate" {
+		t.Fatalf("expected semantic duplicate result, got %#v", got.Results[0])
+	}
+	if got.Results[0].Report == nil || got.Results[0].Report.ID != existing.ID {
+		t.Fatalf("expected existing pending report in result, got %#v", got.Results[0].Report)
+	}
+	if len(fake.created) != 0 {
+		t.Fatalf("expected semantic duplicate not to create report, got %#v", fake.created)
+	}
+	if len(fake.attempts) != 1 || fake.attempts[0].Result != "duplicate" {
+		t.Fatalf("expected duplicate sync attempt, got %#v", fake.attempts)
+	}
+	if fake.attempts[0].ReportID == nil || *fake.attempts[0].ReportID != existing.ID {
+		t.Fatalf("expected sync attempt to reference existing report, got %#v", fake.attempts[0])
+	}
+}
+
 func TestSyncOfflineReportsTreatsDuplicateDifferentPayloadAsConflict(t *testing.T) {
 	now := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
 	fake := newFakeOfflineSyncStore()
@@ -475,6 +505,7 @@ type fakeOfflineSyncStore struct {
 	existing                  map[string]store.Report
 	existingAfterCreateRace   map[string]store.Report
 	externalIDLookupCount     map[string]int
+	pendingPayloadMatches     []store.Report
 	currentStatuses           map[string]store.CurrentStatus
 	createErrors              map[string]error
 	created                   []store.CreateReportInput
@@ -531,6 +562,57 @@ func (f *fakeOfflineSyncStore) GetReportByExternalID(_ context.Context, external
 		return store.Report{}, pgx.ErrNoRows
 	}
 	return report, nil
+}
+
+func (f *fakeOfflineSyncStore) GetPendingReportByPayload(_ context.Context, input store.CreateReportInput) (store.Report, error) {
+	for _, report := range f.pendingPayloadMatches {
+		if sameOfflineReportSemanticPayload(report, input) {
+			return report, nil
+		}
+	}
+	for index, created := range f.created {
+		report := store.Report{
+			ID:                int64(index + 1),
+			ExternalID:        created.ExternalID,
+			ClinicID:          created.ClinicID,
+			ReporterName:      created.ReporterName,
+			Source:            created.Source,
+			OfflineCreated:    created.OfflineCreated,
+			SubmittedAt:       created.SubmittedAt,
+			ReceivedAt:        created.ReceivedAt,
+			Status:            created.Status,
+			Reason:            created.Reason,
+			StaffPressure:     created.StaffPressure,
+			StockPressure:     created.StockPressure,
+			QueuePressure:     created.QueuePressure,
+			Notes:             created.Notes,
+			ReviewState:       created.ReviewState,
+			SubmittedByUserID: created.SubmittedByUserID,
+		}
+		if sameOfflineReportSemanticPayload(report, input) {
+			return report, nil
+		}
+	}
+	return store.Report{}, pgx.ErrNoRows
+}
+
+func sameOfflineReportSemanticPayload(existing store.Report, input store.CreateReportInput) bool {
+	return existing.ClinicID == input.ClinicID &&
+		existing.Source == input.Source &&
+		existing.Status == input.Status &&
+		sameStringPtr(existing.Reason, input.Reason) &&
+		sameStringPtr(existing.StaffPressure, input.StaffPressure) &&
+		sameStringPtr(existing.StockPressure, input.StockPressure) &&
+		sameStringPtr(existing.QueuePressure, input.QueuePressure) &&
+		sameStringPtr(existing.Notes, input.Notes) &&
+		sameInt64Ptr(existing.SubmittedByUserID, input.SubmittedByUserID)
+}
+
+func sameInt64Ptr(left *int64, right *int64) bool {
+	if left == nil || right == nil {
+		return left == right
+	}
+	return *left == *right
 }
 
 func (f *fakeOfflineSyncStore) GetCurrentStatus(_ context.Context, clinicID string) (store.CurrentStatus, error) {

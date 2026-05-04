@@ -139,7 +139,7 @@ export function buildPilotReadinessModel(
         tone: getMetricTone("validationFailures", summary.validationFailures),
       },
       {
-        label: "Pending offline reports",
+        label: "Offline reports pending review",
         value: formatCount(summary.pendingOfflineReports),
         tone: summary.pendingOfflineReports > 0 ? "watch" : "clear",
       },
