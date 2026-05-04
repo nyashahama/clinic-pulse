@@ -34,22 +34,16 @@ func GenerateAPIKey(environment string) (string, string, error) {
 }
 
 func APIKeyEnvironment(secret string) (string, error) {
-	switch {
-	case strings.HasPrefix(secret, "cp_demo_"):
-		return "demo", nil
-	case strings.HasPrefix(secret, "cp_live_"):
-		return "live", nil
-	default:
-		return "", ErrInvalidAPIKey
+	environment, _, err := validateAPIKey(secret)
+	if err != nil {
+		return "", err
 	}
+	return environment, nil
 }
 
 func HashAPIKey(secret string, pepper string) (string, error) {
-	if _, err := APIKeyEnvironment(secret); err != nil {
+	if _, _, err := validateAPIKey(secret); err != nil {
 		return "", err
-	}
-	if strings.TrimSpace(secret) != secret || secret == "" {
-		return "", ErrInvalidAPIKey
 	}
 
 	material := secret
@@ -58,4 +52,32 @@ func HashAPIKey(secret string, pepper string) (string, error) {
 	}
 	hash := sha256.Sum256([]byte(material))
 	return hex.EncodeToString(hash[:]), nil
+}
+
+func validateAPIKey(secret string) (string, []byte, error) {
+	if strings.TrimSpace(secret) != secret || secret == "" {
+		return "", nil, ErrInvalidAPIKey
+	}
+
+	var environment string
+	var suffix string
+	switch {
+	case strings.HasPrefix(secret, "cp_demo_"):
+		environment = "demo"
+		suffix = strings.TrimPrefix(secret, "cp_demo_")
+	case strings.HasPrefix(secret, "cp_live_"):
+		environment = "live"
+		suffix = strings.TrimPrefix(secret, "cp_live_")
+	default:
+		return "", nil, ErrInvalidAPIKey
+	}
+	if suffix == "" {
+		return "", nil, ErrInvalidAPIKey
+	}
+
+	decoded, err := base64.RawURLEncoding.DecodeString(suffix)
+	if err != nil || len(decoded) != apiKeyRandomBytes {
+		return "", nil, ErrInvalidAPIKey
+	}
+	return environment, decoded, nil
 }
