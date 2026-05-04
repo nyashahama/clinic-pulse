@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"strings"
+	"unicode"
 )
 
 const apiKeyRandomBytes = 32
@@ -55,7 +56,7 @@ func HashAPIKey(secret string, pepper string) (string, error) {
 }
 
 func validateAPIKey(secret string) (string, []byte, error) {
-	if strings.TrimSpace(secret) != secret || secret == "" {
+	if secret == "" || strings.ContainsFunc(secret, unicode.IsSpace) {
 		return "", nil, ErrInvalidAPIKey
 	}
 
@@ -76,7 +77,7 @@ func validateAPIKey(secret string) (string, []byte, error) {
 	}
 
 	decoded, err := base64.RawURLEncoding.DecodeString(suffix)
-	if err != nil || len(decoded) != apiKeyRandomBytes {
+	if err != nil || len(decoded) != apiKeyRandomBytes || suffix != base64.RawURLEncoding.EncodeToString(decoded) {
 		return "", nil, ErrInvalidAPIKey
 	}
 	return environment, decoded, nil

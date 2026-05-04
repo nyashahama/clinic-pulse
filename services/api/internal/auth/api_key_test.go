@@ -99,12 +99,17 @@ func TestAPIKeyEnvironmentParsesKnownPrefixes(t *testing.T) {
 func TestAPIKeyEnvironmentRejectsMalformedKeys(t *testing.T) {
 	t.Parallel()
 
+	demoKey := generatedLikeAPIKey("demo", 0x00)
+	liveKey := generatedLikeAPIKey("live", 0xff)
+
 	for _, secret := range []string{
 		"cp_demo_",
 		"cp_demo_not valid",
 		"cp_demo_abc",
-		" " + generatedLikeAPIKey("demo", 0x00),
-		generatedLikeAPIKey("live", 0xff) + "\n",
+		" " + demoKey,
+		liveKey + "\n",
+		demoKey[:24] + "\n" + demoKey[24:],
+		liveKey[:24] + "\r" + liveKey[24:],
 	} {
 		if _, err := APIKeyEnvironment(secret); err == nil {
 			t.Fatalf("expected APIKeyEnvironment(%q) to fail", secret)
