@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  demoCta,
   featureCards,
   heroClinicRows,
+  heroStats,
   landingHero,
+  operatingGap,
   stakeholderProofItems,
   trustObjects,
   workflowSteps,
@@ -41,6 +44,13 @@ describe("OpenPanel-first landing content", () => {
       "Patients",
     ]);
     expect(workflowSteps).toHaveLength(5);
+    expect(workflowSteps.map((step) => step.title)).toEqual([
+      "Field report",
+      "Status update",
+      "Coordinator review",
+      "Patient reroute",
+      "Audit record",
+    ]);
     expect(featureCards.map((card) => card.title)).toEqual([
       "Field reports",
       "District console",
@@ -64,6 +74,9 @@ describe("OpenPanel-first landing content", () => {
       featureCards,
       trustObjects,
       heroClinicRows,
+      heroStats,
+      operatingGap,
+      demoCta,
     ]);
 
     expect(text).not.toMatch(/OpenPanel|Mixpanel|GDPR|SOC 2|customers love us/i);
