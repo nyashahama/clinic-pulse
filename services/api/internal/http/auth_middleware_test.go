@@ -2,12 +2,16 @@ package http_test
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
+	"clinicpulse/services/api/internal/auth"
 	apihttp "clinicpulse/services/api/internal/http"
 	"clinicpulse/services/api/internal/store"
 )
@@ -20,6 +24,329 @@ func TestProtectedRouteMissingCookieReturnsUnauthorized(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	assertGenericUnauthorized(t, rec)
+}
+
+func TestPartnerRouteAcceptsValidAPIKey(t *testing.T) {
+	const pepper = "pepper"
+	secret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey returned error: %v", err)
+	}
+	hash, err := auth.HashAPIKey(secret, pepper)
+	if err != nil {
+		t.Fatalf("HashAPIKey returned error: %v", err)
+	}
+	updatedAt := time.Date(2026, 5, 3, 11, 0, 0, 0, time.UTC)
+	touchCalls := 0
+	router := apihttp.NewRouter(fakeStore{
+		partnerAPIKey: store.PartnerAPIKey{
+			ID:               10,
+			Name:             "Demo partner",
+			Environment:      "demo",
+			KeyHash:          hash,
+			Scopes:           []string{"clinics:read"},
+			AllowedDistricts: []string{defaultTestDistrict},
+			CreatedAt:        updatedAt,
+			UpdatedAt:        updatedAt,
+		},
+		partnerTouchCalls: &touchCalls,
+		clinics: []store.ClinicDetail{{
+			Clinic: store.Clinic{
+				ID:                 "clinic-1",
+				Name:               "Central Clinic",
+				District:           defaultTestDistrict,
+				FacilityType:       "clinic",
+				VerificationStatus: "verified",
+			},
+		}},
+	}, apihttp.WithAPIKeyPepper(pepper))
+	req := httptest.NewRequest(http.MethodGet, "/v1/partner/clinics", nil)
+	req.Header.Set("Authorization", "Bearer "+secret)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if touchCalls != 1 {
+		t.Fatalf("expected partner key touch call, got %d", touchCalls)
+	}
+	assertPublicSafeResponse(t, rec.Body.String())
+}
+
+func TestPartnerRouteRejectsMissingInvalidRevokedAndExpiredKeys(t *testing.T) {
+	validSecret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey returned error: %v", err)
+	}
+	unknownSecret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey unknown returned error: %v", err)
+	}
+	hash, err := auth.HashAPIKey(validSecret, "")
+	if err != nil {
+		t.Fatalf("HashAPIKey returned error: %v", err)
+	}
+	now := time.Now().UTC()
+	revokedAt := now.Add(-time.Hour)
+	expiredAt := now.Add(-time.Minute)
+
+	tests := []struct {
+		name          string
+		authorization string
+		store         fakeStore
+	}{
+		{
+			name: "missing",
+		},
+		{
+			name:          "unknown",
+			authorization: "Bearer " + unknownSecret,
+			store: fakeStore{partnerAPIKey: store.PartnerAPIKey{
+				ID:      10,
+				KeyHash: hash,
+				Scopes:  []string{"clinics:read"},
+			}},
+		},
+		{
+			name:          "revoked",
+			authorization: "Bearer " + validSecret,
+			store: fakeStore{partnerAPIKey: store.PartnerAPIKey{
+				ID:        10,
+				KeyHash:   hash,
+				Scopes:    []string{"clinics:read"},
+				RevokedAt: &revokedAt,
+			}},
+		},
+		{
+			name:          "expired",
+			authorization: "Bearer " + validSecret,
+			store: fakeStore{partnerAPIKey: store.PartnerAPIKey{
+				ID:        10,
+				KeyHash:   hash,
+				Scopes:    []string{"clinics:read"},
+				ExpiresAt: &expiredAt,
+			}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := apihttp.NewRouter(tt.store)
+			req := httptest.NewRequest(http.MethodGet, "/v1/partner/clinics", nil)
+			if tt.authorization != "" {
+				req.Header.Set("Authorization", tt.authorization)
+			}
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			assertGenericUnauthorized(t, rec)
+		})
+	}
+}
+
+func TestPartnerRouteRejectsMalformedAuthorizationHeaders(t *testing.T) {
+	secret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey returned error: %v", err)
+	}
+	hash, err := auth.HashAPIKey(secret, "")
+	if err != nil {
+		t.Fatalf("HashAPIKey returned error: %v", err)
+	}
+	router := apihttp.NewRouter(fakeStore{partnerAPIKey: validPartnerAPIKey(hash, []string{"clinics:read"}, nil)})
+
+	tests := []struct {
+		name          string
+		authorization string
+	}{
+		{name: "wrong scheme", authorization: "Token " + secret},
+		{name: "missing token", authorization: "Bearer "},
+		{name: "extra space after bearer", authorization: "Bearer  " + secret},
+		{name: "trailing token whitespace", authorization: "Bearer " + secret + " "},
+		{name: "leading header whitespace", authorization: " Bearer " + secret},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/v1/partner/clinics", nil)
+			req.Header.Set("Authorization", tt.authorization)
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			assertGenericUnauthorized(t, rec)
+		})
+	}
+}
+
+func TestPartnerRouteRejectsTouchInvalidStateWithUnauthorized(t *testing.T) {
+	secret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey returned error: %v", err)
+	}
+	hash, err := auth.HashAPIKey(secret, "")
+	if err != nil {
+		t.Fatalf("HashAPIKey returned error: %v", err)
+	}
+
+	tests := []struct {
+		name     string
+		touchErr error
+	}{
+		{name: "no rows", touchErr: pgx.ErrNoRows},
+		{name: "revoked", touchErr: store.ErrPartnerAPIKeyRevoked},
+		{name: "expired", touchErr: store.ErrPartnerAPIKeyExpired},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := apihttp.NewRouter(fakeStore{
+				partnerAPIKey:   validPartnerAPIKey(hash, []string{"clinics:read"}, nil),
+				partnerTouchErr: tt.touchErr,
+			})
+			req := httptest.NewRequest(http.MethodGet, "/v1/partner/clinics", nil)
+			req.Header.Set("Authorization", "Bearer "+secret)
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			assertGenericUnauthorized(t, rec)
+		})
+	}
+}
+
+func TestPartnerRouteReturnsInternalErrorForUnexpectedTouchFailure(t *testing.T) {
+	secret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey returned error: %v", err)
+	}
+	hash, err := auth.HashAPIKey(secret, "")
+	if err != nil {
+		t.Fatalf("HashAPIKey returned error: %v", err)
+	}
+	storeErr := errors.New("touch failure details")
+	router := apihttp.NewRouter(fakeStore{
+		partnerAPIKey:   validPartnerAPIKey(hash, []string{"clinics:read"}, nil),
+		partnerTouchErr: storeErr,
+	})
+	req := httptest.NewRequest(http.MethodGet, "/v1/partner/clinics", nil)
+	req.Header.Set("Authorization", "Bearer "+secret)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assertInternalError(t, rec, storeErr)
+}
+
+func TestPartnerRouteRejectsInsufficientScope(t *testing.T) {
+	secret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey returned error: %v", err)
+	}
+	hash, err := auth.HashAPIKey(secret, "")
+	if err != nil {
+		t.Fatalf("HashAPIKey returned error: %v", err)
+	}
+	router := apihttp.NewRouter(fakeStore{
+		partnerAPIKey: validPartnerAPIKey(hash, []string{"reports:read"}, nil),
+	})
+	req := httptest.NewRequest(http.MethodGet, "/v1/partner/clinics", nil)
+	req.Header.Set("Authorization", "Bearer "+secret)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusForbidden, rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"code":"forbidden"`) {
+		t.Fatalf("expected forbidden code, got %q", rec.Body.String())
+	}
+}
+
+func TestPartnerRouteFiltersClinicsToAllowedDistricts(t *testing.T) {
+	secret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey returned error: %v", err)
+	}
+	hash, err := auth.HashAPIKey(secret, "")
+	if err != nil {
+		t.Fatalf("HashAPIKey returned error: %v", err)
+	}
+	router := apihttp.NewRouter(fakeStore{
+		partnerAPIKey: validPartnerAPIKey(hash, []string{"clinics:read"}, []string{defaultTestDistrict}),
+		clinics: []store.ClinicDetail{
+			{Clinic: store.Clinic{ID: "clinic-1", District: defaultTestDistrict}},
+			{Clinic: store.Clinic{ID: "clinic-2", District: "Johannesburg"}},
+		},
+	})
+	req := httptest.NewRequest(http.MethodGet, "/v1/partner/clinics", nil)
+	req.Header.Set("Authorization", "Bearer "+secret)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	var got []struct {
+		Clinic store.Clinic `json:"clinic"`
+	}
+	decodeJSON(t, rec, &got)
+	if len(got) != 1 || got[0].Clinic.ID != "clinic-1" {
+		t.Fatalf("unexpected filtered clinics: %#v", got)
+	}
+}
+
+func TestPartnerRouteEmptyAllowedDistrictsReturnsAllClinics(t *testing.T) {
+	secret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey returned error: %v", err)
+	}
+	hash, err := auth.HashAPIKey(secret, "")
+	if err != nil {
+		t.Fatalf("HashAPIKey returned error: %v", err)
+	}
+	router := apihttp.NewRouter(fakeStore{
+		partnerAPIKey: validPartnerAPIKey(hash, []string{"clinics:read"}, nil),
+		clinics: []store.ClinicDetail{
+			{Clinic: store.Clinic{ID: "clinic-1", District: defaultTestDistrict}},
+			{Clinic: store.Clinic{ID: "clinic-2", District: "Johannesburg"}},
+		},
+	})
+	req := httptest.NewRequest(http.MethodGet, "/v1/partner/clinics", nil)
+	req.Header.Set("Authorization", "Bearer "+secret)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	var got []struct {
+		Clinic store.Clinic `json:"clinic"`
+	}
+	decodeJSON(t, rec, &got)
+	if len(got) != 2 {
+		t.Fatalf("expected all clinics, got %#v", got)
+	}
+}
+
+func validPartnerAPIKey(hash string, scopes []string, allowedDistricts []string) store.PartnerAPIKey {
+	now := time.Date(2026, 5, 3, 11, 0, 0, 0, time.UTC)
+	return store.PartnerAPIKey{
+		ID:               10,
+		Name:             "Demo partner",
+		Environment:      "demo",
+		KeyHash:          hash,
+		Scopes:           scopes,
+		AllowedDistricts: allowedDistricts,
+		CreatedAt:        now,
+		UpdatedAt:        now,
+	}
 }
 
 func TestProtectedRouteMalformedCookieReturnsUnauthorizedWithoutStoreCall(t *testing.T) {

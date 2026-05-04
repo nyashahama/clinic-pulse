@@ -4,6 +4,7 @@ import {
   fetchClinicReports,
   fetchClinics,
   fetchOperationalClinics,
+  fetchPartnerReadiness,
   fetchSyncSummary,
   type ClinicPulseApiClientOptions,
 } from "@/lib/demo/api-client";
@@ -11,7 +12,10 @@ import {
   type ApiDemoHydrationPayload,
   mapApiDemoHydrationToState,
 } from "@/lib/demo/api-mappers";
-import type { SyncSummaryApiResponse } from "@/lib/demo/api-types";
+import type {
+  PartnerReadinessApiResponse,
+  SyncSummaryApiResponse,
+} from "@/lib/demo/api-types";
 import { allowsSeededDemoFallback } from "@/lib/demo/demo-hydration";
 import { createEmptySyncSummary } from "@/lib/demo/pilot-readiness";
 import { createInitialDemoState } from "@/lib/demo/scenarios";
@@ -101,4 +105,19 @@ export function loadSyncSummaryForRole(
   }
 
   return loadOperationalSyncSummary(options);
+}
+
+export async function loadPartnerReadiness(
+  options?: ClinicPulseApiClientOptions,
+): Promise<PartnerReadinessApiResponse> {
+  return withSeededFallback(
+    () => fetchPartnerReadiness(options),
+    () => ({
+      apiKeys: [],
+      webhookSubscriptions: [],
+      webhookEvents: [],
+      exportRuns: [],
+      integrationChecks: [],
+    }),
+  );
 }

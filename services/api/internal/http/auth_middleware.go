@@ -111,6 +111,7 @@ func PrincipalFromContext(ctx context.Context) (Principal, bool) {
 }
 
 func ContextWithPrincipal(ctx context.Context, principal Principal) context.Context {
+	markRequestPrincipalType(ctx, "session")
 	return context.WithValue(ctx, principalContextKey, principal)
 }
 

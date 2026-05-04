@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertCircle,
   ArrowLeft,
@@ -18,16 +18,32 @@ import { ExportPreview } from "@/components/demo/export-preview";
 import { APIPreview } from "@/components/demo/api-preview";
 import { RoadmapModules } from "@/components/demo/roadmap-modules";
 import { MetricTile } from "@/components/demo/metric-tile";
+import { PartnerReadinessPanel } from "@/components/demo/partner-readiness-panel";
 import { PilotReadinessPanel } from "@/components/demo/pilot-readiness-panel";
 import { SectionHeader } from "@/components/demo/section-header";
 import { Button, buttonVariants } from "@/components/ui/button";
-import type { SyncSummaryApiResponse } from "@/lib/demo/api-types";
+import type {
+  PartnerReadinessApiResponse,
+  SyncSummaryApiResponse,
+} from "@/lib/demo/api-types";
 import { adminWorkspaceSections } from "@/lib/demo/admin-layout";
 import { useDemoStore } from "@/lib/demo/demo-store";
 import { getClinicRows } from "@/lib/demo/selectors";
 import type { DemoLeadFormInput } from "@/components/demo/demo-lead-form";
 import type { DemoLead } from "@/lib/demo/types";
 import type { DemoState } from "@/lib/demo/types";
+import {
+  createOneTimePartnerApiKeySecret,
+  createOneTimePartnerWebhookSecret,
+  type OneTimePartnerApiKeySecret,
+  type OneTimePartnerWebhookSecret,
+} from "@/lib/demo/partner-readiness";
+import {
+  createPartnerApiKeyAction,
+  createPartnerExportAction,
+  createPartnerWebhookAction,
+  testPartnerWebhookAction,
+} from "./actions";
 
 type LeadStatusCount = Record<DemoLead["status"], number>;
 
@@ -82,9 +98,28 @@ function buildExportPayload(state: DemoState) {
 
 type AdminPageProps = {
   syncSummary: SyncSummaryApiResponse | null;
+  partnerReadiness: PartnerReadinessApiResponse;
 };
 
-export default function AdminPage({ syncSummary }: AdminPageProps) {
+type PartnerReadinessAction =
+  | "create-key"
+  | "create-webhook"
+  | "generate-export"
+  | "test-webhook";
+
+function getPartnerActionErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  return "Partner readiness action failed.";
+}
+
+export default function AdminPage({
+  syncSummary,
+  partnerReadiness,
+}: AdminPageProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const {
     state,
@@ -106,11 +141,20 @@ export default function AdminPage({ syncSummary }: AdminPageProps) {
   const activeAlertCount = state.alerts.filter((alert) => alert.status === "open").length;
   const exportPayload = useMemo(() => buildExportPayload(state), [state]);
   const [manualLeadOpen, setManualLeadOpen] = useState(false);
+  const [partnerActionPending, setPartnerActionPending] =
+    useState<PartnerReadinessAction | null>(null);
+  const [partnerActionError, setPartnerActionError] = useState<string | null>(null);
+  const [oneTimeApiKeySecret, setOneTimeApiKeySecret] =
+    useState<OneTimePartnerApiKeySecret | null>(null);
+  const [oneTimeWebhookSecret, setOneTimeWebhookSecret] =
+    useState<OneTimePartnerWebhookSecret | null>(null);
+  const partnerActionPendingRef = useRef<PartnerReadinessAction | null>(null);
 
   const leadSorted = useMemo(
     () => [...state.leads].sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
     [state.leads],
   );
+  const partnerActionInFlight = partnerActionPending !== null;
 
   const handleLeadSubmit = (lead: DemoLeadFormInput) => {
     addDemoLead({
@@ -119,6 +163,79 @@ export default function AdminPage({ syncSummary }: AdminPageProps) {
       status: "new",
     });
     setManualLeadOpen(false);
+  };
+
+  const runPartnerAction = async <Result,>(
+    action: PartnerReadinessAction,
+    mutate: () => Promise<Result>,
+    onSuccess?: (result: Result) => void,
+  ) => {
+    if (partnerActionPendingRef.current) {
+      return;
+    }
+
+    partnerActionPendingRef.current = action;
+    setPartnerActionPending(action);
+    setPartnerActionError(null);
+
+    try {
+      const result = await mutate();
+      onSuccess?.(result);
+      router.refresh();
+    } catch (error) {
+      setPartnerActionError(getPartnerActionErrorMessage(error));
+    } finally {
+      partnerActionPendingRef.current = null;
+      setPartnerActionPending(null);
+    }
+  };
+
+  const handleCreateDemoKey = () => {
+    if (partnerActionPendingRef.current) {
+      return;
+    }
+    setOneTimeApiKeySecret(null);
+    void runPartnerAction(
+      "create-key",
+      () =>
+        createPartnerApiKeyAction({
+          name: "Demo partner integration",
+          environment: "demo",
+          scopes: ["clinics:read", "status:read", "alternatives:read", "exports:read"],
+          allowedDistricts: [state.district],
+        }),
+      (result) => setOneTimeApiKeySecret(createOneTimePartnerApiKeySecret(result)),
+    );
+  };
+
+  const handleCreatePartnerWebhook = () => {
+    if (partnerActionPendingRef.current) {
+      return;
+    }
+    setOneTimeWebhookSecret(null);
+    void runPartnerAction(
+      "create-webhook",
+      () =>
+        createPartnerWebhookAction({
+          name: "Demo partner webhook",
+          targetUrl: "https://partner.example.test/webhooks/clinicpulse",
+          eventTypes: ["clinic.status_changed"],
+        }),
+      (result) => setOneTimeWebhookSecret(createOneTimePartnerWebhookSecret(result)),
+    );
+  };
+
+  const handleGeneratePartnerExport = () => {
+    void runPartnerAction("generate-export", () =>
+      createPartnerExportAction({
+        format: "json",
+        scope: { district: state.district },
+      }),
+    );
+  };
+
+  const handleTestPartnerWebhook = (subscriptionId: number) => {
+    void runPartnerAction("test-webhook", () => testPartnerWebhookAction(subscriptionId));
   };
 
   useEffect(() => {
@@ -205,6 +322,24 @@ export default function AdminPage({ syncSummary }: AdminPageProps) {
         </div>
 
         {syncSummary ? <PilotReadinessPanel summary={syncSummary} /> : null}
+        <PartnerReadinessPanel
+          readiness={partnerReadiness}
+          onCreateDemoKey={handleCreateDemoKey}
+          onCreateWebhook={handleCreatePartnerWebhook}
+          onGenerateExport={handleGeneratePartnerExport}
+          onTestWebhook={handleTestPartnerWebhook}
+          pendingActions={{
+            createDemoKey: partnerActionInFlight,
+            createWebhook: partnerActionInFlight,
+            generateExport: partnerActionInFlight,
+            testWebhook: partnerActionInFlight,
+          }}
+          actionError={partnerActionError}
+          oneTimeApiKeySecret={oneTimeApiKeySecret}
+          oneTimeWebhookSecret={oneTimeWebhookSecret}
+          onClearOneTimeApiKeySecret={() => setOneTimeApiKeySecret(null)}
+          onClearOneTimeWebhookSecret={() => setOneTimeWebhookSecret(null)}
+        />
       </div>
 
       {selectedClinic ? (

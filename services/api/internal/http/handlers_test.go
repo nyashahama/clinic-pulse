@@ -1,10 +1,12 @@
 package http_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -36,6 +38,307 @@ func TestHealthzReturnsOK(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), `"status":"ok"`) {
 		t.Fatalf("expected response to contain status ok, got %q", rec.Body.String())
 	}
+}
+
+func TestReadyzChecksDatabase(t *testing.T) {
+	router := apihttp.NewRouter(fakeStore{})
+
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	var got map[string]string
+	decodeJSON(t, rec, &got)
+	if got["database"] != "ok" {
+		t.Fatalf("expected database ok readiness response, got %#v", got)
+	}
+}
+
+func TestReadyzReturnsUnavailableWhenDatabaseCheckFails(t *testing.T) {
+	router := apihttp.NewRouter(fakeStore{readyErr: errors.New("database down")})
+
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusServiceUnavailable, rec.Code, rec.Body.String())
+	}
+	var got map[string]string
+	decodeJSON(t, rec, &got)
+	if got["database"] != "unavailable" {
+		t.Fatalf("expected unavailable database readiness response, got %#v", got)
+	}
+	if strings.Contains(rec.Body.String(), "database down") {
+		t.Fatalf("expected readiness response not to leak store error, got %s", rec.Body.String())
+	}
+}
+
+func TestRequestLoggerCapturesStatusAndRequestID(t *testing.T) {
+	var logOutput bytes.Buffer
+	logger := log.New(&logOutput, "", 0)
+	handler := apihttp.RequestLogger(logger)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTeapot)
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/logged", nil)
+	req.Header.Set("X-Request-Id", "request-123")
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusTeapot {
+		t.Fatalf("expected status %d, got %d", http.StatusTeapot, rec.Code)
+	}
+	if rec.Header().Get("X-Request-Id") != "request-123" {
+		t.Fatalf("expected response request id request-123, got %q", rec.Header().Get("X-Request-Id"))
+	}
+	logLine := logOutput.String()
+	for _, want := range []string{
+		"method=GET",
+		"path=/logged",
+		"status=418",
+		"principal_type=anonymous",
+		"request_id=request-123",
+		"duration_ms=",
+	} {
+		if !strings.Contains(logLine, want) {
+			t.Fatalf("expected log to contain %q, got %q", want, logLine)
+		}
+	}
+}
+
+func TestRequestLoggerGeneratesRequestID(t *testing.T) {
+	var logOutput bytes.Buffer
+	logger := log.New(&logOutput, "", 0)
+	handler := apihttp.RequestLogger(logger)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/logged", nil)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	requestID := rec.Header().Get("X-Request-Id")
+	if requestID == "" {
+		t.Fatal("expected generated request id response header")
+	}
+	if !strings.Contains(logOutput.String(), "request_id="+requestID) {
+		t.Fatalf("expected log to include generated request id %q, got %q", requestID, logOutput.String())
+	}
+}
+
+func TestRequestLoggerRejectsUnsafeRequestIDHeaders(t *testing.T) {
+	tests := []struct {
+		name       string
+		requestID  string
+		notInLog   []string
+		notInReply []string
+	}{
+		{
+			name:      "fake log fields",
+			requestID: "abc status=500",
+			notInLog: []string{
+				"request_id=abc status=500",
+				"status=500",
+			},
+			notInReply: []string{"abc status=500"},
+		},
+		{
+			name:       "too long",
+			requestID:  strings.Repeat("a", 129),
+			notInLog:   []string{strings.Repeat("a", 129)},
+			notInReply: []string{strings.Repeat("a", 129)},
+		},
+		{
+			name:       "unsafe character",
+			requestID:  "request/id-123",
+			notInLog:   []string{"request/id-123"},
+			notInReply: []string{"request/id-123"},
+		},
+		{
+			name:       "too short",
+			requestID:  "short",
+			notInLog:   []string{"request_id=short"},
+			notInReply: []string{"short"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var logOutput bytes.Buffer
+			logger := log.New(&logOutput, "", 0)
+			handler := apihttp.RequestLogger(logger)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusNoContent)
+			}))
+			req := httptest.NewRequest(http.MethodGet, "/logged", nil)
+			req.Header.Set("X-Request-Id", tt.requestID)
+			rec := httptest.NewRecorder()
+
+			handler.ServeHTTP(rec, req)
+
+			gotRequestID := rec.Header().Get("X-Request-Id")
+			if !isSafeRequestIDForTest(gotRequestID) {
+				t.Fatalf("expected safe replacement request id, got %q", gotRequestID)
+			}
+			if gotRequestID == tt.requestID {
+				t.Fatalf("expected unsafe request id %q to be replaced", tt.requestID)
+			}
+			logLine := logOutput.String()
+			if !strings.Contains(logLine, "request_id="+gotRequestID) {
+				t.Fatalf("expected log to include replacement request id %q, got %q", gotRequestID, logLine)
+			}
+			for _, forbidden := range tt.notInLog {
+				if strings.Contains(logLine, forbidden) {
+					t.Fatalf("expected log not to contain %q, got %q", forbidden, logLine)
+				}
+			}
+			for _, forbidden := range tt.notInReply {
+				if strings.Contains(gotRequestID, forbidden) {
+					t.Fatalf("expected response request id not to contain %q, got %q", forbidden, gotRequestID)
+				}
+			}
+		})
+	}
+}
+
+func TestRequestLoggerLogsPrincipalTypeAssignedDownstream(t *testing.T) {
+	tests := []struct {
+		name   string
+		assign func(context.Context) context.Context
+		want   string
+	}{
+		{
+			name: "session",
+			assign: func(ctx context.Context) context.Context {
+				return apihttp.ContextWithPrincipal(ctx, apihttp.Principal{UserID: 42})
+			},
+			want: "principal_type=session",
+		},
+		{
+			name: "partner",
+			assign: func(ctx context.Context) context.Context {
+				return apihttp.ContextWithPartnerPrincipal(ctx, apihttp.PartnerPrincipal{APIKeyID: 10})
+			},
+			want: "principal_type=partner",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var logOutput bytes.Buffer
+			logger := log.New(&logOutput, "", 0)
+			handler := apihttp.RequestLogger(logger)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				r = r.WithContext(tt.assign(r.Context()))
+				w.WriteHeader(http.StatusNoContent)
+			}))
+			req := httptest.NewRequest(http.MethodGet, "/logged", nil)
+			rec := httptest.NewRecorder()
+
+			handler.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusNoContent {
+				t.Fatalf("expected status %d, got %d", http.StatusNoContent, rec.Code)
+			}
+			if !strings.Contains(logOutput.String(), tt.want) {
+				t.Fatalf("expected log to contain %q, got %q", tt.want, logOutput.String())
+			}
+		})
+	}
+}
+
+func TestRequestLoggerRouterMountedPrincipalType(t *testing.T) {
+	t.Run("session", func(t *testing.T) {
+		logOutput := captureDefaultLogger(t)
+		router := newAuthenticatedTestRouter(t, fakeStore{
+			clinics: []store.ClinicDetail{{Clinic: store.Clinic{ID: "clinic-1", District: defaultTestDistrict}}},
+		})
+		req := newAuthenticatedRequest(t, http.MethodGet, "/v1/clinics", nil)
+		rec := httptest.NewRecorder()
+
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+		}
+		if !strings.Contains(logOutput.String(), "principal_type=session") {
+			t.Fatalf("expected authenticated session request log, got %q", logOutput.String())
+		}
+	})
+
+	t.Run("partner", func(t *testing.T) {
+		logOutput := captureDefaultLogger(t)
+		secret, _, err := auth.GenerateAPIKey("demo")
+		if err != nil {
+			t.Fatalf("GenerateAPIKey returned error: %v", err)
+		}
+		hash, err := auth.HashAPIKey(secret, "")
+		if err != nil {
+			t.Fatalf("HashAPIKey returned error: %v", err)
+		}
+		router := apihttp.NewRouter(fakeStore{
+			partnerAPIKey: validPartnerAPIKey(hash, []string{"clinics:read"}, nil),
+			clinics:       []store.ClinicDetail{{Clinic: store.Clinic{ID: "clinic-1", District: defaultTestDistrict}}},
+		})
+		req := httptest.NewRequest(http.MethodGet, "/v1/partner/clinics", nil)
+		req.Header.Set("Authorization", "Bearer "+secret)
+		rec := httptest.NewRecorder()
+
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+		}
+		if !strings.Contains(logOutput.String(), "principal_type=partner") {
+			t.Fatalf("expected authenticated partner request log, got %q", logOutput.String())
+		}
+	})
+}
+
+func TestRequestLoggerInvalidCredentialsRemainAnonymous(t *testing.T) {
+	t.Run("invalid cookie", func(t *testing.T) {
+		logOutput := captureDefaultLogger(t)
+		router := apihttp.NewRouter(fakeStore{})
+		req := httptest.NewRequest(http.MethodGet, "/v1/clinics", nil)
+		req.AddCookie(&http.Cookie{Name: "clinicpulse_session", Value: "not-a-valid-token"})
+		rec := httptest.NewRecorder()
+
+		router.ServeHTTP(rec, req)
+
+		assertGenericUnauthorized(t, rec)
+		if !strings.Contains(logOutput.String(), "principal_type=anonymous") {
+			t.Fatalf("expected invalid cookie to log anonymous, got %q", logOutput.String())
+		}
+		if strings.Contains(logOutput.String(), "principal_type=session") {
+			t.Fatalf("expected invalid cookie not to log session, got %q", logOutput.String())
+		}
+	})
+
+	t.Run("invalid bearer", func(t *testing.T) {
+		logOutput := captureDefaultLogger(t)
+		secret, _, err := auth.GenerateAPIKey("demo")
+		if err != nil {
+			t.Fatalf("GenerateAPIKey returned error: %v", err)
+		}
+		router := apihttp.NewRouter(fakeStore{})
+		req := httptest.NewRequest(http.MethodGet, "/v1/partner/clinics", nil)
+		req.Header.Set("Authorization", "Bearer "+secret)
+		rec := httptest.NewRecorder()
+
+		router.ServeHTTP(rec, req)
+
+		assertGenericUnauthorized(t, rec)
+		if !strings.Contains(logOutput.String(), "principal_type=anonymous") {
+			t.Fatalf("expected invalid bearer to log anonymous, got %q", logOutput.String())
+		}
+		if strings.Contains(logOutput.String(), "principal_type=partner") {
+			t.Fatalf("expected invalid bearer not to log partner, got %q", logOutput.String())
+		}
+	})
 }
 
 func TestListClinicsReturnsOK(t *testing.T) {
@@ -232,6 +535,997 @@ func TestPublicAlternativesWorksWithoutCookieAndSanitizesNestedClinics(t *testin
 	assertPublicSafeResponse(t, rec.Body.String())
 	if !strings.Contains(rec.Body.String(), `"matchedService":"Primary care"`) {
 		t.Fatalf("expected ranked public alternative response, got %q", rec.Body.String())
+	}
+}
+
+func TestPartnerStatusEndpointRequiresStatusScopeAndSanitizesResponse(t *testing.T) {
+	secret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey returned error: %v", err)
+	}
+	hash, err := auth.HashAPIKey(secret, "")
+	if err != nil {
+		t.Fatalf("HashAPIKey returned error: %v", err)
+	}
+	reporterName := "Nomsa Dlamini"
+	source := "field_worker"
+	now := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
+	router := apihttp.NewRouter(fakeStore{
+		partnerAPIKey: store.PartnerAPIKey{
+			ID: 10, Name: "Demo partner", KeyHash: hash,
+			Scopes:           []string{"status:read"},
+			AllowedDistricts: []string{defaultTestDistrict},
+		},
+		clinic: store.ClinicDetail{Clinic: store.Clinic{ID: "clinic-1", District: defaultTestDistrict}},
+		status: store.CurrentStatus{
+			ClinicID: "clinic-1", Status: "degraded", Freshness: "fresh",
+			ReporterName: &reporterName, Source: &source, UpdatedAt: now,
+		},
+	})
+	req := httptest.NewRequest(http.MethodGet, "/v1/partner/clinics/clinic-1/status", nil)
+	req.Header.Set("Authorization", "Bearer "+secret)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	assertPublicSafeResponse(t, rec.Body.String())
+	if strings.Contains(rec.Body.String(), "Nomsa") || strings.Contains(rec.Body.String(), "reporterName") {
+		t.Fatalf("expected partner response to hide reporter identity, got %s", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"sourceCategory":"field_worker"`) {
+		t.Fatalf("expected partner source category, got %s", rec.Body.String())
+	}
+}
+
+func TestPartnerEndpointRejectsMissingScope(t *testing.T) {
+	secret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey returned error: %v", err)
+	}
+	hash, err := auth.HashAPIKey(secret, "")
+	if err != nil {
+		t.Fatalf("HashAPIKey returned error: %v", err)
+	}
+	router := apihttp.NewRouter(fakeStore{
+		partnerAPIKey: store.PartnerAPIKey{ID: 10, Name: "Demo partner", KeyHash: hash, Scopes: []string{"clinics:read"}},
+	})
+	req := httptest.NewRequest(http.MethodGet, "/v1/partner/clinics/clinic-1/status", nil)
+	req.Header.Set("Authorization", "Bearer "+secret)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusForbidden, rec.Code, rec.Body.String())
+	}
+}
+
+func TestPartnerLatestExportSanitizesResponse(t *testing.T) {
+	secret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey returned error: %v", err)
+	}
+	hash, err := auth.HashAPIKey(secret, "")
+	if err != nil {
+		t.Fatalf("HashAPIKey returned error: %v", err)
+	}
+	userID := int64(42)
+	now := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
+	exportRun := store.PartnerExportRun{
+		ID:                20,
+		RequestedByUserID: &userID,
+		Format:            "json",
+		Scope:             map[string]any{"district": defaultTestDistrict, "secret": "raw-scope-secret"},
+		RecordCounts:      map[string]any{"clinics": 3},
+		Checksum:          "sha256:abc",
+		Payload: map[string]any{
+			"submittedByUserId": 42,
+			"reviewedByUserId":  43,
+			"rawSecret":         "export-payload-secret",
+		},
+		CreatedAt: now,
+	}
+	router := apihttp.NewRouter(fakeStore{
+		partnerAPIKey:    validPartnerAPIKey(hash, []string{"exports:read"}, nil),
+		partnerExportRun: exportRun,
+		partnerReadinessSnapshot: store.PartnerReadinessSnapshot{
+			ExportRuns: []store.PartnerExportRun{exportRun},
+		},
+	})
+	req := httptest.NewRequest(http.MethodGet, "/v1/partner/export/latest", nil)
+	req.Header.Set("Authorization", "Bearer "+secret)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	assertPartnerSafeReadinessResponse(t, rec.Body.String())
+	for _, forbidden := range []string{"requestedByUserId", "payload", "metadata", "submittedByUserId", "reviewedByUserId", "raw-scope-secret", "export-payload-secret"} {
+		if strings.Contains(rec.Body.String(), forbidden) {
+			t.Fatalf("expected partner export response to hide %q, got %s", forbidden, rec.Body.String())
+		}
+	}
+	if !strings.Contains(rec.Body.String(), `"recordCounts":{"clinics":3}`) {
+		t.Fatalf("expected record counts in partner export response, got %s", rec.Body.String())
+	}
+}
+
+func TestPartnerLatestExportReturnsLatestAccessibleScopedRun(t *testing.T) {
+	secret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey returned error: %v", err)
+	}
+	hash, err := auth.HashAPIKey(secret, "")
+	if err != nil {
+		t.Fatalf("HashAPIKey returned error: %v", err)
+	}
+	now := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
+	inaccessibleLatest := store.PartnerExportRun{
+		ID:           30,
+		Format:       "json",
+		Scope:        map[string]any{"district": "Johannesburg"},
+		RecordCounts: map[string]any{"clinics": 9},
+		Checksum:     "sha256:other-district",
+		CreatedAt:    now.Add(2 * time.Minute),
+	}
+	allDistrictLatest := store.PartnerExportRun{
+		ID:           29,
+		Format:       "json",
+		Scope:        map[string]any{},
+		RecordCounts: map[string]any{"clinics": 20},
+		Checksum:     "sha256:all-district",
+		CreatedAt:    now.Add(time.Minute),
+	}
+	accessibleRun := store.PartnerExportRun{
+		ID:           20,
+		Format:       "json",
+		Scope:        map[string]any{"district": defaultTestDistrict},
+		RecordCounts: map[string]any{"clinics": 3},
+		Checksum:     "sha256:allowed-district",
+		CreatedAt:    now,
+	}
+	router := apihttp.NewRouter(fakeStore{
+		partnerAPIKey:    validPartnerAPIKey(hash, []string{"exports:read"}, []string{defaultTestDistrict}),
+		partnerExportRun: inaccessibleLatest,
+		partnerReadinessSnapshot: store.PartnerReadinessSnapshot{
+			ExportRuns: []store.PartnerExportRun{inaccessibleLatest, allDistrictLatest, accessibleRun},
+		},
+	})
+	req := httptest.NewRequest(http.MethodGet, "/v1/partner/export/latest", nil)
+	req.Header.Set("Authorization", "Bearer "+secret)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	var got struct {
+		ID       int64  `json:"id"`
+		Checksum string `json:"checksum"`
+	}
+	decodeJSON(t, rec, &got)
+	if got.ID != accessibleRun.ID || got.Checksum != accessibleRun.Checksum {
+		t.Fatalf("expected latest accessible export %#v, got %#v", accessibleRun, got)
+	}
+}
+
+func TestPartnerLatestExportDeniesAllDistrictRunForRestrictedKey(t *testing.T) {
+	secret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey returned error: %v", err)
+	}
+	hash, err := auth.HashAPIKey(secret, "")
+	if err != nil {
+		t.Fatalf("HashAPIKey returned error: %v", err)
+	}
+	now := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
+	allDistrictLatest := store.PartnerExportRun{
+		ID:           31,
+		Format:       "json",
+		Scope:        map[string]any{},
+		RecordCounts: map[string]any{"clinics": 20},
+		Checksum:     "sha256:all-district",
+		CreatedAt:    now,
+	}
+	router := apihttp.NewRouter(fakeStore{
+		partnerAPIKey:    validPartnerAPIKey(hash, []string{"exports:read"}, []string{defaultTestDistrict}),
+		partnerExportRun: allDistrictLatest,
+		partnerReadinessSnapshot: store.PartnerReadinessSnapshot{
+			ExportRuns: []store.PartnerExportRun{allDistrictLatest},
+		},
+	})
+	req := httptest.NewRequest(http.MethodGet, "/v1/partner/export/latest", nil)
+	req.Header.Set("Authorization", "Bearer "+secret)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusNotFound, rec.Code, rec.Body.String())
+	}
+}
+
+func TestPartnerIntegrationStatusSanitizesRecomputedResponse(t *testing.T) {
+	secret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey returned error: %v", err)
+	}
+	hash, err := auth.HashAPIKey(secret, "")
+	if err != nil {
+		t.Fatalf("HashAPIKey returned error: %v", err)
+	}
+	now := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name  string
+		store fakeStore
+		want  string
+	}{
+		{
+			name: "sanitized checks",
+			store: fakeStore{
+				partnerAPIKey: validPartnerAPIKey(hash, []string{"status:read"}, nil),
+				integrationStatusChecks: []store.IntegrationStatusCheck{{
+					ID:        30,
+					CheckName: "webhook_delivery",
+					Status:    "passing",
+					Summary:   "Webhooks are healthy",
+					Metadata: map[string]any{
+						"secretToken":       "integration-secret-token",
+						"submittedByUserId": 42,
+						"reviewedByUserId":  43,
+					},
+					CheckedAt: now,
+				}},
+			},
+			want: `"checkName":"api_key_active"`,
+		},
+		{
+			name: "nil checks",
+			store: fakeStore{
+				partnerAPIKey: validPartnerAPIKey(hash, []string{"status:read"}, nil),
+			},
+			want: `"checkName":"api_key_active"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := apihttp.NewRouter(tt.store)
+			req := httptest.NewRequest(http.MethodGet, "/v1/partner/integration-status", nil)
+			req.Header.Set("Authorization", "Bearer "+secret)
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+			}
+			assertPartnerSafeReadinessResponse(t, rec.Body.String())
+			for _, forbidden := range []string{"metadata", "submittedByUserId", "reviewedByUserId", "integration-secret-token"} {
+				if strings.Contains(rec.Body.String(), forbidden) {
+					t.Fatalf("expected partner integration response to hide %q, got %s", forbidden, rec.Body.String())
+				}
+			}
+			if !strings.Contains(rec.Body.String(), tt.want) {
+				t.Fatalf("expected %q in partner integration response, got %s", tt.want, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestPartnerIntegrationStatusRecomputesChecksBeforeResponding(t *testing.T) {
+	secret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey returned error: %v", err)
+	}
+	hash, err := auth.HashAPIKey(secret, "")
+	if err != nil {
+		t.Fatalf("HashAPIKey returned error: %v", err)
+	}
+	now := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
+	upsertInputs := []store.UpsertIntegrationStatusCheckInput{}
+	upsertedChecks := []store.IntegrationStatusCheck{}
+	router := apihttp.NewRouter(fakeStore{
+		partnerAPIKey: validPartnerAPIKey(hash, []string{"status:read"}, nil),
+		partnerReadinessSnapshot: store.PartnerReadinessSnapshot{
+			APIKeys: []store.PartnerAPIKey{validPartnerAPIKey(hash, []string{"status:read"}, nil)},
+			ExportRuns: []store.PartnerExportRun{{
+				ID:        1,
+				Format:    "json",
+				Scope:     map[string]any{"district": defaultTestDistrict},
+				Checksum:  "sha256:export",
+				CreatedAt: now,
+			}},
+			WebhookEvents: []store.PartnerWebhookEvent{{
+				ID:             1,
+				SubscriptionID: 1,
+				EventType:      "clinicpulse.webhook_test",
+				Status:         "preview_only",
+				CreatedAt:      now,
+			}},
+		},
+		currentStatuses: []store.CurrentStatus{{
+			ClinicID:  "clinic-1",
+			Status:    "operational",
+			Freshness: "fresh",
+			UpdatedAt: now,
+		}},
+		syncSummary:                        &store.SyncSummary{OfflineReportsReceived: 1},
+		upsertIntegrationStatusCheckInputs: &upsertInputs,
+		upsertIntegrationStatusChecks:      &upsertedChecks,
+	})
+	req := httptest.NewRequest(http.MethodGet, "/v1/partner/integration-status", nil)
+	req.Header.Set("Authorization", "Bearer "+secret)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	expectedNames := []string{
+		"api_key_active",
+		"export_generated",
+		"webhook_test_recorded",
+		"offline_sync_health_available",
+		"stale_status_reconciliation_available",
+		"deployment_env_configured",
+	}
+	if len(upsertInputs) != len(expectedNames) {
+		t.Fatalf("expected %d upserted checks, got %#v", len(expectedNames), upsertInputs)
+	}
+	for _, name := range expectedNames {
+		if !strings.Contains(rec.Body.String(), `"checkName":"`+name+`"`) {
+			t.Fatalf("expected response to include recomputed check %q, got %s", name, rec.Body.String())
+		}
+	}
+}
+
+func TestAdminCanCreateListAndRevokePartnerAPIKey(t *testing.T) {
+	orgID := int64(77)
+	apiKeys := []store.PartnerAPIKey{}
+	var createInput store.CreatePartnerAPIKeyInput
+	var revokedKeyID int64
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+		partnerAPIKeys:           &apiKeys,
+		createPartnerAPIKeyInput: &createInput,
+		revokedPartnerAPIKeyID:   &revokedKeyID,
+		listPartnerAPIKeysOrgID:  new(int64),
+		revokePartnerAPIKeyCalls: new(int),
+	}), apihttp.WithAPIKeyPepper("test-pepper"))
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/api-keys", strings.NewReader(`{
+		"name":"Demo partner",
+		"environment":"demo",
+		"scopes":["clinics:read","exports:read"],
+		"allowedDistricts":["Tshwane North Demo District"]
+	}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusCreated, rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"secret":"cp_demo_`) {
+		t.Fatalf("expected one-time demo secret in create response, got %s", rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), "keyHash") {
+		t.Fatalf("expected create response not to expose key hash, got %s", rec.Body.String())
+	}
+	var created struct {
+		APIKey store.PartnerAPIKey `json:"apiKey"`
+		Secret string              `json:"secret"`
+	}
+	decodeJSON(t, rec, &created)
+	if created.APIKey.ID != 1 || created.APIKey.KeyPrefix == "" {
+		t.Fatalf("unexpected created API key response: %#v", created.APIKey)
+	}
+	if createInput.OrganisationID == nil || *createInput.OrganisationID != orgID {
+		t.Fatalf("expected API key to be scoped to org %d, got %#v", orgID, createInput.OrganisationID)
+	}
+	wantHash, err := auth.HashAPIKey(created.Secret, "test-pepper")
+	if err != nil {
+		t.Fatalf("HashAPIKey returned error: %v", err)
+	}
+	if createInput.KeyHash != wantHash || createInput.KeyHash == created.Secret {
+		t.Fatalf("expected stored API key hash to use pepper and not store raw secret, got input %#v", createInput)
+	}
+
+	req = newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/api-keys", nil)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), `"secret"`) || strings.Contains(rec.Body.String(), created.Secret) || strings.Contains(rec.Body.String(), "keyHash") {
+		t.Fatalf("expected list response not to expose raw or hashed secrets, got %s", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"keyPrefix":"cp_demo_`) {
+		t.Fatalf("expected list response to include key prefix, got %s", rec.Body.String())
+	}
+
+	req = newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/api-keys/1/revoke", nil)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusNoContent, rec.Code, rec.Body.String())
+	}
+	if revokedKeyID != 1 {
+		t.Fatalf("expected API key 1 to be revoked, got %d", revokedKeyID)
+	}
+}
+
+func TestAdminCreatePartnerAPIKeyValidatesNameAndExpiryBeforeStoreCall(t *testing.T) {
+	orgID := int64(77)
+	tests := []struct {
+		name string
+		body string
+		want string
+	}{
+		{
+			name: "missing name",
+			body: `{"environment":"demo","scopes":["clinics:read"]}`,
+			want: "name",
+		},
+		{
+			name: "blank name",
+			body: `{"name":"   ","environment":"demo","scopes":["clinics:read"]}`,
+			want: "name",
+		},
+		{
+			name: "already expired",
+			body: `{"name":"Demo partner","environment":"demo","scopes":["clinics:read"],"expiresAt":"2020-01-01T00:00:00Z"}`,
+			want: "expiresAt",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			createCalls := 0
+			router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+				createPartnerAPIKeyCalls: &createCalls,
+			}))
+			req := newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/api-keys", strings.NewReader(tt.body))
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("expected status %d, got %d with body %s", http.StatusBadRequest, rec.Code, rec.Body.String())
+			}
+			if createCalls != 0 {
+				t.Fatalf("expected CreatePartnerAPIKey not to be called, got %d calls", createCalls)
+			}
+			if !strings.Contains(rec.Body.String(), `"code":"validation_error"`) || !strings.Contains(rec.Body.String(), tt.want) {
+				t.Fatalf("expected validation error mentioning %q, got %s", tt.want, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestAdminPartnerReadinessReturnsSnapshot(t *testing.T) {
+	orgID := int64(77)
+	readinessOrgID := int64(0)
+	now := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+		partnerReadinessOrgID: &readinessOrgID,
+		partnerReadinessSnapshot: store.PartnerReadinessSnapshot{
+			APIKeys: []store.PartnerAPIKey{{
+				ID:             1,
+				OrganisationID: &orgID,
+				Name:           "Demo partner",
+				Environment:    "demo",
+				KeyPrefix:      "cp_demo_abcd1234",
+				KeyHash:        "raw-key-hash",
+				Scopes:         []string{"clinics:read"},
+				CreatedAt:      now,
+				UpdatedAt:      now,
+			}},
+			IntegrationChecks: []store.IntegrationStatusCheck{{
+				ID:             30,
+				OrganisationID: &orgID,
+				CheckName:      "webhook_delivery",
+				Status:         "passing",
+				Summary:        "Webhooks are healthy",
+				Metadata:       map[string]any{"internal": "kept for admins"},
+				CheckedAt:      now,
+			}},
+		},
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/partner-readiness", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if readinessOrgID != orgID {
+		t.Fatalf("expected readiness snapshot scoped to org %d, got %d", orgID, readinessOrgID)
+	}
+	if !strings.Contains(rec.Body.String(), `"apiKeys"`) || !strings.Contains(rec.Body.String(), `"integrationChecks"`) {
+		t.Fatalf("expected readiness response to include API keys and integration checks, got %s", rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), "keyHash") || strings.Contains(rec.Body.String(), "raw-key-hash") {
+		t.Fatalf("expected readiness response not to expose API key hashes, got %s", rec.Body.String())
+	}
+}
+
+func TestAdminPartnerReadinessRecomputesChecksBeforeReturningSnapshot(t *testing.T) {
+	orgID := int64(77)
+	now := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
+	upsertInputs := []store.UpsertIntegrationStatusCheckInput{}
+	upsertedChecks := []store.IntegrationStatusCheck{}
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+		partnerReadinessSnapshot: store.PartnerReadinessSnapshot{
+			APIKeys: []store.PartnerAPIKey{{
+				ID:             1,
+				OrganisationID: &orgID,
+				Name:           "Demo partner",
+				Environment:    "demo",
+				KeyPrefix:      "cp_demo_abcd1234",
+				Scopes:         []string{"status:read", "exports:read"},
+				CreatedAt:      now,
+				UpdatedAt:      now,
+			}},
+			ExportRuns: []store.PartnerExportRun{{
+				ID:             1,
+				OrganisationID: &orgID,
+				Format:         "json",
+				Scope:          map[string]any{"district": defaultTestDistrict},
+				Checksum:       "sha256:export",
+				CreatedAt:      now,
+			}},
+			WebhookEvents: []store.PartnerWebhookEvent{{
+				ID:             1,
+				SubscriptionID: 1,
+				EventType:      "clinicpulse.webhook_test",
+				Status:         "preview_only",
+				CreatedAt:      now,
+			}},
+		},
+		currentStatuses: []store.CurrentStatus{{
+			ClinicID:  "clinic-1",
+			Status:    "operational",
+			Freshness: "fresh",
+			UpdatedAt: now,
+		}},
+		syncSummary:                        &store.SyncSummary{OfflineReportsReceived: 1},
+		upsertIntegrationStatusCheckInputs: &upsertInputs,
+		upsertIntegrationStatusChecks:      &upsertedChecks,
+	}), apihttp.WithAPIKeyPepper("test-pepper"))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/partner-readiness", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if len(upsertInputs) != 6 {
+		t.Fatalf("expected readiness read to upsert 6 checks, got %#v", upsertInputs)
+	}
+	if !strings.Contains(rec.Body.String(), `"integrationChecks":[`) || !strings.Contains(rec.Body.String(), `"checkName":"api_key_active"`) {
+		t.Fatalf("expected readiness response to include recomputed checks, got %s", rec.Body.String())
+	}
+	for _, input := range upsertInputs {
+		if input.OrganisationID == nil || *input.OrganisationID != orgID {
+			t.Fatalf("expected upserted checks scoped to org %d, got %#v", orgID, input)
+		}
+	}
+}
+
+func TestAdminPartnerReadinessRequiresUsefulPartnerAPIScopes(t *testing.T) {
+	orgID := int64(77)
+	now := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
+	upsertInputs := []store.UpsertIntegrationStatusCheckInput{}
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+		partnerReadinessSnapshot: store.PartnerReadinessSnapshot{
+			APIKeys: []store.PartnerAPIKey{{
+				ID:          1,
+				Name:        "Incomplete partner key",
+				Environment: "demo",
+				KeyPrefix:   "cp_demo_incomplete",
+				Scopes:      []string{"clinics:read"},
+				CreatedAt:   now,
+				UpdatedAt:   now,
+			}},
+			ExportRuns: []store.PartnerExportRun{{
+				ID:        1,
+				Format:    "json",
+				Scope:     map[string]any{"district": defaultTestDistrict},
+				Checksum:  "sha256:export",
+				CreatedAt: now,
+			}},
+			WebhookEvents: []store.PartnerWebhookEvent{{
+				ID:             1,
+				SubscriptionID: 1,
+				EventType:      "clinicpulse.webhook_test",
+				Status:         "preview_only",
+				CreatedAt:      now,
+			}},
+		},
+		currentStatuses:                    []store.CurrentStatus{{ClinicID: "clinic-1", Status: "operational", Freshness: "fresh", UpdatedAt: now}},
+		syncSummary:                        &store.SyncSummary{OfflineReportsReceived: 1},
+		upsertIntegrationStatusCheckInputs: &upsertInputs,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/partner-readiness", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	for _, input := range upsertInputs {
+		if input.CheckName == "api_key_active" {
+			if input.Status != "attention" {
+				t.Fatalf("expected incomplete API key scopes to require attention, got %#v", input)
+			}
+			return
+		}
+	}
+	t.Fatalf("expected api_key_active check to be recomputed, got %#v", upsertInputs)
+}
+
+func TestAdminPartnerWebhookCreateListAndTestDoesNotExposeSecret(t *testing.T) {
+	orgID := int64(77)
+	subscriptions := []store.PartnerWebhookSubscription{}
+	events := []store.PartnerWebhookEvent{}
+	var createInput store.CreatePartnerWebhookSubscriptionInput
+	var eventInput store.CreatePartnerWebhookEventInput
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+		partnerWebhookSubscriptions:           &subscriptions,
+		partnerWebhookEvents:                  &events,
+		createPartnerWebhookSubscriptionInput: &createInput,
+		createPartnerWebhookEventInput:        &eventInput,
+		listPartnerWebhookSubscriptionsOrgID:  new(int64),
+		listPartnerWebhookEventsOrgID:         new(int64),
+	}))
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/webhooks", strings.NewReader(`{
+		"name":"Status webhook",
+		"targetUrl":"https://partner.example.test/webhooks/clinicpulse",
+		"eventTypes":["clinic.status_changed"]
+	}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusCreated, rec.Code, rec.Body.String())
+	}
+	var created struct {
+		Subscription store.PartnerWebhookSubscription `json:"subscription"`
+		Secret       string                           `json:"secret"`
+	}
+	decodeJSON(t, rec, &created)
+	if created.Secret == "" || !strings.HasPrefix(created.Secret, "cp_whsec_") {
+		t.Fatalf("expected one-time webhook secret, got %#v", created)
+	}
+	if createInput.SecretHash == "" || createInput.SecretHash == created.Secret {
+		t.Fatalf("expected webhook secret hash to be stored without the raw secret, got %#v", createInput)
+	}
+	if strings.Contains(rec.Body.String(), "secretHash") {
+		t.Fatalf("expected create response not to expose secret hash, got %s", rec.Body.String())
+	}
+
+	req = newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/webhooks", nil)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), created.Secret) || strings.Contains(rec.Body.String(), `"secret"`) || strings.Contains(rec.Body.String(), "secretHash") {
+		t.Fatalf("expected webhook list not to expose secrets, got %s", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"subscriptions"`) || !strings.Contains(rec.Body.String(), `"events"`) {
+		t.Fatalf("expected webhook list response shape, got %s", rec.Body.String())
+	}
+
+	req = newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/webhooks/1/test", nil)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusCreated, rec.Code, rec.Body.String())
+	}
+	if eventInput.SubscriptionID != 1 || eventInput.Status != "preview_only" || eventInput.EventType != "clinicpulse.webhook_test" {
+		t.Fatalf("unexpected webhook test event input: %#v", eventInput)
+	}
+	if strings.Contains(rec.Body.String(), created.Secret) || strings.Contains(rec.Body.String(), `"secret"`) {
+		t.Fatalf("expected webhook test response not to expose secret, got %s", rec.Body.String())
+	}
+}
+
+func TestAdminPartnerWebhookRejectsUnsafeTargetURLs(t *testing.T) {
+	orgID := int64(77)
+	tests := []struct {
+		name      string
+		targetURL string
+	}{
+		{name: "http URL", targetURL: "http://partner.example.test/webhooks/clinicpulse"},
+		{name: "localhost URL", targetURL: "https://localhost/webhooks/clinicpulse"},
+		{name: "private IP URL", targetURL: "https://10.0.0.5/webhooks/clinicpulse"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var createInput store.CreatePartnerWebhookSubscriptionInput
+			router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+				createPartnerWebhookSubscriptionInput: &createInput,
+			}))
+			req := newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/webhooks", strings.NewReader(`{
+				"name":"Status webhook",
+				"targetUrl":"`+tt.targetURL+`",
+				"eventTypes":["clinic.status_changed"]
+			}`))
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("expected status %d, got %d with body %s", http.StatusBadRequest, rec.Code, rec.Body.String())
+			}
+			if createInput.TargetURL != "" {
+				t.Fatalf("expected unsafe webhook target not to be persisted, got %#v", createInput)
+			}
+		})
+	}
+}
+
+func TestAdminPartnerWebhookTestDeliveryEnabledIsExplicitlyNotImplemented(t *testing.T) {
+	orgID := int64(77)
+	subscriptions := []store.PartnerWebhookSubscription{{
+		ID:             5,
+		OrganisationID: &orgID,
+		Name:           "Status webhook",
+		TargetURL:      "https://partner.example.test/webhooks/clinicpulse",
+		EventTypes:     []string{"clinic.status_changed"},
+		Status:         "active",
+	}}
+	events := []store.PartnerWebhookEvent{}
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+		partnerWebhookSubscriptions: &subscriptions,
+		partnerWebhookEvents:        &events,
+	}), apihttp.WithWebhookDeliveryEnabled(true))
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/webhooks/5/test", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotImplemented {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusNotImplemented, rec.Code, rec.Body.String())
+	}
+	if len(events) != 0 {
+		t.Fatalf("expected no fake delivery event when delivery is enabled but not implemented, got %#v", events)
+	}
+	if !strings.Contains(rec.Body.String(), "not_implemented") {
+		t.Fatalf("expected explicit not implemented response, got %s", rec.Body.String())
+	}
+}
+
+func TestAdminPartnerWebhookTestDisabledSubscriptionDoesNotCreatePreviewEvent(t *testing.T) {
+	orgID := int64(77)
+	subscriptions := []store.PartnerWebhookSubscription{{
+		ID:             5,
+		OrganisationID: &orgID,
+		Name:           "Status webhook",
+		TargetURL:      "https://partner.example.test/webhooks/clinicpulse",
+		EventTypes:     []string{"clinic.status_changed"},
+		Status:         "disabled",
+	}}
+	events := []store.PartnerWebhookEvent{}
+	createEventCalls := 0
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+		partnerWebhookSubscriptions:    &subscriptions,
+		partnerWebhookEvents:           &events,
+		createPartnerWebhookEventCalls: &createEventCalls,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/webhooks/5/test", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusConflict, rec.Code, rec.Body.String())
+	}
+	if createEventCalls != 0 || len(events) != 0 {
+		t.Fatalf("expected no webhook test event to be created, got calls=%d events=%#v", createEventCalls, events)
+	}
+	if !strings.Contains(rec.Body.String(), `"code":"conflict"`) || !strings.Contains(rec.Body.String(), "disabled") {
+		t.Fatalf("expected conflict response mentioning disabled subscription, got %s", rec.Body.String())
+	}
+}
+
+func TestAdminPartnerExportCreateAndGetUsesPayloadAndScopedStore(t *testing.T) {
+	orgID := int64(77)
+	exports := []store.PartnerExportRun{}
+	var createInput store.CreatePartnerExportRunInput
+	var getOrgID int64
+	var getExportID int64
+	now := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+		clinics: []store.ClinicDetail{{
+			Clinic: store.Clinic{
+				ID:       "clinic-1",
+				Name:     "Central Clinic",
+				District: defaultTestDistrict,
+			},
+			CurrentStatus: &store.CurrentStatus{
+				ClinicID:  "clinic-1",
+				Status:    "operational",
+				Freshness: "fresh",
+				UpdatedAt: now,
+			},
+		}},
+		integrationStatusChecks: []store.IntegrationStatusCheck{{
+			CheckName: "api_key_rotation",
+			Status:    "passing",
+			Summary:   "Keys are rotated",
+			CheckedAt: now,
+		}},
+		partnerExportRuns:           &exports,
+		createPartnerExportRunInput: &createInput,
+		getPartnerExportRunOrgID:    &getOrgID,
+		getPartnerExportRunID:       &getExportID,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/exports", strings.NewReader(`{
+		"format":"json",
+		"scope":{"district":"Tshwane North Demo District"}
+	}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusCreated, rec.Code, rec.Body.String())
+	}
+	if createInput.OrganisationID == nil || *createInput.OrganisationID != orgID {
+		t.Fatalf("expected export run scoped to org %d, got %#v", orgID, createInput.OrganisationID)
+	}
+	if createInput.Payload == nil || createInput.Checksum == "" || createInput.RecordCounts["clinics"] != 1 {
+		t.Fatalf("expected backend export payload, checksum, and counts, got %#v", createInput)
+	}
+	if strings.Contains(rec.Body.String(), "reporterName") {
+		t.Fatalf("expected export response payload to be partner-safe, got %s", rec.Body.String())
+	}
+
+	req = newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/exports/1", nil)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if getOrgID != orgID || getExportID != 1 {
+		t.Fatalf("expected scoped export lookup org=%d id=1, got org=%d id=%d", orgID, getOrgID, getExportID)
+	}
+	if !strings.Contains(rec.Body.String(), `"payload"`) || !strings.Contains(rec.Body.String(), `"checksum"`) {
+		t.Fatalf("expected export lookup to return stored run, got %s", rec.Body.String())
+	}
+}
+
+func TestDistrictManagerCannotReadOrMutatePartnerResources(t *testing.T) {
+	now := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
+	router := newAuthenticatedTestRouter(t, fakeStore{
+		partnerReadinessSnapshot: store.PartnerReadinessSnapshot{
+			IntegrationChecks: []store.IntegrationStatusCheck{{
+				CheckName: "readiness",
+				Status:    "passing",
+				Summary:   "Ready",
+				CheckedAt: now,
+			}},
+		},
+	})
+	readReq := newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/partner-readiness", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, readReq)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected district manager readiness status %d, got %d with body %s", http.StatusForbidden, rec.Code, rec.Body.String())
+	}
+
+	tests := []struct {
+		method string
+		path   string
+		body   string
+	}{
+		{method: http.MethodPost, path: "/v1/admin/api-keys", body: `{"name":"Demo","environment":"demo"}`},
+		{method: http.MethodGet, path: "/v1/admin/api-keys"},
+		{method: http.MethodPost, path: "/v1/admin/webhooks", body: `{"name":"Webhook","targetUrl":"https://example.test","eventTypes":[]}`},
+		{method: http.MethodGet, path: "/v1/admin/webhooks"},
+		{method: http.MethodPost, path: "/v1/admin/exports", body: `{"format":"json","scope":{}}`},
+		{method: http.MethodGet, path: "/v1/admin/exports/1"},
+	}
+	for _, tt := range tests {
+		req := newAuthenticatedRequest(t, tt.method, tt.path, strings.NewReader(tt.body))
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("%s %s: expected status %d, got %d with body %s", tt.method, tt.path, http.StatusForbidden, rec.Code, rec.Body.String())
+		}
+	}
+}
+
+func TestAdminPartnerInvalidIDsAndBodiesReturnExpectedStatus(t *testing.T) {
+	orgID := int64(77)
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+		getPartnerExportRunErr: pgx.ErrNoRows,
+	}))
+
+	tests := []struct {
+		name   string
+		method string
+		path   string
+		body   string
+		want   int
+	}{
+		{name: "invalid api key json", method: http.MethodPost, path: "/v1/admin/api-keys", body: `{"name":`, want: http.StatusBadRequest},
+		{name: "invalid api key environment", method: http.MethodPost, path: "/v1/admin/api-keys", body: `{"name":"Demo","environment":"sandbox"}`, want: http.StatusBadRequest},
+		{name: "invalid webhook json", method: http.MethodPost, path: "/v1/admin/webhooks", body: `{"name":`, want: http.StatusBadRequest},
+		{name: "invalid export format", method: http.MethodPost, path: "/v1/admin/exports", body: `{"format":"xml","scope":{}}`, want: http.StatusBadRequest},
+		{name: "invalid revoke id", method: http.MethodPost, path: "/v1/admin/api-keys/not-a-number/revoke", want: http.StatusNotFound},
+		{name: "invalid webhook test id", method: http.MethodPost, path: "/v1/admin/webhooks/not-a-number/test", want: http.StatusNotFound},
+		{name: "invalid export id", method: http.MethodGet, path: "/v1/admin/exports/not-a-number", want: http.StatusNotFound},
+		{name: "missing export", method: http.MethodGet, path: "/v1/admin/exports/404", want: http.StatusNotFound},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := newAuthenticatedRequest(t, tt.method, tt.path, strings.NewReader(tt.body))
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != tt.want {
+				t.Fatalf("expected status %d, got %d with body %s", tt.want, rec.Code, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestPartnerAlternativesFiltersCandidatesToAllowedDistricts(t *testing.T) {
+	secret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey returned error: %v", err)
+	}
+	hash, err := auth.HashAPIKey(secret, "")
+	if err != nil {
+		t.Fatalf("HashAPIKey returned error: %v", err)
+	}
+	source := clinicDetail("clinic-source", "Source Clinic", -25.7400, 28.1300, "non_functional", "fresh", "Primary care")
+	inScope := clinicDetail("clinic-in-scope", "In Scope Clinic", -25.7410, 28.1310, "operational", "fresh", "Primary care")
+	outOfScope := clinicDetail("clinic-out-of-scope", "Out Of Scope Clinic", -25.7420, 28.1320, "operational", "fresh", "Primary care")
+	outOfScope.Clinic.District = "Johannesburg"
+	router := apihttp.NewRouter(fakeStore{
+		partnerAPIKey: validPartnerAPIKey(hash, []string{"alternatives:read"}, []string{defaultTestDistrict}),
+		clinic:        source,
+		clinics:       []store.ClinicDetail{source, inScope, outOfScope},
+	})
+	req := httptest.NewRequest(http.MethodGet, "/v1/partner/alternatives?clinicId=clinic-source&service=Primary%20care", nil)
+	req.Header.Set("Authorization", "Bearer "+secret)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	assertPublicSafeResponse(t, rec.Body.String())
+	if !strings.Contains(rec.Body.String(), `"id":"clinic-in-scope"`) {
+		t.Fatalf("expected in-scope alternative, got %s", rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), "clinic-out-of-scope") {
+		t.Fatalf("expected out-of-scope candidate to be filtered, got %s", rec.Body.String())
 	}
 }
 
@@ -2473,71 +3767,116 @@ func TestLogoutClearCookieSecureBehaviorMatchesRequest(t *testing.T) {
 }
 
 type fakeStore struct {
-	clinics                     []store.ClinicDetail
-	clinic                      store.ClinicDetail
-	status                      store.CurrentStatus
-	reports                     []store.Report
-	pendingReports              []store.Report
-	auditEvents                 []store.AuditEvent
-	currentStatuses             []store.CurrentStatus
-	createReport                store.Report
-	createStatus                store.CurrentStatus
-	createAuditEvent            store.AuditEvent
-	reviewReport                store.Report
-	reviewStatus                *store.CurrentStatus
-	user                        store.User
-	createSession               store.Session
-	createSessionAudit          store.AuditEvent
-	externalReport              store.Report
-	pendingPayloadReport        store.Report
-	syncAttempt                 store.ReportSyncAttempt
-	session                     store.Session
-	sessionUser                 store.User
-	memberships                 []store.OrganisationMembership
-	syncSummary                 *store.SyncSummary
-	createInput                 *store.CreateReportInput
-	reviewInput                 *store.ReviewReportInput
-	syncAttemptInput            *store.CreateReportSyncAttemptInput
-	syncAttemptInputs           *[]store.CreateReportSyncAttemptInput
-	updateFreshnessInput        *store.CreateAuditEventInput
-	updateFreshnessCalled       *bool
-	pendingScope                *store.ReportReviewScope
-	currentStatusScope          *store.ReportReviewScope
-	syncSummaryScope            *store.ReportReviewScope
-	summarySince                *time.Time
-	getUserEmail                *string
-	createSessionInput          *store.CreateSessionInput
-	sessionAuditInput           *store.CreateSessionWithAuditInput
-	auditInput                  *store.CreateAuditEventInput
-	getSessionTokenHash         *string
-	revokedTokenHash            *string
-	createCalls                 *int
-	createSessionCalls          *int
-	createSessionWithAuditCalls *int
-	auditCalls                  *int
-	getSessionCalls             *int
-	revokeCalls                 *int
-	listErr                     error
-	getClinicErr                error
-	statusErr                   error
-	reportsErr                  error
-	pendingReportsErr           error
-	auditEventsErr              error
-	currentStatusesErr          error
-	createErr                   error
-	updateFreshnessErr          error
-	reviewErr                   error
-	getUserErr                  error
-	createSessionErr            error
-	createSessionWithAuditErr   error
-	auditErr                    error
-	externalReportErr           error
-	pendingPayloadErr           error
-	syncAttemptErr              error
-	syncSummaryErr              error
-	getSessionErr               error
-	revokeErr                   error
-	membershipsErr              error
+	clinics                               []store.ClinicDetail
+	clinic                                store.ClinicDetail
+	status                                store.CurrentStatus
+	reports                               []store.Report
+	pendingReports                        []store.Report
+	auditEvents                           []store.AuditEvent
+	currentStatuses                       []store.CurrentStatus
+	createReport                          store.Report
+	createStatus                          store.CurrentStatus
+	createAuditEvent                      store.AuditEvent
+	reviewReport                          store.Report
+	reviewStatus                          *store.CurrentStatus
+	user                                  store.User
+	createSession                         store.Session
+	createSessionAudit                    store.AuditEvent
+	externalReport                        store.Report
+	pendingPayloadReport                  store.Report
+	syncAttempt                           store.ReportSyncAttempt
+	session                               store.Session
+	sessionUser                           store.User
+	memberships                           []store.OrganisationMembership
+	syncSummary                           *store.SyncSummary
+	partnerAPIKey                         store.PartnerAPIKey
+	partnerAPIKeys                        *[]store.PartnerAPIKey
+	partnerWebhookSubscriptions           *[]store.PartnerWebhookSubscription
+	partnerWebhookEvents                  *[]store.PartnerWebhookEvent
+	partnerExportRuns                     *[]store.PartnerExportRun
+	partnerExportRun                      store.PartnerExportRun
+	partnerReadinessSnapshot              store.PartnerReadinessSnapshot
+	integrationStatusChecks               []store.IntegrationStatusCheck
+	upsertIntegrationStatusCheckInputs    *[]store.UpsertIntegrationStatusCheckInput
+	upsertIntegrationStatusChecks         *[]store.IntegrationStatusCheck
+	createInput                           *store.CreateReportInput
+	createPartnerAPIKeyInput              *store.CreatePartnerAPIKeyInput
+	createPartnerWebhookSubscriptionInput *store.CreatePartnerWebhookSubscriptionInput
+	createPartnerWebhookEventInput        *store.CreatePartnerWebhookEventInput
+	createPartnerExportRunInput           *store.CreatePartnerExportRunInput
+	reviewInput                           *store.ReviewReportInput
+	syncAttemptInput                      *store.CreateReportSyncAttemptInput
+	syncAttemptInputs                     *[]store.CreateReportSyncAttemptInput
+	updateFreshnessInput                  *store.CreateAuditEventInput
+	updateFreshnessCalled                 *bool
+	listPartnerAPIKeysOrgID               *int64
+	listPartnerWebhookSubscriptionsOrgID  *int64
+	listPartnerWebhookEventsOrgID         *int64
+	partnerReadinessOrgID                 *int64
+	getPartnerExportRunOrgID              *int64
+	getPartnerExportRunID                 *int64
+	revokedPartnerAPIKeyID                *int64
+	pendingScope                          *store.ReportReviewScope
+	currentStatusScope                    *store.ReportReviewScope
+	syncSummaryScope                      *store.ReportReviewScope
+	summarySince                          *time.Time
+	getUserEmail                          *string
+	createSessionInput                    *store.CreateSessionInput
+	sessionAuditInput                     *store.CreateSessionWithAuditInput
+	auditInput                            *store.CreateAuditEventInput
+	getSessionTokenHash                   *string
+	revokedTokenHash                      *string
+	createCalls                           *int
+	createPartnerAPIKeyCalls              *int
+	createPartnerWebhookEventCalls        *int
+	createSessionCalls                    *int
+	createSessionWithAuditCalls           *int
+	auditCalls                            *int
+	revokePartnerAPIKeyCalls              *int
+	getSessionCalls                       *int
+	revokeCalls                           *int
+	partnerTouchCalls                     *int
+	partnerTouchErr                       error
+	listErr                               error
+	getClinicErr                          error
+	statusErr                             error
+	reportsErr                            error
+	pendingReportsErr                     error
+	auditEventsErr                        error
+	currentStatusesErr                    error
+	createErr                             error
+	updateFreshnessErr                    error
+	reviewErr                             error
+	getUserErr                            error
+	createSessionErr                      error
+	createSessionWithAuditErr             error
+	auditErr                              error
+	externalReportErr                     error
+	pendingPayloadErr                     error
+	syncAttemptErr                        error
+	syncSummaryErr                        error
+	getSessionErr                         error
+	revokeErr                             error
+	membershipsErr                        error
+	partnerKeyErr                         error
+	createPartnerAPIKeyErr                error
+	listPartnerAPIKeysErr                 error
+	revokePartnerAPIKeyErr                error
+	createPartnerWebhookSubscriptionErr   error
+	listPartnerWebhookSubscriptionsErr    error
+	createPartnerWebhookEventErr          error
+	listPartnerWebhookEventsErr           error
+	createPartnerExportRunErr             error
+	getPartnerExportRunErr                error
+	partnerReadinessErr                   error
+	partnerExportRunErr                   error
+	integrationStatusChecksErr            error
+	upsertIntegrationStatusCheckErr       error
+	readyErr                              error
+}
+
+func (f fakeStore) Ready(context.Context) error {
+	return f.readyErr
 }
 
 func (f fakeStore) ListClinics(context.Context) ([]store.ClinicDetail, error) {
@@ -2763,6 +4102,273 @@ func (f fakeStore) ListMembershipsForUser(context.Context, int64) ([]store.Organ
 	return f.memberships, f.membershipsErr
 }
 
+func (f fakeStore) GetPartnerAPIKeyByHash(_ context.Context, keyHash string) (store.PartnerAPIKey, error) {
+	if f.partnerKeyErr != nil {
+		return store.PartnerAPIKey{}, f.partnerKeyErr
+	}
+	if f.partnerAPIKey.ID == 0 {
+		return store.PartnerAPIKey{}, pgx.ErrNoRows
+	}
+	if f.partnerAPIKey.KeyHash != keyHash {
+		return store.PartnerAPIKey{}, pgx.ErrNoRows
+	}
+	return f.partnerAPIKey, nil
+}
+
+func (f fakeStore) CreatePartnerAPIKey(_ context.Context, input store.CreatePartnerAPIKeyInput) (store.PartnerAPIKey, error) {
+	if f.createPartnerAPIKeyCalls != nil {
+		*f.createPartnerAPIKeyCalls++
+	}
+	if f.createPartnerAPIKeyInput != nil {
+		*f.createPartnerAPIKeyInput = input
+	}
+	if f.createPartnerAPIKeyErr != nil {
+		return store.PartnerAPIKey{}, f.createPartnerAPIKeyErr
+	}
+	apiKey := store.PartnerAPIKey{
+		ID:               1,
+		OrganisationID:   input.OrganisationID,
+		Name:             input.Name,
+		Environment:      input.Environment,
+		KeyPrefix:        input.KeyPrefix,
+		KeyHash:          input.KeyHash,
+		Scopes:           input.Scopes,
+		AllowedDistricts: input.AllowedDistricts,
+		ExpiresAt:        input.ExpiresAt,
+		CreatedByUserID:  input.CreatedByUserID,
+		CreatedAt:        input.CreatedAt,
+		UpdatedAt:        input.CreatedAt,
+	}
+	if f.partnerAPIKeys != nil {
+		apiKey.ID = int64(len(*f.partnerAPIKeys) + 1)
+		*f.partnerAPIKeys = append(*f.partnerAPIKeys, apiKey)
+	}
+	return apiKey, nil
+}
+
+func (f fakeStore) ListPartnerAPIKeys(_ context.Context, organisationID *int64) ([]store.PartnerAPIKey, error) {
+	if f.listPartnerAPIKeysOrgID != nil && organisationID != nil {
+		*f.listPartnerAPIKeysOrgID = *organisationID
+	}
+	if f.listPartnerAPIKeysErr != nil {
+		return nil, f.listPartnerAPIKeysErr
+	}
+	if f.partnerAPIKeys != nil {
+		return *f.partnerAPIKeys, nil
+	}
+	return nil, nil
+}
+
+func (f fakeStore) RevokePartnerAPIKey(_ context.Context, keyID int64, revokedAt time.Time) error {
+	if f.revokePartnerAPIKeyCalls != nil {
+		*f.revokePartnerAPIKeyCalls++
+	}
+	if f.revokedPartnerAPIKeyID != nil {
+		*f.revokedPartnerAPIKeyID = keyID
+	}
+	if f.revokePartnerAPIKeyErr != nil {
+		return f.revokePartnerAPIKeyErr
+	}
+	if f.partnerAPIKeys != nil {
+		for index := range *f.partnerAPIKeys {
+			if (*f.partnerAPIKeys)[index].ID == keyID {
+				(*f.partnerAPIKeys)[index].RevokedAt = &revokedAt
+				(*f.partnerAPIKeys)[index].UpdatedAt = revokedAt
+				return nil
+			}
+		}
+		return pgx.ErrNoRows
+	}
+	return nil
+}
+
+func (f fakeStore) TouchPartnerAPIKey(context.Context, int64, string, time.Time) error {
+	if f.partnerTouchCalls != nil {
+		*f.partnerTouchCalls++
+	}
+	return f.partnerTouchErr
+}
+
+func (f fakeStore) GetPartnerReadinessSnapshot(_ context.Context, organisationID *int64) (store.PartnerReadinessSnapshot, error) {
+	if f.partnerReadinessOrgID != nil && organisationID != nil {
+		*f.partnerReadinessOrgID = *organisationID
+	}
+	snapshot := f.partnerReadinessSnapshot
+	if f.upsertIntegrationStatusChecks != nil {
+		snapshot.IntegrationChecks = *f.upsertIntegrationStatusChecks
+	}
+	return snapshot, f.partnerReadinessErr
+}
+
+func (f fakeStore) CreatePartnerWebhookSubscription(_ context.Context, input store.CreatePartnerWebhookSubscriptionInput) (store.PartnerWebhookSubscription, error) {
+	if f.createPartnerWebhookSubscriptionInput != nil {
+		*f.createPartnerWebhookSubscriptionInput = input
+	}
+	if f.createPartnerWebhookSubscriptionErr != nil {
+		return store.PartnerWebhookSubscription{}, f.createPartnerWebhookSubscriptionErr
+	}
+	subscription := store.PartnerWebhookSubscription{
+		ID:               1,
+		OrganisationID:   input.OrganisationID,
+		Name:             input.Name,
+		TargetURL:        input.TargetURL,
+		EventTypes:       input.EventTypes,
+		SecretHash:       input.SecretHash,
+		Status:           input.Status,
+		LastTestMetadata: input.LastTestMetadata,
+		CreatedByUserID:  input.CreatedByUserID,
+		CreatedAt:        input.CreatedAt,
+		UpdatedAt:        input.CreatedAt,
+	}
+	if f.partnerWebhookSubscriptions != nil {
+		subscription.ID = int64(len(*f.partnerWebhookSubscriptions) + 1)
+		*f.partnerWebhookSubscriptions = append(*f.partnerWebhookSubscriptions, subscription)
+	}
+	return subscription, nil
+}
+
+func (f fakeStore) ListPartnerWebhookSubscriptions(_ context.Context, organisationID *int64) ([]store.PartnerWebhookSubscription, error) {
+	if f.listPartnerWebhookSubscriptionsOrgID != nil && organisationID != nil {
+		*f.listPartnerWebhookSubscriptionsOrgID = *organisationID
+	}
+	if f.listPartnerWebhookSubscriptionsErr != nil {
+		return nil, f.listPartnerWebhookSubscriptionsErr
+	}
+	if f.partnerWebhookSubscriptions != nil {
+		return *f.partnerWebhookSubscriptions, nil
+	}
+	return nil, nil
+}
+
+func (f fakeStore) CreatePartnerWebhookEvent(_ context.Context, input store.CreatePartnerWebhookEventInput) (store.PartnerWebhookEvent, error) {
+	if f.createPartnerWebhookEventCalls != nil {
+		*f.createPartnerWebhookEventCalls++
+	}
+	if f.createPartnerWebhookEventInput != nil {
+		*f.createPartnerWebhookEventInput = input
+	}
+	if f.createPartnerWebhookEventErr != nil {
+		return store.PartnerWebhookEvent{}, f.createPartnerWebhookEventErr
+	}
+	event := store.PartnerWebhookEvent{
+		ID:             1,
+		SubscriptionID: input.SubscriptionID,
+		EventType:      input.EventType,
+		Payload:        input.Payload,
+		Metadata:       input.Metadata,
+		Status:         input.Status,
+		AttemptCount:   input.AttemptCount,
+		LastError:      input.LastError,
+		CreatedAt:      input.CreatedAt,
+		DeliveredAt:    input.DeliveredAt,
+	}
+	if f.partnerWebhookEvents != nil {
+		event.ID = int64(len(*f.partnerWebhookEvents) + 1)
+		*f.partnerWebhookEvents = append(*f.partnerWebhookEvents, event)
+	}
+	return event, nil
+}
+
+func (f fakeStore) ListPartnerWebhookEvents(_ context.Context, organisationID *int64) ([]store.PartnerWebhookEvent, error) {
+	if f.listPartnerWebhookEventsOrgID != nil && organisationID != nil {
+		*f.listPartnerWebhookEventsOrgID = *organisationID
+	}
+	if f.listPartnerWebhookEventsErr != nil {
+		return nil, f.listPartnerWebhookEventsErr
+	}
+	if f.partnerWebhookEvents != nil {
+		return *f.partnerWebhookEvents, nil
+	}
+	return nil, nil
+}
+
+func (f fakeStore) CreatePartnerExportRun(_ context.Context, input store.CreatePartnerExportRunInput) (store.PartnerExportRun, error) {
+	if f.createPartnerExportRunInput != nil {
+		*f.createPartnerExportRunInput = input
+	}
+	if f.createPartnerExportRunErr != nil {
+		return store.PartnerExportRun{}, f.createPartnerExportRunErr
+	}
+	exportRun := store.PartnerExportRun{
+		ID:                1,
+		OrganisationID:    input.OrganisationID,
+		RequestedByUserID: input.RequestedByUserID,
+		Format:            input.Format,
+		Scope:             input.Scope,
+		RecordCounts:      input.RecordCounts,
+		Checksum:          input.Checksum,
+		Payload:           input.Payload,
+		CreatedAt:         input.CreatedAt,
+	}
+	if f.partnerExportRuns != nil {
+		exportRun.ID = int64(len(*f.partnerExportRuns) + 1)
+		*f.partnerExportRuns = append(*f.partnerExportRuns, exportRun)
+	}
+	return exportRun, nil
+}
+
+func (f fakeStore) GetPartnerExportRunForOrganisation(_ context.Context, organisationID *int64, exportID int64) (store.PartnerExportRun, error) {
+	if f.getPartnerExportRunOrgID != nil && organisationID != nil {
+		*f.getPartnerExportRunOrgID = *organisationID
+	}
+	if f.getPartnerExportRunID != nil {
+		*f.getPartnerExportRunID = exportID
+	}
+	if f.getPartnerExportRunErr != nil {
+		return store.PartnerExportRun{}, f.getPartnerExportRunErr
+	}
+	if f.partnerExportRuns != nil {
+		for _, exportRun := range *f.partnerExportRuns {
+			if exportRun.ID != exportID {
+				continue
+			}
+			if organisationID != nil && (exportRun.OrganisationID == nil || *exportRun.OrganisationID != *organisationID) {
+				return store.PartnerExportRun{}, pgx.ErrNoRows
+			}
+			return exportRun, nil
+		}
+		return store.PartnerExportRun{}, pgx.ErrNoRows
+	}
+	if f.partnerExportRun.ID != 0 {
+		return f.partnerExportRun, nil
+	}
+	return store.PartnerExportRun{}, pgx.ErrNoRows
+}
+
+func (f fakeStore) GetLatestPartnerExportRun(context.Context, *int64) (store.PartnerExportRun, error) {
+	return f.partnerExportRun, f.partnerExportRunErr
+}
+
+func (f fakeStore) UpsertIntegrationStatusCheck(_ context.Context, input store.UpsertIntegrationStatusCheckInput) (store.IntegrationStatusCheck, error) {
+	if f.upsertIntegrationStatusCheckInputs != nil {
+		*f.upsertIntegrationStatusCheckInputs = append(*f.upsertIntegrationStatusCheckInputs, input)
+	}
+	if f.upsertIntegrationStatusCheckErr != nil {
+		return store.IntegrationStatusCheck{}, f.upsertIntegrationStatusCheckErr
+	}
+	check := store.IntegrationStatusCheck{
+		ID:             int64(len(f.integrationStatusChecks) + 1),
+		OrganisationID: input.OrganisationID,
+		CheckName:      input.CheckName,
+		Status:         input.Status,
+		Summary:        input.Summary,
+		Metadata:       input.Metadata,
+		CheckedAt:      input.CheckedAt,
+	}
+	if f.upsertIntegrationStatusChecks != nil {
+		check.ID = int64(len(*f.upsertIntegrationStatusChecks) + 1)
+		*f.upsertIntegrationStatusChecks = append(*f.upsertIntegrationStatusChecks, check)
+	}
+	return check, nil
+}
+
+func (f fakeStore) ListIntegrationStatusChecks(context.Context, *int64) ([]store.IntegrationStatusCheck, error) {
+	if f.upsertIntegrationStatusChecks != nil {
+		return *f.upsertIntegrationStatusChecks, f.integrationStatusChecksErr
+	}
+	return f.integrationStatusChecks, f.integrationStatusChecksErr
+}
+
 func validReportJSON() string {
 	return `{
 		"clinicId":"clinic-1",
@@ -2798,6 +4404,46 @@ func decodeJSON(t *testing.T, rec *httptest.ResponseRecorder, target any) {
 	if err := json.Unmarshal(rec.Body.Bytes(), target); err != nil {
 		t.Fatalf("failed to decode response %q: %v", rec.Body.String(), err)
 	}
+}
+
+func captureDefaultLogger(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var output bytes.Buffer
+	logger := log.Default()
+	previousWriter := logger.Writer()
+	previousFlags := logger.Flags()
+	previousPrefix := logger.Prefix()
+	logger.SetOutput(&output)
+	logger.SetFlags(0)
+	logger.SetPrefix("")
+	t.Cleanup(func() {
+		logger.SetOutput(previousWriter)
+		logger.SetFlags(previousFlags)
+		logger.SetPrefix(previousPrefix)
+	})
+	return &output
+}
+
+func isSafeRequestIDForTest(value string) bool {
+	if len(value) < 8 || len(value) > 128 {
+		return false
+	}
+	for _, char := range value {
+		if char >= 'a' && char <= 'z' {
+			continue
+		}
+		if char >= 'A' && char <= 'Z' {
+			continue
+		}
+		if char >= '0' && char <= '9' {
+			continue
+		}
+		if char == '.' || char == '_' || char == '-' {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func assertInternalError(t *testing.T, rec *httptest.ResponseRecorder, storeErr error) {
@@ -2842,6 +4488,23 @@ func assertPublicSafeResponse(t *testing.T, body string) {
 		"auditEvents":  {},
 		"reviewState":  {},
 		"notes":        {},
+	}
+	assertNoForbiddenJSONKeys(t, payload, forbiddenKeys)
+}
+
+func assertPartnerSafeReadinessResponse(t *testing.T, body string) {
+	t.Helper()
+
+	var payload any
+	if err := json.Unmarshal([]byte(body), &payload); err != nil {
+		t.Fatalf("failed to decode partner response %q: %v", body, err)
+	}
+	forbiddenKeys := map[string]struct{}{
+		"requestedByUserId": {},
+		"payload":           {},
+		"metadata":          {},
+		"submittedByUserId": {},
+		"reviewedByUserId":  {},
 	}
 	assertNoForbiddenJSONKeys(t, payload, forbiddenKeys)
 }
@@ -2977,6 +4640,36 @@ func authenticatedStore(t *testing.T, role string, f fakeStore) fakeStore {
 			CreatedAt: now,
 		}}
 	}
+	return f
+}
+
+func authenticatedAdminStore(t *testing.T, role string, orgID int64, f fakeStore) fakeStore {
+	t.Helper()
+	now := time.Date(2026, 5, 3, 11, 0, 0, 0, time.UTC)
+	if f.session.ID == 0 {
+		f.session = store.Session{
+			ID:        100,
+			UserID:    42,
+			CreatedAt: now,
+			ExpiresAt: now.Add(12 * time.Hour),
+		}
+	}
+	if f.sessionUser.ID == 0 {
+		f.sessionUser = store.User{
+			ID:          f.session.UserID,
+			Email:       "admin@example.test",
+			DisplayName: "Admin User",
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		}
+	}
+	f.memberships = []store.OrganisationMembership{{
+		ID:             1,
+		UserID:         f.sessionUser.ID,
+		OrganisationID: &orgID,
+		Role:           role,
+		CreatedAt:      now,
+	}}
 	return f
 }
 
