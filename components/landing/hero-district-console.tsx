@@ -94,7 +94,7 @@ export function HeroDistrictConsole() {
               ))}
             </div>
 
-            <div className="mt-3 grid min-w-0 gap-3 2xl:grid-cols-[0.92fr_1.08fr]">
+            <div className="mt-3 grid min-w-0 gap-3">
               <div className="relative min-h-56 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
                 <div className="absolute inset-0 opacity-80 [background-image:linear-gradient(rgba(255,255,255,0.72)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.72)_1px,transparent_1px)] [background-size:28px_28px]" />
                 <MapPinDot className="left-[24%] top-[28%]" tone="healthy" />
