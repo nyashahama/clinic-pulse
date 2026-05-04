@@ -26,6 +26,22 @@ type PartnerSafeStatusResponse struct {
 	UpdatedAt       time.Time  `json:"updatedAt"`
 }
 
+type PartnerSafeExportRunResponse struct {
+	ID             int64          `json:"id"`
+	OrganisationID *int64         `json:"organisationId,omitempty"`
+	Format         string         `json:"format"`
+	RecordCounts   map[string]any `json:"recordCounts"`
+	Checksum       string         `json:"checksum"`
+	CreatedAt      time.Time      `json:"createdAt"`
+}
+
+type PartnerSafeIntegrationStatusCheckResponse struct {
+	CheckName string    `json:"checkName"`
+	Status    string    `json:"status"`
+	Summary   string    `json:"summary"`
+	CheckedAt time.Time `json:"checkedAt"`
+}
+
 func PartnerSafeClinicDetail(input store.ClinicDetail) PartnerSafeClinicDetailResponse {
 	var status *PartnerSafeStatusResponse
 	if input.CurrentStatus != nil {
@@ -54,6 +70,37 @@ func PartnerSafeStatus(input *store.CurrentStatus) *PartnerSafeStatusResponse {
 		QueuePressure:   input.QueuePressure,
 		ConfidenceScore: input.ConfidenceScore,
 		UpdatedAt:       input.UpdatedAt,
+	}
+}
+
+func PartnerSafeExportRun(input store.PartnerExportRun) PartnerSafeExportRunResponse {
+	return PartnerSafeExportRunResponse{
+		ID:             input.ID,
+		OrganisationID: input.OrganisationID,
+		Format:         input.Format,
+		RecordCounts:   input.RecordCounts,
+		Checksum:       input.Checksum,
+		CreatedAt:      input.CreatedAt,
+	}
+}
+
+func PartnerSafeIntegrationStatusChecks(input []store.IntegrationStatusCheck) []PartnerSafeIntegrationStatusCheckResponse {
+	if input == nil {
+		return []PartnerSafeIntegrationStatusCheckResponse{}
+	}
+	result := make([]PartnerSafeIntegrationStatusCheckResponse, 0, len(input))
+	for _, check := range input {
+		result = append(result, PartnerSafeIntegrationStatusCheck(check))
+	}
+	return result
+}
+
+func PartnerSafeIntegrationStatusCheck(input store.IntegrationStatusCheck) PartnerSafeIntegrationStatusCheckResponse {
+	return PartnerSafeIntegrationStatusCheckResponse{
+		CheckName: input.CheckName,
+		Status:    input.Status,
+		Summary:   input.Summary,
+		CheckedAt: input.CheckedAt,
 	}
 }
 

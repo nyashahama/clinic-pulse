@@ -244,7 +244,7 @@ func (h Handler) GetPartnerLatestExport(w nethttp.ResponseWriter, r *nethttp.Req
 		return
 	}
 
-	RespondJSON(w, nethttp.StatusOK, exportRun)
+	RespondJSON(w, nethttp.StatusOK, service.PartnerSafeExportRun(exportRun))
 }
 
 func (h Handler) GetPartnerIntegrationStatus(w nethttp.ResponseWriter, r *nethttp.Request) {
@@ -259,11 +259,7 @@ func (h Handler) GetPartnerIntegrationStatus(w nethttp.ResponseWriter, r *nethtt
 		respondStoreError(w, err, "failed to list integration status checks")
 		return
 	}
-	if checks == nil {
-		checks = []store.IntegrationStatusCheck{}
-	}
-
-	RespondJSON(w, nethttp.StatusOK, checks)
+	RespondJSON(w, nethttp.StatusOK, service.PartnerSafeIntegrationStatusChecks(checks))
 }
 
 func (h Handler) GetClinic(w nethttp.ResponseWriter, r *nethttp.Request) {

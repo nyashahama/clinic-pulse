@@ -300,6 +300,158 @@ func TestPartnerEndpointRejectsMissingScope(t *testing.T) {
 	}
 }
 
+func TestPartnerLatestExportSanitizesResponse(t *testing.T) {
+	secret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey returned error: %v", err)
+	}
+	hash, err := auth.HashAPIKey(secret, "")
+	if err != nil {
+		t.Fatalf("HashAPIKey returned error: %v", err)
+	}
+	userID := int64(42)
+	now := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
+	router := apihttp.NewRouter(fakeStore{
+		partnerAPIKey: validPartnerAPIKey(hash, []string{"exports:read"}, nil),
+		partnerExportRun: store.PartnerExportRun{
+			ID:                20,
+			RequestedByUserID: &userID,
+			Format:            "json",
+			Scope:             map[string]any{"district": defaultTestDistrict, "secret": "raw-scope-secret"},
+			RecordCounts:      map[string]any{"clinics": 3},
+			Checksum:          "sha256:abc",
+			Payload: map[string]any{
+				"submittedByUserId": 42,
+				"reviewedByUserId":  43,
+				"rawSecret":         "export-payload-secret",
+			},
+			CreatedAt: now,
+		},
+	})
+	req := httptest.NewRequest(http.MethodGet, "/v1/partner/export/latest", nil)
+	req.Header.Set("Authorization", "Bearer "+secret)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	assertPartnerSafeReadinessResponse(t, rec.Body.String())
+	for _, forbidden := range []string{"requestedByUserId", "payload", "metadata", "submittedByUserId", "reviewedByUserId", "raw-scope-secret", "export-payload-secret"} {
+		if strings.Contains(rec.Body.String(), forbidden) {
+			t.Fatalf("expected partner export response to hide %q, got %s", forbidden, rec.Body.String())
+		}
+	}
+	if !strings.Contains(rec.Body.String(), `"recordCounts":{"clinics":3}`) {
+		t.Fatalf("expected record counts in partner export response, got %s", rec.Body.String())
+	}
+}
+
+func TestPartnerIntegrationStatusSanitizesResponseAndReturnsEmptyArray(t *testing.T) {
+	secret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey returned error: %v", err)
+	}
+	hash, err := auth.HashAPIKey(secret, "")
+	if err != nil {
+		t.Fatalf("HashAPIKey returned error: %v", err)
+	}
+	now := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name  string
+		store fakeStore
+		want  string
+	}{
+		{
+			name: "sanitized checks",
+			store: fakeStore{
+				partnerAPIKey: validPartnerAPIKey(hash, []string{"status:read"}, nil),
+				integrationStatusChecks: []store.IntegrationStatusCheck{{
+					ID:        30,
+					CheckName: "webhook_delivery",
+					Status:    "passing",
+					Summary:   "Webhooks are healthy",
+					Metadata: map[string]any{
+						"secretToken":       "integration-secret-token",
+						"submittedByUserId": 42,
+						"reviewedByUserId":  43,
+					},
+					CheckedAt: now,
+				}},
+			},
+			want: `"checkName":"webhook_delivery"`,
+		},
+		{
+			name: "nil checks",
+			store: fakeStore{
+				partnerAPIKey: validPartnerAPIKey(hash, []string{"status:read"}, nil),
+			},
+			want: "[]",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := apihttp.NewRouter(tt.store)
+			req := httptest.NewRequest(http.MethodGet, "/v1/partner/integration-status", nil)
+			req.Header.Set("Authorization", "Bearer "+secret)
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+			}
+			assertPartnerSafeReadinessResponse(t, rec.Body.String())
+			for _, forbidden := range []string{"metadata", "submittedByUserId", "reviewedByUserId", "integration-secret-token"} {
+				if strings.Contains(rec.Body.String(), forbidden) {
+					t.Fatalf("expected partner integration response to hide %q, got %s", forbidden, rec.Body.String())
+				}
+			}
+			if !strings.Contains(rec.Body.String(), tt.want) {
+				t.Fatalf("expected %q in partner integration response, got %s", tt.want, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestPartnerAlternativesFiltersCandidatesToAllowedDistricts(t *testing.T) {
+	secret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey returned error: %v", err)
+	}
+	hash, err := auth.HashAPIKey(secret, "")
+	if err != nil {
+		t.Fatalf("HashAPIKey returned error: %v", err)
+	}
+	source := clinicDetail("clinic-source", "Source Clinic", -25.7400, 28.1300, "non_functional", "fresh", "Primary care")
+	inScope := clinicDetail("clinic-in-scope", "In Scope Clinic", -25.7410, 28.1310, "operational", "fresh", "Primary care")
+	outOfScope := clinicDetail("clinic-out-of-scope", "Out Of Scope Clinic", -25.7420, 28.1320, "operational", "fresh", "Primary care")
+	outOfScope.Clinic.District = "Johannesburg"
+	router := apihttp.NewRouter(fakeStore{
+		partnerAPIKey: validPartnerAPIKey(hash, []string{"alternatives:read"}, []string{defaultTestDistrict}),
+		clinic:        source,
+		clinics:       []store.ClinicDetail{source, inScope, outOfScope},
+	})
+	req := httptest.NewRequest(http.MethodGet, "/v1/partner/alternatives?clinicId=clinic-source&service=Primary%20care", nil)
+	req.Header.Set("Authorization", "Bearer "+secret)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	assertPublicSafeResponse(t, rec.Body.String())
+	if !strings.Contains(rec.Body.String(), `"id":"clinic-in-scope"`) {
+		t.Fatalf("expected in-scope alternative, got %s", rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), "clinic-out-of-scope") {
+		t.Fatalf("expected out-of-scope candidate to be filtered, got %s", rec.Body.String())
+	}
+}
+
 func TestRestrictedClinicRoutesStillRequireCookie(t *testing.T) {
 	router := apihttp.NewRouter(fakeStore{})
 	for _, path := range []string{
@@ -2943,6 +3095,23 @@ func assertPublicSafeResponse(t *testing.T, body string) {
 		"auditEvents":  {},
 		"reviewState":  {},
 		"notes":        {},
+	}
+	assertNoForbiddenJSONKeys(t, payload, forbiddenKeys)
+}
+
+func assertPartnerSafeReadinessResponse(t *testing.T, body string) {
+	t.Helper()
+
+	var payload any
+	if err := json.Unmarshal([]byte(body), &payload); err != nil {
+		t.Fatalf("failed to decode partner response %q: %v", body, err)
+	}
+	forbiddenKeys := map[string]struct{}{
+		"requestedByUserId": {},
+		"payload":           {},
+		"metadata":          {},
+		"submittedByUserId": {},
+		"reviewedByUserId":  {},
 	}
 	assertNoForbiddenJSONKeys(t, payload, forbiddenKeys)
 }
