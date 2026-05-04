@@ -23,6 +23,7 @@ func TestStorePublicAPICompiles(t *testing.T) {
 	var _ func(Store, context.Context, CreateAuditEventInput) (AuditEvent, error) = Store.CreateAuditEvent
 	var _ func(Store, context.Context, CreateReportInput) (Report, CurrentStatus, AuditEvent, error) = Store.CreateReportTx
 	var _ func(Store, context.Context, CreateReportInput) (Report, error) = Store.CreatePendingReportTx
+	var _ func(Store, context.Context, CreateReportInput) (Report, error) = Store.GetPendingReportByPayload
 	var _ func(Store, context.Context, ReportReviewScope) ([]Report, error) = Store.ListPendingReports
 	var _ func(Store, context.Context, ReviewReportInput) (Report, *CurrentStatus, error) = Store.ReviewReportTx
 	var _ func(Store, context.Context, string) (User, error) = Store.GetUserByEmail
@@ -32,6 +33,103 @@ func TestStorePublicAPICompiles(t *testing.T) {
 	var _ func(Store, context.Context, string) error = Store.RevokeSession
 	var _ func(Store, context.Context, int64) ([]OrganisationMembership, error) = Store.ListMembershipsForUser
 	var _ func(Store) = Store.Close
+}
+
+func TestOfflineSyncStoreMethodSignatures(t *testing.T) {
+	t.Parallel()
+
+	var _ func(Store, context.Context, string) (Report, error) = Store.GetReportByExternalID
+	var _ func(Store, context.Context, CreateReportInput) (Report, error) = Store.GetPendingReportByPayload
+	var _ func(Store, context.Context, CreateReportSyncAttemptInput) (ReportSyncAttempt, error) = Store.CreateReportSyncAttempt
+	var _ func(Store, context.Context, time.Time) (SyncSummary, error) = Store.GetSyncSummarySince
+	var _ func(Store, context.Context, time.Time, ReportReviewScope) (SyncSummary, error) = Store.GetSyncSummarySinceForReviewScope
+	var _ func(Store, context.Context) ([]CurrentStatus, error) = Store.ListCurrentStatuses
+	var _ func(Store, context.Context, ReportReviewScope) ([]CurrentStatus, error) = Store.ListCurrentStatusesForReviewScope
+	var _ func(Store, context.Context, string, string, time.Time, *CreateAuditEventInput) (CurrentStatus, bool, error) = Store.UpdateCurrentStatusFreshness
+}
+
+func TestSyncSummarySinceScopesPendingOfflineReportsToWindow(t *testing.T) {
+	t.Parallel()
+
+	start := strings.Index(syncSummarySinceSQL, "pending_offline AS")
+	end := strings.Index(syncSummarySinceSQL, "current_status_counts AS")
+	if start == -1 || end == -1 || end <= start {
+		t.Fatal("expected sync summary SQL to include pending_offline before current_status_counts")
+	}
+	pendingOfflineCTE := syncSummarySinceSQL[start:end]
+	if !strings.Contains(pendingOfflineCTE, "AND received_at >= $1") {
+		t.Fatal("expected pending_offline CTE to filter reports by the summary window")
+	}
+}
+
+func TestSyncSummaryForReviewScopeSQLScopesClinicRowsForDistrictManagers(t *testing.T) {
+	t.Parallel()
+
+	if !strings.Contains(syncSummarySinceForReviewScopeSQL, "LEFT JOIN clinics") {
+		t.Fatal("expected sync attempt counts to join clinics so district summaries can scope by clinic district")
+	}
+	if !strings.Contains(syncSummarySinceForReviewScopeSQL, "report_sync_attempts.clinic_id IS NOT NULL") {
+		t.Fatal("expected district summaries to exclude sync attempts without clinic ids")
+	}
+	if !strings.Contains(syncSummarySinceForReviewScopeSQL, "JOIN clinics ON clinics.id = reports.clinic_id") {
+		t.Fatal("expected pending offline reports to join clinics for district scope")
+	}
+	if !strings.Contains(syncSummarySinceForReviewScopeSQL, "JOIN clinics ON clinics.id = current_status.clinic_id") {
+		t.Fatal("expected current status counts to join clinics for district scope")
+	}
+	if !strings.Contains(syncSummarySinceForReviewScopeSQL, "($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)") {
+		t.Fatal("expected review scope role and district parameters in scoped summary SQL")
+	}
+}
+
+func TestSyncSummarySQLComputesMedianCurrentStatusAge(t *testing.T) {
+	t.Parallel()
+
+	for name, tt := range map[string]struct {
+		query              string
+		expectedAgeOperand string
+		forbiddenOperand   string
+	}{
+		"unscoped": {
+			query:              syncSummarySinceSQL,
+			expectedAgeOperand: "COALESCE(last_reported_at, updated_at)",
+			forbiddenOperand:   "now() - updated_at",
+		},
+		"scoped": {
+			query:              syncSummarySinceForReviewScopeSQL,
+			expectedAgeOperand: "COALESCE(current_status.last_reported_at, current_status.updated_at)",
+			forbiddenOperand:   "now() - current_status.updated_at",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if !strings.Contains(tt.query, "median_current_status_age_hours") {
+				t.Fatal("expected sync summary SQL to select median current status age")
+			}
+			if !strings.Contains(tt.query, "percentile_cont(0.5)") {
+				t.Fatal("expected sync summary SQL to compute a median, not leave status age empty")
+			}
+			if !strings.Contains(tt.query, tt.expectedAgeOperand) {
+				t.Fatalf("expected median status age to use %q", tt.expectedAgeOperand)
+			}
+			if strings.Contains(tt.query, tt.forbiddenOperand) {
+				t.Fatalf("expected median status age not to use freshness update timestamp operand %q", tt.forbiddenOperand)
+			}
+		})
+	}
+}
+
+func TestListCurrentStatusesForReviewScopeSQLScopesByClinicDistrict(t *testing.T) {
+	t.Parallel()
+
+	if !strings.Contains(listCurrentStatusesForReviewScopeSQL, "JOIN clinics ON clinics.id = current_status.clinic_id") {
+		t.Fatal("expected scoped current status list to join clinics")
+	}
+	if !strings.Contains(listCurrentStatusesForReviewScopeSQL, "($1 = 'district_manager' AND $2::text IS NOT NULL AND clinics.district = $2)") {
+		t.Fatal("expected district manager current status scope predicate")
+	}
+	if !strings.Contains(listCurrentStatusesForReviewScopeSQL, "$1 IN ('org_admin', 'system_admin')") {
+		t.Fatal("expected org/system admins to retain all-district current status access")
+	}
 }
 
 func TestNormalizeCreateReportInputDoesNotInventRequiredReportFields(t *testing.T) {
@@ -86,6 +184,20 @@ func TestReviewReportTxRejectsInvalidDecisionBeforeDatabaseWork(t *testing.T) {
 
 	if !errors.Is(err, ErrInvalidReviewDecision) {
 		t.Fatalf("expected ErrInvalidReviewDecision, got %v", err)
+	}
+}
+
+func TestCreateReportSyncAttemptRejectsInvalidResultBeforeDatabaseWork(t *testing.T) {
+	t.Parallel()
+
+	_, err := Store{}.CreateReportSyncAttempt(context.Background(), CreateReportSyncAttemptInput{
+		ExternalID: "offline-sync-invalid-result",
+		ClinicID:   "clinic-id",
+		Result:     "unexpected",
+	})
+
+	if !errors.Is(err, ErrInvalidSyncAttemptResult) {
+		t.Fatalf("expected ErrInvalidSyncAttemptResult, got %v", err)
 	}
 }
 

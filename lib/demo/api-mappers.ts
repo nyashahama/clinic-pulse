@@ -195,6 +195,22 @@ function getHydrationClinicImageKey(
   );
 }
 
+function latestApiSyncTimestamp(
+  reports: ReportEvent[],
+  auditEvents: AuditEvent[],
+  fallback: string | null,
+) {
+  const timestamps = [
+    ...reports.map((report) => report.receivedAt),
+    ...auditEvents.map((event) => event.createdAt),
+  ]
+    .map((value) => new Date(value))
+    .filter((date) => !Number.isNaN(date.getTime()))
+    .sort((left, right) => right.getTime() - left.getTime());
+
+  return timestamps[0]?.toISOString() ?? fallback;
+}
+
 export function mapApiDemoHydrationToState(
   payload: ApiDemoHydrationPayload,
   baseState: DemoState,
@@ -225,6 +241,7 @@ export function mapApiDemoHydrationToState(
     // Alerts stay seeded Phase 2 demo context until the backend exposes alert hydration.
     alerts: baseState.alerts.filter((alert) => clinicIds.has(alert.clinicId)),
     auditEvents,
+    lastSyncAt: latestApiSyncTimestamp(reports, auditEvents, baseState.lastSyncAt),
   };
 }
 

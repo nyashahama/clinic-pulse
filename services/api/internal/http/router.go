@@ -27,8 +27,11 @@ func NewRouter(store ClinicStore) nethttp.Handler {
 	router.With(requireAuth, districtManagerOrHigher).Get("/v1/clinics/{clinicId}/reports", handler.ListClinicReports)
 	router.With(requireAuth, districtManagerOrHigher).Get("/v1/clinics/{clinicId}/audit-events", handler.ListClinicAuditEvents)
 	router.With(requireAuth, districtManagerOrHigher).Get("/v1/reports/pending", handler.ListPendingReports)
+	router.With(requireAuth, districtManagerOrHigher).Post("/v1/status/reconcile-staleness", handler.ReconcileStatusStaleness)
 	router.With(requireAuth, reporterOrHigher).Post("/v1/reports", handler.CreateReport)
+	router.With(requireAuth, reporterOrHigher).Post("/v1/reports/offline-sync", handler.SyncOfflineReports)
 	router.With(requireAuth, districtManagerOrHigher).Post("/v1/reports/{reportId}/review", handler.ReviewReport)
+	router.With(requireAuth, districtManagerOrHigher).Get("/v1/sync/summary", handler.GetSyncSummary)
 
 	return router
 }

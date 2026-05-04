@@ -21,21 +21,30 @@ import (
 )
 
 const (
-	sessionCookieName = "clinicpulse_session"
-	sessionDuration   = 12 * time.Hour
-	dummyPasswordHash = "$2a$10$7EqJtq98hPqEX7fNZaFWoOhiYv4gfyJ5v5e26nnbuoJ6PmwKzJxYy"
+	sessionCookieName                   = "clinicpulse_session"
+	sessionDuration                     = 12 * time.Hour
+	dummyPasswordHash                   = "$2a$10$7EqJtq98hPqEX7fNZaFWoOhiYv4gfyJ5v5e26nnbuoJ6PmwKzJxYy"
+	missingClientReportIDSyncExternalID = "missing-client-report-id"
 )
 
 type ClinicStore interface {
 	ListClinics(ctx context.Context) ([]store.ClinicDetail, error)
 	GetClinic(ctx context.Context, clinicID string) (store.ClinicDetail, error)
 	GetCurrentStatus(ctx context.Context, clinicID string) (store.CurrentStatus, error)
+	ListCurrentStatuses(ctx context.Context) ([]store.CurrentStatus, error)
+	ListCurrentStatusesForReviewScope(ctx context.Context, scope store.ReportReviewScope) ([]store.CurrentStatus, error)
+	UpdateCurrentStatusFreshness(ctx context.Context, clinicID string, freshness string, updatedAt time.Time, audit *store.CreateAuditEventInput) (store.CurrentStatus, bool, error)
 	ListClinicReports(ctx context.Context, clinicID string) ([]store.Report, error)
 	ListPendingReports(ctx context.Context, scope store.ReportReviewScope) ([]store.Report, error)
 	ListClinicAuditEvents(ctx context.Context, clinicID string) ([]store.AuditEvent, error)
 	CreateReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, store.CurrentStatus, store.AuditEvent, error)
 	CreatePendingReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, error)
+	GetPendingReportByPayload(ctx context.Context, input store.CreateReportInput) (store.Report, error)
 	ReviewReportTx(ctx context.Context, input store.ReviewReportInput) (store.Report, *store.CurrentStatus, error)
+	GetReportByExternalID(ctx context.Context, externalID string) (store.Report, error)
+	CreateReportSyncAttempt(ctx context.Context, input store.CreateReportSyncAttemptInput) (store.ReportSyncAttempt, error)
+	GetSyncSummarySince(ctx context.Context, since time.Time) (store.SyncSummary, error)
+	GetSyncSummarySinceForReviewScope(ctx context.Context, since time.Time, scope store.ReportReviewScope) (store.SyncSummary, error)
 	GetUserByEmail(ctx context.Context, email string) (store.User, error)
 	CreateSessionWithAuditTx(ctx context.Context, input store.CreateSessionWithAuditInput) (store.Session, store.AuditEvent, error)
 	GetSessionByTokenHash(ctx context.Context, tokenHash string) (store.Session, store.User, error)
@@ -326,6 +335,121 @@ func (h Handler) ReviewReport(w nethttp.ResponseWriter, r *nethttp.Request) {
 		Report:        report,
 		CurrentStatus: status,
 	})
+}
+
+func (h Handler) SyncOfflineReports(w nethttp.ResponseWriter, r *nethttp.Request) {
+	var payload offlineSyncRequest
+	if !decodeSingleJSON(w, r, &payload) {
+		return
+	}
+
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	actor := offlineSyncActorForPrincipal(principal)
+	now := time.Now().UTC()
+	result := service.OfflineSyncBatchResult{
+		Results: make([]service.OfflineSyncResult, 0, len(payload.Items)),
+	}
+	for _, item := range payload.Items {
+		input, fields := item.toServiceInput()
+		if len(fields) > 0 {
+			itemResult := h.offlineSyncValidationResult(r.Context(), actor, input, fields, now)
+			result.Results = append(result.Results, itemResult)
+			result.Summary.Failed++
+			continue
+		}
+
+		itemResult := service.SyncOfflineReports(r.Context(), h.store, actor, []service.OfflineSyncItemInput{input}, now)
+		result.Results = append(result.Results, itemResult.Results...)
+		result.Summary.Created += itemResult.Summary.Created
+		result.Summary.Duplicate += itemResult.Summary.Duplicate
+		result.Summary.Conflict += itemResult.Summary.Conflict
+		result.Summary.Failed += itemResult.Summary.Failed
+	}
+
+	RespondJSON(w, nethttp.StatusOK, result)
+}
+
+func (h Handler) offlineSyncValidationResult(ctx context.Context, actor service.OfflineSyncActor, input service.OfflineSyncItemInput, fields []string, now time.Time) service.OfflineSyncResult {
+	itemResult := service.OfflineSyncResult{
+		ClientReportID: input.ClientReportID,
+		Result:         "validation_error",
+		Error: &service.SyncItemError{
+			Code:    "validation_error",
+			Message: "offline report failed validation",
+			Fields:  fields,
+		},
+	}
+
+	submittedAt := input.SubmittedAt
+	attempt := store.CreateReportSyncAttemptInput{
+		ExternalID:         offlineSyncAttemptExternalID(input.ClientReportID),
+		SubmittedByUserID:  offlineSyncActorUserID(actor),
+		OrganisationID:     actor.OrganisationID,
+		ClinicID:           input.ClinicID,
+		Result:             itemResult.Result,
+		ClientAttemptCount: normalizedOfflineSyncAttemptCount(input.ClientAttemptCount),
+		QueuedAt:           input.QueuedAt,
+		ReceivedAt:         now,
+		ErrorCode:          &itemResult.Error.Code,
+		ErrorMessage:       &itemResult.Error.Message,
+		Metadata:           map[string]any{"fields": fields},
+	}
+	if !submittedAt.IsZero() {
+		attempt.SubmittedAt = &submittedAt
+	}
+	if _, err := h.store.CreateReportSyncAttempt(ctx, attempt); err != nil {
+		itemResult.Result = "server_error"
+		itemResult.Error = &service.SyncItemError{
+			Code:    "server_error",
+			Message: "failed to record offline sync attempt",
+		}
+	}
+	return itemResult
+}
+
+func normalizedOfflineSyncAttemptCount(count int) int {
+	if count <= 0 {
+		return 1
+	}
+	return count
+}
+
+func (h Handler) GetSyncSummary(w nethttp.ResponseWriter, r *nethttp.Request) {
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	since := time.Now().UTC().Add(-24 * time.Hour)
+	summary, err := h.store.GetSyncSummarySinceForReviewScope(r.Context(), since, reviewScopeForPrincipal(principal))
+	if err != nil {
+		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusOK, summary)
+}
+
+func (h Handler) ReconcileStatusStaleness(w nethttp.ResponseWriter, r *nethttp.Request) {
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	result, err := service.ReconcileStatusFreshnessForReviewScope(r.Context(), h.store, reviewScopeForPrincipal(principal), auditActorForPrincipal(principal), time.Now().UTC())
+	if err != nil {
+		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusOK, result)
 }
 
 func (h Handler) Login(w nethttp.ResponseWriter, r *nethttp.Request) {
@@ -637,6 +761,30 @@ func auditActorForPrincipal(principal Principal) service.AuditActor {
 	}
 }
 
+func offlineSyncActorForPrincipal(principal Principal) service.OfflineSyncActor {
+	return service.OfflineSyncActor{
+		UserID:         principal.UserID,
+		DisplayName:    principal.DisplayName,
+		Email:          principal.Email,
+		Role:           principal.Role,
+		OrganisationID: principal.OrganisationID,
+	}
+}
+
+func offlineSyncActorUserID(actor service.OfflineSyncActor) *int64 {
+	if actor.UserID == 0 {
+		return nil
+	}
+	return &actor.UserID
+}
+
+func offlineSyncAttemptExternalID(clientReportID string) string {
+	if strings.TrimSpace(clientReportID) == "" {
+		return missingClientReportIDSyncExternalID
+	}
+	return clientReportID
+}
+
 func derivedReporterName(principal Principal) *string {
 	name := strings.TrimSpace(principal.DisplayName)
 	if name == "" {
@@ -704,6 +852,70 @@ type reviewReportRequest struct {
 type reviewReportResponse struct {
 	Report        store.Report         `json:"report"`
 	CurrentStatus *store.CurrentStatus `json:"currentStatus,omitempty"`
+}
+
+type offlineSyncRequest struct {
+	Items []offlineSyncItemRequest `json:"items"`
+}
+
+type offlineSyncItemRequest struct {
+	ClientReportID string `json:"clientReportId"`
+	ClinicID       string `json:"clinicId"`
+	Status         string `json:"status"`
+	Reason         string `json:"reason"`
+	StaffPressure  string `json:"staffPressure"`
+	StockPressure  string `json:"stockPressure"`
+	QueuePressure  string `json:"queuePressure"`
+	Notes          string `json:"notes"`
+	SubmittedAt    string `json:"submittedAt"`
+	QueuedAt       string `json:"queuedAt"`
+	AttemptCount   int    `json:"attemptCount"`
+}
+
+func (p offlineSyncItemRequest) toServiceInput() (service.OfflineSyncItemInput, []string) {
+	fields := []string(nil)
+	submittedAt, ok := parseOfflineSyncTimestamp(p.SubmittedAt)
+	if !ok {
+		fields = append(fields, "submittedAt: submittedAt must be an RFC3339 timestamp")
+	} else if submittedAt.IsZero() {
+		fields = append(fields, "submittedAt: submittedAt is required")
+	}
+
+	var queuedAt *time.Time
+	if strings.TrimSpace(p.QueuedAt) != "" {
+		parsedQueuedAt, ok := parseOfflineSyncTimestamp(p.QueuedAt)
+		if !ok {
+			fields = append(fields, "queuedAt: queuedAt must be an RFC3339 timestamp")
+		} else {
+			queuedAt = &parsedQueuedAt
+		}
+	}
+
+	return service.OfflineSyncItemInput{
+		ClientReportID:     p.ClientReportID,
+		ClinicID:           p.ClinicID,
+		Status:             p.Status,
+		Reason:             p.Reason,
+		StaffPressure:      p.StaffPressure,
+		StockPressure:      p.StockPressure,
+		QueuePressure:      p.QueuePressure,
+		Notes:              p.Notes,
+		SubmittedAt:        submittedAt,
+		QueuedAt:           queuedAt,
+		ClientAttemptCount: p.AttemptCount,
+	}, fields
+}
+
+func parseOfflineSyncTimestamp(value string) (time.Time, bool) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return time.Time{}, true
+	}
+	parsed, err := time.Parse(time.RFC3339, trimmed)
+	if err != nil {
+		return time.Time{}, false
+	}
+	return parsed, true
 }
 
 type loginRequest struct {

@@ -1182,6 +1182,483 @@ func TestReporterCannotListPendingOrReviewReports(t *testing.T) {
 	}
 }
 
+func TestOfflineSyncRequiresReporterRoleOrHigher(t *testing.T) {
+	body := strings.NewReader(validOfflineSyncJSON())
+	for _, tt := range []struct {
+		name     string
+		role     string
+		wantCode int
+	}{
+		{name: "reporter", role: "reporter", wantCode: http.StatusOK},
+		{name: "district manager", role: "district_manager", wantCode: http.StatusOK},
+		{name: "org admin", role: "org_admin", wantCode: http.StatusOK},
+		{name: "system admin", role: "system_admin", wantCode: http.StatusOK},
+		{name: "unknown role", role: "unknown", wantCode: http.StatusForbidden},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			createCalls := 0
+			router := apihttp.NewRouter(authenticatedStore(t, tt.role, fakeStore{
+				createReport:      store.Report{ID: 100, ClinicID: "clinic-1", Status: "degraded", ReviewState: "pending"},
+				createCalls:       &createCalls,
+				externalReportErr: pgx.ErrNoRows,
+			}))
+			req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports/offline-sync", strings.NewReader(validOfflineSyncJSON()))
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != tt.wantCode {
+				t.Fatalf("expected status %d, got %d with body %s", tt.wantCode, rec.Code, rec.Body.String())
+			}
+			if tt.wantCode == http.StatusOK && createCalls != 1 {
+				t.Fatalf("expected allowed role to create one report, got %d", createCalls)
+			}
+		})
+	}
+
+	router := apihttp.NewRouter(fakeStore{})
+	req := httptest.NewRequest(http.MethodPost, "/v1/reports/offline-sync", body)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assertGenericUnauthorized(t, rec)
+}
+
+func TestOfflineSyncReturnsPerItemResults(t *testing.T) {
+	submittedAt := time.Date(2026, 5, 3, 8, 30, 0, 0, time.UTC)
+	reason := "Queued while offline."
+	staffPressure := "strained"
+	stockPressure := "low"
+	queuePressure := "high"
+	notes := "Pharmacy queue overflow."
+	var createInput store.CreateReportInput
+	var syncAttemptInput store.CreateReportSyncAttemptInput
+	router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{
+		createReport: store.Report{
+			ID:             100,
+			ClinicID:       "clinic-1",
+			Status:         "degraded",
+			Reason:         &reason,
+			StaffPressure:  &staffPressure,
+			StockPressure:  &stockPressure,
+			QueuePressure:  &queuePressure,
+			Notes:          &notes,
+			SubmittedAt:    submittedAt,
+			ReviewState:    "pending",
+			OfflineCreated: true,
+		},
+		createInput:       &createInput,
+		syncAttemptInput:  &syncAttemptInput,
+		externalReportErr: pgx.ErrNoRows,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports/offline-sync", strings.NewReader(validOfflineSyncJSON()))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	var got struct {
+		Results []struct {
+			ClientReportID string        `json:"clientReportId"`
+			Result         string        `json:"result"`
+			Report         *store.Report `json:"report,omitempty"`
+		} `json:"results"`
+		Summary struct {
+			Created   int `json:"created"`
+			Duplicate int `json:"duplicate"`
+			Conflict  int `json:"conflict"`
+			Failed    int `json:"failed"`
+		} `json:"summary"`
+	}
+	decodeJSON(t, rec, &got)
+	if len(got.Results) != 1 || got.Results[0].ClientReportID != "offline-report-1" || got.Results[0].Result != "created" || got.Results[0].Report == nil || got.Results[0].Report.ID != 100 {
+		t.Fatalf("unexpected offline sync results: %#v", got.Results)
+	}
+	if got.Summary.Created != 1 || got.Summary.Duplicate != 0 || got.Summary.Conflict != 0 || got.Summary.Failed != 0 {
+		t.Fatalf("unexpected offline sync summary: %#v", got.Summary)
+	}
+	if createInput.ExternalID == nil || *createInput.ExternalID != "offline-report-1" || createInput.ClinicID != "clinic-1" || createInput.SubmittedAt != submittedAt {
+		t.Fatalf("unexpected offline report create input: %#v", createInput)
+	}
+	if syncAttemptInput.ClientAttemptCount != 2 || syncAttemptInput.ExternalID != "offline-report-1" || syncAttemptInput.QueuedAt == nil {
+		t.Fatalf("expected attemptCount to map to sync attempt input, got %#v", syncAttemptInput)
+	}
+}
+
+func TestOfflineSyncContinuesAfterItemTimestampValidationError(t *testing.T) {
+	submittedAt := time.Date(2026, 5, 3, 8, 30, 0, 0, time.UTC)
+	var createInput store.CreateReportInput
+	var syncAttemptInputs []store.CreateReportSyncAttemptInput
+	createCalls := 0
+	router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{
+		createReport: store.Report{
+			ID:             100,
+			ClinicID:       "clinic-1",
+			Status:         "degraded",
+			SubmittedAt:    submittedAt,
+			ReviewState:    "pending",
+			OfflineCreated: true,
+		},
+		createCalls:       &createCalls,
+		createInput:       &createInput,
+		syncAttemptInputs: &syncAttemptInputs,
+		externalReportErr: pgx.ErrNoRows,
+	}))
+	body := `{
+		"items": [
+			{
+				"clientReportId": "offline-report-bad-time",
+				"clinicId": "clinic-1",
+				"status": "degraded",
+				"reason": "Queued while offline.",
+				"staffPressure": "strained",
+				"stockPressure": "low",
+				"queuePressure": "high",
+				"submittedAt": "not-a-timestamp",
+				"attemptCount": 1
+			},
+			{
+				"clientReportId": "offline-report-1",
+				"clinicId": "clinic-1",
+				"status": "degraded",
+				"reason": "Queued while offline.",
+				"staffPressure": "strained",
+				"stockPressure": "low",
+				"queuePressure": "high",
+				"submittedAt": "2026-05-03T08:30:00Z",
+				"queuedAt": "2026-05-03T08:30:03Z",
+				"attemptCount": 2
+			}
+		]
+	}`
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports/offline-sync", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	var got struct {
+		Results []struct {
+			ClientReportID string                 `json:"clientReportId"`
+			Result         string                 `json:"result"`
+			Report         *store.Report          `json:"report,omitempty"`
+			Error          map[string]interface{} `json:"error,omitempty"`
+		} `json:"results"`
+		Summary struct {
+			Created int `json:"created"`
+			Failed  int `json:"failed"`
+		} `json:"summary"`
+	}
+	decodeJSON(t, rec, &got)
+	if len(got.Results) != 2 {
+		t.Fatalf("expected two per-item results, got %#v", got.Results)
+	}
+	if got.Results[0].ClientReportID != "offline-report-bad-time" || got.Results[0].Result != "validation_error" || got.Results[0].Error["code"] != "validation_error" {
+		t.Fatalf("expected first item validation_error, got %#v", got.Results[0])
+	}
+	if got.Results[1].ClientReportID != "offline-report-1" || got.Results[1].Result != "created" || got.Results[1].Report == nil || got.Results[1].Report.ID != 100 {
+		t.Fatalf("expected second item created, got %#v", got.Results[1])
+	}
+	if got.Summary.Created != 1 || got.Summary.Failed != 1 {
+		t.Fatalf("unexpected mixed batch summary: %#v", got.Summary)
+	}
+	if createCalls != 1 || createInput.ExternalID == nil || *createInput.ExternalID != "offline-report-1" {
+		t.Fatalf("expected only valid item to create report, calls=%d input=%#v", createCalls, createInput)
+	}
+	if len(syncAttemptInputs) != 2 || syncAttemptInputs[0].Result != "validation_error" || syncAttemptInputs[1].Result != "created" {
+		t.Fatalf("expected sync attempts for validation and created items, got %#v", syncAttemptInputs)
+	}
+}
+
+func TestOfflineSyncTimestampValidationNormalizesNegativeAttemptCount(t *testing.T) {
+	var syncAttemptInput store.CreateReportSyncAttemptInput
+	router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{
+		syncAttemptInput: &syncAttemptInput,
+	}))
+	body := `{"items":[{
+		"clientReportId":"offline-report-bad-attempt",
+		"clinicId":"clinic-1",
+		"status":"degraded",
+		"reason":"Queued while offline.",
+		"staffPressure":"strained",
+		"stockPressure":"low",
+		"queuePressure":"high",
+		"submittedAt":"not-a-timestamp",
+		"attemptCount":-2
+	}]}`
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports/offline-sync", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	var got struct {
+		Results []struct {
+			Result string `json:"result"`
+			Error  *struct {
+				Code string `json:"code"`
+			} `json:"error,omitempty"`
+		} `json:"results"`
+	}
+	decodeJSON(t, rec, &got)
+	if len(got.Results) != 1 || got.Results[0].Result != "validation_error" || got.Results[0].Error == nil || got.Results[0].Error.Code != "validation_error" {
+		t.Fatalf("expected validation_error result, got %#v", got.Results)
+	}
+	if syncAttemptInput.ClientAttemptCount != 1 {
+		t.Fatalf("expected normalized attempt count 1, got %#v", syncAttemptInput)
+	}
+}
+
+func TestOfflineSyncTimestampValidationAllowsBlankClinicIDAttempt(t *testing.T) {
+	var syncAttemptInput store.CreateReportSyncAttemptInput
+	router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{
+		syncAttemptInput: &syncAttemptInput,
+	}))
+	body := `{"items":[{
+		"clientReportId":"offline-report-no-clinic",
+		"clinicId":"",
+		"status":"degraded",
+		"reason":"Queued while offline.",
+		"staffPressure":"strained",
+		"stockPressure":"low",
+		"queuePressure":"high",
+		"submittedAt":"not-a-timestamp",
+		"attemptCount":1
+	}]}`
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports/offline-sync", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	var got struct {
+		Results []struct {
+			Result string `json:"result"`
+			Error  *struct {
+				Code string `json:"code"`
+			} `json:"error,omitempty"`
+		} `json:"results"`
+	}
+	decodeJSON(t, rec, &got)
+	if len(got.Results) != 1 || got.Results[0].Result != "validation_error" || got.Results[0].Error == nil || got.Results[0].Error.Code != "validation_error" {
+		t.Fatalf("expected validation_error result, got %#v", got.Results)
+	}
+	if syncAttemptInput.ClinicID != "" {
+		t.Fatalf("expected blank clinic id to be passed through for nullable ledger insert, got %#v", syncAttemptInput)
+	}
+}
+
+func TestOfflineSyncRejectsInvalidJSON(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		body string
+	}{
+		{name: "invalid", body: `{"items":`},
+		{name: "trailing", body: validOfflineSyncJSON() + `{}`},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			createCalls := 0
+			router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{createCalls: &createCalls}))
+			req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports/offline-sync", strings.NewReader(tt.body))
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("expected status %d, got %d with body %s", http.StatusBadRequest, rec.Code, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), `"code":"invalid_json"`) {
+				t.Fatalf("expected invalid_json code, got %q", rec.Body.String())
+			}
+			if createCalls != 0 {
+				t.Fatalf("expected invalid JSON not to call store, got %d calls", createCalls)
+			}
+		})
+	}
+}
+
+func TestSyncSummaryRequiresDistrictManagerOrHigher(t *testing.T) {
+	summary := store.SyncSummary{
+		OfflineReportsReceived:    3,
+		DuplicateSyncsHandled:     1,
+		ConflictsNeedingAttention: 1,
+		ValidationFailures:        1,
+		PendingOfflineReports:     2,
+	}
+	for _, tt := range []struct {
+		name     string
+		role     string
+		wantCode int
+	}{
+		{name: "district manager", role: "district_manager", wantCode: http.StatusOK},
+		{name: "org admin", role: "org_admin", wantCode: http.StatusOK},
+		{name: "system admin", role: "system_admin", wantCode: http.StatusOK},
+		{name: "reporter", role: "reporter", wantCode: http.StatusForbidden},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var since time.Time
+			router := apihttp.NewRouter(authenticatedStore(t, tt.role, fakeStore{
+				syncSummary:  &summary,
+				summarySince: &since,
+			}))
+			req := newAuthenticatedRequest(t, http.MethodGet, "/v1/sync/summary", nil)
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != tt.wantCode {
+				t.Fatalf("expected status %d, got %d with body %s", tt.wantCode, rec.Code, rec.Body.String())
+			}
+			if tt.wantCode == http.StatusOK {
+				var got store.SyncSummary
+				decodeJSON(t, rec, &got)
+				if got.OfflineReportsReceived != 3 || got.WindowStartedAt.IsZero() {
+					t.Fatalf("unexpected sync summary response: %#v", got)
+				}
+				if age := time.Since(since); age < 23*time.Hour || age > 25*time.Hour {
+					t.Fatalf("expected default summary window near 24 hours, got since %s", since)
+				}
+			}
+		})
+	}
+
+	router := apihttp.NewRouter(fakeStore{})
+	req := httptest.NewRequest(http.MethodGet, "/v1/sync/summary", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assertGenericUnauthorized(t, rec)
+}
+
+func TestSyncSummaryPassesReviewScopeForDistrictManager(t *testing.T) {
+	var scope store.ReportReviewScope
+	router := apihttp.NewRouter(authenticatedStore(t, "district_manager", fakeStore{
+		syncSummary:      &store.SyncSummary{OfflineReportsReceived: 1},
+		syncSummaryScope: &scope,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/sync/summary", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if scope.Role != "district_manager" || scope.District == nil || *scope.District != defaultTestDistrict {
+		t.Fatalf("expected district-manager review scope, got %#v", scope)
+	}
+}
+
+func TestReconcileStalenessRequiresDistrictManagerOrHigher(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		role     string
+		wantCode int
+	}{
+		{name: "district manager", role: "district_manager", wantCode: http.StatusOK},
+		{name: "org admin", role: "org_admin", wantCode: http.StatusOK},
+		{name: "system admin", role: "system_admin", wantCode: http.StatusOK},
+		{name: "reporter", role: "reporter", wantCode: http.StatusForbidden},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			router := apihttp.NewRouter(authenticatedStore(t, tt.role, fakeStore{}))
+			req := newAuthenticatedRequest(t, http.MethodPost, "/v1/status/reconcile-staleness", nil)
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != tt.wantCode {
+				t.Fatalf("expected status %d, got %d with body %s", tt.wantCode, rec.Code, rec.Body.String())
+			}
+		})
+	}
+
+	router := apihttp.NewRouter(fakeStore{})
+	req := httptest.NewRequest(http.MethodPost, "/v1/status/reconcile-staleness", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assertGenericUnauthorized(t, rec)
+}
+
+func TestReconcileStalenessPassesReviewScopeForDistrictManager(t *testing.T) {
+	now := time.Now().UTC()
+	lastReportedAt := now.Add(-24 * time.Hour)
+	var scope store.ReportReviewScope
+	router := apihttp.NewRouter(authenticatedStore(t, "district_manager", fakeStore{
+		currentStatuses: []store.CurrentStatus{{
+			ClinicID:       "clinic-1",
+			Freshness:      "fresh",
+			LastReportedAt: &lastReportedAt,
+		}},
+		currentStatusScope: &scope,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/status/reconcile-staleness", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if scope.Role != "district_manager" || scope.District == nil || *scope.District != defaultTestDistrict {
+		t.Fatalf("expected district-manager review scope, got %#v", scope)
+	}
+}
+
+func TestReconcileStalenessReturnsSummary(t *testing.T) {
+	now := time.Now().UTC()
+	lastReportedAt := now.Add(-24 * time.Hour)
+	var updateInput store.CreateAuditEventInput
+	var updateCalled bool
+	router := apihttp.NewRouter(authenticatedStore(t, "district_manager", fakeStore{
+		currentStatuses: []store.CurrentStatus{{
+			ClinicID:       "clinic-1",
+			Freshness:      "fresh",
+			LastReportedAt: &lastReportedAt,
+		}},
+		updateFreshnessInput:  &updateInput,
+		updateFreshnessCalled: &updateCalled,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/status/reconcile-staleness", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	var got struct {
+		Checked                 int `json:"checked"`
+		MarkedNeedsConfirmation int `json:"markedNeedsConfirmation"`
+		MarkedStale             int `json:"markedStale"`
+	}
+	decodeJSON(t, rec, &got)
+	if got.Checked != 1 || got.MarkedNeedsConfirmation != 0 || got.MarkedStale != 1 {
+		t.Fatalf("unexpected reconcile response: %#v", got)
+	}
+	if !updateCalled {
+		t.Fatal("expected freshness update to be called")
+	}
+	if updateInput.ActorUserID == nil || *updateInput.ActorUserID != 42 {
+		t.Fatalf("expected authenticated actor in audit input, got %#v", updateInput.ActorUserID)
+	}
+	if updateInput.EventType != "clinic.status_marked_stale" || updateInput.Metadata["freshness"] != "stale" {
+		t.Fatalf("unexpected audit input: %#v", updateInput)
+	}
+}
+
 func TestReviewReportRequiresAuthenticatedPrincipal(t *testing.T) {
 	router := apihttp.NewRouter(fakeStore{})
 	req := httptest.NewRequest(http.MethodPost, "/v1/reports/100/review", strings.NewReader(`{"decision":"accepted"}`))
@@ -2002,6 +2479,7 @@ type fakeStore struct {
 	reports                     []store.Report
 	pendingReports              []store.Report
 	auditEvents                 []store.AuditEvent
+	currentStatuses             []store.CurrentStatus
 	createReport                store.Report
 	createStatus                store.CurrentStatus
 	createAuditEvent            store.AuditEvent
@@ -2010,12 +2488,23 @@ type fakeStore struct {
 	user                        store.User
 	createSession               store.Session
 	createSessionAudit          store.AuditEvent
+	externalReport              store.Report
+	pendingPayloadReport        store.Report
+	syncAttempt                 store.ReportSyncAttempt
 	session                     store.Session
 	sessionUser                 store.User
 	memberships                 []store.OrganisationMembership
+	syncSummary                 *store.SyncSummary
 	createInput                 *store.CreateReportInput
 	reviewInput                 *store.ReviewReportInput
+	syncAttemptInput            *store.CreateReportSyncAttemptInput
+	syncAttemptInputs           *[]store.CreateReportSyncAttemptInput
+	updateFreshnessInput        *store.CreateAuditEventInput
+	updateFreshnessCalled       *bool
 	pendingScope                *store.ReportReviewScope
+	currentStatusScope          *store.ReportReviewScope
+	syncSummaryScope            *store.ReportReviewScope
+	summarySince                *time.Time
 	getUserEmail                *string
 	createSessionInput          *store.CreateSessionInput
 	sessionAuditInput           *store.CreateSessionWithAuditInput
@@ -2034,12 +2523,18 @@ type fakeStore struct {
 	reportsErr                  error
 	pendingReportsErr           error
 	auditEventsErr              error
+	currentStatusesErr          error
 	createErr                   error
+	updateFreshnessErr          error
 	reviewErr                   error
 	getUserErr                  error
 	createSessionErr            error
 	createSessionWithAuditErr   error
 	auditErr                    error
+	externalReportErr           error
+	pendingPayloadErr           error
+	syncAttemptErr              error
+	syncSummaryErr              error
 	getSessionErr               error
 	revokeErr                   error
 	membershipsErr              error
@@ -2075,6 +2570,27 @@ func (f fakeStore) ListClinicAuditEvents(context.Context, string) ([]store.Audit
 	return f.auditEvents, f.auditEventsErr
 }
 
+func (f fakeStore) ListCurrentStatuses(context.Context) ([]store.CurrentStatus, error) {
+	return f.currentStatuses, f.currentStatusesErr
+}
+
+func (f fakeStore) ListCurrentStatusesForReviewScope(_ context.Context, scope store.ReportReviewScope) ([]store.CurrentStatus, error) {
+	if f.currentStatusScope != nil {
+		*f.currentStatusScope = scope
+	}
+	return f.currentStatuses, f.currentStatusesErr
+}
+
+func (f fakeStore) UpdateCurrentStatusFreshness(_ context.Context, clinicID string, freshness string, updatedAt time.Time, audit *store.CreateAuditEventInput) (store.CurrentStatus, bool, error) {
+	if f.updateFreshnessCalled != nil {
+		*f.updateFreshnessCalled = true
+	}
+	if f.updateFreshnessInput != nil && audit != nil {
+		*f.updateFreshnessInput = *audit
+	}
+	return store.CurrentStatus{ClinicID: clinicID, Freshness: freshness, UpdatedAt: updatedAt}, true, f.updateFreshnessErr
+}
+
 func (f fakeStore) CreateReportTx(_ context.Context, input store.CreateReportInput) (store.Report, store.CurrentStatus, store.AuditEvent, error) {
 	if f.createCalls != nil {
 		*f.createCalls++
@@ -2093,6 +2609,57 @@ func (f fakeStore) CreatePendingReportTx(_ context.Context, input store.CreateRe
 		*f.createInput = input
 	}
 	return f.createReport, f.createErr
+}
+
+func (f fakeStore) GetReportByExternalID(context.Context, string) (store.Report, error) {
+	return f.externalReport, f.externalReportErr
+}
+
+func (f fakeStore) GetPendingReportByPayload(context.Context, store.CreateReportInput) (store.Report, error) {
+	if f.pendingPayloadErr != nil {
+		return store.Report{}, f.pendingPayloadErr
+	}
+	if f.pendingPayloadReport.ID == 0 {
+		return store.Report{}, pgx.ErrNoRows
+	}
+	return f.pendingPayloadReport, nil
+}
+
+func (f fakeStore) CreateReportSyncAttempt(_ context.Context, input store.CreateReportSyncAttemptInput) (store.ReportSyncAttempt, error) {
+	if f.syncAttemptInput != nil {
+		*f.syncAttemptInput = input
+	}
+	if f.syncAttemptInputs != nil {
+		*f.syncAttemptInputs = append(*f.syncAttemptInputs, input)
+	}
+	return f.syncAttempt, f.syncAttemptErr
+}
+
+func (f fakeStore) GetSyncSummarySince(_ context.Context, since time.Time) (store.SyncSummary, error) {
+	if f.summarySince != nil {
+		*f.summarySince = since
+	}
+	if f.syncSummary != nil {
+		summary := *f.syncSummary
+		summary.WindowStartedAt = since
+		return summary, f.syncSummaryErr
+	}
+	return store.SyncSummary{WindowStartedAt: since}, f.syncSummaryErr
+}
+
+func (f fakeStore) GetSyncSummarySinceForReviewScope(_ context.Context, since time.Time, scope store.ReportReviewScope) (store.SyncSummary, error) {
+	if f.summarySince != nil {
+		*f.summarySince = since
+	}
+	if f.syncSummaryScope != nil {
+		*f.syncSummaryScope = scope
+	}
+	if f.syncSummary != nil {
+		summary := *f.syncSummary
+		summary.WindowStartedAt = since
+		return summary, f.syncSummaryErr
+	}
+	return store.SyncSummary{WindowStartedAt: since}, f.syncSummaryErr
 }
 
 func (f fakeStore) ReviewReportTx(_ context.Context, input store.ReviewReportInput) (store.Report, *store.CurrentStatus, error) {
@@ -2205,6 +2772,24 @@ func validReportJSON() string {
 		"queuePressure":"low",
 		"reason":"Daily facility check",
 		"source":"field_worker"
+	}`
+}
+
+func validOfflineSyncJSON() string {
+	return `{
+		"items": [{
+			"clientReportId": "offline-report-1",
+			"clinicId": "clinic-1",
+			"status": "degraded",
+			"reason": "Queued while offline.",
+			"staffPressure": "strained",
+			"stockPressure": "low",
+			"queuePressure": "high",
+			"notes": "Pharmacy queue overflow.",
+			"submittedAt": "2026-05-03T08:30:00Z",
+			"queuedAt": "2026-05-03T08:30:03Z",
+			"attemptCount": 2
+		}]
 	}`
 }
 

@@ -66,6 +66,41 @@ func TestLocalPhase3AuthSeedExistsOutsideMigrations(t *testing.T) {
 	}
 }
 
+func TestOfflineSyncMigrationAddsPilotReadinessTables(t *testing.T) {
+	t.Parallel()
+
+	migrationSQL := readMigrationFile(t, "0006_offline_sync_pilot_readiness.sql")
+	required := []string{
+		"CREATE TABLE report_sync_attempts",
+		"result TEXT NOT NULL CHECK",
+		"result IN ('created', 'duplicate', 'conflict', 'validation_error', 'forbidden', 'server_error')",
+		"client_attempt_count INTEGER NOT NULL DEFAULT 1",
+		"CREATE INDEX report_sync_attempts_external_created_at_idx",
+		"CREATE INDEX report_sync_attempts_result_created_at_idx",
+		"CREATE INDEX current_status_freshness_updated_at_idx",
+	}
+	for _, value := range required {
+		if !strings.Contains(migrationSQL, value) {
+			t.Fatalf("expected offline sync migration to contain %q", value)
+		}
+	}
+}
+
+func TestOfflineSyncLedgerClinicIDMigrationAllowsMalformedValidationAttempts(t *testing.T) {
+	t.Parallel()
+
+	migrationSQL := readMigrationFile(t, "0007_nullable_sync_attempt_clinic_id.sql")
+	required := []string{
+		"ALTER TABLE report_sync_attempts",
+		"ALTER COLUMN clinic_id DROP NOT NULL",
+	}
+	for _, value := range required {
+		if !strings.Contains(migrationSQL, value) {
+			t.Fatalf("expected nullable sync attempt clinic migration to contain %q", value)
+		}
+	}
+}
+
 func readIntegrationMigrationSQL(t *testing.T) string {
 	t.Helper()
 

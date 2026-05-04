@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"clinicpulse/services/api/internal/store"
+	"github.com/jackc/pgx/v5"
 )
 
 func TestValidateCreateReportInputRejectsInvalidPayloads(t *testing.T) {
@@ -302,6 +303,24 @@ func TestCreateReportCallsCreatorForValidInput(t *testing.T) {
 	}
 }
 
+func TestCreateReportReturnsExistingPendingSemanticDuplicate(t *testing.T) {
+	existing := store.Report{ID: 202, ClinicID: "clinic-1", ReviewState: "pending"}
+	creator := &fakeReportCreator{semanticDuplicate: existing}
+	input := validReportInput()
+
+	gotReport, err := CreateReport(context.Background(), creator, input)
+
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if gotReport.ID != existing.ID {
+		t.Fatalf("expected existing pending duplicate report, got %#v", gotReport)
+	}
+	if creator.called {
+		t.Fatal("expected semantic duplicate not to create another pending report")
+	}
+}
+
 func TestCreateReportConvertsConfidenceToScore(t *testing.T) {
 	creator := &fakeReportCreator{}
 	input := validReportInput()
@@ -473,16 +492,24 @@ func containsField(fields []string, want string) bool {
 }
 
 type fakeReportCreator struct {
-	called bool
-	input  store.CreateReportInput
-	report store.Report
-	err    error
+	called            bool
+	input             store.CreateReportInput
+	report            store.Report
+	semanticDuplicate store.Report
+	err               error
 }
 
 func (f *fakeReportCreator) CreatePendingReportTx(_ context.Context, input store.CreateReportInput) (store.Report, error) {
 	f.called = true
 	f.input = input
 	return f.report, f.err
+}
+
+func (f *fakeReportCreator) GetPendingReportByPayload(_ context.Context, _ store.CreateReportInput) (store.Report, error) {
+	if f.semanticDuplicate.ID == 0 {
+		return store.Report{}, pgx.ErrNoRows
+	}
+	return f.semanticDuplicate, nil
 }
 
 type fakeReportReviewer struct {

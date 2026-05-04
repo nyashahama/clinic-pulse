@@ -252,6 +252,260 @@ func TestReportReviewQueriesIntegration(t *testing.T) {
 	}
 }
 
+func TestOfflineSyncStoreIntegrationRecordsAttemptsAndSummary(t *testing.T) {
+	databaseURL := os.Getenv("AUTH_STORE_TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("set AUTH_STORE_TEST_DATABASE_URL to run offline sync store integration tests")
+	}
+
+	ctx := context.Background()
+	store := newIntegrationStore(t, ctx, databaseURL)
+
+	insertIntegrationClinic(t, ctx, store, "clinic-offline-sync", "Offline Sync Clinic")
+	insertIntegrationClinic(t, ctx, store, "clinic-offline-sync-confirm", "Offline Sync Confirmation Clinic")
+	insertIntegrationClinic(t, ctx, store, "clinic-offline-sync-stale", "Offline Sync Stale Clinic")
+
+	baseTime := time.Date(2126, 5, 3, 12, 0, 0, 0, time.UTC)
+	windowStart := baseTime.Add(-time.Minute)
+	beforeWindow := windowStart.Add(-time.Hour)
+	report, err := store.CreatePendingReportTx(ctx, CreateReportInput{
+		ExternalID:     stringPtr("offline-sync-1"),
+		ClinicID:       "clinic-offline-sync",
+		ReporterName:   stringPtr("Offline Reporter"),
+		Source:         "field_worker",
+		OfflineCreated: true,
+		SubmittedAt:    baseTime.Add(-10 * time.Minute),
+		ReceivedAt:     baseTime,
+		Status:         "degraded",
+		ReviewState:    "pending",
+	})
+	if err != nil {
+		t.Fatalf("CreatePendingReportTx offline report returned error: %v", err)
+	}
+	if _, err := store.CreatePendingReportTx(ctx, CreateReportInput{
+		ExternalID:     stringPtr("offline-sync-old-pending"),
+		ClinicID:       "clinic-offline-sync",
+		ReporterName:   stringPtr("Offline Reporter"),
+		Source:         "field_worker",
+		OfflineCreated: true,
+		SubmittedAt:    beforeWindow.Add(-10 * time.Minute),
+		ReceivedAt:     beforeWindow,
+		Status:         "degraded",
+		ReviewState:    "pending",
+	}); err != nil {
+		t.Fatalf("CreatePendingReportTx old offline report returned error: %v", err)
+	}
+
+	for _, fixture := range []struct {
+		externalID string
+		result     string
+	}{
+		{externalID: "offline-sync-1", result: "created"},
+		{externalID: "offline-sync-duplicate", result: "duplicate"},
+		{externalID: "offline-sync-conflict", result: "conflict"},
+		{externalID: "offline-sync-validation", result: "validation_error"},
+	} {
+		_, err := store.CreateReportSyncAttempt(ctx, CreateReportSyncAttemptInput{
+			ExternalID: fixture.externalID,
+			ReportID:   &report.ID,
+			ClinicID:   "clinic-offline-sync",
+			Result:     fixture.result,
+			ReceivedAt: baseTime,
+		})
+		if err != nil {
+			t.Fatalf("CreateReportSyncAttempt %s returned error: %v", fixture.result, err)
+		}
+	}
+	if _, err := store.CreateReportSyncAttempt(ctx, CreateReportSyncAttemptInput{
+		ExternalID: "offline-sync-old-created",
+		ReportID:   &report.ID,
+		ClinicID:   "clinic-offline-sync",
+		Result:     "created",
+		ReceivedAt: beforeWindow,
+	}); err != nil {
+		t.Fatalf("CreateReportSyncAttempt old created returned error: %v", err)
+	}
+
+	baselineSummary, err := store.GetSyncSummarySince(ctx, windowStart)
+	if err != nil {
+		t.Fatalf("GetSyncSummarySince baseline returned error: %v", err)
+	}
+
+	if _, err := store.pool.Exec(ctx, `
+INSERT INTO current_status (
+    clinic_id,
+    status,
+    freshness,
+    last_reported_at,
+    source,
+    updated_at
+)
+VALUES
+    ('clinic-offline-sync-confirm', 'unknown', 'needs_confirmation', $1, 'integration_test', $1),
+    ('clinic-offline-sync-stale', 'unknown', 'stale', $1, 'integration_test', $1)`, baseTime); err != nil {
+		t.Fatalf("insert offline sync current_status fixtures: %v", err)
+	}
+
+	gotReport, err := store.GetReportByExternalID(ctx, "offline-sync-1")
+	if err != nil {
+		t.Fatalf("GetReportByExternalID returned error: %v", err)
+	}
+	if gotReport.ID != report.ID || !gotReport.OfflineCreated || gotReport.ReviewState != "pending" {
+		t.Fatalf("unexpected offline report: %+v", gotReport)
+	}
+	gotPendingDuplicate, err := store.GetPendingReportByPayload(ctx, CreateReportInput{
+		ClinicID:   "clinic-offline-sync",
+		Source:     "field_worker",
+		Status:     "degraded",
+		ReceivedAt: baseTime.Add(time.Minute),
+	})
+	if err != nil {
+		t.Fatalf("GetPendingReportByPayload returned error: %v", err)
+	}
+	if gotPendingDuplicate.ID != report.ID {
+		t.Fatalf("expected semantic pending duplicate report %d, got %+v", report.ID, gotPendingDuplicate)
+	}
+
+	summary, err := store.GetSyncSummarySince(ctx, windowStart)
+	if err != nil {
+		t.Fatalf("GetSyncSummarySince returned error: %v", err)
+	}
+	if summary.WindowStartedAt != windowStart {
+		t.Fatalf("expected summary window start, got %s", summary.WindowStartedAt)
+	}
+	if summary.OfflineReportsReceived != 1 ||
+		summary.DuplicateSyncsHandled != 1 ||
+		summary.ConflictsNeedingAttention != 1 ||
+		summary.ValidationFailures != 1 {
+		t.Fatalf("unexpected sync attempt summary counts: %+v", summary)
+	}
+	if summary.PendingOfflineReports != 1 {
+		t.Fatalf("expected one pending offline report, got %+v", summary)
+	}
+	if summary.NeedsConfirmationClinics != baselineSummary.NeedsConfirmationClinics+1 {
+		t.Fatalf("expected needs_confirmation snapshot baseline + fixture, baseline=%+v got=%+v", baselineSummary, summary)
+	}
+	if summary.StaleClinics != baselineSummary.StaleClinics+1 {
+		t.Fatalf("expected stale snapshot baseline + fixture, baseline=%+v got=%+v", baselineSummary, summary)
+	}
+	if summary.MedianCurrentStatusAgeHours == nil {
+		t.Fatalf("expected median current status age to be calculated, got %+v", summary)
+	}
+
+	district := "Review District"
+	districtScope := ReportReviewScope{Role: "district_manager", District: &district}
+	districtBaselineSummary, err := store.GetSyncSummarySinceForReviewScope(ctx, windowStart, districtScope)
+	if err != nil {
+		t.Fatalf("GetSyncSummarySinceForReviewScope district baseline returned error: %v", err)
+	}
+	districtBaselineStatuses, err := store.ListCurrentStatusesForReviewScope(ctx, districtScope)
+	if err != nil {
+		t.Fatalf("ListCurrentStatusesForReviewScope district baseline returned error: %v", err)
+	}
+
+	insertIntegrationClinicInDistrict(t, ctx, store, "clinic-offline-sync-other-district", "Other District Offline Sync Clinic", "Other District")
+	otherDistrictReport, err := store.CreatePendingReportTx(ctx, CreateReportInput{
+		ExternalID:     stringPtr("offline-sync-other-district-pending"),
+		ClinicID:       "clinic-offline-sync-other-district",
+		ReporterName:   stringPtr("Offline Reporter"),
+		Source:         "field_worker",
+		OfflineCreated: true,
+		SubmittedAt:    baseTime.Add(-10 * time.Minute),
+		ReceivedAt:     baseTime,
+		Status:         "degraded",
+		ReviewState:    "pending",
+	})
+	if err != nil {
+		t.Fatalf("CreatePendingReportTx other district report returned error: %v", err)
+	}
+	if _, err := store.CreateReportSyncAttempt(ctx, CreateReportSyncAttemptInput{
+		ExternalID: "offline-sync-other-district-created",
+		ReportID:   &otherDistrictReport.ID,
+		ClinicID:   "clinic-offline-sync-other-district",
+		Result:     "created",
+		ReceivedAt: baseTime,
+	}); err != nil {
+		t.Fatalf("CreateReportSyncAttempt other district created returned error: %v", err)
+	}
+	if _, err := store.CreateReportSyncAttempt(ctx, CreateReportSyncAttemptInput{
+		ExternalID: "offline-sync-null-clinic-validation",
+		Result:     "validation_error",
+		ReceivedAt: baseTime,
+	}); err != nil {
+		t.Fatalf("CreateReportSyncAttempt null clinic validation returned error: %v", err)
+	}
+	if _, err := store.pool.Exec(ctx, `
+INSERT INTO current_status (
+    clinic_id,
+    status,
+    freshness,
+    last_reported_at,
+    source,
+    updated_at
+)
+VALUES
+    ('clinic-offline-sync-other-district', 'unknown', 'stale', $1, 'integration_test', $1)`, baseTime); err != nil {
+		t.Fatalf("insert other district current_status fixture: %v", err)
+	}
+
+	districtSummary, err := store.GetSyncSummarySinceForReviewScope(ctx, windowStart, districtScope)
+	if err != nil {
+		t.Fatalf("GetSyncSummarySinceForReviewScope district returned error: %v", err)
+	}
+	if !sameSyncSummaryCounts(districtSummary, districtBaselineSummary) {
+		t.Fatalf("expected district summary to exclude out-of-district and null-clinic rows, baseline=%+v got=%+v", districtBaselineSummary, districtSummary)
+	}
+	if districtSummary.MedianCurrentStatusAgeHours == nil {
+		t.Fatalf("expected district summary median age to remain populated, got %+v", districtSummary)
+	}
+	districtStatuses, err := store.ListCurrentStatusesForReviewScope(ctx, districtScope)
+	if err != nil {
+		t.Fatalf("ListCurrentStatusesForReviewScope district returned error: %v", err)
+	}
+	if len(districtStatuses) != len(districtBaselineStatuses) {
+		t.Fatalf("expected district statuses to exclude other district row, baseline=%+v got=%+v", districtBaselineStatuses, districtStatuses)
+	}
+	for _, status := range districtStatuses {
+		if status.ClinicID == "clinic-offline-sync-other-district" {
+			t.Fatalf("expected other district status to be excluded, got %+v", districtStatuses)
+		}
+	}
+}
+
+func TestCreateReportSyncAttemptAllowsValidationAttemptWithoutClinicID(t *testing.T) {
+	databaseURL := os.Getenv("AUTH_STORE_TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("set AUTH_STORE_TEST_DATABASE_URL to run offline sync store integration tests")
+	}
+
+	ctx := context.Background()
+	store := newIntegrationStore(t, ctx, databaseURL)
+	errorCode := "validation_error"
+	errorMessage := "offline report failed validation"
+
+	attempt, err := store.CreateReportSyncAttempt(ctx, CreateReportSyncAttemptInput{
+		ExternalID:         "offline-sync-no-clinic",
+		Result:             "validation_error",
+		ClientAttemptCount: -2,
+		ErrorCode:          &errorCode,
+		ErrorMessage:       &errorMessage,
+		Metadata:           map[string]any{"fields": []string{"clinicId: clinicId is required"}},
+	})
+	if err != nil {
+		t.Fatalf("CreateReportSyncAttempt without clinic id returned error: %v", err)
+	}
+
+	if attempt.ClinicID != "" {
+		t.Fatalf("expected nullable clinic id to scan as empty string, got %+v", attempt)
+	}
+	if attempt.ClientAttemptCount != 1 {
+		t.Fatalf("expected normalized client attempt count 1, got %+v", attempt)
+	}
+	if attempt.Result != "validation_error" || attempt.ErrorCode == nil || *attempt.ErrorCode != errorCode {
+		t.Fatalf("unexpected validation attempt: %+v", attempt)
+	}
+}
+
 func insertIntegrationClinic(t *testing.T, ctx context.Context, store Store, id string, name string) {
 	t.Helper()
 	insertIntegrationClinicInDistrict(t, ctx, store, id, name, "Review District")
@@ -334,4 +588,15 @@ func assertAuditEventMutationRejected(t *testing.T, ctx context.Context, store S
 	if _, err := tx.Exec(ctx, statement, args...); err == nil {
 		t.Fatalf("expected audit_events mutation to be rejected for statement %q", statement)
 	}
+}
+
+func sameSyncSummaryCounts(left SyncSummary, right SyncSummary) bool {
+	return left.WindowStartedAt == right.WindowStartedAt &&
+		left.OfflineReportsReceived == right.OfflineReportsReceived &&
+		left.DuplicateSyncsHandled == right.DuplicateSyncsHandled &&
+		left.ConflictsNeedingAttention == right.ConflictsNeedingAttention &&
+		left.ValidationFailures == right.ValidationFailures &&
+		left.PendingOfflineReports == right.PendingOfflineReports &&
+		left.NeedsConfirmationClinics == right.NeedsConfirmationClinics &&
+		left.StaleClinics == right.StaleClinics
 }

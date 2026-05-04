@@ -5,8 +5,12 @@ import type {
   CreateReportApiResponse,
   ClinicDetailApiResponse,
   CurrentStatusApiResponse,
+  OfflineSyncApiRequest,
+  OfflineSyncApiResponse,
   PublicClinicDetailApiResponse,
   ReportApiResponse,
+  StalenessReconciliationApiResponse,
+  SyncSummaryApiResponse,
   AuditEventApiResponse,
 } from "@/lib/demo/api-types";
 
@@ -189,6 +193,32 @@ export function createReport(input: CreateReportApiInput, options?: ClinicPulseA
     body: JSON.stringify(input),
     method: "POST",
   });
+}
+
+export function syncOfflineReportsApi(
+  input: OfflineSyncApiRequest,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<OfflineSyncApiResponse>(
+    ["v1", "reports", "offline-sync"],
+    options,
+    {
+      body: JSON.stringify(input),
+      method: "POST",
+    },
+  );
+}
+
+export function fetchSyncSummary(options?: ClinicPulseApiClientOptions) {
+  return requestClinicPulseApi<SyncSummaryApiResponse>(["v1", "sync", "summary"], options);
+}
+
+export function reconcileStatusStaleness(options?: ClinicPulseApiClientOptions) {
+  return requestClinicPulseApi<StalenessReconciliationApiResponse>(
+    ["v1", "status", "reconcile-staleness"],
+    options,
+    { method: "POST" },
+  );
 }
 
 export function fetchAlternatives(

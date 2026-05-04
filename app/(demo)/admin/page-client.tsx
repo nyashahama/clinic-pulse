@@ -18,8 +18,10 @@ import { ExportPreview } from "@/components/demo/export-preview";
 import { APIPreview } from "@/components/demo/api-preview";
 import { RoadmapModules } from "@/components/demo/roadmap-modules";
 import { MetricTile } from "@/components/demo/metric-tile";
+import { PilotReadinessPanel } from "@/components/demo/pilot-readiness-panel";
 import { SectionHeader } from "@/components/demo/section-header";
 import { Button, buttonVariants } from "@/components/ui/button";
+import type { SyncSummaryApiResponse } from "@/lib/demo/api-types";
 import { adminWorkspaceSections } from "@/lib/demo/admin-layout";
 import { useDemoStore } from "@/lib/demo/demo-store";
 import { getClinicRows } from "@/lib/demo/selectors";
@@ -78,7 +80,11 @@ function buildExportPayload(state: DemoState) {
   };
 }
 
-export default function AdminPage() {
+type AdminPageProps = {
+  syncSummary: SyncSummaryApiResponse | null;
+};
+
+export default function AdminPage({ syncSummary }: AdminPageProps) {
   const searchParams = useSearchParams();
   const {
     state,
@@ -197,6 +203,8 @@ export default function AdminPage() {
             }}
           />
         </div>
+
+        {syncSummary ? <PilotReadinessPanel summary={syncSummary} /> : null}
       </div>
 
       {selectedClinic ? (

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { FieldClinicList } from "@/components/demo/field-clinic-list";
@@ -10,31 +10,177 @@ import { ReportForm } from "@/components/demo/report-form";
 import { SyncStatus } from "@/components/demo/sync-status";
 import { SectionHeader } from "@/components/demo/section-header";
 import { Button } from "@/components/ui/button";
+import { ClinicPulseApiError } from "@/lib/demo/api-client";
 import { useDemoStore } from "@/lib/demo/demo-store";
 import {
   submitOnlineFieldReport,
   type OnlineFieldReportInput,
 } from "@/lib/demo/field-report";
+import {
+  addOfflineReport,
+  listActiveOfflineReports,
+  removeOfflineReport,
+  updateOfflineReport,
+} from "@/lib/demo/offline-queue-store";
+import {
+  applyOfflineSyncResult,
+  countWaitingOfflineReports,
+  findMatchingOpenOfflineReport,
+  isOfflineReportReadyForSync,
+  markQueuedItemNetworkFailure,
+  markQueuedItemSyncing,
+  recoverStaleSyncingReports,
+} from "@/lib/demo/offline-sync";
 import { getClinicRows } from "@/lib/demo/selectors";
-import { createFieldReport } from "./actions";
+import type { OfflineReportQueueItem } from "@/lib/demo/types";
+import { createFieldReport, syncQueuedFieldReports } from "./actions";
+
+const OFFLINE_SAVED_MESSAGE =
+  "Report saved offline. It will retry when connectivity returns.";
+const OFFLINE_DUPLICATE_MESSAGE =
+  "A matching report is already in the device queue.";
+
+function createClientReportId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return `field-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function getErrorStatus(error: unknown) {
+  if (error instanceof ClinicPulseApiError) {
+    return error.status;
+  }
+
+  if (error && typeof error === "object" && "status" in error) {
+    const status = Number((error as { status: unknown }).status);
+    return Number.isFinite(status) ? status : null;
+  }
+
+  return null;
+}
+
+function isReachabilityFailure(error: unknown) {
+  const status = getErrorStatus(error);
+  if (status !== null) {
+    return status >= 500;
+  }
+
+  if (error instanceof TypeError) {
+    return true;
+  }
+
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return /fetch failed|failed to fetch|network|econnrefused|econnreset|enotfound|etimedout|request failed with 5\d\d/i.test(
+    error.message,
+  );
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "The request failed.";
+}
+
+async function persistOfflineReportUpdates(items: OfflineReportQueueItem[]) {
+  const persisted: OfflineReportQueueItem[] = [];
+  const failed: Array<{ item: OfflineReportQueueItem; error: unknown }> = [];
+
+  for (const item of items) {
+    try {
+      await updateOfflineReport(item);
+      persisted.push(item);
+    } catch (error) {
+      failed.push({ item, error });
+    }
+  }
+
+  return { failed, persisted };
+}
+
+async function bestEffortRecoverSyncingReports(
+  items: OfflineReportQueueItem[],
+  message: string,
+) {
+  const now = new Date();
+
+  for (const item of items) {
+    try {
+      await updateOfflineReport(markQueuedItemNetworkFailure(item, message, now));
+    } catch {
+      // If this write also fails, the next queue load will show the last persisted state.
+    }
+  }
+}
+
+async function loadRecoverableOfflineReports(now = new Date()) {
+  const reports = await listActiveOfflineReports(now);
+  const recoveredReports = recoverStaleSyncingReports(reports, now);
+  const recoveredItems = recoveredReports.filter((item, index) => item !== reports[index]);
+
+  if (recoveredItems.length > 0) {
+    await persistOfflineReportUpdates(recoveredItems);
+  }
+
+  return recoveredReports;
+}
+
+function createOfflineReportQueueItem(
+  clinicId: string,
+  report: OnlineFieldReportInput,
+  now = new Date(),
+): OfflineReportQueueItem {
+  const timestamp = now.toISOString();
+
+  return {
+    clientReportId: createClientReportId(),
+    schemaVersion: 1,
+    clinicId,
+    status: report.status,
+    reason: report.reason,
+    staffPressure: report.staffPressure,
+    stockPressure: report.stockPressure,
+    queuePressure: report.queuePressure,
+    notes: report.notes,
+    submittedAt: timestamp,
+    queuedAt: timestamp,
+    updatedAt: timestamp,
+    syncStatus: "queued",
+    attemptCount: 0,
+    nextRetryAt: null,
+    lastAttemptAt: null,
+    lastError: null,
+    lastServerReportId: null,
+    lastServerReviewState: null,
+    conflictReason: null,
+  };
+}
 
 export default function FieldPageClient() {
   const router = useRouter();
-  const {
-    state,
-    queueOfflineReport,
-    syncOfflineReports,
-  } = useDemoStore();
+  const { state } = useDemoStore();
 
   const clinics = useMemo(() => getClinicRows(state), [state]);
   const [selectedClinicId, setSelectedClinicId] = useState<string | null>(
     clinics[0]?.id ?? null,
   );
-  const [isOnline, setIsOnline] = useState(true);
+  const [offlineReports, setOfflineReports] = useState<OfflineReportQueueItem[]>([]);
+  const [isOnline, setIsOnline] = useState(() =>
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
   const [submitting, setSubmitting] = useState(false);
   const submitInFlight = useRef(false);
+  const syncInFlight = useRef(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+
+  const loadOfflineReports = useCallback(async () => {
+    const reports = await loadRecoverableOfflineReports();
+    setOfflineReports(reports);
+    return reports;
+  }, []);
 
   const selectedClinic = useMemo(
     () => clinics.find((clinic) => clinic.id === selectedClinicId) ?? clinics[0] ?? null,
@@ -43,6 +189,198 @@ export default function FieldPageClient() {
 
   const selectedName = selectedClinic?.name ?? "Select a clinic";
   const selectedId = selectedClinic?.id ?? "";
+
+  const saveOfflineReport = useCallback(
+    async (report: OnlineFieldReportInput) => {
+      const item = createOfflineReportQueueItem(selectedId, report);
+      const reports = await loadOfflineReports();
+      const existing = findMatchingOpenOfflineReport(reports, item);
+      if (existing) {
+        return { item: existing, duplicate: true };
+      }
+
+      await addOfflineReport(item);
+      await loadOfflineReports();
+      return { item, duplicate: false };
+    },
+    [loadOfflineReports, selectedId],
+  );
+
+  const syncQueuedReports = useCallback(
+    async (options: { clientReportId?: string; manual?: boolean; assumeOnline?: boolean } = {}) => {
+      if (syncInFlight.current || (!isOnline && !options.assumeOnline)) {
+        return;
+      }
+
+      syncInFlight.current = true;
+      setSyncing(true);
+
+      try {
+        const reports = await loadOfflineReports();
+        const now = new Date();
+        const selectedReports = reports.filter((item) => {
+          if (options.clientReportId && item.clientReportId !== options.clientReportId) {
+            return false;
+          }
+
+          return isOfflineReportReadyForSync(item, now, options.manual ?? false);
+        });
+
+        if (selectedReports.length === 0) {
+          return;
+        }
+
+        const syncingReports = selectedReports.map((item) =>
+          markQueuedItemSyncing(item, new Date()),
+        );
+        const syncingPersistence = await persistOfflineReportUpdates(syncingReports);
+        if (syncingPersistence.failed.length > 0) {
+          const message = `Local queue update failed before sync: ${getErrorMessage(syncingPersistence.failed[0]?.error)}.`;
+          await bestEffortRecoverSyncingReports(syncingPersistence.persisted, message);
+          await loadOfflineReports();
+          return;
+        }
+
+        try {
+          await loadOfflineReports();
+        } catch (error) {
+          const message = `Local queue read failed after marking reports syncing: ${getErrorMessage(error)}.`;
+          await bestEffortRecoverSyncingReports(syncingReports, message);
+          try {
+            await loadOfflineReports();
+          } catch {
+            // The queue will refresh on the next successful IndexedDB read.
+          }
+          return;
+        }
+
+        try {
+          const response = await syncQueuedFieldReports(syncingReports);
+          const resultsByClientId = new Map(
+            response.results.map((result) => [result.clientReportId, result]),
+          );
+          const updatedReports = syncingReports.map((item) => {
+            const result = resultsByClientId.get(item.clientReportId);
+
+            if (!result) {
+              const updatedAt = new Date().toISOString();
+              return {
+                ...item,
+                syncStatus: "failed" as const,
+                updatedAt,
+                nextRetryAt: null,
+                lastError: "Offline sync did not return a result for this report.",
+                conflictReason: null,
+              };
+            }
+
+            return applyOfflineSyncResult(item, result, new Date());
+          });
+
+          const resultPersistence = await persistOfflineReportUpdates(updatedReports);
+          if (resultPersistence.failed.length > 0) {
+            const message = `Local queue persistence failed after sync: ${getErrorMessage(resultPersistence.failed[0]?.error)}.`;
+            await bestEffortRecoverSyncingReports(
+              resultPersistence.failed.map(({ item }) => item),
+              message,
+            );
+          }
+
+          await loadOfflineReports();
+
+          if (updatedReports.some((item) => item.syncStatus === "synced")) {
+            router.refresh();
+          }
+        } catch (error) {
+          const nowAfterFailure = new Date();
+          const message = getErrorMessage(error);
+          const updatedReports = isReachabilityFailure(error)
+            ? syncingReports.map((item) =>
+                markQueuedItemNetworkFailure(item, message, nowAfterFailure),
+              )
+            : syncingReports.map((item) => ({
+                ...item,
+                syncStatus: "failed" as const,
+                updatedAt: nowAfterFailure.toISOString(),
+                nextRetryAt: null,
+                lastError: message,
+                conflictReason: null,
+              }));
+
+          const failurePersistence = await persistOfflineReportUpdates(updatedReports);
+          if (failurePersistence.failed.length > 0) {
+            const message = `Local queue persistence failed after sync error: ${getErrorMessage(failurePersistence.failed[0]?.error)}.`;
+            await bestEffortRecoverSyncingReports(
+              failurePersistence.failed.map(({ item }) => item),
+              message,
+            );
+          }
+
+          await loadOfflineReports();
+        }
+      } finally {
+        syncInFlight.current = false;
+        setSyncing(false);
+      }
+    },
+    [isOnline, loadOfflineReports, router],
+  );
+  const lastSyncedAt = useMemo(
+    () =>
+      offlineReports
+        .filter((item) => item.syncStatus === "synced")
+        .map((item) => item.updatedAt)
+        .sort()
+        .at(-1) ?? state.lastSyncAt,
+    [offlineReports, state.lastSyncAt],
+  );
+  const waitingOfflineReportCount = useMemo(
+    () => countWaitingOfflineReports(offlineReports),
+    [offlineReports],
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    void loadRecoverableOfflineReports().then((reports) => {
+      if (isMounted) {
+        setOfflineReports(reports);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handleOnline = () => {
+      setIsOnline(true);
+      void syncQueuedReports({ assumeOnline: true });
+    };
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [syncQueuedReports]);
+
+  const handleToggleOnline = () => {
+    const nextOnline = !isOnline;
+    setIsOnline(nextOnline);
+
+    if (nextOnline) {
+      void syncQueuedReports({ assumeOnline: true });
+    }
+  };
 
   const handleSubmit = async (report: OnlineFieldReportInput) => {
     if (submitInFlight.current) {
@@ -61,30 +399,29 @@ export default function FieldPageClient() {
 
     try {
       if (isOnline) {
-        await submitOnlineFieldReport({
-          clinicId: selectedId,
-          refresh: () => router.refresh(),
-          report,
-          submitReport: createFieldReport,
-        });
+        try {
+          await submitOnlineFieldReport({
+            clinicId: selectedId,
+            refresh: () => router.refresh(),
+            report,
+            submitReport: createFieldReport,
+          });
+        } catch (error) {
+          if (!isReachabilityFailure(error)) {
+            throw error;
+          }
+
+          const saved = await saveOfflineReport(report);
+          setSubmitError(saved.duplicate ? OFFLINE_DUPLICATE_MESSAGE : OFFLINE_SAVED_MESSAGE);
+        }
 
         return true;
       }
 
-      // Phase 2 keeps offline mode as a browser-local demo queue.
-      // Durable offline sync semantics are intentionally deferred to Phase 4.
-      queueOfflineReport({
-        clinicId: selectedId,
-        reporterName: report.reporterName,
-        source: "field_worker",
-        status: report.status,
-        reason: report.reason,
-        staffPressure: report.staffPressure,
-        stockPressure: report.stockPressure,
-        queuePressure: report.queuePressure,
-        notes: report.notes,
-      });
-
+      const saved = await saveOfflineReport(report);
+      if (saved.duplicate) {
+        setSubmitError(OFFLINE_DUPLICATE_MESSAGE);
+      }
       return true;
     } catch (error) {
       setSubmitError(
@@ -99,14 +436,9 @@ export default function FieldPageClient() {
     }
   };
 
-  const handleSync = () => {
-    if (!isOnline || state.offlineQueue.length === 0) {
-      return;
-    }
-
-    setSyncing(true);
-    syncOfflineReports();
-    setTimeout(() => setSyncing(false), 600);
+  const handleRemoveReport = async (clientReportId: string) => {
+    await removeOfflineReport(clientReportId);
+    await loadOfflineReports();
   };
 
   return (
@@ -124,7 +456,7 @@ export default function FieldPageClient() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setIsOnline((current) => !current)}
+            onClick={handleToggleOnline}
             className="w-full sm:w-auto"
           >
             {isOnline ? "Set offline mode" : "Set online mode"}
@@ -153,20 +485,28 @@ export default function FieldPageClient() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <OfflineQueue
-          queue={state.offlineQueue}
+          queue={offlineReports}
           clinics={clinics}
           canSync={isOnline}
           syncing={syncing}
-          onSync={handleSync}
+          onSync={() => void syncQueuedReports()}
+          onRetryItem={(clientReportId) =>
+            void syncQueuedReports({ clientReportId, manual: true })
+          }
+          onRemoveItem={(clientReportId) => void handleRemoveReport(clientReportId)}
         />
 
         <SyncStatus
           isOnline={isOnline}
-          queuedReports={state.offlineQueue.length}
-          lastSyncedAt={state.lastSyncAt}
-          onToggleOnline={() => setIsOnline((current) => !current)}
-          canRetry={state.offlineQueue.length > 0}
-          onRetry={state.offlineQueue.length > 0 ? handleSync : undefined}
+          queuedReports={waitingOfflineReportCount}
+          lastSyncedAt={lastSyncedAt}
+          onToggleOnline={handleToggleOnline}
+          canRetry={waitingOfflineReportCount > 0}
+          onRetry={
+            waitingOfflineReportCount > 0
+              ? () => void syncQueuedReports({ manual: true })
+              : undefined
+          }
         />
       </div>
 
