@@ -8,17 +8,25 @@ type LandingSectionProps = {
   className?: string;
   contentClassName?: string;
   id?: string;
+  spacing?: "default" | "compact" | "none";
 };
+
+const landingSectionSpacingClassNames = {
+  default: "py-16 sm:py-20 lg:py-24",
+  compact: "py-10 sm:py-10 lg:py-10",
+  none: "py-0 sm:py-0 lg:py-0",
+} satisfies Record<NonNullable<LandingSectionProps["spacing"]>, string>;
 
 export function LandingSection({
   children,
   className,
   contentClassName,
   id,
+  spacing = "default",
 }: LandingSectionProps) {
   return (
     <section id={id} className={cn("relative bg-[#eef3f2]", className)}>
-      <MaxWidthWrapper className={cn("py-16 sm:py-20 lg:py-24", contentClassName)}>
+      <MaxWidthWrapper className={cn(landingSectionSpacingClassNames[spacing], contentClassName)}>
         {children}
       </MaxWidthWrapper>
     </section>
@@ -44,7 +52,7 @@ export function LandingSectionHeader({
     <div
       className={cn(
         "grid gap-4",
-        align === "center" ? "mx-auto max-w-3xl text-center" : "max-w-3xl",
+        align === "center" ? "mx-auto max-w-3xl text-center" : "max-w-3xl text-left",
         className,
       )}
     >
