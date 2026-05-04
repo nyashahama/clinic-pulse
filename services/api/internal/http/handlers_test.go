@@ -492,6 +492,54 @@ func TestAdminCanCreateListAndRevokePartnerAPIKey(t *testing.T) {
 	}
 }
 
+func TestAdminCreatePartnerAPIKeyValidatesNameAndExpiryBeforeStoreCall(t *testing.T) {
+	orgID := int64(77)
+	tests := []struct {
+		name string
+		body string
+		want string
+	}{
+		{
+			name: "missing name",
+			body: `{"environment":"demo","scopes":["clinics:read"]}`,
+			want: "name",
+		},
+		{
+			name: "blank name",
+			body: `{"name":"   ","environment":"demo","scopes":["clinics:read"]}`,
+			want: "name",
+		},
+		{
+			name: "already expired",
+			body: `{"name":"Demo partner","environment":"demo","scopes":["clinics:read"],"expiresAt":"2020-01-01T00:00:00Z"}`,
+			want: "expiresAt",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			createCalls := 0
+			router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+				createPartnerAPIKeyCalls: &createCalls,
+			}))
+			req := newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/api-keys", strings.NewReader(tt.body))
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("expected status %d, got %d with body %s", http.StatusBadRequest, rec.Code, rec.Body.String())
+			}
+			if createCalls != 0 {
+				t.Fatalf("expected CreatePartnerAPIKey not to be called, got %d calls", createCalls)
+			}
+			if !strings.Contains(rec.Body.String(), `"code":"validation_error"`) || !strings.Contains(rec.Body.String(), tt.want) {
+				t.Fatalf("expected validation error mentioning %q, got %s", tt.want, rec.Body.String())
+			}
+		})
+	}
+}
+
 func TestAdminPartnerReadinessReturnsSnapshot(t *testing.T) {
 	orgID := int64(77)
 	readinessOrgID := int64(0)
@@ -638,6 +686,39 @@ func TestAdminPartnerWebhookTestDeliveryEnabledIsExplicitlyNotImplemented(t *tes
 	}
 	if !strings.Contains(rec.Body.String(), "not_implemented") {
 		t.Fatalf("expected explicit not implemented response, got %s", rec.Body.String())
+	}
+}
+
+func TestAdminPartnerWebhookTestDisabledSubscriptionDoesNotCreatePreviewEvent(t *testing.T) {
+	orgID := int64(77)
+	subscriptions := []store.PartnerWebhookSubscription{{
+		ID:             5,
+		OrganisationID: &orgID,
+		Name:           "Status webhook",
+		TargetURL:      "https://partner.example.test/webhooks/clinicpulse",
+		EventTypes:     []string{"clinic.status_changed"},
+		Status:         "disabled",
+	}}
+	events := []store.PartnerWebhookEvent{}
+	createEventCalls := 0
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+		partnerWebhookSubscriptions:    &subscriptions,
+		partnerWebhookEvents:           &events,
+		createPartnerWebhookEventCalls: &createEventCalls,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/webhooks/5/test", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusConflict, rec.Code, rec.Body.String())
+	}
+	if createEventCalls != 0 || len(events) != 0 {
+		t.Fatalf("expected no webhook test event to be created, got calls=%d events=%#v", createEventCalls, events)
+	}
+	if !strings.Contains(rec.Body.String(), `"code":"conflict"`) || !strings.Contains(rec.Body.String(), "disabled") {
+		t.Fatalf("expected conflict response mentioning disabled subscription, got %s", rec.Body.String())
 	}
 }
 
@@ -3120,6 +3201,8 @@ type fakeStore struct {
 	getSessionTokenHash                   *string
 	revokedTokenHash                      *string
 	createCalls                           *int
+	createPartnerAPIKeyCalls              *int
+	createPartnerWebhookEventCalls        *int
 	createSessionCalls                    *int
 	createSessionWithAuditCalls           *int
 	auditCalls                            *int
@@ -3401,6 +3484,9 @@ func (f fakeStore) GetPartnerAPIKeyByHash(_ context.Context, keyHash string) (st
 }
 
 func (f fakeStore) CreatePartnerAPIKey(_ context.Context, input store.CreatePartnerAPIKeyInput) (store.PartnerAPIKey, error) {
+	if f.createPartnerAPIKeyCalls != nil {
+		*f.createPartnerAPIKeyCalls++
+	}
 	if f.createPartnerAPIKeyInput != nil {
 		*f.createPartnerAPIKeyInput = input
 	}
@@ -3519,6 +3605,9 @@ func (f fakeStore) ListPartnerWebhookSubscriptions(_ context.Context, organisati
 }
 
 func (f fakeStore) CreatePartnerWebhookEvent(_ context.Context, input store.CreatePartnerWebhookEventInput) (store.PartnerWebhookEvent, error) {
+	if f.createPartnerWebhookEventCalls != nil {
+		*f.createPartnerWebhookEventCalls++
+	}
 	if f.createPartnerWebhookEventInput != nil {
 		*f.createPartnerWebhookEventInput = input
 	}

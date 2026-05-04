@@ -303,6 +303,12 @@ func (h Handler) CreateAdminPartnerAPIKey(w nethttp.ResponseWriter, r *nethttp.R
 		return
 	}
 
+	now := time.Now().UTC()
+	if fields := validateCreatePartnerAPIKeyRequest(payload, now); len(fields) > 0 {
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", fields...)
+		return
+	}
+
 	secret, prefix, err := auth.GenerateAPIKey(payload.Environment)
 	if err != nil {
 		if errors.Is(err, auth.ErrInvalidAPIKey) {
@@ -318,7 +324,6 @@ func (h Handler) CreateAdminPartnerAPIKey(w nethttp.ResponseWriter, r *nethttp.R
 		return
 	}
 
-	now := time.Now().UTC()
 	apiKey, err := h.store.CreatePartnerAPIKey(r.Context(), store.CreatePartnerAPIKeyInput{
 		OrganisationID:   principal.OrganisationID,
 		Name:             strings.TrimSpace(payload.Name),
@@ -486,6 +491,10 @@ func (h Handler) CreateAdminPartnerWebhookTestEvent(w nethttp.ResponseWriter, r 
 	}
 	if !found {
 		RespondError(w, nethttp.StatusNotFound, "not_found", "partner webhook not found")
+		return
+	}
+	if subscription.Status != "active" {
+		RespondError(w, nethttp.StatusConflict, "conflict", "partner webhook subscription is disabled")
 		return
 	}
 	if h.webhookDeliveryEnabled {
@@ -1134,6 +1143,17 @@ func parsePositiveInt64Param(w nethttp.ResponseWriter, r *nethttp.Request, param
 		return 0, false
 	}
 	return value, true
+}
+
+func validateCreatePartnerAPIKeyRequest(payload createPartnerAPIKeyRequest, now time.Time) []string {
+	fields := make([]string, 0, 2)
+	if strings.TrimSpace(payload.Name) == "" {
+		fields = append(fields, "name: name is required")
+	}
+	if payload.ExpiresAt != nil && !payload.ExpiresAt.After(now) {
+		fields = append(fields, "expiresAt: expiresAt must be in the future")
+	}
+	return fields
 }
 
 func (h Handler) adminPartnerAPIKeyVisible(ctx context.Context, organisationID *int64, keyID int64) (bool, error) {
