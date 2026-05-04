@@ -2495,6 +2495,7 @@ type fakeStore struct {
 	sessionUser                 store.User
 	memberships                 []store.OrganisationMembership
 	syncSummary                 *store.SyncSummary
+	partnerAPIKey               store.PartnerAPIKey
 	createInput                 *store.CreateReportInput
 	reviewInput                 *store.ReviewReportInput
 	syncAttemptInput            *store.CreateReportSyncAttemptInput
@@ -2517,6 +2518,7 @@ type fakeStore struct {
 	auditCalls                  *int
 	getSessionCalls             *int
 	revokeCalls                 *int
+	partnerTouchCalls           *int
 	listErr                     error
 	getClinicErr                error
 	statusErr                   error
@@ -2538,6 +2540,7 @@ type fakeStore struct {
 	getSessionErr               error
 	revokeErr                   error
 	membershipsErr              error
+	partnerKeyErr               error
 }
 
 func (f fakeStore) ListClinics(context.Context) ([]store.ClinicDetail, error) {
@@ -2761,6 +2764,23 @@ func (f fakeStore) RevokeSession(_ context.Context, tokenHash string) error {
 
 func (f fakeStore) ListMembershipsForUser(context.Context, int64) ([]store.OrganisationMembership, error) {
 	return f.memberships, f.membershipsErr
+}
+
+func (f fakeStore) GetPartnerAPIKeyByHash(context.Context, string) (store.PartnerAPIKey, error) {
+	if f.partnerKeyErr != nil {
+		return store.PartnerAPIKey{}, f.partnerKeyErr
+	}
+	if f.partnerAPIKey.ID == 0 {
+		return store.PartnerAPIKey{}, pgx.ErrNoRows
+	}
+	return f.partnerAPIKey, nil
+}
+
+func (f fakeStore) TouchPartnerAPIKey(context.Context, int64, string, time.Time) error {
+	if f.partnerTouchCalls != nil {
+		*f.partnerTouchCalls++
+	}
+	return nil
 }
 
 func validReportJSON() string {

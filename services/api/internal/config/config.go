@@ -3,8 +3,10 @@ package config
 import "os"
 
 type Config struct {
-	Addr        string
-	DatabaseURL string
+	Addr                   string
+	DatabaseURL            string
+	APIKeyPepper           string
+	WebhookDeliveryEnabled bool
 }
 
 func Load() Config {
@@ -18,5 +20,13 @@ func Load() Config {
 		databaseURL = "postgres://clinicpulse:clinicpulse@localhost:5432/clinicpulse?sslmode=disable"
 	}
 
-	return Config{Addr: addr, DatabaseURL: databaseURL}
+	apiKeyPepper := os.Getenv("CLINICPULSE_API_KEY_PEPPER")
+	webhookDeliveryEnabled := os.Getenv("CLINICPULSE_WEBHOOK_DELIVERY_ENABLED") == "true"
+
+	return Config{
+		Addr:                   addr,
+		DatabaseURL:            databaseURL,
+		APIKeyPepper:           apiKeyPepper,
+		WebhookDeliveryEnabled: webhookDeliveryEnabled,
+	}
 }

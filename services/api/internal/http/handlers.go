@@ -50,14 +50,27 @@ type ClinicStore interface {
 	GetSessionByTokenHash(ctx context.Context, tokenHash string) (store.Session, store.User, error)
 	RevokeSession(ctx context.Context, tokenHash string) error
 	ListMembershipsForUser(ctx context.Context, userID int64) ([]store.OrganisationMembership, error)
+	GetPartnerAPIKeyByHash(ctx context.Context, keyHash string) (store.PartnerAPIKey, error)
+	TouchPartnerAPIKey(ctx context.Context, keyID int64, ipAddress string, usedAt time.Time) error
+}
+
+type HandlerConfig struct {
+	APIKeyPepper           string
+	WebhookDeliveryEnabled bool
 }
 
 type Handler struct {
-	store ClinicStore
+	store                  ClinicStore
+	apiKeyPepper           string
+	webhookDeliveryEnabled bool
 }
 
-func NewHandler(store ClinicStore) Handler {
-	return Handler{store: store}
+func NewHandler(store ClinicStore, config HandlerConfig) Handler {
+	return Handler{
+		store:                  store,
+		apiKeyPepper:           config.APIKeyPepper,
+		webhookDeliveryEnabled: config.WebhookDeliveryEnabled,
+	}
 }
 
 func Healthz(w nethttp.ResponseWriter, r *nethttp.Request) {
@@ -85,6 +98,49 @@ func (h Handler) ListClinics(w nethttp.ResponseWriter, r *nethttp.Request) {
 	}
 
 	RespondJSON(w, nethttp.StatusOK, clinics)
+}
+
+func (h Handler) ListPartnerClinics(w nethttp.ResponseWriter, r *nethttp.Request) {
+	principal, ok := PartnerPrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+	clinics, err := h.store.ListClinics(r.Context())
+	if err != nil {
+		respondStoreError(w, err, "failed to list clinics")
+		return
+	}
+	clinics = filterClinicDetailsForPartner(principal, clinics)
+	RespondJSON(w, nethttp.StatusOK, sanitizePartnerClinicDetails(clinics))
+}
+
+func filterClinicDetailsForPartner(principal PartnerPrincipal, clinics []store.ClinicDetail) []store.ClinicDetail {
+	if len(principal.AllowedDistricts) == 0 {
+		return clinics
+	}
+	allowed := map[string]struct{}{}
+	for _, district := range principal.AllowedDistricts {
+		allowed[district] = struct{}{}
+	}
+	filtered := make([]store.ClinicDetail, 0, len(clinics))
+	for _, clinic := range clinics {
+		if _, ok := allowed[clinic.Clinic.District]; ok {
+			filtered = append(filtered, clinic)
+		}
+	}
+	return filtered
+}
+
+func sanitizePartnerClinicDetails(clinics []store.ClinicDetail) []publicClinicDetailResponse {
+	if clinics == nil {
+		return []publicClinicDetailResponse{}
+	}
+	result := make([]publicClinicDetailResponse, 0, len(clinics))
+	for _, clinic := range clinics {
+		result = append(result, publicClinicDetail(clinic))
+	}
+	return result
 }
 
 func (h Handler) GetClinic(w nethttp.ResponseWriter, r *nethttp.Request) {

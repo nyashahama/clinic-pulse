@@ -6,10 +6,38 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func NewRouter(store ClinicStore) nethttp.Handler {
+type RouterConfig struct {
+	APIKeyPepper           string
+	WebhookDeliveryEnabled bool
+}
+
+type RouterOption func(*RouterConfig)
+
+func WithAPIKeyPepper(value string) RouterOption {
+	return func(config *RouterConfig) {
+		config.APIKeyPepper = value
+	}
+}
+
+func WithWebhookDeliveryEnabled(value bool) RouterOption {
+	return func(config *RouterConfig) {
+		config.WebhookDeliveryEnabled = value
+	}
+}
+
+func NewRouter(store ClinicStore, options ...RouterOption) nethttp.Handler {
+	config := RouterConfig{}
+	for _, option := range options {
+		option(&config)
+	}
+
 	router := chi.NewRouter()
-	handler := NewHandler(store)
+	handler := NewHandler(store, HandlerConfig{
+		APIKeyPepper:           config.APIKeyPepper,
+		WebhookDeliveryEnabled: config.WebhookDeliveryEnabled,
+	})
 	requireAuth := RequireAuth(store)
+	partnerAuth := RequirePartnerAPIKey(store, config.APIKeyPepper)
 	reporterOrHigher := RequireRole("reporter", "district_manager", "org_admin", "system_admin")
 	districtManagerOrHigher := RequireRole("district_manager", "org_admin", "system_admin")
 
@@ -20,6 +48,7 @@ func NewRouter(store ClinicStore) nethttp.Handler {
 	router.Get("/v1/public/alternatives", handler.ListPublicAlternatives)
 	router.Get("/v1/public/clinics", handler.ListPublicClinics)
 	router.Get("/v1/public/clinics/{clinicId}", handler.GetPublicClinic)
+	router.With(partnerAuth, RequirePartnerScope("clinics:read")).Get("/v1/partner/clinics", handler.ListPartnerClinics)
 	router.With(requireAuth, districtManagerOrHigher).Get("/v1/alternatives", handler.ListAlternatives)
 	router.With(requireAuth, districtManagerOrHigher).Get("/v1/clinics", handler.ListClinics)
 	router.With(requireAuth, districtManagerOrHigher).Get("/v1/clinics/{clinicId}", handler.GetClinic)

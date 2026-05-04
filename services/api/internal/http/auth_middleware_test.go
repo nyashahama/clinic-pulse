@@ -8,6 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
+	"clinicpulse/services/api/internal/auth"
 	apihttp "clinicpulse/services/api/internal/http"
 	"clinicpulse/services/api/internal/store"
 )
@@ -20,6 +23,118 @@ func TestProtectedRouteMissingCookieReturnsUnauthorized(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	assertGenericUnauthorized(t, rec)
+}
+
+func TestPartnerRouteAcceptsValidAPIKey(t *testing.T) {
+	secret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey returned error: %v", err)
+	}
+	hash, err := auth.HashAPIKey(secret, "")
+	if err != nil {
+		t.Fatalf("HashAPIKey returned error: %v", err)
+	}
+	updatedAt := time.Date(2026, 5, 3, 11, 0, 0, 0, time.UTC)
+	touchCalls := 0
+	router := apihttp.NewRouter(fakeStore{
+		partnerAPIKey: store.PartnerAPIKey{
+			ID:               10,
+			Name:             "Demo partner",
+			Environment:      "demo",
+			KeyHash:          hash,
+			Scopes:           []string{"clinics:read"},
+			AllowedDistricts: []string{defaultTestDistrict},
+			CreatedAt:        updatedAt,
+			UpdatedAt:        updatedAt,
+		},
+		partnerTouchCalls: &touchCalls,
+		clinics: []store.ClinicDetail{{
+			Clinic: store.Clinic{
+				ID:                 "clinic-1",
+				Name:               "Central Clinic",
+				District:           defaultTestDistrict,
+				FacilityType:       "clinic",
+				VerificationStatus: "verified",
+			},
+		}},
+	})
+	req := httptest.NewRequest(http.MethodGet, "/v1/partner/clinics", nil)
+	req.Header.Set("Authorization", "Bearer "+secret)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if touchCalls != 1 {
+		t.Fatalf("expected partner key touch call, got %d", touchCalls)
+	}
+	assertPublicSafeResponse(t, rec.Body.String())
+}
+
+func TestPartnerRouteRejectsMissingInvalidRevokedAndExpiredKeys(t *testing.T) {
+	validSecret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey returned error: %v", err)
+	}
+	hash, err := auth.HashAPIKey(validSecret, "")
+	if err != nil {
+		t.Fatalf("HashAPIKey returned error: %v", err)
+	}
+	now := time.Now().UTC()
+	revokedAt := now.Add(-time.Hour)
+	expiredAt := now.Add(-time.Minute)
+
+	tests := []struct {
+		name          string
+		authorization string
+		store         fakeStore
+	}{
+		{
+			name: "missing",
+		},
+		{
+			name:          "invalid",
+			authorization: "Bearer not-a-key",
+			store:         fakeStore{partnerKeyErr: pgx.ErrNoRows},
+		},
+		{
+			name:          "revoked",
+			authorization: "Bearer " + validSecret,
+			store: fakeStore{partnerAPIKey: store.PartnerAPIKey{
+				ID:        10,
+				KeyHash:   hash,
+				Scopes:    []string{"clinics:read"},
+				RevokedAt: &revokedAt,
+			}},
+		},
+		{
+			name:          "expired",
+			authorization: "Bearer " + validSecret,
+			store: fakeStore{partnerAPIKey: store.PartnerAPIKey{
+				ID:        10,
+				KeyHash:   hash,
+				Scopes:    []string{"clinics:read"},
+				ExpiresAt: &expiredAt,
+			}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := apihttp.NewRouter(tt.store)
+			req := httptest.NewRequest(http.MethodGet, "/v1/partner/clinics", nil)
+			if tt.authorization != "" {
+				req.Header.Set("Authorization", tt.authorization)
+			}
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			assertGenericUnauthorized(t, rec)
+		})
+	}
 }
 
 func TestProtectedRouteMalformedCookieReturnsUnauthorizedWithoutStoreCall(t *testing.T) {
