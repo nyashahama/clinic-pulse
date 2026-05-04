@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import {
   Bell,
   DatabaseZap,
@@ -27,13 +28,16 @@ const statusTone = {
   critical: "critical",
   warning: "warning",
   healthy: "healthy",
-} as const;
+} satisfies Record<
+  (typeof heroClinicRows)[number]["tone"],
+  "critical" | "warning" | "healthy"
+>;
 
 export function HeroDistrictConsole() {
   return (
     <div className="relative min-w-0 max-w-full">
       <BrowserFrame title="clinicpulse.demo/district-console">
-        <div className="grid min-h-[560px] min-w-0 grid-cols-1 bg-white lg:grid-cols-[9rem_minmax(0,1fr)] xl:grid-cols-[10rem_minmax(0,1fr)_16rem]">
+        <div className="grid min-h-[560px] min-w-0 grid-cols-1 bg-white lg:grid-cols-[9rem_minmax(0,1fr)] 2xl:grid-cols-[10rem_minmax(0,1fr)_16rem]">
           <aside className="hidden border-r border-neutral-200 bg-neutral-50/80 p-3 lg:block">
             <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
               Workspace
@@ -90,7 +94,7 @@ export function HeroDistrictConsole() {
               ))}
             </div>
 
-            <div className="mt-3 grid min-w-0 gap-3 xl:grid-cols-[0.92fr_1.08fr]">
+            <div className="mt-3 grid min-w-0 gap-3 2xl:grid-cols-[0.92fr_1.08fr]">
               <div className="relative min-h-56 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
                 <div className="absolute inset-0 opacity-80 [background-image:linear-gradient(rgba(255,255,255,0.72)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.72)_1px,transparent_1px)] [background-size:28px_28px]" />
                 <MapPinDot className="left-[24%] top-[28%]" tone="healthy" />
@@ -139,7 +143,7 @@ export function HeroDistrictConsole() {
             </div>
           </main>
 
-          <aside className="hidden border-l border-neutral-200 bg-white p-3 xl:block">
+          <aside className="hidden border-l border-neutral-200 bg-white p-3 2xl:block">
             <div className="rounded-xl border border-red-200 bg-red-50 p-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
@@ -212,6 +216,7 @@ function MapPinDot({
 
   return (
     <span
+      aria-hidden="true"
       className={cn(
         "absolute size-4 rounded-full border-2 border-white shadow-lg",
         active && "ring-4 ring-red-500/15",
@@ -227,7 +232,7 @@ function InfoLine({
   label,
   value,
 }: {
-  icon: typeof Radio;
+  icon: LucideIcon;
   label: string;
   value: string;
 }) {
