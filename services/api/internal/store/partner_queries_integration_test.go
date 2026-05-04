@@ -2,9 +2,12 @@ package store
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 func TestPartnerReadinessStoreIntegration(t *testing.T) {
@@ -54,6 +57,9 @@ func TestPartnerReadinessStoreIntegration(t *testing.T) {
 	if touched.LastUsedAt == nil || !touched.LastUsedAt.Equal(createdAt.Add(time.Minute)) {
 		t.Fatalf("expected last used timestamp, got %+v", touched.LastUsedAt)
 	}
+	if err := store.TouchPartnerAPIKey(ctx, 999999, "127.0.0.1", createdAt.Add(time.Minute)); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("expected missing key touch to return pgx.ErrNoRows, got %v", err)
+	}
 
 	if err := store.RevokePartnerAPIKey(ctx, apiKey.ID, createdAt.Add(2*time.Minute)); err != nil {
 		t.Fatalf("RevokePartnerAPIKey returned error: %v", err)
@@ -64,6 +70,62 @@ func TestPartnerReadinessStoreIntegration(t *testing.T) {
 	}
 	if revoked.RevokedAt == nil {
 		t.Fatalf("expected revoked timestamp, got %+v", revoked)
+	}
+	if err := store.TouchPartnerAPIKey(ctx, apiKey.ID, "127.0.0.1", createdAt.Add(3*time.Minute)); !errors.Is(err, ErrPartnerAPIKeyRevoked) {
+		t.Fatalf("expected revoked key touch to return ErrPartnerAPIKeyRevoked, got %v", err)
+	}
+	if err := store.RevokePartnerAPIKey(ctx, apiKey.ID, createdAt.Add(3*time.Minute)); !errors.Is(err, ErrPartnerAPIKeyRevoked) {
+		t.Fatalf("expected revoked key revoke to return ErrPartnerAPIKeyRevoked, got %v", err)
+	}
+	if err := store.RevokePartnerAPIKey(ctx, 999999, createdAt.Add(3*time.Minute)); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("expected missing key revoke to return pgx.ErrNoRows, got %v", err)
+	}
+
+	expiredAt := createdAt.Add(time.Hour)
+	expiredKey, err := store.CreatePartnerAPIKey(ctx, CreatePartnerAPIKeyInput{
+		OrganisationID:  &orgID,
+		Name:            "Expired partner key",
+		Environment:     "demo",
+		KeyPrefix:       "cp_demo_expired",
+		KeyHash:         "hash-expired-demo",
+		Scopes:          []string{"clinics:read"},
+		ExpiresAt:       &expiredAt,
+		CreatedByUserID: &userID,
+		CreatedAt:       createdAt,
+	})
+	if err != nil {
+		t.Fatalf("CreatePartnerAPIKey expired returned error: %v", err)
+	}
+	if err := store.TouchPartnerAPIKey(ctx, expiredKey.ID, "", expiredAt.Add(time.Minute)); !errors.Is(err, ErrPartnerAPIKeyExpired) {
+		t.Fatalf("expected expired key touch to return ErrPartnerAPIKeyExpired, got %v", err)
+	}
+
+	trimmedKey, err := store.CreatePartnerAPIKey(ctx, CreatePartnerAPIKeyInput{
+		OrganisationID:  &orgID,
+		Name:            "Trimmed scopes key",
+		Environment:     "demo",
+		KeyPrefix:       "cp_demo_trim",
+		KeyHash:         "hash-trimmed-demo",
+		Scopes:          []string{" clinics:read ", "exports:read"},
+		CreatedByUserID: &userID,
+		CreatedAt:       createdAt,
+	})
+	if err != nil {
+		t.Fatalf("CreatePartnerAPIKey trimmed scopes returned error: %v", err)
+	}
+	if trimmedKey.Scopes[0] != "clinics:read" {
+		t.Fatalf("expected trimmed scope, got %+v", trimmedKey.Scopes)
+	}
+	if _, err := store.CreatePartnerAPIKey(ctx, CreatePartnerAPIKeyInput{
+		OrganisationID: &orgID,
+		Name:           "Unknown scope key",
+		Environment:    "demo",
+		KeyPrefix:      "cp_demo_unknown",
+		KeyHash:        "hash-unknown-scope-demo",
+		Scopes:         []string{"unknown:read"},
+		CreatedAt:      createdAt,
+	}); !errors.Is(err, ErrInvalidPartnerScope) {
+		t.Fatalf("expected unknown scope to return ErrInvalidPartnerScope, got %v", err)
 	}
 
 	subscription, err := store.CreatePartnerWebhookSubscription(ctx, CreatePartnerWebhookSubscriptionInput{
@@ -92,6 +154,18 @@ func TestPartnerReadinessStoreIntegration(t *testing.T) {
 	if event.SubscriptionID != subscription.ID || event.Payload["clinicId"] != "clinic-mamelodi-east" {
 		t.Fatalf("unexpected webhook event: %+v", event)
 	}
+	nilMapEvent, err := store.CreatePartnerWebhookEvent(ctx, CreatePartnerWebhookEventInput{
+		SubscriptionID: subscription.ID,
+		EventType:      "clinic.status_changed",
+		Status:         "preview_only",
+		CreatedAt:      createdAt,
+	})
+	if err != nil {
+		t.Fatalf("CreatePartnerWebhookEvent nil maps returned error: %v", err)
+	}
+	if nilMapEvent.Payload == nil || len(nilMapEvent.Payload) != 0 || nilMapEvent.Metadata == nil || len(nilMapEvent.Metadata) != 0 {
+		t.Fatalf("expected webhook event nil maps to default empty, got %+v", nilMapEvent)
+	}
 
 	exportRun, err := store.CreatePartnerExportRun(ctx, CreatePartnerExportRunInput{
 		OrganisationID:    &orgID,
@@ -108,6 +182,27 @@ func TestPartnerReadinessStoreIntegration(t *testing.T) {
 	}
 	if exportRun.ID == 0 || exportRun.RecordCounts["clinics"] != float64(1) {
 		t.Fatalf("unexpected export run: %+v", exportRun)
+	}
+	nilMapExportRun, err := store.CreatePartnerExportRun(ctx, CreatePartnerExportRunInput{
+		OrganisationID: &orgID,
+		Format:         "csv",
+		Checksum:       "sha256:def456",
+		CreatedAt:      createdAt,
+	})
+	if err != nil {
+		t.Fatalf("CreatePartnerExportRun nil maps returned error: %v", err)
+	}
+	if nilMapExportRun.Scope == nil || len(nilMapExportRun.Scope) != 0 ||
+		nilMapExportRun.RecordCounts == nil || len(nilMapExportRun.RecordCounts) != 0 ||
+		nilMapExportRun.Payload == nil || len(nilMapExportRun.Payload) != 0 {
+		t.Fatalf("expected export nil maps to default empty, got %+v", nilMapExportRun)
+	}
+	otherOrgID := insertIntegrationOrganisation(t, ctx, store, "Other Partner District", "other-partner-district")
+	if _, err := store.GetPartnerExportRunForOrganisation(ctx, &otherOrgID, exportRun.ID); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("expected wrong-org export lookup to return pgx.ErrNoRows, got %v", err)
+	}
+	if scopedExportRun, err := store.GetPartnerExportRunForOrganisation(ctx, &orgID, exportRun.ID); err != nil || scopedExportRun.ID != exportRun.ID {
+		t.Fatalf("expected scoped export lookup to return export %d, got %+v err %v", exportRun.ID, scopedExportRun, err)
 	}
 
 	check, err := store.UpsertIntegrationStatusCheck(ctx, UpsertIntegrationStatusCheckInput{
@@ -129,12 +224,25 @@ func TestPartnerReadinessStoreIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetPartnerReadinessSnapshot returned error: %v", err)
 	}
-	if len(snapshot.APIKeys) != 1 ||
+	if len(snapshot.APIKeys) != 3 ||
 		len(snapshot.WebhookSubscriptions) != 1 ||
-		len(snapshot.WebhookEvents) != 1 ||
-		len(snapshot.ExportRuns) != 1 ||
+		len(snapshot.WebhookEvents) != 2 ||
+		len(snapshot.ExportRuns) != 2 ||
 		len(snapshot.IntegrationChecks) != 1 {
 		t.Fatalf("unexpected readiness snapshot: %+v", snapshot)
+	}
+
+	emptyOrgID := insertIntegrationOrganisation(t, ctx, store, "Empty Partner District", "empty-partner-district")
+	emptySnapshot, err := store.GetPartnerReadinessSnapshot(ctx, &emptyOrgID)
+	if err != nil {
+		t.Fatalf("GetPartnerReadinessSnapshot empty returned error: %v", err)
+	}
+	if emptySnapshot.APIKeys == nil ||
+		emptySnapshot.WebhookSubscriptions == nil ||
+		emptySnapshot.WebhookEvents == nil ||
+		emptySnapshot.ExportRuns == nil ||
+		emptySnapshot.IntegrationChecks == nil {
+		t.Fatalf("expected empty readiness snapshot slices to be non-nil, got %+v", emptySnapshot)
 	}
 }
 

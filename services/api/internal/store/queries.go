@@ -502,15 +502,25 @@ ORDER BY created_at DESC, id DESC`
 UPDATE partner_api_keys
 SET
     last_used_at = $3,
-    last_used_ip = $2::inet,
+    last_used_ip = NULLIF($2, '')::inet,
     updated_at = $3
-WHERE id = $1`
+WHERE id = $1
+    AND revoked_at IS NULL
+    AND (expires_at IS NULL OR expires_at > $3)`
 
 	revokePartnerAPIKeySQL = `
 UPDATE partner_api_keys
 SET
     revoked_at = $2,
     updated_at = $2
+WHERE id = $1
+    AND revoked_at IS NULL`
+
+	getPartnerAPIKeyStateSQL = `
+SELECT
+    revoked_at,
+    expires_at
+FROM partner_api_keys
 WHERE id = $1`
 
 	insertPartnerWebhookSubscriptionSQL = `
@@ -641,6 +651,21 @@ SELECT
     created_at
 FROM partner_export_runs
 WHERE id = $1`
+
+	getPartnerExportRunForOrganisationSQL = `
+SELECT
+    id,
+    organisation_id,
+    requested_by_user_id,
+    format,
+    scope,
+    record_counts,
+    checksum,
+    payload,
+    created_at
+FROM partner_export_runs
+WHERE id = $2
+    AND ($1::bigint IS NULL OR organisation_id = $1)`
 
 	getLatestPartnerExportRunSQL = `
 SELECT
@@ -914,6 +939,13 @@ var allowedSyncAttemptResults = map[string]bool{
 	"server_error":     true,
 }
 
+var allowedPartnerScopes = map[string]bool{
+	"clinics:read":      true,
+	"status:read":       true,
+	"alternatives:read": true,
+	"exports:read":      true,
+}
+
 var allowedPartnerWebhookStatuses = map[string]bool{
 	"active":   true,
 	"disabled": true,
@@ -1094,13 +1126,27 @@ func (s Store) ListPartnerAPIKeys(ctx context.Context, organisationID *int64) ([
 }
 
 func (s Store) TouchPartnerAPIKey(ctx context.Context, keyID int64, ipAddress string, usedAt time.Time) error {
-	_, err := s.pool.Exec(ctx, touchPartnerAPIKeySQL, keyID, ipAddress, usedAt)
-	return err
+	tag, err := s.pool.Exec(ctx, touchPartnerAPIKeySQL, keyID, ipAddress, usedAt)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() > 0 {
+		return nil
+	}
+
+	return s.partnerAPIKeyStateError(ctx, keyID, usedAt)
 }
 
 func (s Store) RevokePartnerAPIKey(ctx context.Context, keyID int64, revokedAt time.Time) error {
-	_, err := s.pool.Exec(ctx, revokePartnerAPIKeySQL, keyID, revokedAt)
-	return err
+	tag, err := s.pool.Exec(ctx, revokePartnerAPIKeySQL, keyID, revokedAt)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() > 0 {
+		return nil
+	}
+
+	return s.partnerAPIKeyStateError(ctx, keyID, revokedAt)
 }
 
 func (s Store) CreatePartnerWebhookSubscription(ctx context.Context, input CreatePartnerWebhookSubscriptionInput) (PartnerWebhookSubscription, error) {
@@ -1216,6 +1262,10 @@ func (s Store) CreatePartnerExportRun(ctx context.Context, input CreatePartnerEx
 
 func (s Store) GetPartnerExportRun(ctx context.Context, exportID int64) (PartnerExportRun, error) {
 	return scanPartnerExportRun(s.pool.QueryRow(ctx, getPartnerExportRunSQL, exportID))
+}
+
+func (s Store) GetPartnerExportRunForOrganisation(ctx context.Context, organisationID *int64, exportID int64) (PartnerExportRun, error) {
+	return scanPartnerExportRun(s.pool.QueryRow(ctx, getPartnerExportRunForOrganisationSQL, organisationID, exportID))
 }
 
 func (s Store) GetLatestPartnerExportRun(ctx context.Context, organisationID *int64) (PartnerExportRun, error) {
@@ -1713,6 +1763,21 @@ func (s Store) listPartnerExportRuns(ctx context.Context, organisationID *int64)
 	})
 }
 
+func (s Store) partnerAPIKeyStateError(ctx context.Context, keyID int64, at time.Time) error {
+	var revokedAt sql.NullTime
+	var expiresAt sql.NullTime
+	if err := s.pool.QueryRow(ctx, getPartnerAPIKeyStateSQL, keyID).Scan(&revokedAt, &expiresAt); err != nil {
+		return err
+	}
+	if revokedAt.Valid {
+		return ErrPartnerAPIKeyRevoked
+	}
+	if expiresAt.Valid && !expiresAt.Time.After(at) {
+		return ErrPartnerAPIKeyExpired
+	}
+	return pgx.ErrNoRows
+}
+
 func scanClinic(row pgx.Row) (Clinic, error) {
 	var clinic Clinic
 	var latitude sql.NullFloat64
@@ -2184,16 +2249,18 @@ func normalizeCreateReportSyncAttemptInput(input CreateReportSyncAttemptInput) (
 }
 
 func normalizeCreatePartnerAPIKeyInput(input CreatePartnerAPIKeyInput) (CreatePartnerAPIKeyInput, error) {
-	for _, scope := range input.Scopes {
-		if strings.TrimSpace(scope) == "" {
+	if input.Scopes == nil {
+		input.Scopes = []string{}
+	}
+	for index, scope := range input.Scopes {
+		trimmed := strings.TrimSpace(scope)
+		if trimmed == "" || !allowedPartnerScopes[trimmed] {
 			return CreatePartnerAPIKeyInput{}, ErrInvalidPartnerScope
 		}
+		input.Scopes[index] = trimmed
 	}
 	if input.CreatedAt.IsZero() {
 		input.CreatedAt = time.Now().UTC()
-	}
-	if input.Scopes == nil {
-		input.Scopes = []string{}
 	}
 	if input.AllowedDistricts == nil {
 		input.AllowedDistricts = []string{}
