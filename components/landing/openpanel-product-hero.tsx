@@ -101,8 +101,8 @@ function ProductPreview() {
           </span>
         </div>
 
-        <div className="grid min-w-0 gap-0 lg:grid-cols-[0.92fr_1.08fr]">
-          <div className="hidden border-b border-neutral-200 bg-[#f8faf9] p-4 sm:block lg:border-b-0 lg:border-r">
+        <div className="grid min-w-0 gap-0 xl:grid-cols-[0.92fr_1.08fr]">
+          <div className="hidden border-b border-neutral-200 bg-[#f8faf9] p-4 xl:block xl:border-b-0 xl:border-r">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
@@ -162,7 +162,7 @@ function ProductPreview() {
               </div>
             </div>
 
-            <div className="mt-4 space-y-2.5 max-sm:hidden">
+            <div className="mt-4 hidden space-y-2.5 xl:block [@media(max-height:760px)]:hidden">
               {heroClinicRows.map((row, index) => (
                 <div
                   key={row.clinic}
@@ -200,7 +200,7 @@ function ProductPreview() {
               ))}
             </div>
 
-            <div className="mt-4 hidden grid-cols-3 gap-2.5 sm:grid [@media(max-height:800px)]:hidden">
+            <div className="mt-4 hidden grid-cols-3 gap-2.5 xl:grid [@media(max-height:800px)]:hidden">
               {heroStats.map((stat) => {
                 const Icon = heroStatIcons[stat.label];
 
