@@ -17,7 +17,7 @@ export function Nav() {
 
   return (
     <>
-      <header className="fixed inset-x-0 top-0 z-50 w-full border-b border-[#d4dee1] bg-[#eef3f2]/90 backdrop-blur-lg transition-all">
+      <header className="fixed inset-x-0 top-0 z-50 w-full border-b border-neutral-200 bg-white/90 backdrop-blur-lg transition-all">
         <div
           className={cn(
             "absolute inset-0 block transition-all",

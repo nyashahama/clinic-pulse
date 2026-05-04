@@ -25,8 +25,14 @@ export function LandingSection({
   spacing = "default",
 }: LandingSectionProps) {
   return (
-    <section id={id} className={cn("relative bg-[#eef3f2]", className)}>
-      <MaxWidthWrapper className={cn(landingSectionSpacingClassNames[spacing], contentClassName)}>
+    <section id={id} className={cn("relative bg-white", className)}>
+      <MaxWidthWrapper
+        className={cn(
+          "border-x-neutral-100",
+          landingSectionSpacingClassNames[spacing],
+          contentClassName,
+        )}
+      >
         {children}
       </MaxWidthWrapper>
     </section>

@@ -35,7 +35,7 @@ const heroStatIcons = {
 
 export function OpenPanelProductHero({ onBookDemo }: OpenPanelProductHeroProps) {
   return (
-    <section className="relative overflow-hidden border-b border-neutral-200 bg-[#eef3f2]">
+    <section className="relative overflow-hidden border-b border-neutral-200 bg-white">
       <div className="mx-auto grid min-w-0 w-full max-w-screen-xl gap-7 px-4 py-8 sm:px-6 lg:min-h-[calc(100svh-7rem)] lg:grid-cols-[0.88fr_1.12fr] lg:items-center lg:gap-8 lg:px-10 lg:py-8">
         <div className="min-w-0 max-w-xl">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">

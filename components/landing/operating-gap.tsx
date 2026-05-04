@@ -58,7 +58,7 @@ function StatusList({
       className={
         tone === "before"
           ? "border-t border-neutral-200 p-5 md:border-r"
-          : "border-t border-neutral-200 bg-emerald-50/60 p-5"
+          : "border-t border-neutral-200 bg-white p-5"
       }
     >
       <p className="text-sm font-semibold text-neutral-950">{title}</p>

@@ -10,7 +10,8 @@ export function WorkflowTimeline() {
   return (
     <LandingSection
       id="flow"
-      className="border-y border-neutral-200 bg-neutral-950 text-white"
+      className="bg-neutral-950 text-white"
+      contentClassName="border-x-transparent"
     >
       <div className="grid gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:items-center">
         <LandingSectionHeader

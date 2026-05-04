@@ -5,7 +5,7 @@ import { demoCta } from "@/lib/landing/openpanel-refactor-content";
 
 export function DemoBookingCTA() {
   return (
-    <section className="bg-[#eef3f2] px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+    <section className="bg-white px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
       <div className="mx-auto max-w-screen-xl overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-950 px-6 py-14 text-white shadow-2xl sm:px-10 lg:px-16">
         <div className="mx-auto grid max-w-4xl gap-6 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300">
