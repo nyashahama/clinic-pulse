@@ -6,8 +6,9 @@ import { useScroll } from "@/lib/hooks/use-scroll";
 import Link from "next/link";
 
 const NAV_ITEMS = [
-  { name: "Product Flow", href: "#flow" },
-  { name: "Routing", href: "#routing" },
+  { name: "Problem", href: "#problem" },
+  { name: "Flow", href: "#flow" },
+  { name: "Product", href: "#product" },
   { name: "Trust", href: "#trust" },
 ];
 
@@ -62,7 +63,7 @@ export function Nav() {
                 href="/?booking=1"
                 className="flex h-8 items-center rounded-lg border border-neutral-900 bg-neutral-900 px-4 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
               >
-                Book Demo
+                Book demo
               </Link>
             </div>
           </div>

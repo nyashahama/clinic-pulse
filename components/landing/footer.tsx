@@ -9,8 +9,9 @@ const navigation = {
     { name: "Book Demo", href: "/book-demo" },
   ],
   proof: [
+    { name: "Operating Gap", href: "/#problem" },
     { name: "Product Flow", href: "/#flow" },
-    { name: "Routing Moment", href: "/#routing" },
+    { name: "Product Surfaces", href: "/#product" },
     { name: "Trust Layer", href: "/#trust" },
   ],
 };
@@ -73,7 +74,7 @@ export function Footer() {
               <span className="text-xs text-neutral-500">All systems operational</span>
             </div>
             <p className="text-xs text-neutral-500">
-              Demo data is seeded to show the operating model.
+              Demo data is seeded to show the Clinic Pulse operating model.
             </p>
           </div>
         </div>
