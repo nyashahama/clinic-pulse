@@ -68,6 +68,7 @@ type ClinicStore interface {
 	ListPartnerWebhookSubscriptions(ctx context.Context, organisationID *int64) ([]store.PartnerWebhookSubscription, error)
 	CreatePartnerWebhookEvent(ctx context.Context, input store.CreatePartnerWebhookEventInput) (store.PartnerWebhookEvent, error)
 	ListPartnerWebhookEvents(ctx context.Context, organisationID *int64) ([]store.PartnerWebhookEvent, error)
+	UpsertIntegrationStatusCheck(ctx context.Context, input store.UpsertIntegrationStatusCheckInput) (store.IntegrationStatusCheck, error)
 	ListIntegrationStatusChecks(ctx context.Context, organisationID *int64) ([]store.IntegrationStatusCheck, error)
 }
 
@@ -265,9 +266,14 @@ func (h Handler) GetPartnerLatestExport(w nethttp.ResponseWriter, r *nethttp.Req
 		return
 	}
 
-	exportRun, err := h.store.GetLatestPartnerExportRun(r.Context(), principal.OrganisationID)
+	snapshot, err := h.store.GetPartnerReadinessSnapshot(r.Context(), principal.OrganisationID)
 	if err != nil {
 		respondStoreError(w, err, "partner export not found")
+		return
+	}
+	exportRun, ok := service.LatestPartnerExportForAllowedDistricts(snapshot.ExportRuns, principal.AllowedDistricts)
+	if !ok {
+		RespondError(w, nethttp.StatusNotFound, "not_found", "partner export not found")
 		return
 	}
 
@@ -281,9 +287,9 @@ func (h Handler) GetPartnerIntegrationStatus(w nethttp.ResponseWriter, r *nethtt
 		return
 	}
 
-	checks, err := h.store.ListIntegrationStatusChecks(r.Context(), principal.OrganisationID)
+	checks, err := h.refreshPartnerIntegrationStatusChecks(r.Context(), principal.OrganisationID, time.Now().UTC())
 	if err != nil {
-		respondStoreError(w, err, "failed to list integration status checks")
+		respondStoreError(w, err, "failed to refresh integration status checks")
 		return
 	}
 	RespondJSON(w, nethttp.StatusOK, service.PartnerSafeIntegrationStatusChecks(checks))
@@ -296,6 +302,11 @@ func (h Handler) GetAdminPartnerReadiness(w nethttp.ResponseWriter, r *nethttp.R
 		return
 	}
 
+	if _, err := h.refreshPartnerIntegrationStatusChecks(r.Context(), principal.OrganisationID, time.Now().UTC()); err != nil {
+		respondStoreError(w, err, "partner readiness not found")
+		return
+	}
+
 	snapshot, err := h.store.GetPartnerReadinessSnapshot(r.Context(), principal.OrganisationID)
 	if err != nil {
 		respondStoreError(w, err, "partner readiness not found")
@@ -303,6 +314,93 @@ func (h Handler) GetAdminPartnerReadiness(w nethttp.ResponseWriter, r *nethttp.R
 	}
 
 	RespondJSON(w, nethttp.StatusOK, snapshot)
+}
+
+func (h Handler) refreshPartnerIntegrationStatusChecks(ctx context.Context, organisationID *int64, checkedAt time.Time) ([]store.IntegrationStatusCheck, error) {
+	snapshot, err := h.store.GetPartnerReadinessSnapshot(ctx, organisationID)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = h.store.GetSyncSummarySince(ctx, checkedAt.Add(-24*time.Hour))
+	if err != nil {
+		return nil, err
+	}
+	currentStatuses, err := h.store.ListCurrentStatuses(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	checkInputs := service.BuildIntegrationChecks(service.IntegrationCheckInput{
+		OrganisationID:                     organisationID,
+		APIKeyActive:                       activePartnerAPIKeyCount(snapshot.APIKeys, checkedAt) > 0,
+		ExportGenerated:                    len(snapshot.ExportRuns) > 0,
+		WebhookTestRecorded:                partnerWebhookTestRecorded(snapshot),
+		OfflineSyncHealthAvailable:         true,
+		StaleStatusReconciliationAvailable: len(currentStatuses) > 0,
+		DeploymentEnvironment:              partnerDeploymentEnvironment(snapshot.APIKeys, checkedAt),
+		APIKeyPepper:                       h.apiKeyPepper,
+		WebhookDeliveryEnabled:             h.webhookDeliveryEnabled,
+		CheckedAt:                          checkedAt,
+	})
+
+	checks := make([]store.IntegrationStatusCheck, 0, len(checkInputs))
+	for _, input := range checkInputs {
+		check, err := h.store.UpsertIntegrationStatusCheck(ctx, input)
+		if err != nil {
+			return nil, err
+		}
+		checks = append(checks, check)
+	}
+	return checks, nil
+}
+
+func activePartnerAPIKeyCount(apiKeys []store.PartnerAPIKey, now time.Time) int {
+	count := 0
+	for _, apiKey := range apiKeys {
+		if partnerAPIKeyActive(apiKey, now) {
+			count++
+		}
+	}
+	return count
+}
+
+func partnerAPIKeyActive(apiKey store.PartnerAPIKey, now time.Time) bool {
+	if apiKey.RevokedAt != nil {
+		return false
+	}
+	if apiKey.ExpiresAt != nil && !apiKey.ExpiresAt.After(now) {
+		return false
+	}
+	return true
+}
+
+func partnerWebhookTestRecorded(snapshot store.PartnerReadinessSnapshot) bool {
+	if len(snapshot.WebhookEvents) > 0 {
+		return true
+	}
+	for _, subscription := range snapshot.WebhookSubscriptions {
+		if subscription.LastTestedAt != nil || subscription.LastTestStatus != nil {
+			return true
+		}
+	}
+	return false
+}
+
+func partnerDeploymentEnvironment(apiKeys []store.PartnerAPIKey, now time.Time) string {
+	for _, apiKey := range apiKeys {
+		if !partnerAPIKeyActive(apiKey, now) {
+			continue
+		}
+		environment := strings.TrimSpace(strings.ToLower(apiKey.Environment))
+		if environment == "live" {
+			return "live"
+		}
+		if environment == "demo" {
+			return "demo"
+		}
+	}
+	return ""
 }
 
 func (h Handler) CreateAdminPartnerAPIKey(w nethttp.ResponseWriter, r *nethttp.Request) {
@@ -401,6 +499,10 @@ func (h Handler) RevokeAdminPartnerAPIKey(w nethttp.ResponseWriter, r *nethttp.R
 
 	if err := h.store.RevokePartnerAPIKey(r.Context(), keyID, time.Now().UTC()); err != nil {
 		respondPartnerAdminMutationError(w, err, "partner API key not found")
+		return
+	}
+	if _, err := h.refreshPartnerIntegrationStatusChecks(r.Context(), principal.OrganisationID, time.Now().UTC()); err != nil {
+		respondStoreError(w, err, "failed to refresh integration status checks")
 		return
 	}
 
@@ -536,6 +638,10 @@ func (h Handler) CreateAdminPartnerWebhookTestEvent(w nethttp.ResponseWriter, r 
 		respondPartnerAdminMutationError(w, err, "failed to create partner webhook test event")
 		return
 	}
+	if _, err := h.refreshPartnerIntegrationStatusChecks(r.Context(), principal.OrganisationID, now); err != nil {
+		respondStoreError(w, err, "failed to refresh integration status checks")
+		return
+	}
 
 	RespondJSON(w, nethttp.StatusCreated, event)
 }
@@ -580,6 +686,10 @@ func (h Handler) CreateAdminPartnerExport(w nethttp.ResponseWriter, r *nethttp.R
 	})
 	if err != nil {
 		respondPartnerAdminMutationError(w, err, "failed to create partner export")
+		return
+	}
+	if _, err := h.refreshPartnerIntegrationStatusChecks(r.Context(), principal.OrganisationID, now); err != nil {
+		respondStoreError(w, err, "failed to refresh integration status checks")
 		return
 	}
 

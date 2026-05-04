@@ -1,4 +1,5 @@
 import type {
+  CreatePartnerApiKeyApiResponse,
   IntegrationStatusCheckApiResponse,
   PartnerApiKeyApiResponse,
   PartnerReadinessApiResponse,
@@ -20,6 +21,13 @@ export type PartnerReadinessModel = {
   metrics: PartnerReadinessMetric[];
 };
 
+export type OneTimePartnerApiKeySecret = {
+  id: number;
+  name: string;
+  keyPrefix: string;
+  secret: string;
+};
+
 const numberFormatter = new Intl.NumberFormat("en-ZA");
 
 export function createEmptyPartnerReadiness(): PartnerReadinessApiResponse {
@@ -29,6 +37,17 @@ export function createEmptyPartnerReadiness(): PartnerReadinessApiResponse {
     webhookEvents: [],
     exportRuns: [],
     integrationChecks: [],
+  };
+}
+
+export function createOneTimePartnerApiKeySecret(
+  response: CreatePartnerApiKeyApiResponse,
+): OneTimePartnerApiKeySecret {
+  return {
+    id: response.apiKey.id,
+    name: response.apiKey.name,
+    keyPrefix: response.apiKey.keyPrefix,
+    secret: response.secret,
   };
 }
 

@@ -33,6 +33,10 @@ import type { DemoLeadFormInput } from "@/components/demo/demo-lead-form";
 import type { DemoLead } from "@/lib/demo/types";
 import type { DemoState } from "@/lib/demo/types";
 import {
+  createOneTimePartnerApiKeySecret,
+  type OneTimePartnerApiKeySecret,
+} from "@/lib/demo/partner-readiness";
+import {
   createPartnerApiKeyAction,
   createPartnerExportAction,
   testPartnerWebhookAction,
@@ -133,6 +137,8 @@ export default function AdminPage({
   const [partnerActionPending, setPartnerActionPending] =
     useState<PartnerReadinessAction | null>(null);
   const [partnerActionError, setPartnerActionError] = useState<string | null>(null);
+  const [oneTimeApiKeySecret, setOneTimeApiKeySecret] =
+    useState<OneTimePartnerApiKeySecret | null>(null);
   const partnerActionPendingRef = useRef<PartnerReadinessAction | null>(null);
 
   const leadSorted = useMemo(
@@ -150,9 +156,10 @@ export default function AdminPage({
     setManualLeadOpen(false);
   };
 
-  const runPartnerAction = async (
+  const runPartnerAction = async <Result,>(
     action: PartnerReadinessAction,
-    mutate: () => Promise<unknown>,
+    mutate: () => Promise<Result>,
+    onSuccess?: (result: Result) => void,
   ) => {
     if (partnerActionPendingRef.current) {
       return;
@@ -163,7 +170,8 @@ export default function AdminPage({
     setPartnerActionError(null);
 
     try {
-      await mutate();
+      const result = await mutate();
+      onSuccess?.(result);
       router.refresh();
     } catch (error) {
       setPartnerActionError(getPartnerActionErrorMessage(error));
@@ -174,13 +182,20 @@ export default function AdminPage({
   };
 
   const handleCreateDemoKey = () => {
-    void runPartnerAction("create-key", () =>
-      createPartnerApiKeyAction({
-        name: "Demo partner integration",
-        environment: "demo",
-        scopes: ["clinics:read", "status:read", "alternatives:read", "exports:read"],
-        allowedDistricts: [state.district],
-      }),
+    if (partnerActionPendingRef.current) {
+      return;
+    }
+    setOneTimeApiKeySecret(null);
+    void runPartnerAction(
+      "create-key",
+      () =>
+        createPartnerApiKeyAction({
+          name: "Demo partner integration",
+          environment: "demo",
+          scopes: ["clinics:read", "status:read", "alternatives:read", "exports:read"],
+          allowedDistricts: [state.district],
+        }),
+      (result) => setOneTimeApiKeySecret(createOneTimePartnerApiKeySecret(result)),
     );
   };
 
@@ -292,6 +307,8 @@ export default function AdminPage({
             testWebhook: partnerActionInFlight,
           }}
           actionError={partnerActionError}
+          oneTimeApiKeySecret={oneTimeApiKeySecret}
+          onClearOneTimeApiKeySecret={() => setOneTimeApiKeySecret(null)}
         />
       </div>
 

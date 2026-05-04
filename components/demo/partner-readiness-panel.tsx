@@ -3,12 +3,14 @@
 import {
   AlertTriangle,
   CheckCircle2,
+  Copy,
   FileJson,
   KeyRound,
   ListChecks,
   PlayCircle,
   ShieldCheck,
   Webhook,
+  X,
 } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -18,6 +20,7 @@ import type { PartnerReadinessApiResponse } from "@/lib/demo/api-types";
 import {
   buildPartnerReadinessModel,
   isPartnerApiKeyActive,
+  type OneTimePartnerApiKeySecret,
   type PartnerReadinessMetric,
   type PartnerReadinessSeverity,
 } from "@/lib/demo/partner-readiness";
@@ -34,6 +37,8 @@ type PartnerReadinessPanelProps = {
     testWebhook?: boolean;
   };
   actionError?: string | null;
+  oneTimeApiKeySecret?: OneTimePartnerApiKeySecret | null;
+  onClearOneTimeApiKeySecret?: () => void;
 };
 
 type Tone = PartnerReadinessSeverity | "info";
@@ -190,6 +195,8 @@ export function PartnerReadinessPanel({
   onTestWebhook,
   pendingActions,
   actionError,
+  oneTimeApiKeySecret,
+  onClearOneTimeApiKeySecret,
 }: PartnerReadinessPanelProps) {
   const model = buildPartnerReadinessModel(readiness);
   const activeApiKeys = readiness.apiKeys.filter((apiKey) =>
@@ -236,6 +243,48 @@ export function PartnerReadinessPanel({
         >
           <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
           <span className="min-w-0 break-words">{actionError}</span>
+        </div>
+      ) : null}
+
+      {oneTimeApiKeySecret ? (
+        <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">One-time API key secret</p>
+              <p className="mt-1 break-words text-xs text-amber-900/80 dark:text-amber-100/80">
+                {oneTimeApiKeySecret.name} / {oneTimeApiKeySecret.keyPrefix}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  void navigator.clipboard
+                    ?.writeText(oneTimeApiKeySecret.secret)
+                    .catch(() => undefined);
+                }}
+              >
+                <Copy className="size-3.5" />
+                Copy
+              </Button>
+              {onClearOneTimeApiKeySecret ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={onClearOneTimeApiKeySecret}
+                >
+                  <X className="size-3.5" />
+                  Clear
+                </Button>
+              ) : null}
+            </div>
+          </div>
+          <code className="mt-3 block max-w-full overflow-x-auto rounded bg-bg-default px-3 py-2 text-xs font-semibold text-content-emphasis">
+            {oneTimeApiKeySecret.secret}
+          </code>
         </div>
       ) : null}
 

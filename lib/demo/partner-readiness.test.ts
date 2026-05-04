@@ -10,6 +10,7 @@ import type {
 import {
   buildPartnerReadinessModel,
   createEmptyPartnerReadiness,
+  createOneTimePartnerApiKeySecret,
 } from "@/lib/demo/partner-readiness";
 
 const checkedAt = "2026-05-04T09:00:00.000Z";
@@ -173,5 +174,23 @@ describe("partner readiness helpers", () => {
         value: "0",
       }),
     );
+  });
+
+  it("builds one-time API key secret display state from the create response", () => {
+    const secret = createOneTimePartnerApiKeySecret({
+      apiKey: makeApiKey({
+        id: 42,
+        name: "Restricted district partner",
+        keyPrefix: "cp_demo_once",
+      }),
+      secret: "cp_demo_raw_secret",
+    });
+
+    expect(secret).toEqual({
+      id: 42,
+      name: "Restricted district partner",
+      keyPrefix: "cp_demo_once",
+      secret: "cp_demo_raw_secret",
+    });
   });
 });

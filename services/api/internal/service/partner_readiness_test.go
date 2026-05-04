@@ -53,6 +53,65 @@ func TestPartnerScopeAllowsClinicDistrict(t *testing.T) {
 	}
 }
 
+func TestPartnerExportLatestForAllowedDistrictsSkipsInaccessibleRuns(t *testing.T) {
+	now := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
+	runs := []store.PartnerExportRun{
+		{
+			ID:        30,
+			Scope:     map[string]any{"district": "Johannesburg"},
+			CreatedAt: now.Add(2 * time.Minute),
+		},
+		{
+			ID:        29,
+			Scope:     map[string]any{},
+			CreatedAt: now.Add(time.Minute),
+		},
+		{
+			ID:        20,
+			Scope:     map[string]any{"district": "Tshwane North Demo District"},
+			CreatedAt: now,
+		},
+	}
+
+	got, ok := LatestPartnerExportForAllowedDistricts(runs, []string{"Tshwane North Demo District"})
+
+	if !ok {
+		t.Fatal("expected an accessible export run")
+	}
+	if got.ID != 20 {
+		t.Fatalf("expected latest accessible export 20, got %#v", got)
+	}
+}
+
+func TestPartnerExportLatestForAllowedDistrictsDeniesAllDistrictRunForRestrictedKey(t *testing.T) {
+	run := store.PartnerExportRun{
+		ID:    30,
+		Scope: map[string]any{},
+	}
+
+	_, ok := LatestPartnerExportForAllowedDistricts([]store.PartnerExportRun{run}, []string{"Tshwane North Demo District"})
+
+	if ok {
+		t.Fatal("expected all-district export to be hidden from restricted partner key")
+	}
+}
+
+func TestPartnerExportLatestForAllowedDistrictsAllowsAllRunsForUnrestrictedKey(t *testing.T) {
+	run := store.PartnerExportRun{
+		ID:    30,
+		Scope: map[string]any{},
+	}
+
+	got, ok := LatestPartnerExportForAllowedDistricts([]store.PartnerExportRun{run}, nil)
+
+	if !ok {
+		t.Fatal("expected unrestricted key to access all-district export")
+	}
+	if got.ID != 30 {
+		t.Fatalf("expected unrestricted export 30, got %#v", got)
+	}
+}
+
 func TestPartnerSafeExportRunRemovesInternalFieldsAndPayload(t *testing.T) {
 	userID := int64(42)
 	now := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)

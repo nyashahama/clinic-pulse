@@ -269,6 +269,27 @@ func PartnerScopeAllowsDistrict(allowedDistricts []string, district string) bool
 	return false
 }
 
+func LatestPartnerExportForAllowedDistricts(exportRuns []store.PartnerExportRun, allowedDistricts []string) (store.PartnerExportRun, bool) {
+	for _, exportRun := range exportRuns {
+		if PartnerExportAllowsDistricts(exportRun, allowedDistricts) {
+			return exportRun, true
+		}
+	}
+	return store.PartnerExportRun{}, false
+}
+
+func PartnerExportAllowsDistricts(exportRun store.PartnerExportRun, allowedDistricts []string) bool {
+	if len(allowedDistricts) == 0 {
+		return true
+	}
+	district, _ := exportRun.Scope["district"].(string)
+	district = strings.TrimSpace(district)
+	if district == "" {
+		return false
+	}
+	return PartnerScopeAllowsDistrict(allowedDistricts, district)
+}
+
 func copyPartnerExportScope(scope map[string]any) map[string]any {
 	if scope == nil {
 		return map[string]any{}
