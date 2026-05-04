@@ -1246,6 +1246,42 @@ func TestAdminPartnerWebhookCreateListAndTestDoesNotExposeSecret(t *testing.T) {
 	}
 }
 
+func TestAdminPartnerWebhookRejectsUnsafeTargetURLs(t *testing.T) {
+	orgID := int64(77)
+	tests := []struct {
+		name      string
+		targetURL string
+	}{
+		{name: "http URL", targetURL: "http://partner.example.test/webhooks/clinicpulse"},
+		{name: "localhost URL", targetURL: "https://localhost/webhooks/clinicpulse"},
+		{name: "private IP URL", targetURL: "https://10.0.0.5/webhooks/clinicpulse"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var createInput store.CreatePartnerWebhookSubscriptionInput
+			router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+				createPartnerWebhookSubscriptionInput: &createInput,
+			}))
+			req := newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/webhooks", strings.NewReader(`{
+				"name":"Status webhook",
+				"targetUrl":"`+tt.targetURL+`",
+				"eventTypes":["clinic.status_changed"]
+			}`))
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("expected status %d, got %d with body %s", http.StatusBadRequest, rec.Code, rec.Body.String())
+			}
+			if createInput.TargetURL != "" {
+				t.Fatalf("expected unsafe webhook target not to be persisted, got %#v", createInput)
+			}
+		})
+	}
+}
+
 func TestAdminPartnerWebhookTestDeliveryEnabledIsExplicitlyNotImplemented(t *testing.T) {
 	orgID := int64(77)
 	subscriptions := []store.PartnerWebhookSubscription{{

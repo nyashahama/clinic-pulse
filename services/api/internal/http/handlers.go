@@ -12,6 +12,7 @@ import (
 	"net"
 	nethttp "net/http"
 	"net/netip"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -564,14 +565,7 @@ func (h Handler) CreateAdminPartnerWebhook(w nethttp.ResponseWriter, r *nethttp.
 		respondUnauthorized(w)
 		return
 	}
-	fields := make([]string, 0, 2)
-	if strings.TrimSpace(payload.Name) == "" {
-		fields = append(fields, "name: name is required")
-	}
-	if strings.TrimSpace(payload.TargetURL) == "" {
-		fields = append(fields, "targetUrl: targetUrl is required")
-	}
-	if len(fields) > 0 {
+	if fields := validateCreatePartnerWebhookRequest(payload); len(fields) > 0 {
 		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", fields...)
 		return
 	}
@@ -1292,6 +1286,47 @@ func validateCreatePartnerAPIKeyRequest(payload createPartnerAPIKeyRequest, now 
 		fields = append(fields, "expiresAt: expiresAt must be in the future")
 	}
 	return fields
+}
+
+func validateCreatePartnerWebhookRequest(payload createPartnerWebhookRequest) []string {
+	fields := make([]string, 0, 2)
+	if strings.TrimSpace(payload.Name) == "" {
+		fields = append(fields, "name: name is required")
+	}
+	if message := validatePartnerWebhookTargetURL(payload.TargetURL); message != "" {
+		fields = append(fields, message)
+	}
+	return fields
+}
+
+func validatePartnerWebhookTargetURL(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return "targetUrl: targetUrl is required"
+	}
+
+	parsed, err := url.Parse(trimmed)
+	if err != nil || parsed.Scheme != "https" || parsed.Host == "" {
+		return "targetUrl: targetUrl must be an absolute public https URL"
+	}
+	if parsed.User != nil {
+		return "targetUrl: targetUrl must not include user info"
+	}
+
+	host := strings.TrimSpace(strings.ToLower(parsed.Hostname()))
+	if host == "" || host == "localhost" || strings.HasSuffix(host, ".localhost") {
+		return "targetUrl: targetUrl must use a public host"
+	}
+	if strings.Contains(host, "%") {
+		return "targetUrl: targetUrl must use a public host"
+	}
+	if ip, err := netip.ParseAddr(host); err == nil {
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() || ip.IsMulticast() {
+			return "targetUrl: targetUrl must use a public host"
+		}
+	}
+
+	return ""
 }
 
 func (h Handler) adminPartnerAPIKeyVisible(ctx context.Context, organisationID *int64, keyID int64) (bool, error) {
