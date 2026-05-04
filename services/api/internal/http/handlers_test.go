@@ -2766,11 +2766,14 @@ func (f fakeStore) ListMembershipsForUser(context.Context, int64) ([]store.Organ
 	return f.memberships, f.membershipsErr
 }
 
-func (f fakeStore) GetPartnerAPIKeyByHash(context.Context, string) (store.PartnerAPIKey, error) {
+func (f fakeStore) GetPartnerAPIKeyByHash(_ context.Context, keyHash string) (store.PartnerAPIKey, error) {
 	if f.partnerKeyErr != nil {
 		return store.PartnerAPIKey{}, f.partnerKeyErr
 	}
 	if f.partnerAPIKey.ID == 0 {
+		return store.PartnerAPIKey{}, pgx.ErrNoRows
+	}
+	if f.partnerAPIKey.KeyHash != keyHash {
 		return store.PartnerAPIKey{}, pgx.ErrNoRows
 	}
 	return f.partnerAPIKey, nil

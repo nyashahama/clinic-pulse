@@ -20,6 +20,10 @@ func main() {
 	}
 	defer pool.Close()
 
-	router := apihttp.NewRouter(store.New(pool))
+	router := apihttp.NewRouter(
+		store.New(pool),
+		apihttp.WithAPIKeyPepper(cfg.APIKeyPepper),
+		apihttp.WithWebhookDeliveryEnabled(cfg.WebhookDeliveryEnabled),
+	)
 	log.Fatal(http.ListenAndServe(cfg.Addr, router))
 }

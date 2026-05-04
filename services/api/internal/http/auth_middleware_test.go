@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-
 	"clinicpulse/services/api/internal/auth"
 	apihttp "clinicpulse/services/api/internal/http"
 	"clinicpulse/services/api/internal/store"
@@ -26,11 +24,12 @@ func TestProtectedRouteMissingCookieReturnsUnauthorized(t *testing.T) {
 }
 
 func TestPartnerRouteAcceptsValidAPIKey(t *testing.T) {
+	const pepper = "pepper"
 	secret, _, err := auth.GenerateAPIKey("demo")
 	if err != nil {
 		t.Fatalf("GenerateAPIKey returned error: %v", err)
 	}
-	hash, err := auth.HashAPIKey(secret, "")
+	hash, err := auth.HashAPIKey(secret, pepper)
 	if err != nil {
 		t.Fatalf("HashAPIKey returned error: %v", err)
 	}
@@ -57,7 +56,7 @@ func TestPartnerRouteAcceptsValidAPIKey(t *testing.T) {
 				VerificationStatus: "verified",
 			},
 		}},
-	})
+	}, apihttp.WithAPIKeyPepper(pepper))
 	req := httptest.NewRequest(http.MethodGet, "/v1/partner/clinics", nil)
 	req.Header.Set("Authorization", "Bearer "+secret)
 	rec := httptest.NewRecorder()
@@ -78,6 +77,10 @@ func TestPartnerRouteRejectsMissingInvalidRevokedAndExpiredKeys(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GenerateAPIKey returned error: %v", err)
 	}
+	unknownSecret, _, err := auth.GenerateAPIKey("demo")
+	if err != nil {
+		t.Fatalf("GenerateAPIKey unknown returned error: %v", err)
+	}
 	hash, err := auth.HashAPIKey(validSecret, "")
 	if err != nil {
 		t.Fatalf("HashAPIKey returned error: %v", err)
@@ -95,9 +98,13 @@ func TestPartnerRouteRejectsMissingInvalidRevokedAndExpiredKeys(t *testing.T) {
 			name: "missing",
 		},
 		{
-			name:          "invalid",
-			authorization: "Bearer not-a-key",
-			store:         fakeStore{partnerKeyErr: pgx.ErrNoRows},
+			name:          "unknown",
+			authorization: "Bearer " + unknownSecret,
+			store: fakeStore{partnerAPIKey: store.PartnerAPIKey{
+				ID:      10,
+				KeyHash: hash,
+				Scopes:  []string{"clinics:read"},
+			}},
 		},
 		{
 			name:          "revoked",
