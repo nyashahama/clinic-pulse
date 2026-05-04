@@ -2519,6 +2519,7 @@ type fakeStore struct {
 	getSessionCalls             *int
 	revokeCalls                 *int
 	partnerTouchCalls           *int
+	partnerTouchErr             error
 	listErr                     error
 	getClinicErr                error
 	statusErr                   error
@@ -2783,7 +2784,7 @@ func (f fakeStore) TouchPartnerAPIKey(context.Context, int64, string, time.Time)
 	if f.partnerTouchCalls != nil {
 		*f.partnerTouchCalls++
 	}
-	return nil
+	return f.partnerTouchErr
 }
 
 func validReportJSON() string {

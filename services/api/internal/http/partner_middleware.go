@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"clinicpulse/services/api/internal/auth"
+	"clinicpulse/services/api/internal/store"
 )
 
 type partnerPrincipalContextKeyType string
@@ -52,7 +53,14 @@ func RequirePartnerAPIKey(clinicStore ClinicStore, pepper string) func(nethttp.H
 				respondUnauthorized(w)
 				return
 			}
-			_ = clinicStore.TouchPartnerAPIKey(r.Context(), key.ID, remoteIPAddressValue(r.RemoteAddr), now)
+			if err := clinicStore.TouchPartnerAPIKey(r.Context(), key.ID, remoteIPAddressValue(r.RemoteAddr), now); err != nil {
+				if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, store.ErrPartnerAPIKeyRevoked) || errors.Is(err, store.ErrPartnerAPIKeyExpired) {
+					respondUnauthorized(w)
+					return
+				}
+				RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+				return
+			}
 			next.ServeHTTP(w, r.WithContext(ContextWithPartnerPrincipal(r.Context(), PartnerPrincipal{
 				APIKeyID:         key.ID,
 				OrganisationID:   key.OrganisationID,
@@ -98,7 +106,11 @@ func bearerToken(header string) string {
 	if !strings.HasPrefix(header, prefix) {
 		return ""
 	}
-	return strings.TrimSpace(strings.TrimPrefix(header, prefix))
+	token := strings.TrimPrefix(header, prefix)
+	if token == "" || strings.TrimSpace(token) != token {
+		return ""
+	}
+	return token
 }
 
 func remoteIPAddressValue(remoteAddr string) string {
