@@ -10,7 +10,7 @@ import { workflowIncidentStages } from "@/lib/landing/openpanel-refactor-content
 
 const toneMap: Record<
   (typeof workflowIncidentStages)[number]["tone"],
-  ComponentProps<typeof StatusPill>["tone"]
+  NonNullable<ComponentProps<typeof StatusPill>["tone"]>
 > = {
   critical: "critical",
   warning: "warning",
@@ -21,14 +21,14 @@ const toneMap: Record<
 export function WorkflowIncidentPanel() {
   return (
     <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50 px-4 py-3">
-        <div className="flex items-center gap-2">
-          <ClipboardList className="size-4 text-primary" />
-          <p className="text-sm font-semibold text-neutral-950">
+      <div className="grid gap-2 border-b border-neutral-200 bg-neutral-50 px-4 py-3 sm:flex sm:items-center sm:justify-between sm:gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <ClipboardList className="size-4 shrink-0 text-primary" />
+          <p className="truncate text-sm font-semibold text-neutral-950">
             Mamelodi East incident
           </p>
         </div>
-        <p className="font-mono text-xs text-neutral-400">
+        <p className="min-w-0 break-all font-mono text-xs text-neutral-400 sm:break-normal sm:text-right">
           LIVE_DEMO / AUD-2026-0504-017
         </p>
       </div>
