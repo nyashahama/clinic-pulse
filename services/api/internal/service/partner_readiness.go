@@ -1,6 +1,11 @@
 package service
 
 import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"strings"
 	"time"
 
 	"clinicpulse/services/api/internal/store"
@@ -40,6 +45,24 @@ type PartnerSafeIntegrationStatusCheckResponse struct {
 	Status    string    `json:"status"`
 	Summary   string    `json:"summary"`
 	CheckedAt time.Time `json:"checkedAt"`
+}
+
+type PartnerExportPayloadInput struct {
+	OrganisationID *int64
+	Format         string
+	Scope          map[string]any
+	GeneratedAt    time.Time
+}
+
+type PartnerExportPayload struct {
+	Payload      map[string]any
+	RecordCounts map[string]any
+	Checksum     string
+}
+
+type PartnerExportPayloadReader interface {
+	ListClinics(ctx context.Context) ([]store.ClinicDetail, error)
+	ListIntegrationStatusChecks(ctx context.Context, organisationID *int64) ([]store.IntegrationStatusCheck, error)
 }
 
 func PartnerSafeClinicDetail(input store.ClinicDetail) PartnerSafeClinicDetailResponse {
@@ -95,6 +118,57 @@ func PartnerSafeIntegrationStatusChecks(input []store.IntegrationStatusCheck) []
 	return result
 }
 
+func BuildPartnerExportPayload(ctx context.Context, reader PartnerExportPayloadReader, input PartnerExportPayloadInput) (PartnerExportPayload, error) {
+	format := strings.TrimSpace(strings.ToLower(input.Format))
+	if format != "json" && format != "csv" {
+		return PartnerExportPayload{}, ValidationError{Fields: []string{fieldMessage("format", "format must be one of: json, csv")}}
+	}
+	generatedAt := input.GeneratedAt.UTC()
+	if generatedAt.IsZero() {
+		generatedAt = time.Now().UTC()
+	}
+	scope := copyPartnerExportScope(input.Scope)
+
+	clinics, err := reader.ListClinics(ctx)
+	if err != nil {
+		return PartnerExportPayload{}, err
+	}
+	clinics = filterPartnerExportClinics(clinics, scope)
+	safeClinics := make([]PartnerSafeClinicDetailResponse, 0, len(clinics))
+	for _, clinic := range clinics {
+		safeClinics = append(safeClinics, PartnerSafeClinicDetail(clinic))
+	}
+
+	checks, err := reader.ListIntegrationStatusChecks(ctx, input.OrganisationID)
+	if err != nil {
+		return PartnerExportPayload{}, err
+	}
+	safeChecks := PartnerSafeIntegrationStatusChecks(checks)
+
+	recordCounts := map[string]any{
+		"clinics":           len(safeClinics),
+		"integrationChecks": len(safeChecks),
+	}
+	payload := map[string]any{
+		"format":            format,
+		"scope":             scope,
+		"generatedAt":       generatedAt.Format(time.RFC3339),
+		"clinics":           safeClinics,
+		"integrationChecks": safeChecks,
+	}
+	encoded, err := json.Marshal(payload)
+	if err != nil {
+		return PartnerExportPayload{}, err
+	}
+	checksum := sha256.Sum256(encoded)
+
+	return PartnerExportPayload{
+		Payload:      payload,
+		RecordCounts: recordCounts,
+		Checksum:     "sha256:" + hex.EncodeToString(checksum[:]),
+	}, nil
+}
+
 func PartnerSafeIntegrationStatusCheck(input store.IntegrationStatusCheck) PartnerSafeIntegrationStatusCheckResponse {
 	return PartnerSafeIntegrationStatusCheckResponse{
 		CheckName: input.CheckName,
@@ -114,6 +188,32 @@ func PartnerScopeAllowsDistrict(allowedDistricts []string, district string) bool
 		}
 	}
 	return false
+}
+
+func copyPartnerExportScope(scope map[string]any) map[string]any {
+	if scope == nil {
+		return map[string]any{}
+	}
+	copied := make(map[string]any, len(scope))
+	for key, value := range scope {
+		copied[key] = value
+	}
+	return copied
+}
+
+func filterPartnerExportClinics(clinics []store.ClinicDetail, scope map[string]any) []store.ClinicDetail {
+	district, _ := scope["district"].(string)
+	district = strings.TrimSpace(district)
+	if district == "" {
+		return clinics
+	}
+	filtered := make([]store.ClinicDetail, 0, len(clinics))
+	for _, clinic := range clinics {
+		if clinic.Clinic.District == district {
+			filtered = append(filtered, clinic)
+		}
+	}
+	return filtered
 }
 
 func sourceCategory(source *string) *string {

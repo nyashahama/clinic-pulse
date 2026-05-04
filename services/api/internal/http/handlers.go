@@ -2,6 +2,10 @@ package http
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
@@ -51,8 +55,18 @@ type ClinicStore interface {
 	RevokeSession(ctx context.Context, tokenHash string) error
 	ListMembershipsForUser(ctx context.Context, userID int64) ([]store.OrganisationMembership, error)
 	GetPartnerAPIKeyByHash(ctx context.Context, keyHash string) (store.PartnerAPIKey, error)
+	CreatePartnerAPIKey(ctx context.Context, input store.CreatePartnerAPIKeyInput) (store.PartnerAPIKey, error)
+	ListPartnerAPIKeys(ctx context.Context, organisationID *int64) ([]store.PartnerAPIKey, error)
+	RevokePartnerAPIKey(ctx context.Context, keyID int64, revokedAt time.Time) error
 	TouchPartnerAPIKey(ctx context.Context, keyID int64, ipAddress string, usedAt time.Time) error
 	GetLatestPartnerExportRun(ctx context.Context, organisationID *int64) (store.PartnerExportRun, error)
+	GetPartnerExportRunForOrganisation(ctx context.Context, organisationID *int64, exportID int64) (store.PartnerExportRun, error)
+	CreatePartnerExportRun(ctx context.Context, input store.CreatePartnerExportRunInput) (store.PartnerExportRun, error)
+	GetPartnerReadinessSnapshot(ctx context.Context, organisationID *int64) (store.PartnerReadinessSnapshot, error)
+	CreatePartnerWebhookSubscription(ctx context.Context, input store.CreatePartnerWebhookSubscriptionInput) (store.PartnerWebhookSubscription, error)
+	ListPartnerWebhookSubscriptions(ctx context.Context, organisationID *int64) ([]store.PartnerWebhookSubscription, error)
+	CreatePartnerWebhookEvent(ctx context.Context, input store.CreatePartnerWebhookEventInput) (store.PartnerWebhookEvent, error)
+	ListPartnerWebhookEvents(ctx context.Context, organisationID *int64) ([]store.PartnerWebhookEvent, error)
 	ListIntegrationStatusChecks(ctx context.Context, organisationID *int64) ([]store.IntegrationStatusCheck, error)
 }
 
@@ -260,6 +274,314 @@ func (h Handler) GetPartnerIntegrationStatus(w nethttp.ResponseWriter, r *nethtt
 		return
 	}
 	RespondJSON(w, nethttp.StatusOK, service.PartnerSafeIntegrationStatusChecks(checks))
+}
+
+func (h Handler) GetAdminPartnerReadiness(w nethttp.ResponseWriter, r *nethttp.Request) {
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	snapshot, err := h.store.GetPartnerReadinessSnapshot(r.Context(), principal.OrganisationID)
+	if err != nil {
+		respondStoreError(w, err, "partner readiness not found")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusOK, snapshot)
+}
+
+func (h Handler) CreateAdminPartnerAPIKey(w nethttp.ResponseWriter, r *nethttp.Request) {
+	var payload createPartnerAPIKeyRequest
+	if !decodeSingleJSON(w, r, &payload) {
+		return
+	}
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	secret, prefix, err := auth.GenerateAPIKey(payload.Environment)
+	if err != nil {
+		if errors.Is(err, auth.ErrInvalidAPIKey) {
+			RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "environment: environment must be one of: demo, live")
+			return
+		}
+		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	keyHash, err := auth.HashAPIKey(secret, h.apiKeyPepper)
+	if err != nil {
+		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+
+	now := time.Now().UTC()
+	apiKey, err := h.store.CreatePartnerAPIKey(r.Context(), store.CreatePartnerAPIKeyInput{
+		OrganisationID:   principal.OrganisationID,
+		Name:             strings.TrimSpace(payload.Name),
+		Environment:      strings.TrimSpace(strings.ToLower(payload.Environment)),
+		KeyPrefix:        prefix,
+		KeyHash:          keyHash,
+		Scopes:           trimStringSlice(payload.Scopes),
+		AllowedDistricts: trimStringSlice(payload.AllowedDistricts),
+		ExpiresAt:        payload.ExpiresAt,
+		CreatedByUserID:  &principal.UserID,
+		CreatedAt:        now,
+	})
+	if err != nil {
+		respondPartnerAdminMutationError(w, err, "failed to create partner API key")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusCreated, createPartnerAPIKeyResponse{
+		APIKey: apiKey,
+		Secret: secret,
+	})
+}
+
+func (h Handler) ListAdminPartnerAPIKeys(w nethttp.ResponseWriter, r *nethttp.Request) {
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	apiKeys, err := h.store.ListPartnerAPIKeys(r.Context(), principal.OrganisationID)
+	if err != nil {
+		respondStoreError(w, err, "failed to list partner API keys")
+		return
+	}
+	if apiKeys == nil {
+		apiKeys = []store.PartnerAPIKey{}
+	}
+
+	RespondJSON(w, nethttp.StatusOK, apiKeys)
+}
+
+func (h Handler) RevokeAdminPartnerAPIKey(w nethttp.ResponseWriter, r *nethttp.Request) {
+	keyID, ok := parsePositiveInt64Param(w, r, "keyId", "partner API key not found")
+	if !ok {
+		return
+	}
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+	visible, err := h.adminPartnerAPIKeyVisible(r.Context(), principal.OrganisationID, keyID)
+	if err != nil {
+		respondStoreError(w, err, "partner API key not found")
+		return
+	}
+	if !visible {
+		RespondError(w, nethttp.StatusNotFound, "not_found", "partner API key not found")
+		return
+	}
+
+	if err := h.store.RevokePartnerAPIKey(r.Context(), keyID, time.Now().UTC()); err != nil {
+		respondPartnerAdminMutationError(w, err, "partner API key not found")
+		return
+	}
+
+	w.WriteHeader(nethttp.StatusNoContent)
+}
+
+func (h Handler) ListAdminPartnerWebhooks(w nethttp.ResponseWriter, r *nethttp.Request) {
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	subscriptions, err := h.store.ListPartnerWebhookSubscriptions(r.Context(), principal.OrganisationID)
+	if err != nil {
+		respondStoreError(w, err, "failed to list partner webhooks")
+		return
+	}
+	events, err := h.store.ListPartnerWebhookEvents(r.Context(), principal.OrganisationID)
+	if err != nil {
+		respondStoreError(w, err, "failed to list partner webhook events")
+		return
+	}
+	if subscriptions == nil {
+		subscriptions = []store.PartnerWebhookSubscription{}
+	}
+	if events == nil {
+		events = []store.PartnerWebhookEvent{}
+	}
+
+	RespondJSON(w, nethttp.StatusOK, adminPartnerWebhooksResponse{
+		Subscriptions: subscriptions,
+		Events:        events,
+	})
+}
+
+func (h Handler) CreateAdminPartnerWebhook(w nethttp.ResponseWriter, r *nethttp.Request) {
+	var payload createPartnerWebhookRequest
+	if !decodeSingleJSON(w, r, &payload) {
+		return
+	}
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+	fields := make([]string, 0, 2)
+	if strings.TrimSpace(payload.Name) == "" {
+		fields = append(fields, "name: name is required")
+	}
+	if strings.TrimSpace(payload.TargetURL) == "" {
+		fields = append(fields, "targetUrl: targetUrl is required")
+	}
+	if len(fields) > 0 {
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", fields...)
+		return
+	}
+
+	secret, err := generateWebhookSecret()
+	if err != nil {
+		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	now := time.Now().UTC()
+	subscription, err := h.store.CreatePartnerWebhookSubscription(r.Context(), store.CreatePartnerWebhookSubscriptionInput{
+		OrganisationID:   principal.OrganisationID,
+		Name:             strings.TrimSpace(payload.Name),
+		TargetURL:        strings.TrimSpace(payload.TargetURL),
+		EventTypes:       trimStringSlice(payload.EventTypes),
+		SecretHash:       hashWebhookSecret(secret, h.apiKeyPepper),
+		Status:           "active",
+		LastTestMetadata: map[string]any{},
+		CreatedByUserID:  &principal.UserID,
+		CreatedAt:        now,
+	})
+	if err != nil {
+		respondPartnerAdminMutationError(w, err, "failed to create partner webhook")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusCreated, createPartnerWebhookResponse{
+		Subscription: subscription,
+		Secret:       secret,
+	})
+}
+
+func (h Handler) CreateAdminPartnerWebhookTestEvent(w nethttp.ResponseWriter, r *nethttp.Request) {
+	subscriptionID, ok := parsePositiveInt64Param(w, r, "subscriptionId", "partner webhook not found")
+	if !ok {
+		return
+	}
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+	subscription, found, err := h.adminPartnerWebhookSubscription(r.Context(), principal.OrganisationID, subscriptionID)
+	if err != nil {
+		respondStoreError(w, err, "partner webhook not found")
+		return
+	}
+	if !found {
+		RespondError(w, nethttp.StatusNotFound, "not_found", "partner webhook not found")
+		return
+	}
+	if h.webhookDeliveryEnabled {
+		RespondError(w, nethttp.StatusNotImplemented, "not_implemented", "webhook delivery is not implemented")
+		return
+	}
+
+	now := time.Now().UTC()
+	event, err := h.store.CreatePartnerWebhookEvent(r.Context(), store.CreatePartnerWebhookEventInput{
+		SubscriptionID: subscriptionID,
+		EventType:      "clinicpulse.webhook_test",
+		Payload: map[string]any{
+			"eventType":      "clinicpulse.webhook_test",
+			"subscriptionId": subscriptionID,
+			"targetUrl":      subscription.TargetURL,
+			"previewOnly":    true,
+		},
+		Metadata: map[string]any{
+			"previewOnly":     true,
+			"deliveryEnabled": false,
+		},
+		Status:    "preview_only",
+		CreatedAt: now,
+	})
+	if err != nil {
+		respondPartnerAdminMutationError(w, err, "failed to create partner webhook test event")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusCreated, event)
+}
+
+func (h Handler) CreateAdminPartnerExport(w nethttp.ResponseWriter, r *nethttp.Request) {
+	var payload createPartnerExportRequest
+	if !decodeSingleJSON(w, r, &payload) {
+		return
+	}
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	now := time.Now().UTC()
+	exportPayload, err := service.BuildPartnerExportPayload(r.Context(), h.store, service.PartnerExportPayloadInput{
+		OrganisationID: principal.OrganisationID,
+		Format:         payload.Format,
+		Scope:          payload.Scope,
+		GeneratedAt:    now,
+	})
+	if err != nil {
+		var validationErr service.ValidationError
+		if errors.As(err, &validationErr) {
+			RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", validationErr.Fields...)
+			return
+		}
+		respondStoreError(w, err, "failed to build partner export")
+		return
+	}
+
+	exportRun, err := h.store.CreatePartnerExportRun(r.Context(), store.CreatePartnerExportRunInput{
+		OrganisationID:    principal.OrganisationID,
+		RequestedByUserID: &principal.UserID,
+		Format:            strings.TrimSpace(strings.ToLower(payload.Format)),
+		Scope:             copyStringAnyMap(payload.Scope),
+		RecordCounts:      exportPayload.RecordCounts,
+		Checksum:          exportPayload.Checksum,
+		Payload:           exportPayload.Payload,
+		CreatedAt:         now,
+	})
+	if err != nil {
+		respondPartnerAdminMutationError(w, err, "failed to create partner export")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusCreated, exportRun)
+}
+
+func (h Handler) GetAdminPartnerExport(w nethttp.ResponseWriter, r *nethttp.Request) {
+	exportID, ok := parsePositiveInt64Param(w, r, "exportId", "partner export not found")
+	if !ok {
+		return
+	}
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	exportRun, err := h.store.GetPartnerExportRunForOrganisation(r.Context(), principal.OrganisationID, exportID)
+	if err != nil {
+		respondStoreError(w, err, "partner export not found")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusOK, exportRun)
 }
 
 func (h Handler) GetClinic(w nethttp.ResponseWriter, r *nethttp.Request) {
@@ -788,6 +1110,97 @@ func respondStoreError(w nethttp.ResponseWriter, err error, notFoundMessage stri
 	RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
 }
 
+func respondPartnerAdminMutationError(w nethttp.ResponseWriter, err error, notFoundMessage string) {
+	switch {
+	case errors.Is(err, store.ErrInvalidPartnerScope):
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "scopes: scopes contain an unsupported value")
+	case errors.Is(err, store.ErrInvalidPartnerWebhookStatus):
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "status: status must be one of: active, disabled")
+	case errors.Is(err, store.ErrInvalidPartnerWebhookEventStatus):
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "status: status must be one of: queued, delivered, failed, preview_only")
+	case errors.Is(err, store.ErrInvalidPartnerExportFormat):
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "format: format must be one of: json, csv")
+	case errors.Is(err, store.ErrPartnerAPIKeyRevoked):
+		RespondError(w, nethttp.StatusConflict, "conflict", "partner API key already revoked")
+	default:
+		respondStoreError(w, err, notFoundMessage)
+	}
+}
+
+func parsePositiveInt64Param(w nethttp.ResponseWriter, r *nethttp.Request, paramName string, notFoundMessage string) (int64, bool) {
+	value, err := strconv.ParseInt(chi.URLParam(r, paramName), 10, 64)
+	if err != nil || value <= 0 {
+		RespondError(w, nethttp.StatusNotFound, "not_found", notFoundMessage)
+		return 0, false
+	}
+	return value, true
+}
+
+func (h Handler) adminPartnerAPIKeyVisible(ctx context.Context, organisationID *int64, keyID int64) (bool, error) {
+	apiKeys, err := h.store.ListPartnerAPIKeys(ctx, organisationID)
+	if err != nil {
+		return false, err
+	}
+	for _, apiKey := range apiKeys {
+		if apiKey.ID == keyID {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (h Handler) adminPartnerWebhookSubscription(ctx context.Context, organisationID *int64, subscriptionID int64) (store.PartnerWebhookSubscription, bool, error) {
+	subscriptions, err := h.store.ListPartnerWebhookSubscriptions(ctx, organisationID)
+	if err != nil {
+		return store.PartnerWebhookSubscription{}, false, err
+	}
+	for _, subscription := range subscriptions {
+		if subscription.ID == subscriptionID {
+			return subscription, true, nil
+		}
+	}
+	return store.PartnerWebhookSubscription{}, false, nil
+}
+
+func generateWebhookSecret() (string, error) {
+	randomBytes := make([]byte, 32)
+	if _, err := rand.Read(randomBytes); err != nil {
+		return "", err
+	}
+	return "cp_whsec_" + base64.RawURLEncoding.EncodeToString(randomBytes), nil
+}
+
+func hashWebhookSecret(secret string, pepper string) string {
+	material := secret
+	if pepper != "" {
+		material = pepper + ":" + secret
+	}
+	hash := sha256.Sum256([]byte(material))
+	return hex.EncodeToString(hash[:])
+}
+
+func trimStringSlice(values []string) []string {
+	if values == nil {
+		return nil
+	}
+	trimmed := make([]string, 0, len(values))
+	for _, value := range values {
+		trimmed = append(trimmed, strings.TrimSpace(value))
+	}
+	return trimmed
+}
+
+func copyStringAnyMap(values map[string]any) map[string]any {
+	if values == nil {
+		return map[string]any{}
+	}
+	copied := make(map[string]any, len(values))
+	for key, value := range values {
+		copied[key] = value
+	}
+	return copied
+}
+
 func decodeSingleJSON(w nethttp.ResponseWriter, r *nethttp.Request, target any) bool {
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(target); err != nil {
@@ -1027,6 +1440,40 @@ type reviewReportRequest struct {
 type reviewReportResponse struct {
 	Report        store.Report         `json:"report"`
 	CurrentStatus *store.CurrentStatus `json:"currentStatus,omitempty"`
+}
+
+type createPartnerAPIKeyRequest struct {
+	Name             string     `json:"name"`
+	Environment      string     `json:"environment"`
+	Scopes           []string   `json:"scopes"`
+	AllowedDistricts []string   `json:"allowedDistricts"`
+	ExpiresAt        *time.Time `json:"expiresAt,omitempty"`
+}
+
+type createPartnerAPIKeyResponse struct {
+	APIKey store.PartnerAPIKey `json:"apiKey"`
+	Secret string              `json:"secret"`
+}
+
+type createPartnerWebhookRequest struct {
+	Name       string   `json:"name"`
+	TargetURL  string   `json:"targetUrl"`
+	EventTypes []string `json:"eventTypes"`
+}
+
+type createPartnerWebhookResponse struct {
+	Subscription store.PartnerWebhookSubscription `json:"subscription"`
+	Secret       string                           `json:"secret"`
+}
+
+type createPartnerExportRequest struct {
+	Format string         `json:"format"`
+	Scope  map[string]any `json:"scope"`
+}
+
+type adminPartnerWebhooksResponse struct {
+	Subscriptions []store.PartnerWebhookSubscription `json:"subscriptions"`
+	Events        []store.PartnerWebhookEvent        `json:"events"`
 }
 
 type offlineSyncRequest struct {
