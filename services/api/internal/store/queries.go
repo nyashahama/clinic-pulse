@@ -425,6 +425,291 @@ RETURNING
     error_message,
     metadata`
 
+	insertPartnerAPIKeySQL = `
+INSERT INTO partner_api_keys (
+    organisation_id,
+    name,
+    environment,
+    key_prefix,
+    key_hash,
+    scopes,
+    allowed_districts,
+    expires_at,
+    created_by_user_id,
+    created_at,
+    updated_at
+)
+VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8, $9, $10, $10)
+RETURNING
+    id,
+    organisation_id,
+    name,
+    environment,
+    key_prefix,
+    key_hash,
+    scopes,
+    allowed_districts,
+    expires_at,
+    revoked_at,
+    last_used_at,
+    host(last_used_ip),
+    created_by_user_id,
+    created_at,
+    updated_at`
+
+	getPartnerAPIKeyByHashSQL = `
+SELECT
+    id,
+    organisation_id,
+    name,
+    environment,
+    key_prefix,
+    key_hash,
+    scopes,
+    allowed_districts,
+    expires_at,
+    revoked_at,
+    last_used_at,
+    host(last_used_ip),
+    created_by_user_id,
+    created_at,
+    updated_at
+FROM partner_api_keys
+WHERE key_hash = $1`
+
+	listPartnerAPIKeysSQL = `
+SELECT
+    id,
+    organisation_id,
+    name,
+    environment,
+    key_prefix,
+    key_hash,
+    scopes,
+    allowed_districts,
+    expires_at,
+    revoked_at,
+    last_used_at,
+    host(last_used_ip),
+    created_by_user_id,
+    created_at,
+    updated_at
+FROM partner_api_keys
+WHERE $1::bigint IS NULL OR organisation_id = $1
+ORDER BY created_at DESC, id DESC`
+
+	touchPartnerAPIKeySQL = `
+UPDATE partner_api_keys
+SET
+    last_used_at = $3,
+    last_used_ip = $2::inet,
+    updated_at = $3
+WHERE id = $1`
+
+	revokePartnerAPIKeySQL = `
+UPDATE partner_api_keys
+SET
+    revoked_at = $2,
+    updated_at = $2
+WHERE id = $1`
+
+	insertPartnerWebhookSubscriptionSQL = `
+INSERT INTO partner_webhook_subscriptions (
+    organisation_id,
+    name,
+    target_url,
+    event_types,
+    secret_hash,
+    status,
+    last_test_metadata,
+    created_by_user_id,
+    created_at,
+    updated_at
+)
+VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7::jsonb, $8, $9, $9)
+RETURNING
+    id,
+    organisation_id,
+    name,
+    target_url,
+    event_types,
+    secret_hash,
+    status,
+    last_tested_at,
+    last_test_status,
+    last_test_metadata,
+    last_error,
+    created_by_user_id,
+    created_at,
+    updated_at`
+
+	listPartnerWebhookSubscriptionsSQL = `
+SELECT
+    id,
+    organisation_id,
+    name,
+    target_url,
+    event_types,
+    secret_hash,
+    status,
+    last_tested_at,
+    last_test_status,
+    last_test_metadata,
+    last_error,
+    created_by_user_id,
+    created_at,
+    updated_at
+FROM partner_webhook_subscriptions
+WHERE $1::bigint IS NULL OR organisation_id = $1
+ORDER BY created_at DESC, id DESC`
+
+	insertPartnerWebhookEventSQL = `
+INSERT INTO partner_webhook_events (
+    subscription_id,
+    event_type,
+    payload,
+    metadata,
+    status,
+    attempt_count,
+    last_error,
+    created_at,
+    delivered_at
+)
+VALUES ($1, $2, $3::jsonb, $4::jsonb, $5, $6, $7, $8, $9)
+RETURNING
+    id,
+    subscription_id,
+    event_type,
+    payload,
+    metadata,
+    status,
+    attempt_count,
+    last_error,
+    created_at,
+    delivered_at`
+
+	listPartnerWebhookEventsSQL = `
+SELECT
+    partner_webhook_events.id,
+    partner_webhook_events.subscription_id,
+    partner_webhook_events.event_type,
+    partner_webhook_events.payload,
+    partner_webhook_events.metadata,
+    partner_webhook_events.status,
+    partner_webhook_events.attempt_count,
+    partner_webhook_events.last_error,
+    partner_webhook_events.created_at,
+    partner_webhook_events.delivered_at
+FROM partner_webhook_events
+JOIN partner_webhook_subscriptions ON partner_webhook_subscriptions.id = partner_webhook_events.subscription_id
+WHERE $1::bigint IS NULL OR partner_webhook_subscriptions.organisation_id = $1
+ORDER BY partner_webhook_events.created_at DESC, partner_webhook_events.id DESC`
+
+	insertPartnerExportRunSQL = `
+INSERT INTO partner_export_runs (
+    organisation_id,
+    requested_by_user_id,
+    format,
+    scope,
+    record_counts,
+    checksum,
+    payload,
+    created_at
+)
+VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $7::jsonb, $8)
+RETURNING
+    id,
+    organisation_id,
+    requested_by_user_id,
+    format,
+    scope,
+    record_counts,
+    checksum,
+    payload,
+    created_at`
+
+	getPartnerExportRunSQL = `
+SELECT
+    id,
+    organisation_id,
+    requested_by_user_id,
+    format,
+    scope,
+    record_counts,
+    checksum,
+    payload,
+    created_at
+FROM partner_export_runs
+WHERE id = $1`
+
+	getLatestPartnerExportRunSQL = `
+SELECT
+    id,
+    organisation_id,
+    requested_by_user_id,
+    format,
+    scope,
+    record_counts,
+    checksum,
+    payload,
+    created_at
+FROM partner_export_runs
+WHERE $1::bigint IS NULL OR organisation_id = $1
+ORDER BY created_at DESC, id DESC
+LIMIT 1`
+
+	listPartnerExportRunsSQL = `
+SELECT
+    id,
+    organisation_id,
+    requested_by_user_id,
+    format,
+    scope,
+    record_counts,
+    checksum,
+    payload,
+    created_at
+FROM partner_export_runs
+WHERE $1::bigint IS NULL OR organisation_id = $1
+ORDER BY created_at DESC, id DESC`
+
+	upsertIntegrationStatusCheckSQL = `
+INSERT INTO integration_status_checks (
+    organisation_id,
+    check_name,
+    status,
+    summary,
+    metadata,
+    checked_at
+)
+VALUES ($1, $2, $3, $4, $5::jsonb, $6)
+ON CONFLICT ((COALESCE(organisation_id, 0)), check_name) DO UPDATE SET
+    status = EXCLUDED.status,
+    summary = EXCLUDED.summary,
+    metadata = EXCLUDED.metadata,
+    checked_at = EXCLUDED.checked_at
+RETURNING
+    id,
+    organisation_id,
+    check_name,
+    status,
+    summary,
+    metadata,
+    checked_at`
+
+	listIntegrationStatusChecksSQL = `
+SELECT
+    id,
+    organisation_id,
+    check_name,
+    status,
+    summary,
+    metadata,
+    checked_at
+FROM integration_status_checks
+WHERE $1::bigint IS NULL OR organisation_id = $1
+ORDER BY checked_at DESC, id DESC`
+
 	syncSummarySinceSQL = `
 WITH attempt_counts AS (
     SELECT
@@ -629,6 +914,29 @@ var allowedSyncAttemptResults = map[string]bool{
 	"server_error":     true,
 }
 
+var allowedPartnerWebhookStatuses = map[string]bool{
+	"active":   true,
+	"disabled": true,
+}
+
+var allowedPartnerWebhookEventStatuses = map[string]bool{
+	"queued":       true,
+	"delivered":    true,
+	"failed":       true,
+	"preview_only": true,
+}
+
+var allowedPartnerExportFormats = map[string]bool{
+	"json": true,
+	"csv":  true,
+}
+
+var allowedIntegrationStatuses = map[string]bool{
+	"passing":   true,
+	"attention": true,
+	"failing":   true,
+}
+
 func (s Store) ListClinics(ctx context.Context) ([]ClinicDetail, error) {
 	rows, err := s.pool.Query(ctx, listClinicsSQL)
 	if err != nil {
@@ -738,6 +1046,244 @@ func (s Store) CreateReportSyncAttempt(ctx context.Context, input CreateReportSy
 		normalized.ErrorMessage,
 		string(metadataJSON),
 	))
+}
+
+func (s Store) CreatePartnerAPIKey(ctx context.Context, input CreatePartnerAPIKeyInput) (PartnerAPIKey, error) {
+	normalized, err := normalizeCreatePartnerAPIKeyInput(input)
+	if err != nil {
+		return PartnerAPIKey{}, err
+	}
+
+	scopesJSON, err := json.Marshal(normalized.Scopes)
+	if err != nil {
+		return PartnerAPIKey{}, err
+	}
+	allowedDistrictsJSON, err := json.Marshal(normalized.AllowedDistricts)
+	if err != nil {
+		return PartnerAPIKey{}, err
+	}
+
+	return scanPartnerAPIKey(s.pool.QueryRow(ctx, insertPartnerAPIKeySQL,
+		normalized.OrganisationID,
+		normalized.Name,
+		normalized.Environment,
+		normalized.KeyPrefix,
+		normalized.KeyHash,
+		string(scopesJSON),
+		string(allowedDistrictsJSON),
+		normalized.ExpiresAt,
+		normalized.CreatedByUserID,
+		normalized.CreatedAt,
+	))
+}
+
+func (s Store) GetPartnerAPIKeyByHash(ctx context.Context, keyHash string) (PartnerAPIKey, error) {
+	return scanPartnerAPIKey(s.pool.QueryRow(ctx, getPartnerAPIKeyByHashSQL, keyHash))
+}
+
+func (s Store) ListPartnerAPIKeys(ctx context.Context, organisationID *int64) ([]PartnerAPIKey, error) {
+	rows, err := s.pool.Query(ctx, listPartnerAPIKeysSQL, organisationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (PartnerAPIKey, error) {
+		return scanPartnerAPIKey(row)
+	})
+}
+
+func (s Store) TouchPartnerAPIKey(ctx context.Context, keyID int64, ipAddress string, usedAt time.Time) error {
+	_, err := s.pool.Exec(ctx, touchPartnerAPIKeySQL, keyID, ipAddress, usedAt)
+	return err
+}
+
+func (s Store) RevokePartnerAPIKey(ctx context.Context, keyID int64, revokedAt time.Time) error {
+	_, err := s.pool.Exec(ctx, revokePartnerAPIKeySQL, keyID, revokedAt)
+	return err
+}
+
+func (s Store) CreatePartnerWebhookSubscription(ctx context.Context, input CreatePartnerWebhookSubscriptionInput) (PartnerWebhookSubscription, error) {
+	normalized, err := normalizeCreatePartnerWebhookSubscriptionInput(input)
+	if err != nil {
+		return PartnerWebhookSubscription{}, err
+	}
+
+	eventTypesJSON, err := json.Marshal(normalized.EventTypes)
+	if err != nil {
+		return PartnerWebhookSubscription{}, err
+	}
+	lastTestMetadataJSON, err := json.Marshal(normalized.LastTestMetadata)
+	if err != nil {
+		return PartnerWebhookSubscription{}, err
+	}
+
+	return scanPartnerWebhookSubscription(s.pool.QueryRow(ctx, insertPartnerWebhookSubscriptionSQL,
+		normalized.OrganisationID,
+		normalized.Name,
+		normalized.TargetURL,
+		string(eventTypesJSON),
+		normalized.SecretHash,
+		normalized.Status,
+		string(lastTestMetadataJSON),
+		normalized.CreatedByUserID,
+		normalized.CreatedAt,
+	))
+}
+
+func (s Store) ListPartnerWebhookSubscriptions(ctx context.Context, organisationID *int64) ([]PartnerWebhookSubscription, error) {
+	rows, err := s.pool.Query(ctx, listPartnerWebhookSubscriptionsSQL, organisationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (PartnerWebhookSubscription, error) {
+		return scanPartnerWebhookSubscription(row)
+	})
+}
+
+func (s Store) CreatePartnerWebhookEvent(ctx context.Context, input CreatePartnerWebhookEventInput) (PartnerWebhookEvent, error) {
+	normalized, err := normalizeCreatePartnerWebhookEventInput(input)
+	if err != nil {
+		return PartnerWebhookEvent{}, err
+	}
+
+	payloadJSON, err := json.Marshal(normalized.Payload)
+	if err != nil {
+		return PartnerWebhookEvent{}, err
+	}
+	metadataJSON, err := json.Marshal(normalized.Metadata)
+	if err != nil {
+		return PartnerWebhookEvent{}, err
+	}
+
+	return scanPartnerWebhookEvent(s.pool.QueryRow(ctx, insertPartnerWebhookEventSQL,
+		normalized.SubscriptionID,
+		normalized.EventType,
+		string(payloadJSON),
+		string(metadataJSON),
+		normalized.Status,
+		normalized.AttemptCount,
+		normalized.LastError,
+		normalized.CreatedAt,
+		normalized.DeliveredAt,
+	))
+}
+
+func (s Store) ListPartnerWebhookEvents(ctx context.Context, organisationID *int64) ([]PartnerWebhookEvent, error) {
+	rows, err := s.pool.Query(ctx, listPartnerWebhookEventsSQL, organisationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (PartnerWebhookEvent, error) {
+		return scanPartnerWebhookEvent(row)
+	})
+}
+
+func (s Store) CreatePartnerExportRun(ctx context.Context, input CreatePartnerExportRunInput) (PartnerExportRun, error) {
+	normalized, err := normalizeCreatePartnerExportRunInput(input)
+	if err != nil {
+		return PartnerExportRun{}, err
+	}
+
+	scopeJSON, err := json.Marshal(normalized.Scope)
+	if err != nil {
+		return PartnerExportRun{}, err
+	}
+	recordCountsJSON, err := json.Marshal(normalized.RecordCounts)
+	if err != nil {
+		return PartnerExportRun{}, err
+	}
+	payloadJSON, err := json.Marshal(normalized.Payload)
+	if err != nil {
+		return PartnerExportRun{}, err
+	}
+
+	return scanPartnerExportRun(s.pool.QueryRow(ctx, insertPartnerExportRunSQL,
+		normalized.OrganisationID,
+		normalized.RequestedByUserID,
+		normalized.Format,
+		string(scopeJSON),
+		string(recordCountsJSON),
+		normalized.Checksum,
+		string(payloadJSON),
+		normalized.CreatedAt,
+	))
+}
+
+func (s Store) GetPartnerExportRun(ctx context.Context, exportID int64) (PartnerExportRun, error) {
+	return scanPartnerExportRun(s.pool.QueryRow(ctx, getPartnerExportRunSQL, exportID))
+}
+
+func (s Store) GetLatestPartnerExportRun(ctx context.Context, organisationID *int64) (PartnerExportRun, error) {
+	return scanPartnerExportRun(s.pool.QueryRow(ctx, getLatestPartnerExportRunSQL, organisationID))
+}
+
+func (s Store) UpsertIntegrationStatusCheck(ctx context.Context, input UpsertIntegrationStatusCheckInput) (IntegrationStatusCheck, error) {
+	normalized, err := normalizeUpsertIntegrationStatusCheckInput(input)
+	if err != nil {
+		return IntegrationStatusCheck{}, err
+	}
+
+	metadataJSON, err := json.Marshal(normalized.Metadata)
+	if err != nil {
+		return IntegrationStatusCheck{}, err
+	}
+
+	return scanIntegrationStatusCheck(s.pool.QueryRow(ctx, upsertIntegrationStatusCheckSQL,
+		normalized.OrganisationID,
+		normalized.CheckName,
+		normalized.Status,
+		normalized.Summary,
+		string(metadataJSON),
+		normalized.CheckedAt,
+	))
+}
+
+func (s Store) ListIntegrationStatusChecks(ctx context.Context, organisationID *int64) ([]IntegrationStatusCheck, error) {
+	rows, err := s.pool.Query(ctx, listIntegrationStatusChecksSQL, organisationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (IntegrationStatusCheck, error) {
+		return scanIntegrationStatusCheck(row)
+	})
+}
+
+func (s Store) GetPartnerReadinessSnapshot(ctx context.Context, organisationID *int64) (PartnerReadinessSnapshot, error) {
+	apiKeys, err := s.ListPartnerAPIKeys(ctx, organisationID)
+	if err != nil {
+		return PartnerReadinessSnapshot{}, err
+	}
+	webhookSubscriptions, err := s.ListPartnerWebhookSubscriptions(ctx, organisationID)
+	if err != nil {
+		return PartnerReadinessSnapshot{}, err
+	}
+	webhookEvents, err := s.ListPartnerWebhookEvents(ctx, organisationID)
+	if err != nil {
+		return PartnerReadinessSnapshot{}, err
+	}
+	exportRuns, err := s.listPartnerExportRuns(ctx, organisationID)
+	if err != nil {
+		return PartnerReadinessSnapshot{}, err
+	}
+	integrationChecks, err := s.ListIntegrationStatusChecks(ctx, organisationID)
+	if err != nil {
+		return PartnerReadinessSnapshot{}, err
+	}
+
+	return PartnerReadinessSnapshot{
+		APIKeys:              nonNilPartnerAPIKeys(apiKeys),
+		WebhookSubscriptions: nonNilPartnerWebhookSubscriptions(webhookSubscriptions),
+		WebhookEvents:        nonNilPartnerWebhookEvents(webhookEvents),
+		ExportRuns:           nonNilPartnerExportRuns(exportRuns),
+		IntegrationChecks:    nonNilIntegrationStatusChecks(integrationChecks),
+	}, nil
 }
 
 func (s Store) GetSyncSummarySince(ctx context.Context, since time.Time) (SyncSummary, error) {
@@ -1155,6 +1701,18 @@ func (s Store) listClinicServices(ctx context.Context, clinicID string) ([]Clini
 	})
 }
 
+func (s Store) listPartnerExportRuns(ctx context.Context, organisationID *int64) ([]PartnerExportRun, error) {
+	rows, err := s.pool.Query(ctx, listPartnerExportRunsSQL, organisationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (PartnerExportRun, error) {
+		return scanPartnerExportRun(row)
+	})
+}
+
 func scanClinic(row pgx.Row) (Clinic, error) {
 	var clinic Clinic
 	var latitude sql.NullFloat64
@@ -1335,6 +1893,193 @@ func scanReportSyncAttempt(row pgx.Row) (ReportSyncAttempt, error) {
 	return attempt, nil
 }
 
+func scanPartnerAPIKey(row pgx.Row) (PartnerAPIKey, error) {
+	var apiKey PartnerAPIKey
+	var organisationID sql.NullInt64
+	var expiresAt sql.NullTime
+	var revokedAt sql.NullTime
+	var lastUsedAt sql.NullTime
+	var lastUsedIP sql.NullString
+	var createdByUserID sql.NullInt64
+	var scopesJSON []byte
+	var allowedDistrictsJSON []byte
+
+	if err := row.Scan(
+		&apiKey.ID,
+		&organisationID,
+		&apiKey.Name,
+		&apiKey.Environment,
+		&apiKey.KeyPrefix,
+		&apiKey.KeyHash,
+		&scopesJSON,
+		&allowedDistrictsJSON,
+		&expiresAt,
+		&revokedAt,
+		&lastUsedAt,
+		&lastUsedIP,
+		&createdByUserID,
+		&apiKey.CreatedAt,
+		&apiKey.UpdatedAt,
+	); err != nil {
+		return PartnerAPIKey{}, err
+	}
+
+	apiKey.OrganisationID = nullInt64Ptr(organisationID)
+	apiKey.ExpiresAt = nullTimePtr(expiresAt)
+	apiKey.RevokedAt = nullTimePtr(revokedAt)
+	apiKey.LastUsedAt = nullTimePtr(lastUsedAt)
+	apiKey.LastUsedIP = nullStringPtr(lastUsedIP)
+	apiKey.CreatedByUserID = nullInt64Ptr(createdByUserID)
+	if err := unmarshalStringSlice(scopesJSON, &apiKey.Scopes); err != nil {
+		return PartnerAPIKey{}, err
+	}
+	if err := unmarshalStringSlice(allowedDistrictsJSON, &apiKey.AllowedDistricts); err != nil {
+		return PartnerAPIKey{}, err
+	}
+
+	return apiKey, nil
+}
+
+func scanPartnerWebhookSubscription(row pgx.Row) (PartnerWebhookSubscription, error) {
+	var subscription PartnerWebhookSubscription
+	var organisationID sql.NullInt64
+	var lastTestedAt sql.NullTime
+	var lastTestStatus sql.NullString
+	var lastError sql.NullString
+	var createdByUserID sql.NullInt64
+	var eventTypesJSON []byte
+	var lastTestMetadataJSON []byte
+
+	if err := row.Scan(
+		&subscription.ID,
+		&organisationID,
+		&subscription.Name,
+		&subscription.TargetURL,
+		&eventTypesJSON,
+		&subscription.SecretHash,
+		&subscription.Status,
+		&lastTestedAt,
+		&lastTestStatus,
+		&lastTestMetadataJSON,
+		&lastError,
+		&createdByUserID,
+		&subscription.CreatedAt,
+		&subscription.UpdatedAt,
+	); err != nil {
+		return PartnerWebhookSubscription{}, err
+	}
+
+	subscription.OrganisationID = nullInt64Ptr(organisationID)
+	subscription.LastTestedAt = nullTimePtr(lastTestedAt)
+	subscription.LastTestStatus = nullStringPtr(lastTestStatus)
+	subscription.LastError = nullStringPtr(lastError)
+	subscription.CreatedByUserID = nullInt64Ptr(createdByUserID)
+	if err := unmarshalStringSlice(eventTypesJSON, &subscription.EventTypes); err != nil {
+		return PartnerWebhookSubscription{}, err
+	}
+	if err := unmarshalMap(lastTestMetadataJSON, &subscription.LastTestMetadata); err != nil {
+		return PartnerWebhookSubscription{}, err
+	}
+
+	return subscription, nil
+}
+
+func scanPartnerWebhookEvent(row pgx.Row) (PartnerWebhookEvent, error) {
+	var event PartnerWebhookEvent
+	var lastError sql.NullString
+	var deliveredAt sql.NullTime
+	var payloadJSON []byte
+	var metadataJSON []byte
+
+	if err := row.Scan(
+		&event.ID,
+		&event.SubscriptionID,
+		&event.EventType,
+		&payloadJSON,
+		&metadataJSON,
+		&event.Status,
+		&event.AttemptCount,
+		&lastError,
+		&event.CreatedAt,
+		&deliveredAt,
+	); err != nil {
+		return PartnerWebhookEvent{}, err
+	}
+
+	event.LastError = nullStringPtr(lastError)
+	event.DeliveredAt = nullTimePtr(deliveredAt)
+	if err := unmarshalMap(payloadJSON, &event.Payload); err != nil {
+		return PartnerWebhookEvent{}, err
+	}
+	if err := unmarshalMap(metadataJSON, &event.Metadata); err != nil {
+		return PartnerWebhookEvent{}, err
+	}
+
+	return event, nil
+}
+
+func scanPartnerExportRun(row pgx.Row) (PartnerExportRun, error) {
+	var exportRun PartnerExportRun
+	var organisationID sql.NullInt64
+	var requestedByUserID sql.NullInt64
+	var scopeJSON []byte
+	var recordCountsJSON []byte
+	var payloadJSON []byte
+
+	if err := row.Scan(
+		&exportRun.ID,
+		&organisationID,
+		&requestedByUserID,
+		&exportRun.Format,
+		&scopeJSON,
+		&recordCountsJSON,
+		&exportRun.Checksum,
+		&payloadJSON,
+		&exportRun.CreatedAt,
+	); err != nil {
+		return PartnerExportRun{}, err
+	}
+
+	exportRun.OrganisationID = nullInt64Ptr(organisationID)
+	exportRun.RequestedByUserID = nullInt64Ptr(requestedByUserID)
+	if err := unmarshalMap(scopeJSON, &exportRun.Scope); err != nil {
+		return PartnerExportRun{}, err
+	}
+	if err := unmarshalMap(recordCountsJSON, &exportRun.RecordCounts); err != nil {
+		return PartnerExportRun{}, err
+	}
+	if err := unmarshalMap(payloadJSON, &exportRun.Payload); err != nil {
+		return PartnerExportRun{}, err
+	}
+
+	return exportRun, nil
+}
+
+func scanIntegrationStatusCheck(row pgx.Row) (IntegrationStatusCheck, error) {
+	var check IntegrationStatusCheck
+	var organisationID sql.NullInt64
+	var metadataJSON []byte
+
+	if err := row.Scan(
+		&check.ID,
+		&organisationID,
+		&check.CheckName,
+		&check.Status,
+		&check.Summary,
+		&metadataJSON,
+		&check.CheckedAt,
+	); err != nil {
+		return IntegrationStatusCheck{}, err
+	}
+
+	check.OrganisationID = nullInt64Ptr(organisationID)
+	if err := unmarshalMap(metadataJSON, &check.Metadata); err != nil {
+		return IntegrationStatusCheck{}, err
+	}
+
+	return check, nil
+}
+
 func scanAuditEvent(row pgx.Row) (AuditEvent, error) {
 	var event AuditEvent
 	var externalID sql.NullString
@@ -1434,6 +2179,91 @@ func normalizeCreateReportSyncAttemptInput(input CreateReportSyncAttemptInput) (
 	}
 	if input.Metadata == nil {
 		input.Metadata = map[string]any{}
+	}
+	return input, nil
+}
+
+func normalizeCreatePartnerAPIKeyInput(input CreatePartnerAPIKeyInput) (CreatePartnerAPIKeyInput, error) {
+	for _, scope := range input.Scopes {
+		if strings.TrimSpace(scope) == "" {
+			return CreatePartnerAPIKeyInput{}, ErrInvalidPartnerScope
+		}
+	}
+	if input.CreatedAt.IsZero() {
+		input.CreatedAt = time.Now().UTC()
+	}
+	if input.Scopes == nil {
+		input.Scopes = []string{}
+	}
+	if input.AllowedDistricts == nil {
+		input.AllowedDistricts = []string{}
+	}
+	return input, nil
+}
+
+func normalizeCreatePartnerWebhookSubscriptionInput(input CreatePartnerWebhookSubscriptionInput) (CreatePartnerWebhookSubscriptionInput, error) {
+	if input.Status == "" {
+		input.Status = "active"
+	}
+	if !allowedPartnerWebhookStatuses[input.Status] {
+		return CreatePartnerWebhookSubscriptionInput{}, ErrInvalidPartnerWebhookStatus
+	}
+	if input.EventTypes == nil {
+		input.EventTypes = []string{}
+	}
+	if input.LastTestMetadata == nil {
+		input.LastTestMetadata = map[string]any{}
+	}
+	if input.CreatedAt.IsZero() {
+		input.CreatedAt = time.Now().UTC()
+	}
+	return input, nil
+}
+
+func normalizeCreatePartnerWebhookEventInput(input CreatePartnerWebhookEventInput) (CreatePartnerWebhookEventInput, error) {
+	if !allowedPartnerWebhookEventStatuses[input.Status] {
+		return CreatePartnerWebhookEventInput{}, ErrInvalidPartnerWebhookEventStatus
+	}
+	if input.Payload == nil {
+		input.Payload = map[string]any{}
+	}
+	if input.Metadata == nil {
+		input.Metadata = map[string]any{}
+	}
+	if input.CreatedAt.IsZero() {
+		input.CreatedAt = time.Now().UTC()
+	}
+	return input, nil
+}
+
+func normalizeCreatePartnerExportRunInput(input CreatePartnerExportRunInput) (CreatePartnerExportRunInput, error) {
+	if !allowedPartnerExportFormats[input.Format] {
+		return CreatePartnerExportRunInput{}, ErrInvalidPartnerExportFormat
+	}
+	if input.Scope == nil {
+		input.Scope = map[string]any{}
+	}
+	if input.RecordCounts == nil {
+		input.RecordCounts = map[string]any{}
+	}
+	if input.Payload == nil {
+		input.Payload = map[string]any{}
+	}
+	if input.CreatedAt.IsZero() {
+		input.CreatedAt = time.Now().UTC()
+	}
+	return input, nil
+}
+
+func normalizeUpsertIntegrationStatusCheckInput(input UpsertIntegrationStatusCheckInput) (UpsertIntegrationStatusCheckInput, error) {
+	if !allowedIntegrationStatuses[input.Status] {
+		return UpsertIntegrationStatusCheckInput{}, ErrInvalidIntegrationStatus
+	}
+	if input.Metadata == nil {
+		input.Metadata = map[string]any{}
+	}
+	if input.CheckedAt.IsZero() {
+		input.CheckedAt = time.Now().UTC()
 	}
 	return input, nil
 }
@@ -1542,6 +2372,67 @@ func nullInt64Ptr(value sql.NullInt64) *int64 {
 	}
 
 	return &value.Int64
+}
+
+func unmarshalStringSlice(data []byte, target *[]string) error {
+	if len(data) == 0 {
+		data = []byte("[]")
+	}
+	if err := json.Unmarshal(data, target); err != nil {
+		return err
+	}
+	if *target == nil {
+		*target = []string{}
+	}
+	return nil
+}
+
+func unmarshalMap(data []byte, target *map[string]any) error {
+	if len(data) == 0 {
+		data = []byte("{}")
+	}
+	if err := json.Unmarshal(data, target); err != nil {
+		return err
+	}
+	if *target == nil {
+		*target = map[string]any{}
+	}
+	return nil
+}
+
+func nonNilPartnerAPIKeys(values []PartnerAPIKey) []PartnerAPIKey {
+	if values == nil {
+		return []PartnerAPIKey{}
+	}
+	return values
+}
+
+func nonNilPartnerWebhookSubscriptions(values []PartnerWebhookSubscription) []PartnerWebhookSubscription {
+	if values == nil {
+		return []PartnerWebhookSubscription{}
+	}
+	return values
+}
+
+func nonNilPartnerWebhookEvents(values []PartnerWebhookEvent) []PartnerWebhookEvent {
+	if values == nil {
+		return []PartnerWebhookEvent{}
+	}
+	return values
+}
+
+func nonNilPartnerExportRuns(values []PartnerExportRun) []PartnerExportRun {
+	if values == nil {
+		return []PartnerExportRun{}
+	}
+	return values
+}
+
+func nonNilIntegrationStatusChecks(values []IntegrationStatusCheck) []IntegrationStatusCheck {
+	if values == nil {
+		return []IntegrationStatusCheck{}
+	}
+	return values
 }
 
 func float64Ptr(value float64) *float64 {
