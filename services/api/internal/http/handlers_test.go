@@ -132,6 +132,80 @@ func TestRequestLoggerGeneratesRequestID(t *testing.T) {
 	}
 }
 
+func TestRequestLoggerRejectsUnsafeRequestIDHeaders(t *testing.T) {
+	tests := []struct {
+		name       string
+		requestID  string
+		notInLog   []string
+		notInReply []string
+	}{
+		{
+			name:      "fake log fields",
+			requestID: "abc status=500",
+			notInLog: []string{
+				"request_id=abc status=500",
+				"status=500",
+			},
+			notInReply: []string{"abc status=500"},
+		},
+		{
+			name:       "too long",
+			requestID:  strings.Repeat("a", 129),
+			notInLog:   []string{strings.Repeat("a", 129)},
+			notInReply: []string{strings.Repeat("a", 129)},
+		},
+		{
+			name:       "unsafe character",
+			requestID:  "request/id-123",
+			notInLog:   []string{"request/id-123"},
+			notInReply: []string{"request/id-123"},
+		},
+		{
+			name:       "too short",
+			requestID:  "short",
+			notInLog:   []string{"request_id=short"},
+			notInReply: []string{"short"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var logOutput bytes.Buffer
+			logger := log.New(&logOutput, "", 0)
+			handler := apihttp.RequestLogger(logger)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusNoContent)
+			}))
+			req := httptest.NewRequest(http.MethodGet, "/logged", nil)
+			req.Header.Set("X-Request-Id", tt.requestID)
+			rec := httptest.NewRecorder()
+
+			handler.ServeHTTP(rec, req)
+
+			gotRequestID := rec.Header().Get("X-Request-Id")
+			if !isSafeRequestIDForTest(gotRequestID) {
+				t.Fatalf("expected safe replacement request id, got %q", gotRequestID)
+			}
+			if gotRequestID == tt.requestID {
+				t.Fatalf("expected unsafe request id %q to be replaced", tt.requestID)
+			}
+			logLine := logOutput.String()
+			if !strings.Contains(logLine, "request_id="+gotRequestID) {
+				t.Fatalf("expected log to include replacement request id %q, got %q", gotRequestID, logLine)
+			}
+			for _, forbidden := range tt.notInLog {
+				if strings.Contains(logLine, forbidden) {
+					t.Fatalf("expected log not to contain %q, got %q", forbidden, logLine)
+				}
+			}
+			for _, forbidden := range tt.notInReply {
+				if strings.Contains(gotRequestID, forbidden) {
+					t.Fatalf("expected response request id not to contain %q, got %q", forbidden, gotRequestID)
+				}
+			}
+		})
+	}
+}
+
 func TestRequestLoggerLogsPrincipalTypeAssignedDownstream(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -3994,6 +4068,28 @@ func captureDefaultLogger(t *testing.T) *bytes.Buffer {
 		logger.SetPrefix(previousPrefix)
 	})
 	return &output
+}
+
+func isSafeRequestIDForTest(value string) bool {
+	if len(value) < 8 || len(value) > 128 {
+		return false
+	}
+	for _, char := range value {
+		if char >= 'a' && char <= 'z' {
+			continue
+		}
+		if char >= 'A' && char <= 'Z' {
+			continue
+		}
+		if char >= '0' && char <= '9' {
+			continue
+		}
+		if char == '.' || char == '_' || char == '-' {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func assertInternalError(t *testing.T, rec *httptest.ResponseRecorder, storeErr error) {

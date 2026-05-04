@@ -10,7 +10,11 @@ import (
 	"time"
 )
 
-const requestIDHeader = "X-Request-Id"
+const (
+	requestIDHeader    = "X-Request-Id"
+	minRequestIDLength = 8
+	maxRequestIDLength = 128
+)
 
 type requestIDContextKeyType string
 type requestLogStateContextKeyType string
@@ -88,7 +92,34 @@ func markRequestPrincipalType(ctx context.Context, principalType string) {
 }
 
 func requestIDFromHeader(value string) string {
-	return strings.TrimSpace(value)
+	requestID := strings.TrimSpace(value)
+	if !validRequestID(requestID) {
+		return ""
+	}
+	return requestID
+}
+
+func validRequestID(value string) bool {
+	if len(value) < minRequestIDLength || len(value) > maxRequestIDLength {
+		return false
+	}
+	for index := 0; index < len(value); index++ {
+		char := value[index]
+		if char >= 'a' && char <= 'z' {
+			continue
+		}
+		if char >= 'A' && char <= 'Z' {
+			continue
+		}
+		if char >= '0' && char <= '9' {
+			continue
+		}
+		if char == '.' || char == '_' || char == '-' {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func generateRequestID() string {
