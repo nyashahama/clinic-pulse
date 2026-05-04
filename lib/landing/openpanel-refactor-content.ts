@@ -62,7 +62,7 @@ export const heroConsoleNavItems = [
 export const heroConsoleMetrics = [
   { label: "Clinics monitored", value: "42", detail: "Tshwane North demo" },
   { label: "Reports synced", value: "17", detail: "since 07:00" },
-  { label: "Freshness SLA", value: "3m", detail: "median status age" },
+  { label: "Freshness target", value: "3m", detail: "median status age" },
 ] as const;
 
 export const heroIncident = {

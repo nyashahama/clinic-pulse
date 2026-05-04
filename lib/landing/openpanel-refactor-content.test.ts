@@ -35,6 +35,8 @@ function collectText(value: unknown): string {
 }
 
 describe("OpenPanel-first landing content", () => {
+  const allowedPreviewTones = ["critical", "healthy", "neutral", "warning"];
+
   it("keeps the approved Clinic Pulse hero and booking CTAs", () => {
     expect(landingHero.title).toBe("Clinic Pulse");
     expect(landingHero.primaryCta.href).toBe("/?booking=1");
@@ -84,6 +86,7 @@ describe("OpenPanel-first landing content", () => {
           }
         ).miniature,
     );
+    const previewRowKeys = Object.keys(productSurfacePreviewRows);
 
     expect(miniatures.map((miniature) => miniature?.type)).toEqual([
       "field-report",
@@ -92,6 +95,10 @@ describe("OpenPanel-first landing content", () => {
     ]);
     miniatures.forEach((miniature) => {
       expect(miniature?.rows.length).toBeGreaterThanOrEqual(2);
+      expect(previewRowKeys).toContain(miniature?.type);
+      miniature?.rows.forEach((row) => {
+        expect(row).toMatch(/^[^:]+: .+$/);
+      });
     });
   });
 
@@ -105,7 +112,7 @@ describe("OpenPanel-first landing content", () => {
     expect(heroConsoleMetrics.map((metric) => metric.label)).toEqual([
       "Clinics monitored",
       "Reports synced",
-      "Freshness SLA",
+      "Freshness target",
     ]);
     expect(heroIncident.clinic).toBe("Mamelodi East Community Clinic");
     expect(heroIncident.recommendedRoute).toBe("Akasia Hills Clinic");
@@ -118,6 +125,18 @@ describe("OpenPanel-first landing content", () => {
     expect(productSurfacePreviewRows["field-report"]).toHaveLength(4);
     expect(productSurfacePreviewRows["district-console"]).toHaveLength(4);
     expect(productSurfacePreviewRows["patient-reroute"]).toHaveLength(3);
+    Object.values(productSurfacePreviewRows).forEach((rows) => {
+      rows.forEach((row) => {
+        expect(row).toEqual({
+          label: expect.any(String),
+          value: expect.any(String),
+          tone: expect.any(String),
+        });
+        expect(row.label).not.toHaveLength(0);
+        expect(row.value).not.toHaveLength(0);
+        expect(allowedPreviewTones).toContain(row.tone);
+      });
+    });
     expect(trustSystemPanels.map((panel) => panel.title)).toEqual([
       "Audit event",
       "District export",
