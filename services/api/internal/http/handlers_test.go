@@ -1325,7 +1325,7 @@ func TestAdminPartnerExportCreateAndGetUsesPayloadAndScopedStore(t *testing.T) {
 	}
 }
 
-func TestDistrictManagerCanReadReadinessButCannotMutatePartnerResources(t *testing.T) {
+func TestDistrictManagerCannotReadOrMutatePartnerResources(t *testing.T) {
 	now := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
 	router := newAuthenticatedTestRouter(t, fakeStore{
 		partnerReadinessSnapshot: store.PartnerReadinessSnapshot{
@@ -1341,8 +1341,8 @@ func TestDistrictManagerCanReadReadinessButCannotMutatePartnerResources(t *testi
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, readReq)
 
-	if rec.Code != http.StatusOK {
-		t.Fatalf("expected district manager readiness status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected district manager readiness status %d, got %d with body %s", http.StatusForbidden, rec.Code, rec.Body.String())
 	}
 
 	tests := []struct {
