@@ -6,8 +6,9 @@ import { useScroll } from "@/lib/hooks/use-scroll";
 import Link from "next/link";
 
 const NAV_ITEMS = [
-  { name: "Product Flow", href: "#flow" },
-  { name: "Routing", href: "#routing" },
+  { name: "Problem", href: "#problem" },
+  { name: "Flow", href: "#flow" },
+  { name: "Product", href: "#product" },
   { name: "Trust", href: "#trust" },
 ];
 
@@ -16,7 +17,7 @@ export function Nav() {
 
   return (
     <>
-      <header className="fixed inset-x-0 top-0 z-50 w-full border-b border-[#d4dee1] bg-[#eef3f2]/90 backdrop-blur-lg transition-all">
+      <header className="fixed inset-x-0 top-0 z-50 w-full border-b border-neutral-200 bg-white/90 backdrop-blur-lg transition-all">
         <div
           className={cn(
             "absolute inset-0 block transition-all",
@@ -62,7 +63,7 @@ export function Nav() {
                 href="/?booking=1"
                 className="flex h-8 items-center rounded-lg border border-neutral-900 bg-neutral-900 px-4 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
               >
-                Book Demo
+                Book demo
               </Link>
             </div>
           </div>

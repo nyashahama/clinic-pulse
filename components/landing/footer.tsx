@@ -9,17 +9,18 @@ const navigation = {
     { name: "Book Demo", href: "/book-demo" },
   ],
   proof: [
+    { name: "Operating Gap", href: "/#problem" },
     { name: "Product Flow", href: "/#flow" },
-    { name: "Routing Moment", href: "/#routing" },
+    { name: "Product Surfaces", href: "/#product" },
     { name: "Trust Layer", href: "/#trust" },
   ],
 };
 
 export function Footer() {
   return (
-    <footer>
-      <div className="mx-auto w-full max-w-screen-xl border-x border-[#d4dee1] px-3 lg:px-10">
-        <div className="relative z-10 overflow-hidden rounded-t-2xl border border-b-0 border-neutral-200 bg-white/50 px-6 py-16 backdrop-blur-lg sm:px-10">
+    <footer className="bg-white">
+      <div className="mx-auto w-full max-w-screen-xl border-x border-neutral-100 px-3 lg:px-10">
+        <div className="relative z-10 overflow-hidden rounded-t-2xl border border-b-0 border-neutral-200 bg-white px-6 py-16 sm:px-10">
           <div className="xl:grid xl:grid-cols-3 xl:gap-8">
             <div className="flex flex-col gap-6">
               <div className="grow">
@@ -73,7 +74,7 @@ export function Footer() {
               <span className="text-xs text-neutral-500">All systems operational</span>
             </div>
             <p className="text-xs text-neutral-500">
-              Demo data is seeded to show the operating model.
+              Demo data is seeded to show the Clinic Pulse operating model.
             </p>
           </div>
         </div>
