@@ -110,22 +110,21 @@ type SyncSummary struct {
 }
 
 type PartnerAPIKey struct {
-	ID               int64          `json:"id"`
-	OrganisationID   *int64         `json:"organisationId,omitempty"`
-	Name             string         `json:"name"`
-	Environment      string         `json:"environment"`
-	KeyPrefix        string         `json:"keyPrefix"`
-	KeyHash          string         `json:"-"`
-	Scopes           []string       `json:"scopes"`
-	AllowedDistricts []string       `json:"allowedDistricts"`
-	ExpiresAt        *time.Time     `json:"expiresAt,omitempty"`
-	RevokedAt        *time.Time     `json:"revokedAt,omitempty"`
-	LastUsedAt       *time.Time     `json:"lastUsedAt,omitempty"`
-	LastUsedIP       *string        `json:"lastUsedIp,omitempty"`
-	CreatedByUserID  *int64         `json:"createdByUserId,omitempty"`
-	CreatedAt        time.Time      `json:"createdAt"`
-	UpdatedAt        time.Time      `json:"updatedAt"`
-	Metadata         map[string]any `json:"metadata,omitempty"`
+	ID               int64      `json:"id"`
+	OrganisationID   *int64     `json:"organisationId,omitempty"`
+	Name             string     `json:"name"`
+	Environment      string     `json:"environment"`
+	KeyPrefix        string     `json:"keyPrefix"`
+	KeyHash          string     `json:"-"`
+	Scopes           []string   `json:"scopes"`
+	AllowedDistricts []string   `json:"allowedDistricts"`
+	ExpiresAt        *time.Time `json:"expiresAt,omitempty"`
+	RevokedAt        *time.Time `json:"revokedAt,omitempty"`
+	LastUsedAt       *time.Time `json:"lastUsedAt,omitempty"`
+	LastUsedIP       *string    `json:"lastUsedIp,omitempty"`
+	CreatedByUserID  *int64     `json:"createdByUserId,omitempty"`
+	CreatedAt        time.Time  `json:"createdAt"`
+	UpdatedAt        time.Time  `json:"updatedAt"`
 }
 
 type CreatePartnerAPIKeyInput struct {
@@ -142,30 +141,32 @@ type CreatePartnerAPIKeyInput struct {
 }
 
 type PartnerWebhookSubscription struct {
-	ID              int64      `json:"id"`
-	OrganisationID  *int64     `json:"organisationId,omitempty"`
-	Name            string     `json:"name"`
-	TargetURL       string     `json:"targetUrl"`
-	EventTypes      []string   `json:"eventTypes"`
-	SecretHash      string     `json:"-"`
-	Status          string     `json:"status"`
-	LastTestedAt    *time.Time `json:"lastTestedAt,omitempty"`
-	LastTestStatus  *string    `json:"lastTestStatus,omitempty"`
-	LastError       *string    `json:"lastError,omitempty"`
-	CreatedByUserID *int64     `json:"createdByUserId,omitempty"`
-	CreatedAt       time.Time  `json:"createdAt"`
-	UpdatedAt       time.Time  `json:"updatedAt"`
+	ID               int64          `json:"id"`
+	OrganisationID   *int64         `json:"organisationId,omitempty"`
+	Name             string         `json:"name"`
+	TargetURL        string         `json:"targetUrl"`
+	EventTypes       []string       `json:"eventTypes"`
+	SecretHash       string         `json:"-"`
+	Status           string         `json:"status"`
+	LastTestedAt     *time.Time     `json:"lastTestedAt,omitempty"`
+	LastTestStatus   *string        `json:"lastTestStatus,omitempty"`
+	LastTestMetadata map[string]any `json:"lastTestMetadata"`
+	LastError        *string        `json:"lastError,omitempty"`
+	CreatedByUserID  *int64         `json:"createdByUserId,omitempty"`
+	CreatedAt        time.Time      `json:"createdAt"`
+	UpdatedAt        time.Time      `json:"updatedAt"`
 }
 
 type CreatePartnerWebhookSubscriptionInput struct {
-	OrganisationID  *int64
-	Name            string
-	TargetURL       string
-	EventTypes      []string
-	SecretHash      string
-	Status          string
-	CreatedByUserID *int64
-	CreatedAt       time.Time
+	OrganisationID   *int64
+	Name             string
+	TargetURL        string
+	EventTypes       []string
+	SecretHash       string
+	Status           string
+	LastTestMetadata map[string]any
+	CreatedByUserID  *int64
+	CreatedAt        time.Time
 }
 
 type PartnerWebhookEvent struct {
@@ -173,6 +174,7 @@ type PartnerWebhookEvent struct {
 	SubscriptionID int64          `json:"subscriptionId"`
 	EventType      string         `json:"eventType"`
 	Payload        map[string]any `json:"payload"`
+	Metadata       map[string]any `json:"metadata"`
 	Status         string         `json:"status"`
 	AttemptCount   int            `json:"attemptCount"`
 	LastError      *string        `json:"lastError,omitempty"`
@@ -184,6 +186,7 @@ type CreatePartnerWebhookEventInput struct {
 	SubscriptionID int64
 	EventType      string
 	Payload        map[string]any
+	Metadata       map[string]any
 	Status         string
 	AttemptCount   int
 	LastError      *string

@@ -41,6 +41,7 @@ CREATE TABLE partner_webhook_subscriptions (
         last_test_status IS NULL
         OR last_test_status IN ('queued', 'delivered', 'failed', 'preview_only')
     ),
+    last_test_metadata JSONB NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(last_test_metadata) = 'object'),
     last_error TEXT CHECK (last_error IS NULL OR btrim(last_error) <> ''),
     created_by_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -58,6 +59,7 @@ CREATE TABLE partner_webhook_events (
     subscription_id BIGINT NOT NULL REFERENCES partner_webhook_subscriptions(id) ON DELETE CASCADE,
     event_type TEXT NOT NULL CHECK (btrim(event_type) <> ''),
     payload JSONB NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(payload) = 'object'),
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(metadata) = 'object'),
     status TEXT NOT NULL CHECK (status IN ('queued', 'delivered', 'failed', 'preview_only')),
     attempt_count INTEGER NOT NULL DEFAULT 0 CHECK (attempt_count >= 0),
     last_error TEXT CHECK (last_error IS NULL OR btrim(last_error) <> ''),
