@@ -80,7 +80,11 @@ function DistrictConsolePreview() {
         </div>
         <div className="mt-3 grid gap-2">
           {productSurfacePreviewRows["district-console"].map((row, index) => (
-            <ProductRow key={row.label} active={index === 0}>
+            <ProductRow
+              key={row.label}
+              active={index === 0}
+              activeTone={toneMap[row.tone]}
+            >
               <PreviewRowContent row={row} />
             </ProductRow>
           ))}
@@ -100,7 +104,11 @@ function PatientReroutePreview() {
         </div>
         <div className="mt-3 grid gap-2">
           {productSurfacePreviewRows["patient-reroute"].map((row, index) => (
-            <ProductRow key={row.label} active={index === 0}>
+            <ProductRow
+              key={row.label}
+              active={index === 0}
+              activeTone={toneMap[row.tone]}
+            >
               <PreviewRowContent row={row} />
             </ProductRow>
           ))}

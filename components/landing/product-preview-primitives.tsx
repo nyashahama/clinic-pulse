@@ -42,6 +42,13 @@ const toneClasses = {
   neutral: "border-neutral-200 bg-neutral-50 text-neutral-700",
 } as const;
 
+const activeRowToneClasses = {
+  critical: "border-red-200 bg-red-50/70",
+  warning: "border-amber-200 bg-amber-50/70",
+  healthy: "border-emerald-200 bg-emerald-50/70",
+  neutral: "border-neutral-300 bg-neutral-50",
+} satisfies Record<keyof typeof toneClasses, string>;
+
 export function StatusPill({
   children,
   tone = "neutral",
@@ -83,10 +90,12 @@ export function MetricTile({
 
 export function ProductRow({
   active,
+  activeTone = "neutral",
   children,
   className,
 }: {
   active?: boolean;
+  activeTone?: keyof typeof activeRowToneClasses;
   children: ReactNode;
   className?: string;
 }) {
@@ -94,7 +103,7 @@ export function ProductRow({
     <div
       className={cn(
         "rounded-lg border px-3 py-2 text-xs transition",
-        active ? "border-emerald-200 bg-emerald-50/70" : "border-neutral-200 bg-white",
+        active ? activeRowToneClasses[activeTone] : "border-neutral-200 bg-white",
         className,
       )}
     >

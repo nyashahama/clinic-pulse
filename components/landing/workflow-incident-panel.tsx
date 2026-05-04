@@ -37,6 +37,7 @@ export function WorkflowIncidentPanel() {
           <ProductRow
             key={stage.surface}
             active={index === 1}
+            activeTone={toneMap[stage.tone]}
             className="grid gap-3 sm:grid-cols-[2.5rem_1fr_auto] sm:items-center"
           >
             <span className="flex size-9 items-center justify-center rounded-md border border-neutral-200 bg-white font-mono text-xs font-semibold text-neutral-500">

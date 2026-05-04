@@ -116,7 +116,11 @@ export function HeroDistrictConsole() {
 
               <div className="grid gap-2">
                 {heroClinicRows.map((row, index) => (
-                  <ProductRow key={row.clinic} active={index === 0}>
+                  <ProductRow
+                    key={row.clinic}
+                    active={index === 0}
+                    activeTone={statusTone[row.tone]}
+                  >
                     <div className="flex min-w-0 items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate font-semibold text-neutral-950">
