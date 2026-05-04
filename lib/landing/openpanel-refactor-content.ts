@@ -52,6 +52,31 @@ export const heroStats = [
   { value: "3 min", label: "freshness target" },
 ] as const;
 
+export const heroConsoleNavItems = [
+  { label: "District console", status: "active" },
+  { label: "Field reports", status: "3 queued" },
+  { label: "Public finder", status: "live" },
+  { label: "Audit trail", status: "recording" },
+] as const;
+
+export const heroConsoleMetrics = [
+  { label: "Clinics monitored", value: "42", detail: "Tshwane North demo" },
+  { label: "Reports synced", value: "17", detail: "since 07:00" },
+  { label: "Freshness target", value: "3m", detail: "median status age" },
+] as const;
+
+export const heroIncident = {
+  clinic: "Mamelodi East Community Clinic",
+  status: "Non-functional",
+  source: "Field worker report",
+  service: "ARV pickup",
+  reason: "Pharmacy stockout",
+  age: "Fresh - 2 min ago",
+  recommendedRoute: "Akasia Hills Clinic",
+  routeDetail: "8.4 km away / ARV pickup accepting",
+  auditId: "AUD-2026-0504-017",
+} as const;
+
 export const stakeholderProofItems = [
   {
     title: "District teams",
@@ -128,6 +153,37 @@ export const workflowSteps = [
   },
 ] as const;
 
+export const workflowIncidentStages = [
+  {
+    surface: "Field report",
+    title: "Offline report queued",
+    detail: "Mamelodi East / ARV pickup / pharmacy stockout",
+    state: "Queued locally",
+    tone: "warning",
+  },
+  {
+    surface: "District alert",
+    title: "Clinic status changed",
+    detail: "Operational -> non-functional from field source",
+    state: "Fresh - 2 min ago",
+    tone: "critical",
+  },
+  {
+    surface: "Public finder",
+    title: "Patient reroute prepared",
+    detail: "Akasia Hills Clinic can accept ARV pickup",
+    state: "Route ready",
+    tone: "healthy",
+  },
+  {
+    surface: "Audit ledger",
+    title: "Operating record sealed",
+    detail: "Source, sync, status change, and reroute linked",
+    state: "AUD-2026-0504-017",
+    tone: "neutral",
+  },
+] as const;
+
 export const featureCards = [
   {
     title: "Field reports",
@@ -139,9 +195,10 @@ export const featureCards = [
       label: "Mobile report",
       badge: "queued",
       rows: [
-        "Mamelodi East Community Clinic",
-        "Pharmacy stockout reported",
-        "Offline sync pending",
+        "Clinic: Mamelodi East",
+        "Service: ARV pickup",
+        "Stock pressure: Pharmacy stockout",
+        "Sync state: Queued offline",
       ],
     },
   },
@@ -155,9 +212,10 @@ export const featureCards = [
       label: "District console",
       badge: "live",
       rows: [
-        "42 demo clinics monitored",
-        "17 offline syncs reconciled",
-        "3 min freshness target",
+        "Status: Non-functional",
+        "Source: Field worker",
+        "Freshness: 2 min ago",
+        "Action: Open alert",
       ],
     },
   },
@@ -171,13 +229,33 @@ export const featureCards = [
       label: "Public route",
       badge: "ready",
       rows: [
-        "From Mamelodi East",
-        "To Akasia Hills Clinic",
-        "ARV pickup accepting now",
+        "Nearest compatible: Akasia Hills",
+        "Distance: 8.4 km",
+        "Service: ARV pickup accepting",
       ],
     },
   },
 ] as const;
+
+export const productSurfacePreviewRows = {
+  "field-report": [
+    { label: "Clinic", value: "Mamelodi East", tone: "neutral" },
+    { label: "Service", value: "ARV pickup", tone: "neutral" },
+    { label: "Stock pressure", value: "Pharmacy stockout", tone: "critical" },
+    { label: "Sync state", value: "Queued offline", tone: "warning" },
+  ],
+  "district-console": [
+    { label: "Status", value: "Non-functional", tone: "critical" },
+    { label: "Source", value: "Field worker", tone: "neutral" },
+    { label: "Freshness", value: "2 min ago", tone: "healthy" },
+    { label: "Action", value: "Open alert", tone: "neutral" },
+  ],
+  "patient-reroute": [
+    { label: "Nearest compatible", value: "Akasia Hills", tone: "healthy" },
+    { label: "Distance", value: "8.4 km", tone: "neutral" },
+    { label: "Service", value: "ARV pickup accepting", tone: "healthy" },
+  ],
+} as const;
 
 export const trustObjects = [
   {
@@ -211,6 +289,49 @@ export const trustObjects = [
     label: "Offline queue",
     value: "3 reports queued",
     description: "Weak signal is treated as an expected workflow state.",
+  },
+] as const;
+
+export const trustSystemPanels = [
+  {
+    title: "Audit event",
+    label: "AUD-2026-0504-017",
+    lines: [
+      "actor=field_worker",
+      "source=offline_sync",
+      "status=non_functional",
+      "route=Akasia Hills Clinic",
+    ],
+  },
+  {
+    title: "District export",
+    label: "CSV ready",
+    lines: [
+      "report=incident_summary",
+      "district=Tshwane North Demo",
+      "freshness_window=3m",
+      "rows=42 clinics",
+    ],
+  },
+  {
+    title: "API response",
+    label: "200 OK",
+    lines: [
+      "GET /v1/clinics/mamelodi-east/status",
+      "status: non_functional",
+      "source: field_worker",
+      "updatedAgo: 2m",
+    ],
+  },
+  {
+    title: "Webhook delivery",
+    label: "Preview sent",
+    lines: [
+      "destination=partner-readiness",
+      "attempt=1",
+      "latency=184ms",
+      "retry=false",
+    ],
   },
 ] as const;
 

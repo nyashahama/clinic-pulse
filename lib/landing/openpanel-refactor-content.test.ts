@@ -4,11 +4,17 @@ import {
   demoCta,
   featureCards,
   heroClinicRows,
+  heroConsoleMetrics,
+  heroConsoleNavItems,
+  heroIncident,
   heroStats,
   landingHero,
   operatingGap,
+  productSurfacePreviewRows,
   stakeholderProofItems,
   trustObjects,
+  trustSystemPanels,
+  workflowIncidentStages,
   workflowSteps,
 } from "@/lib/landing/openpanel-refactor-content";
 
@@ -29,6 +35,8 @@ function collectText(value: unknown): string {
 }
 
 describe("OpenPanel-first landing content", () => {
+  const allowedPreviewTones = ["critical", "healthy", "neutral", "warning"];
+
   it("keeps the approved Clinic Pulse hero and booking CTAs", () => {
     expect(landingHero.title).toBe("Clinic Pulse");
     expect(landingHero.primaryCta.href).toBe("/?booking=1");
@@ -78,6 +86,7 @@ describe("OpenPanel-first landing content", () => {
           }
         ).miniature,
     );
+    const previewRowKeys = Object.keys(productSurfacePreviewRows);
 
     expect(miniatures.map((miniature) => miniature?.type)).toEqual([
       "field-report",
@@ -86,7 +95,54 @@ describe("OpenPanel-first landing content", () => {
     ]);
     miniatures.forEach((miniature) => {
       expect(miniature?.rows.length).toBeGreaterThanOrEqual(2);
+      expect(previewRowKeys).toContain(miniature?.type);
+      miniature?.rows.forEach((row) => {
+        expect(row).toMatch(/^[^:]+: .+$/);
+      });
     });
+  });
+
+  it("defines richer product-reality preview data for landing surfaces", () => {
+    expect(heroConsoleNavItems.map((item) => item.label)).toEqual([
+      "District console",
+      "Field reports",
+      "Public finder",
+      "Audit trail",
+    ]);
+    expect(heroConsoleMetrics.map((metric) => metric.label)).toEqual([
+      "Clinics monitored",
+      "Reports synced",
+      "Freshness target",
+    ]);
+    expect(heroIncident.clinic).toBe("Mamelodi East Community Clinic");
+    expect(heroIncident.recommendedRoute).toBe("Akasia Hills Clinic");
+    expect(workflowIncidentStages.map((stage) => stage.surface)).toEqual([
+      "Field report",
+      "District alert",
+      "Public finder",
+      "Audit ledger",
+    ]);
+    expect(productSurfacePreviewRows["field-report"]).toHaveLength(4);
+    expect(productSurfacePreviewRows["district-console"]).toHaveLength(4);
+    expect(productSurfacePreviewRows["patient-reroute"]).toHaveLength(3);
+    Object.values(productSurfacePreviewRows).forEach((rows) => {
+      rows.forEach((row) => {
+        expect(row).toEqual({
+          label: expect.any(String),
+          value: expect.any(String),
+          tone: expect.any(String),
+        });
+        expect(row.label).not.toHaveLength(0);
+        expect(row.value).not.toHaveLength(0);
+        expect(allowedPreviewTones).toContain(row.tone);
+      });
+    });
+    expect(trustSystemPanels.map((panel) => panel.title)).toEqual([
+      "Audit event",
+      "District export",
+      "API response",
+      "Webhook delivery",
+    ]);
   });
 
   it("does not leak OpenPanel reference copy or unsupported claims", () => {
@@ -94,9 +150,15 @@ describe("OpenPanel-first landing content", () => {
       landingHero,
       stakeholderProofItems,
       workflowSteps,
+      workflowIncidentStages,
       featureCards,
+      productSurfacePreviewRows,
       trustObjects,
+      trustSystemPanels,
       heroClinicRows,
+      heroConsoleNavItems,
+      heroConsoleMetrics,
+      heroIncident,
       heroStats,
       operatingGap,
       demoCta,
