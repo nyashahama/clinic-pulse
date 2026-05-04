@@ -101,6 +101,31 @@ func TestOfflineSyncLedgerClinicIDMigrationAllowsMalformedValidationAttempts(t *
 	}
 }
 
+func TestPartnerReadinessMigrationAddsPartnerTables(t *testing.T) {
+	t.Parallel()
+
+	migrationSQL := readMigrationFile(t, "0008_partner_readiness.sql")
+	required := []string{
+		"CREATE TABLE partner_api_keys",
+		"environment TEXT NOT NULL CHECK (environment IN ('demo', 'live'))",
+		"key_hash TEXT NOT NULL CHECK",
+		"CREATE UNIQUE INDEX partner_api_keys_hash_unique_idx",
+		"CREATE TABLE partner_webhook_subscriptions",
+		"status TEXT NOT NULL CHECK (status IN ('active', 'disabled'))",
+		"CREATE TABLE partner_webhook_events",
+		"status TEXT NOT NULL CHECK (status IN ('queued', 'delivered', 'failed', 'preview_only'))",
+		"CREATE TABLE partner_export_runs",
+		"format TEXT NOT NULL CHECK (format IN ('json', 'csv'))",
+		"CREATE TABLE integration_status_checks",
+		"status TEXT NOT NULL CHECK (status IN ('passing', 'attention', 'failing'))",
+	}
+	for _, value := range required {
+		if !strings.Contains(migrationSQL, value) {
+			t.Fatalf("expected partner readiness migration to contain %q", value)
+		}
+	}
+}
+
 func readIntegrationMigrationSQL(t *testing.T) string {
 	t.Helper()
 

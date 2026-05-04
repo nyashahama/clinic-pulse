@@ -109,6 +109,138 @@ type SyncSummary struct {
 	MedianCurrentStatusAgeHours *float64  `json:"medianCurrentStatusAgeHours,omitempty"`
 }
 
+type PartnerAPIKey struct {
+	ID               int64          `json:"id"`
+	OrganisationID   *int64         `json:"organisationId,omitempty"`
+	Name             string         `json:"name"`
+	Environment      string         `json:"environment"`
+	KeyPrefix        string         `json:"keyPrefix"`
+	KeyHash          string         `json:"-"`
+	Scopes           []string       `json:"scopes"`
+	AllowedDistricts []string       `json:"allowedDistricts"`
+	ExpiresAt        *time.Time     `json:"expiresAt,omitempty"`
+	RevokedAt        *time.Time     `json:"revokedAt,omitempty"`
+	LastUsedAt       *time.Time     `json:"lastUsedAt,omitempty"`
+	LastUsedIP       *string        `json:"lastUsedIp,omitempty"`
+	CreatedByUserID  *int64         `json:"createdByUserId,omitempty"`
+	CreatedAt        time.Time      `json:"createdAt"`
+	UpdatedAt        time.Time      `json:"updatedAt"`
+	Metadata         map[string]any `json:"metadata,omitempty"`
+}
+
+type CreatePartnerAPIKeyInput struct {
+	OrganisationID   *int64
+	Name             string
+	Environment      string
+	KeyPrefix        string
+	KeyHash          string
+	Scopes           []string
+	AllowedDistricts []string
+	ExpiresAt        *time.Time
+	CreatedByUserID  *int64
+	CreatedAt        time.Time
+}
+
+type PartnerWebhookSubscription struct {
+	ID              int64      `json:"id"`
+	OrganisationID  *int64     `json:"organisationId,omitempty"`
+	Name            string     `json:"name"`
+	TargetURL       string     `json:"targetUrl"`
+	EventTypes      []string   `json:"eventTypes"`
+	SecretHash      string     `json:"-"`
+	Status          string     `json:"status"`
+	LastTestedAt    *time.Time `json:"lastTestedAt,omitempty"`
+	LastTestStatus  *string    `json:"lastTestStatus,omitempty"`
+	LastError       *string    `json:"lastError,omitempty"`
+	CreatedByUserID *int64     `json:"createdByUserId,omitempty"`
+	CreatedAt       time.Time  `json:"createdAt"`
+	UpdatedAt       time.Time  `json:"updatedAt"`
+}
+
+type CreatePartnerWebhookSubscriptionInput struct {
+	OrganisationID  *int64
+	Name            string
+	TargetURL       string
+	EventTypes      []string
+	SecretHash      string
+	Status          string
+	CreatedByUserID *int64
+	CreatedAt       time.Time
+}
+
+type PartnerWebhookEvent struct {
+	ID             int64          `json:"id"`
+	SubscriptionID int64          `json:"subscriptionId"`
+	EventType      string         `json:"eventType"`
+	Payload        map[string]any `json:"payload"`
+	Status         string         `json:"status"`
+	AttemptCount   int            `json:"attemptCount"`
+	LastError      *string        `json:"lastError,omitempty"`
+	CreatedAt      time.Time      `json:"createdAt"`
+	DeliveredAt    *time.Time     `json:"deliveredAt,omitempty"`
+}
+
+type CreatePartnerWebhookEventInput struct {
+	SubscriptionID int64
+	EventType      string
+	Payload        map[string]any
+	Status         string
+	AttemptCount   int
+	LastError      *string
+	CreatedAt      time.Time
+	DeliveredAt    *time.Time
+}
+
+type PartnerExportRun struct {
+	ID                int64          `json:"id"`
+	OrganisationID    *int64         `json:"organisationId,omitempty"`
+	RequestedByUserID *int64         `json:"requestedByUserId,omitempty"`
+	Format            string         `json:"format"`
+	Scope             map[string]any `json:"scope"`
+	RecordCounts      map[string]any `json:"recordCounts"`
+	Checksum          string         `json:"checksum"`
+	Payload           map[string]any `json:"payload"`
+	CreatedAt         time.Time      `json:"createdAt"`
+}
+
+type CreatePartnerExportRunInput struct {
+	OrganisationID    *int64
+	RequestedByUserID *int64
+	Format            string
+	Scope             map[string]any
+	RecordCounts      map[string]any
+	Checksum          string
+	Payload           map[string]any
+	CreatedAt         time.Time
+}
+
+type IntegrationStatusCheck struct {
+	ID             int64          `json:"id"`
+	OrganisationID *int64         `json:"organisationId,omitempty"`
+	CheckName      string         `json:"checkName"`
+	Status         string         `json:"status"`
+	Summary        string         `json:"summary"`
+	Metadata       map[string]any `json:"metadata"`
+	CheckedAt      time.Time      `json:"checkedAt"`
+}
+
+type UpsertIntegrationStatusCheckInput struct {
+	OrganisationID *int64
+	CheckName      string
+	Status         string
+	Summary        string
+	Metadata       map[string]any
+	CheckedAt      time.Time
+}
+
+type PartnerReadinessSnapshot struct {
+	APIKeys              []PartnerAPIKey              `json:"apiKeys"`
+	WebhookSubscriptions []PartnerWebhookSubscription `json:"webhookSubscriptions"`
+	WebhookEvents        []PartnerWebhookEvent        `json:"webhookEvents"`
+	ExportRuns           []PartnerExportRun           `json:"exportRuns"`
+	IntegrationChecks    []IntegrationStatusCheck     `json:"integrationChecks"`
+}
+
 type AuditEvent struct {
 	ID             int64          `json:"id"`
 	ExternalID     *string        `json:"externalId,omitempty"`
