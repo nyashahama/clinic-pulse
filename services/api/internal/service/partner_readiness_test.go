@@ -258,6 +258,14 @@ func TestBuildPartnerExportPayloadRejectsUnsupportedFormat(t *testing.T) {
 func TestBuildIntegrationChecksBuildsRequiredChecks(t *testing.T) {
 	orgID := int64(77)
 	checkedAt := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
+	expectedNames := []string{
+		"api_key_active",
+		"export_generated",
+		"webhook_test_recorded",
+		"offline_sync_health_available",
+		"stale_status_reconciliation_available",
+		"deployment_env_configured",
+	}
 
 	checks := BuildIntegrationChecks(IntegrationCheckInput{
 		OrganisationID:                     &orgID,
@@ -275,7 +283,9 @@ func TestBuildIntegrationChecksBuildsRequiredChecks(t *testing.T) {
 	if len(checks) != 6 {
 		t.Fatalf("expected 6 integration checks, got %#v", checks)
 	}
+	byName := map[string]int{}
 	for _, check := range checks {
+		byName[check.CheckName]++
 		if check.OrganisationID == nil || *check.OrganisationID != orgID {
 			t.Fatalf("expected check scoped to org %d, got %#v", orgID, check)
 		}
@@ -291,6 +301,14 @@ func TestBuildIntegrationChecksBuildsRequiredChecks(t *testing.T) {
 		if !check.CheckedAt.Equal(checkedAt) {
 			t.Fatalf("expected checkedAt %s, got %s", checkedAt, check.CheckedAt)
 		}
+	}
+	for _, name := range expectedNames {
+		if byName[name] != 1 {
+			t.Fatalf("expected required check %q exactly once, got counts %#v", name, byName)
+		}
+	}
+	if len(byName) != len(expectedNames) {
+		t.Fatalf("expected only required check names, got counts %#v", byName)
 	}
 }
 
@@ -323,6 +341,87 @@ func TestBuildIntegrationChecksFlagsMissingPepperForLiveReadiness(t *testing.T) 
 	}
 	if !byName["deployment_env_configured"].CheckedAt.Equal(checkedAt) {
 		t.Fatalf("expected checkedAt %s, got %s", checkedAt, byName["deployment_env_configured"].CheckedAt)
+	}
+}
+
+func TestBuildIntegrationChecksMapsMissingRequirementsToAttention(t *testing.T) {
+	checkedAt := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
+	baseInput := IntegrationCheckInput{
+		APIKeyActive:                       true,
+		ExportGenerated:                    true,
+		WebhookTestRecorded:                true,
+		OfflineSyncHealthAvailable:         true,
+		StaleStatusReconciliationAvailable: true,
+		DeploymentEnvironment:              "live",
+		APIKeyPepper:                       "test-pepper",
+		WebhookDeliveryEnabled:             true,
+		CheckedAt:                          checkedAt,
+	}
+
+	tests := []struct {
+		name      string
+		mutate    func(*IntegrationCheckInput)
+		checkName string
+	}{
+		{
+			name: "api key active",
+			mutate: func(input *IntegrationCheckInput) {
+				input.APIKeyActive = false
+			},
+			checkName: "api_key_active",
+		},
+		{
+			name: "export generated",
+			mutate: func(input *IntegrationCheckInput) {
+				input.ExportGenerated = false
+			},
+			checkName: "export_generated",
+		},
+		{
+			name: "webhook test recorded",
+			mutate: func(input *IntegrationCheckInput) {
+				input.WebhookTestRecorded = false
+			},
+			checkName: "webhook_test_recorded",
+		},
+		{
+			name: "offline sync health available",
+			mutate: func(input *IntegrationCheckInput) {
+				input.OfflineSyncHealthAvailable = false
+			},
+			checkName: "offline_sync_health_available",
+		},
+		{
+			name: "stale status reconciliation available",
+			mutate: func(input *IntegrationCheckInput) {
+				input.StaleStatusReconciliationAvailable = false
+			},
+			checkName: "stale_status_reconciliation_available",
+		},
+		{
+			name: "webhook delivery enabled",
+			mutate: func(input *IntegrationCheckInput) {
+				input.WebhookDeliveryEnabled = false
+			},
+			checkName: "deployment_env_configured",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := baseInput
+			tt.mutate(&input)
+			checks := BuildIntegrationChecks(input)
+
+			byName := map[string]store.UpsertIntegrationStatusCheckInput{}
+			for _, check := range checks {
+				byName[check.CheckName] = check
+			}
+
+			if byName[tt.checkName].Status != "attention" {
+				t.Fatalf("expected %s to need attention, got %#v", tt.checkName, byName[tt.checkName])
+			}
+		})
 	}
 }
 

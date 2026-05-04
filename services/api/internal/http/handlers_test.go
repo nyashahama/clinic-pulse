@@ -112,20 +112,44 @@ func TestRequestLoggerCapturesStatusAndRequestID(t *testing.T) {
 	}
 }
 
-func TestRequestLoggerLogsPrincipalTypeFromContext(t *testing.T) {
+func TestRequestLoggerGeneratesRequestID(t *testing.T) {
+	var logOutput bytes.Buffer
+	logger := log.New(&logOutput, "", 0)
+	handler := apihttp.RequestLogger(logger)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/logged", nil)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	requestID := rec.Header().Get("X-Request-Id")
+	if requestID == "" {
+		t.Fatal("expected generated request id response header")
+	}
+	if !strings.Contains(logOutput.String(), "request_id="+requestID) {
+		t.Fatalf("expected log to include generated request id %q, got %q", requestID, logOutput.String())
+	}
+}
+
+func TestRequestLoggerLogsPrincipalTypeAssignedDownstream(t *testing.T) {
 	tests := []struct {
-		name string
-		ctx  context.Context
-		want string
+		name   string
+		assign func(context.Context) context.Context
+		want   string
 	}{
 		{
 			name: "session",
-			ctx:  apihttp.ContextWithPrincipal(context.Background(), apihttp.Principal{UserID: 42}),
+			assign: func(ctx context.Context) context.Context {
+				return apihttp.ContextWithPrincipal(ctx, apihttp.Principal{UserID: 42})
+			},
 			want: "principal_type=session",
 		},
 		{
 			name: "partner",
-			ctx:  apihttp.ContextWithPartnerPrincipal(context.Background(), apihttp.PartnerPrincipal{APIKeyID: 10}),
+			assign: func(ctx context.Context) context.Context {
+				return apihttp.ContextWithPartnerPrincipal(ctx, apihttp.PartnerPrincipal{APIKeyID: 10})
+			},
 			want: "principal_type=partner",
 		},
 	}
@@ -135,9 +159,10 @@ func TestRequestLoggerLogsPrincipalTypeFromContext(t *testing.T) {
 			var logOutput bytes.Buffer
 			logger := log.New(&logOutput, "", 0)
 			handler := apihttp.RequestLogger(logger)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				r = r.WithContext(tt.assign(r.Context()))
 				w.WriteHeader(http.StatusNoContent)
 			}))
-			req := httptest.NewRequest(http.MethodGet, "/logged", nil).WithContext(tt.ctx)
+			req := httptest.NewRequest(http.MethodGet, "/logged", nil)
 			rec := httptest.NewRecorder()
 
 			handler.ServeHTTP(rec, req)
@@ -150,6 +175,96 @@ func TestRequestLoggerLogsPrincipalTypeFromContext(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRequestLoggerRouterMountedPrincipalType(t *testing.T) {
+	t.Run("session", func(t *testing.T) {
+		logOutput := captureDefaultLogger(t)
+		router := newAuthenticatedTestRouter(t, fakeStore{
+			clinics: []store.ClinicDetail{{Clinic: store.Clinic{ID: "clinic-1", District: defaultTestDistrict}}},
+		})
+		req := newAuthenticatedRequest(t, http.MethodGet, "/v1/clinics", nil)
+		rec := httptest.NewRecorder()
+
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+		}
+		if !strings.Contains(logOutput.String(), "principal_type=session") {
+			t.Fatalf("expected authenticated session request log, got %q", logOutput.String())
+		}
+	})
+
+	t.Run("partner", func(t *testing.T) {
+		logOutput := captureDefaultLogger(t)
+		secret, _, err := auth.GenerateAPIKey("demo")
+		if err != nil {
+			t.Fatalf("GenerateAPIKey returned error: %v", err)
+		}
+		hash, err := auth.HashAPIKey(secret, "")
+		if err != nil {
+			t.Fatalf("HashAPIKey returned error: %v", err)
+		}
+		router := apihttp.NewRouter(fakeStore{
+			partnerAPIKey: validPartnerAPIKey(hash, []string{"clinics:read"}, nil),
+			clinics:       []store.ClinicDetail{{Clinic: store.Clinic{ID: "clinic-1", District: defaultTestDistrict}}},
+		})
+		req := httptest.NewRequest(http.MethodGet, "/v1/partner/clinics", nil)
+		req.Header.Set("Authorization", "Bearer "+secret)
+		rec := httptest.NewRecorder()
+
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+		}
+		if !strings.Contains(logOutput.String(), "principal_type=partner") {
+			t.Fatalf("expected authenticated partner request log, got %q", logOutput.String())
+		}
+	})
+}
+
+func TestRequestLoggerInvalidCredentialsRemainAnonymous(t *testing.T) {
+	t.Run("invalid cookie", func(t *testing.T) {
+		logOutput := captureDefaultLogger(t)
+		router := apihttp.NewRouter(fakeStore{})
+		req := httptest.NewRequest(http.MethodGet, "/v1/clinics", nil)
+		req.AddCookie(&http.Cookie{Name: "clinicpulse_session", Value: "not-a-valid-token"})
+		rec := httptest.NewRecorder()
+
+		router.ServeHTTP(rec, req)
+
+		assertGenericUnauthorized(t, rec)
+		if !strings.Contains(logOutput.String(), "principal_type=anonymous") {
+			t.Fatalf("expected invalid cookie to log anonymous, got %q", logOutput.String())
+		}
+		if strings.Contains(logOutput.String(), "principal_type=session") {
+			t.Fatalf("expected invalid cookie not to log session, got %q", logOutput.String())
+		}
+	})
+
+	t.Run("invalid bearer", func(t *testing.T) {
+		logOutput := captureDefaultLogger(t)
+		secret, _, err := auth.GenerateAPIKey("demo")
+		if err != nil {
+			t.Fatalf("GenerateAPIKey returned error: %v", err)
+		}
+		router := apihttp.NewRouter(fakeStore{})
+		req := httptest.NewRequest(http.MethodGet, "/v1/partner/clinics", nil)
+		req.Header.Set("Authorization", "Bearer "+secret)
+		rec := httptest.NewRecorder()
+
+		router.ServeHTTP(rec, req)
+
+		assertGenericUnauthorized(t, rec)
+		if !strings.Contains(logOutput.String(), "principal_type=anonymous") {
+			t.Fatalf("expected invalid bearer to log anonymous, got %q", logOutput.String())
+		}
+		if strings.Contains(logOutput.String(), "principal_type=partner") {
+			t.Fatalf("expected invalid bearer not to log partner, got %q", logOutput.String())
+		}
+	})
 }
 
 func TestListClinicsReturnsOK(t *testing.T) {
@@ -3861,6 +3976,24 @@ func decodeJSON(t *testing.T, rec *httptest.ResponseRecorder, target any) {
 	if err := json.Unmarshal(rec.Body.Bytes(), target); err != nil {
 		t.Fatalf("failed to decode response %q: %v", rec.Body.String(), err)
 	}
+}
+
+func captureDefaultLogger(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var output bytes.Buffer
+	logger := log.Default()
+	previousWriter := logger.Writer()
+	previousFlags := logger.Flags()
+	previousPrefix := logger.Prefix()
+	logger.SetOutput(&output)
+	logger.SetFlags(0)
+	logger.SetPrefix("")
+	t.Cleanup(func() {
+		logger.SetOutput(previousWriter)
+		logger.SetFlags(previousFlags)
+		logger.SetPrefix(previousPrefix)
+	})
+	return &output
 }
 
 func assertInternalError(t *testing.T, rec *httptest.ResponseRecorder, storeErr error) {

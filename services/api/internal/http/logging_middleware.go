@@ -13,8 +13,14 @@ import (
 const requestIDHeader = "X-Request-Id"
 
 type requestIDContextKeyType string
+type requestLogStateContextKeyType string
 
 const requestIDContextKey requestIDContextKeyType = "requestID"
+const requestLogStateContextKey requestLogStateContextKeyType = "requestLogState"
+
+type requestLogState struct {
+	principalType string
+}
 
 func RequestLogger(logger *log.Logger) func(nethttp.Handler) nethttp.Handler {
 	if logger == nil {
@@ -30,7 +36,9 @@ func RequestLogger(logger *log.Logger) func(nethttp.Handler) nethttp.Handler {
 
 			startedAt := time.Now()
 			recorder := &statusRecorder{ResponseWriter: w, status: nethttp.StatusOK}
+			logState := &requestLogState{principalType: "anonymous"}
 			ctx := context.WithValue(r.Context(), requestIDContextKey, requestID)
+			ctx = context.WithValue(ctx, requestLogStateContextKey, logState)
 			next.ServeHTTP(recorder, r.WithContext(ctx))
 
 			logger.Printf(
@@ -39,7 +47,7 @@ func RequestLogger(logger *log.Logger) func(nethttp.Handler) nethttp.Handler {
 				r.URL.Path,
 				recorder.status,
 				time.Since(startedAt).Milliseconds(),
-				principalType(r),
+				logState.principalType,
 				requestID,
 			)
 		})
@@ -73,20 +81,10 @@ func (r *statusRecorder) Write(payload []byte) (int, error) {
 	return r.ResponseWriter.Write(payload)
 }
 
-func principalType(r *nethttp.Request) string {
-	if _, ok := PartnerPrincipalFromContext(r.Context()); ok {
-		return "partner"
+func markRequestPrincipalType(ctx context.Context, principalType string) {
+	if state, ok := ctx.Value(requestLogStateContextKey).(*requestLogState); ok && state != nil {
+		state.principalType = principalType
 	}
-	if _, ok := PrincipalFromContext(r.Context()); ok {
-		return "session"
-	}
-	if bearerToken(r.Header.Get("Authorization")) != "" {
-		return "partner"
-	}
-	if cookie, err := r.Cookie(sessionCookieName); err == nil && cookie.Value != "" {
-		return "session"
-	}
-	return "anonymous"
 }
 
 func requestIDFromHeader(value string) string {

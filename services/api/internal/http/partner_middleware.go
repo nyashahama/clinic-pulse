@@ -93,6 +93,7 @@ func RequirePartnerScope(scope string) func(nethttp.Handler) nethttp.Handler {
 }
 
 func ContextWithPartnerPrincipal(ctx context.Context, principal PartnerPrincipal) context.Context {
+	markRequestPrincipalType(ctx, "partner")
 	return context.WithValue(ctx, partnerPrincipalContextKey, principal)
 }
 
