@@ -168,6 +168,111 @@ export type StalenessReconciliationApiResponse = {
   markedStale: number;
 };
 
+export type PartnerApiKeyApiResponse = {
+  id: number;
+  organisationId?: ApiNullable<number>;
+  name: string;
+  environment: string;
+  keyPrefix: string;
+  scopes: string[];
+  allowedDistricts: string[];
+  expiresAt?: ApiNullable<string>;
+  revokedAt?: ApiNullable<string>;
+  lastUsedAt?: ApiNullable<string>;
+  lastUsedIp?: ApiNullable<string>;
+  createdByUserId?: ApiNullable<number>;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreatePartnerApiKeyApiInput = {
+  name: string;
+  environment: "demo" | "live";
+  scopes: string[];
+  allowedDistricts?: string[];
+  expiresAt?: ApiNullable<string>;
+};
+
+export type CreatePartnerApiKeyApiResponse = {
+  apiKey: PartnerApiKeyApiResponse;
+  secret: string;
+};
+
+export type PartnerWebhookSubscriptionApiResponse = {
+  id: number;
+  organisationId?: ApiNullable<number>;
+  name: string;
+  targetUrl: string;
+  eventTypes: string[];
+  status: string;
+  lastTestedAt?: ApiNullable<string>;
+  lastTestStatus?: ApiNullable<string>;
+  lastTestMetadata: Record<string, unknown>;
+  lastError?: ApiNullable<string>;
+  createdByUserId?: ApiNullable<number>;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PartnerWebhookEventApiResponse = {
+  id: number;
+  subscriptionId: number;
+  eventType: string;
+  payload: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+  status: string;
+  attemptCount: number;
+  lastError?: ApiNullable<string>;
+  createdAt: string;
+  deliveredAt?: ApiNullable<string>;
+};
+
+export type PartnerExportRunApiResponse = {
+  id: number;
+  organisationId?: ApiNullable<number>;
+  requestedByUserId?: ApiNullable<number>;
+  format: string;
+  scope: Record<string, unknown>;
+  recordCounts: Record<string, unknown>;
+  checksum: string;
+  payload: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type IntegrationStatusCheckApiResponse = {
+  id: number;
+  organisationId?: ApiNullable<number>;
+  checkName: string;
+  status: string;
+  summary: string;
+  metadata: Record<string, unknown>;
+  checkedAt: string;
+};
+
+export type PartnerReadinessApiResponse = {
+  apiKeys: PartnerApiKeyApiResponse[];
+  webhookSubscriptions: PartnerWebhookSubscriptionApiResponse[];
+  webhookEvents: PartnerWebhookEventApiResponse[];
+  exportRuns: PartnerExportRunApiResponse[];
+  integrationChecks: IntegrationStatusCheckApiResponse[];
+};
+
+export type CreatePartnerWebhookApiInput = {
+  name: string;
+  targetUrl: string;
+  eventTypes: string[];
+};
+
+export type CreatePartnerWebhookApiResponse = {
+  subscription: PartnerWebhookSubscriptionApiResponse;
+  secret: string;
+};
+
+export type CreatePartnerExportApiInput = {
+  format: "json" | "csv";
+  scope?: Record<string, unknown>;
+};
+
 export type ApiErrorResponse = {
   error?: {
     code?: string;

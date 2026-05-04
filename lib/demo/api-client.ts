@@ -1,10 +1,18 @@
 import type {
   AlternativeApiResponse,
   ApiErrorResponse,
+  CreatePartnerApiKeyApiInput,
+  CreatePartnerApiKeyApiResponse,
+  CreatePartnerExportApiInput,
+  CreatePartnerWebhookApiInput,
+  CreatePartnerWebhookApiResponse,
   CreateReportApiInput,
   CreateReportApiResponse,
   ClinicDetailApiResponse,
   CurrentStatusApiResponse,
+  PartnerExportRunApiResponse,
+  PartnerReadinessApiResponse,
+  PartnerWebhookEventApiResponse,
   OfflineSyncApiRequest,
   OfflineSyncApiResponse,
   PublicClinicDetailApiResponse,
@@ -218,6 +226,77 @@ export function reconcileStatusStaleness(options?: ClinicPulseApiClientOptions) 
     ["v1", "status", "reconcile-staleness"],
     options,
     { method: "POST" },
+  );
+}
+
+export function fetchPartnerReadiness(options?: ClinicPulseApiClientOptions) {
+  return requestClinicPulseApi<PartnerReadinessApiResponse>(
+    ["v1", "admin", "partner-readiness"],
+    options,
+  );
+}
+
+export function createPartnerApiKey(
+  input: CreatePartnerApiKeyApiInput,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<CreatePartnerApiKeyApiResponse>(
+    ["v1", "admin", "api-keys"],
+    options,
+    {
+      body: JSON.stringify(input),
+      method: "POST",
+    },
+  );
+}
+
+export function revokePartnerApiKey(
+  keyId: number | string,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<void>(
+    ["v1", "admin", "api-keys", String(keyId), "revoke"],
+    options,
+    { method: "POST" },
+  );
+}
+
+export function createPartnerWebhook(
+  input: CreatePartnerWebhookApiInput,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<CreatePartnerWebhookApiResponse>(
+    ["v1", "admin", "webhooks"],
+    options,
+    {
+      body: JSON.stringify(input),
+      method: "POST",
+    },
+  );
+}
+
+export function testPartnerWebhook(
+  subscriptionId: number | string,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<PartnerWebhookEventApiResponse>(
+    ["v1", "admin", "webhooks", String(subscriptionId), "test"],
+    options,
+    { method: "POST" },
+  );
+}
+
+export function createPartnerExport(
+  input: CreatePartnerExportApiInput,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<PartnerExportRunApiResponse>(
+    ["v1", "admin", "exports"],
+    options,
+    {
+      body: JSON.stringify(input),
+      method: "POST",
+    },
   );
 }
 
