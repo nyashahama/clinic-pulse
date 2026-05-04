@@ -34,6 +34,15 @@ type BookingDemoControllerProps = {
   children: (controls: { openBooking: () => void }) => ReactNode;
 };
 
+type BookingApiResponse = {
+  booking?: {
+    calendarEventId: string;
+    calendarUrl: string;
+    meetUrl: string;
+  };
+  error?: string;
+};
+
 export function BookingDemoController({ children }: BookingDemoControllerProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -42,6 +51,7 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
   const [selectedDay, setSelectedDay] = useState(4);
   const [selectedTime, setSelectedTime] = useState("10:30");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [lead, setLead] = useState({
     name: "",
@@ -94,7 +104,7 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
     setLead((current) => ({ ...current, [field]: value }));
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (isSubmitDisabled) {
@@ -102,31 +112,71 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
     }
 
     setIsSubmitting(true);
+    setSubmitError("");
+
+    const trimmedLead = {
+      ...lead,
+      name: lead.name.trim(),
+      workEmail: lead.workEmail.trim(),
+      organization: lead.organization.trim(),
+      role: lead.role.trim(),
+      note: lead.note.trim(),
+    };
 
     const note = [
-      lead.note.trim(),
+      trimmedLead.note,
       `Requested slot: ${selectedDateLabel}`,
       `Duration: ${duration} minutes`,
     ]
       .filter(Boolean)
       .join("\n");
 
-    addDemoLead({
-      ...lead,
-      name: lead.name.trim(),
-      workEmail: lead.workEmail.trim(),
-      organization: lead.organization.trim(),
-      role: lead.role.trim(),
-      note,
-      createdAt: new Date().toISOString(),
-      status: "new",
-    });
+    try {
+      const response = await fetch("/api/book-demo", {
+        body: JSON.stringify({
+          lead: trimmedLead,
+          slot: {
+            day: selectedDay,
+            duration,
+            time: selectedTime,
+          },
+        }),
+        headers: {
+          "content-type": "application/json",
+        },
+        method: "POST",
+      });
+      const payload = (await response.json().catch(() => ({}))) as BookingApiResponse;
 
-    router.push(
-      `/book-demo/thanks?name=${encodeURIComponent(lead.name)}&organization=${encodeURIComponent(
-        lead.organization,
-      )}`,
-    );
+      if (!response.ok || !payload.booking) {
+        throw new Error(payload.error ?? "Unable to create the Google Meet booking.");
+      }
+
+      const bookingNote = [
+        note,
+        `Google Meet: ${payload.booking.meetUrl}`,
+        `Calendar event: ${payload.booking.calendarUrl}`,
+      ].join("\n");
+
+      addDemoLead({
+        ...trimmedLead,
+        note: bookingNote,
+        createdAt: new Date().toISOString(),
+        status: "scheduled",
+      });
+
+      const params = new URLSearchParams({
+        calendarUrl: payload.booking.calendarUrl,
+        meetUrl: payload.booking.meetUrl,
+        name: trimmedLead.name,
+        organization: trimmedLead.organization,
+      });
+
+      router.push(`/book-demo/thanks?${params.toString()}`);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Unable to create the Google Meet booking.");
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -148,6 +198,7 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
             selectedDateLabel={selectedDateLabel}
             selectedDay={selectedDay}
             selectedTime={selectedTime}
+            submitError={submitError}
             onClose={closeBooking}
             onDurationChange={setDuration}
             onLeadChange={updateLead}
@@ -176,12 +227,13 @@ type BookingPanelProps = {
   selectedDateLabel: string;
   selectedDay: number;
   selectedTime: string;
+  submitError: string;
   onClose: () => void;
   onDurationChange: (duration: 30 | 45) => void;
   onLeadChange: (field: keyof BookingPanelProps["lead"], value: string) => void;
   onSelectedDayChange: (day: number) => void;
   onSelectedTimeChange: (time: string) => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
 };
 
 function BookingPanel({
@@ -192,6 +244,7 @@ function BookingPanel({
   selectedDateLabel,
   selectedDay,
   selectedTime,
+  submitError,
   onClose,
   onDurationChange,
   onLeadChange,
@@ -369,12 +422,18 @@ function BookingPanel({
           </label>
         </div>
 
+        {submitError ? (
+          <div className="mt-5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800">
+            {submitError}
+          </div>
+        ) : null}
+
         <Button
           type="submit"
           className="mt-5 h-11 w-full rounded-lg bg-neutral-950 text-white hover:bg-neutral-800"
           disabled={isSubmitDisabled}
         >
-          {isSubmitting ? "Scheduling..." : "Confirm demo"}
+          {isSubmitting ? "Creating Google Meet..." : "Confirm demo"}
           {!isSubmitting ? <Check className="size-4" /> : null}
         </Button>
       </form>
