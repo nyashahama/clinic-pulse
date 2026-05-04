@@ -24,6 +24,7 @@ function makeApiKey(
     keyPrefix: overrides.keyPrefix ?? "cp_demo_abcd1234",
     scopes: overrides.scopes ?? ["clinics:read", "status:read", "exports:read"],
     allowedDistricts: overrides.allowedDistricts ?? ["Tshwane North Demo District"],
+    expiresAt: overrides.expiresAt,
     revokedAt: overrides.revokedAt,
     createdAt: overrides.createdAt ?? checkedAt,
     updatedAt: overrides.updatedAt ?? checkedAt,
@@ -146,6 +147,22 @@ describe("partner readiness helpers", () => {
     const model = buildPartnerReadinessModel(
       makeReadyReadiness({
         apiKeys: [makeApiKey({ revokedAt: "2026-05-04T10:00:00.000Z" })],
+      }),
+    );
+
+    expect(model.severity).toBe("attention");
+    expect(model.metrics).toContainEqual(
+      expect.objectContaining({
+        label: "API keys",
+        value: "0",
+      }),
+    );
+  });
+
+  it("does not count expired keys as active API keys", () => {
+    const model = buildPartnerReadinessModel(
+      makeReadyReadiness({
+        apiKeys: [makeApiKey({ expiresAt: "2000-01-01T00:00:00.000Z" })],
       }),
     );
 

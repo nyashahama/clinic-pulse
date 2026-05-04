@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import type { PartnerReadinessApiResponse } from "@/lib/demo/api-types";
 import {
   buildPartnerReadinessModel,
+  isPartnerApiKeyActive,
   type PartnerReadinessMetric,
   type PartnerReadinessSeverity,
 } from "@/lib/demo/partner-readiness";
@@ -27,6 +28,12 @@ type PartnerReadinessPanelProps = {
   onCreateDemoKey: () => void;
   onGenerateExport: () => void;
   onTestWebhook?: (subscriptionId: number) => void;
+  pendingActions?: {
+    createDemoKey?: boolean;
+    generateExport?: boolean;
+    testWebhook?: boolean;
+  };
+  actionError?: string | null;
 };
 
 type Tone = PartnerReadinessSeverity | "info";
@@ -104,6 +111,10 @@ function getStatusTone(status: string): Tone {
   return "info";
 }
 
+function isActiveWebhookStatus(status: string) {
+  return status.trim().toLowerCase() === "active";
+}
+
 function Badge({
   label,
   tone,
@@ -177,9 +188,13 @@ export function PartnerReadinessPanel({
   onCreateDemoKey,
   onGenerateExport,
   onTestWebhook,
+  pendingActions,
+  actionError,
 }: PartnerReadinessPanelProps) {
   const model = buildPartnerReadinessModel(readiness);
-  const activeApiKeys = readiness.apiKeys.filter((apiKey) => !apiKey.revokedAt);
+  const activeApiKeys = readiness.apiKeys.filter((apiKey) =>
+    isPartnerApiKeyActive(apiKey),
+  );
   const latestApiKey = [...activeApiKeys].sort((left, right) =>
     right.createdAt.localeCompare(left.createdAt),
   )[0];
@@ -187,7 +202,7 @@ export function PartnerReadinessPanel({
     right.createdAt.localeCompare(left.createdAt),
   )[0];
   const activeSubscriptions = readiness.webhookSubscriptions.filter(
-    (subscription) => subscription.status === "active",
+    (subscription) => isActiveWebhookStatus(subscription.status),
   );
   const webhookSubscription = activeSubscriptions[0] ?? readiness.webhookSubscriptions[0];
   const latestWebhookEvent = [...readiness.webhookEvents].sort((left, right) =>
@@ -199,7 +214,11 @@ export function PartnerReadinessPanel({
   const webhookStatus = webhookSubscription
     ? formatStatusLabel(webhookSubscription.status)
     : "No subscription";
-  const webhookTestDisabled = !webhookSubscription || !onTestWebhook;
+  const selectedWebhookIsActive = webhookSubscription
+    ? isActiveWebhookStatus(webhookSubscription.status)
+    : false;
+  const webhookTestDisabled =
+    !selectedWebhookIsActive || !onTestWebhook || pendingActions?.testWebhook;
 
   return (
     <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
@@ -209,6 +228,16 @@ export function PartnerReadinessPanel({
         description={model.description}
         actions={<SeverityBadge severity={model.severity} />}
       />
+
+      {actionError ? (
+        <div
+          className="mt-4 flex items-start gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-200"
+          role="alert"
+        >
+          <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+          <span className="min-w-0 break-words">{actionError}</span>
+        </div>
+      ) : null}
 
       <dl className="mt-4 grid min-w-0 gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
         {model.metrics.map((metric) => (
@@ -248,7 +277,13 @@ export function PartnerReadinessPanel({
               : `${formatCount(readiness.apiKeys.length)} total keys`
           }
           action={
-            <Button type="button" size="sm" variant="outline" onClick={onCreateDemoKey}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={pendingActions?.createDemoKey}
+              onClick={onCreateDemoKey}
+            >
               <KeyRound className="size-3.5" />
               Create key
             </Button>
@@ -266,7 +301,13 @@ export function PartnerReadinessPanel({
               : `${formatCount(readiness.exportRuns.length)} generated`
           }
           action={
-            <Button type="button" size="sm" variant="outline" onClick={onGenerateExport}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={pendingActions?.generateExport}
+              onClick={onGenerateExport}
+            >
               <FileJson className="size-3.5" />
               Generate export
             </Button>
@@ -292,7 +333,7 @@ export function PartnerReadinessPanel({
               variant="outline"
               disabled={webhookTestDisabled}
               onClick={() => {
-                if (webhookSubscription && onTestWebhook) {
+                if (selectedWebhookIsActive && webhookSubscription && onTestWebhook) {
                   onTestWebhook(webhookSubscription.id);
                 }
               }}

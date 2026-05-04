@@ -36,8 +36,24 @@ function formatCount(value: number) {
   return numberFormatter.format(value);
 }
 
-function isActiveApiKey(apiKey: PartnerApiKeyApiResponse) {
-  return !apiKey.revokedAt;
+export function isPartnerApiKeyActive(
+  apiKey: PartnerApiKeyApiResponse,
+  now = new Date(),
+) {
+  if (apiKey.revokedAt) {
+    return false;
+  }
+
+  if (!apiKey.expiresAt) {
+    return true;
+  }
+
+  const expiresAt = new Date(apiKey.expiresAt);
+  if (Number.isNaN(expiresAt.getTime())) {
+    return false;
+  }
+
+  return expiresAt.getTime() > now.getTime();
 }
 
 function getCheckStatus(check: IntegrationStatusCheckApiResponse) {
@@ -80,8 +96,10 @@ function getIntegrationCheckTone(
 export function buildPartnerReadinessModel(
   readiness: PartnerReadinessApiResponse,
 ): PartnerReadinessModel {
-  const activeApiKeys = readiness.apiKeys.filter(isActiveApiKey);
-  const revokedApiKeyCount = readiness.apiKeys.length - activeApiKeys.length;
+  const activeApiKeys = readiness.apiKeys.filter((apiKey) =>
+    isPartnerApiKeyActive(apiKey),
+  );
+  const inactiveApiKeyCount = readiness.apiKeys.length - activeApiKeys.length;
   const hasActiveApiKey = activeApiKeys.length > 0;
   const hasExportPackage = readiness.exportRuns.length > 0;
   const webhookTestCount = readiness.webhookEvents.length;
@@ -133,8 +151,8 @@ export function buildPartnerReadinessModel(
         label: "API keys",
         value: formatCount(activeApiKeys.length),
         detail:
-          revokedApiKeyCount > 0
-            ? `${formatCount(revokedApiKeyCount)} revoked`
+          inactiveApiKeyCount > 0
+            ? `${formatCount(inactiveApiKeyCount)} inactive`
             : `${formatCount(readiness.apiKeys.length)} total`,
         tone: hasActiveApiKey ? "clear" : "attention",
       },

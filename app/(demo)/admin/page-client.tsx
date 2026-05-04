@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertCircle,
@@ -94,6 +94,16 @@ type AdminPageProps = {
   partnerReadiness: PartnerReadinessApiResponse;
 };
 
+type PartnerReadinessAction = "create-key" | "generate-export" | "test-webhook";
+
+function getPartnerActionErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  return "Partner readiness action failed.";
+}
+
 export default function AdminPage({
   syncSummary,
   partnerReadiness,
@@ -120,11 +130,16 @@ export default function AdminPage({
   const activeAlertCount = state.alerts.filter((alert) => alert.status === "open").length;
   const exportPayload = useMemo(() => buildExportPayload(state), [state]);
   const [manualLeadOpen, setManualLeadOpen] = useState(false);
+  const [partnerActionPending, setPartnerActionPending] =
+    useState<PartnerReadinessAction | null>(null);
+  const [partnerActionError, setPartnerActionError] = useState<string | null>(null);
+  const partnerActionPendingRef = useRef<PartnerReadinessAction | null>(null);
 
   const leadSorted = useMemo(
     () => [...state.leads].sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
     [state.leads],
   );
+  const partnerActionInFlight = partnerActionPending !== null;
 
   const handleLeadSubmit = (lead: DemoLeadFormInput) => {
     addDemoLead({
@@ -135,24 +150,51 @@ export default function AdminPage({
     setManualLeadOpen(false);
   };
 
+  const runPartnerAction = async (
+    action: PartnerReadinessAction,
+    mutate: () => Promise<unknown>,
+  ) => {
+    if (partnerActionPendingRef.current) {
+      return;
+    }
+
+    partnerActionPendingRef.current = action;
+    setPartnerActionPending(action);
+    setPartnerActionError(null);
+
+    try {
+      await mutate();
+      router.refresh();
+    } catch (error) {
+      setPartnerActionError(getPartnerActionErrorMessage(error));
+    } finally {
+      partnerActionPendingRef.current = null;
+      setPartnerActionPending(null);
+    }
+  };
+
   const handleCreateDemoKey = () => {
-    void createPartnerApiKeyAction({
-      name: "Demo partner integration",
-      environment: "demo",
-      scopes: ["clinics:read", "status:read", "alternatives:read", "exports:read"],
-      allowedDistricts: [state.district],
-    }).then(() => router.refresh());
+    void runPartnerAction("create-key", () =>
+      createPartnerApiKeyAction({
+        name: "Demo partner integration",
+        environment: "demo",
+        scopes: ["clinics:read", "status:read", "alternatives:read", "exports:read"],
+        allowedDistricts: [state.district],
+      }),
+    );
   };
 
   const handleGeneratePartnerExport = () => {
-    void createPartnerExportAction({
-      format: "json",
-      scope: { district: state.district },
-    }).then(() => router.refresh());
+    void runPartnerAction("generate-export", () =>
+      createPartnerExportAction({
+        format: "json",
+        scope: { district: state.district },
+      }),
+    );
   };
 
   const handleTestPartnerWebhook = (subscriptionId: number) => {
-    void testPartnerWebhookAction(subscriptionId).then(() => router.refresh());
+    void runPartnerAction("test-webhook", () => testPartnerWebhookAction(subscriptionId));
   };
 
   useEffect(() => {
@@ -244,6 +286,12 @@ export default function AdminPage({
           onCreateDemoKey={handleCreateDemoKey}
           onGenerateExport={handleGeneratePartnerExport}
           onTestWebhook={handleTestPartnerWebhook}
+          pendingActions={{
+            createDemoKey: partnerActionInFlight,
+            generateExport: partnerActionInFlight,
+            testWebhook: partnerActionInFlight,
+          }}
+          actionError={partnerActionError}
         />
       </div>
 
