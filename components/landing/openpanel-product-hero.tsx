@@ -36,19 +36,19 @@ const heroStatIcons = {
 export function OpenPanelProductHero({ onBookDemo }: OpenPanelProductHeroProps) {
   return (
     <section className="relative overflow-hidden border-b border-neutral-200 bg-[#eef3f2]">
-      <div className="mx-auto grid min-w-0 w-full max-w-screen-xl gap-10 px-4 py-12 sm:px-6 lg:min-h-[640px] lg:grid-cols-[0.88fr_1.12fr] lg:items-center lg:px-10 lg:py-16">
+      <div className="mx-auto grid min-w-0 w-full max-w-screen-xl gap-7 px-4 py-8 sm:px-6 lg:min-h-[calc(100svh-7rem)] lg:grid-cols-[0.88fr_1.12fr] lg:items-center lg:gap-8 lg:px-10 lg:py-8">
         <div className="min-w-0 max-w-xl">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
             {landingHero.eyebrow}
           </p>
-          <h1 className="mt-5 font-display text-5xl leading-[0.98] text-neutral-950 sm:text-6xl lg:text-7xl">
+          <h1 className="mt-4 font-display text-5xl leading-[0.98] text-neutral-950 sm:text-6xl lg:text-7xl">
             {landingHero.title}
           </h1>
-          <p className="mt-6 text-lg leading-8 text-neutral-600">
+          <p className="mt-5 text-base leading-7 text-neutral-600 sm:text-lg sm:leading-8">
             {landingHero.description}
           </p>
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <button
               type="button"
               onClick={onBookDemo}
@@ -65,7 +65,7 @@ export function OpenPanelProductHero({ onBookDemo }: OpenPanelProductHeroProps) 
             </a>
           </div>
 
-          <div className="mt-8 flex flex-wrap gap-2">
+          <div className="mt-6 hidden flex-wrap gap-2 sm:flex">
             {landingHero.perks.map((perk) => (
               <span
                 key={perk}
@@ -162,7 +162,7 @@ function ProductPreview() {
               </div>
             </div>
 
-            <div className="mt-4 space-y-2.5">
+            <div className="mt-4 space-y-2.5 max-sm:hidden">
               {heroClinicRows.map((row, index) => (
                 <div
                   key={row.clinic}
@@ -200,7 +200,7 @@ function ProductPreview() {
               ))}
             </div>
 
-            <div className="mt-4 hidden grid-cols-3 gap-2.5 sm:grid">
+            <div className="mt-4 hidden grid-cols-3 gap-2.5 sm:grid [@media(max-height:800px)]:hidden">
               {heroStats.map((stat) => {
                 const Icon = heroStatIcons[stat.label];
 
