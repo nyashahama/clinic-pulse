@@ -4,11 +4,17 @@ import {
   demoCta,
   featureCards,
   heroClinicRows,
+  heroConsoleMetrics,
+  heroConsoleNavItems,
+  heroIncident,
   heroStats,
   landingHero,
   operatingGap,
+  productSurfacePreviewRows,
   stakeholderProofItems,
   trustObjects,
+  trustSystemPanels,
+  workflowIncidentStages,
   workflowSteps,
 } from "@/lib/landing/openpanel-refactor-content";
 
@@ -89,14 +95,51 @@ describe("OpenPanel-first landing content", () => {
     });
   });
 
+  it("defines richer product-reality preview data for landing surfaces", () => {
+    expect(heroConsoleNavItems.map((item) => item.label)).toEqual([
+      "District console",
+      "Field reports",
+      "Public finder",
+      "Audit trail",
+    ]);
+    expect(heroConsoleMetrics.map((metric) => metric.label)).toEqual([
+      "Clinics monitored",
+      "Reports synced",
+      "Freshness SLA",
+    ]);
+    expect(heroIncident.clinic).toBe("Mamelodi East Community Clinic");
+    expect(heroIncident.recommendedRoute).toBe("Akasia Hills Clinic");
+    expect(workflowIncidentStages.map((stage) => stage.surface)).toEqual([
+      "Field report",
+      "District alert",
+      "Public finder",
+      "Audit ledger",
+    ]);
+    expect(productSurfacePreviewRows["field-report"]).toHaveLength(4);
+    expect(productSurfacePreviewRows["district-console"]).toHaveLength(4);
+    expect(productSurfacePreviewRows["patient-reroute"]).toHaveLength(3);
+    expect(trustSystemPanels.map((panel) => panel.title)).toEqual([
+      "Audit event",
+      "District export",
+      "API response",
+      "Webhook delivery",
+    ]);
+  });
+
   it("does not leak OpenPanel reference copy or unsupported claims", () => {
     const text = collectText([
       landingHero,
       stakeholderProofItems,
       workflowSteps,
+      workflowIncidentStages,
       featureCards,
+      productSurfacePreviewRows,
       trustObjects,
+      trustSystemPanels,
       heroClinicRows,
+      heroConsoleNavItems,
+      heroConsoleMetrics,
+      heroIncident,
       heroStats,
       operatingGap,
       demoCta,
