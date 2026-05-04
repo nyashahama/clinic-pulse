@@ -31,6 +31,13 @@ const (
 	missingClientReportIDSyncExternalID = "missing-client-report-id"
 )
 
+var requiredPartnerReadinessScopes = []string{
+	"clinics:read",
+	"status:read",
+	"alternatives:read",
+	"exports:read",
+}
+
 type ClinicStore interface {
 	Ready(ctx context.Context) error
 	ListClinics(ctx context.Context) ([]store.ClinicDetail, error)
@@ -333,7 +340,7 @@ func (h Handler) refreshPartnerIntegrationStatusChecks(ctx context.Context, orga
 
 	checkInputs := service.BuildIntegrationChecks(service.IntegrationCheckInput{
 		OrganisationID:                     organisationID,
-		APIKeyActive:                       activePartnerAPIKeyCount(snapshot.APIKeys, checkedAt) > 0,
+		APIKeyActive:                       activePartnerAPIKeysCoverRequiredScopes(snapshot.APIKeys, checkedAt),
 		ExportGenerated:                    len(snapshot.ExportRuns) > 0,
 		WebhookTestRecorded:                partnerWebhookTestRecorded(snapshot),
 		OfflineSyncHealthAvailable:         true,
@@ -355,14 +362,22 @@ func (h Handler) refreshPartnerIntegrationStatusChecks(ctx context.Context, orga
 	return checks, nil
 }
 
-func activePartnerAPIKeyCount(apiKeys []store.PartnerAPIKey, now time.Time) int {
-	count := 0
+func activePartnerAPIKeysCoverRequiredScopes(apiKeys []store.PartnerAPIKey, now time.Time) bool {
+	covered := map[string]struct{}{}
 	for _, apiKey := range apiKeys {
-		if partnerAPIKeyActive(apiKey, now) {
-			count++
+		if !partnerAPIKeyActive(apiKey, now) {
+			continue
+		}
+		for _, scope := range apiKey.Scopes {
+			covered[strings.TrimSpace(scope)] = struct{}{}
 		}
 	}
-	return count
+	for _, scope := range requiredPartnerReadinessScopes {
+		if _, ok := covered[scope]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func partnerAPIKeyActive(apiKey store.PartnerAPIKey, now time.Time) bool {

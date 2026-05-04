@@ -1123,6 +1123,59 @@ func TestAdminPartnerReadinessRecomputesChecksBeforeReturningSnapshot(t *testing
 	}
 }
 
+func TestAdminPartnerReadinessRequiresUsefulPartnerAPIScopes(t *testing.T) {
+	orgID := int64(77)
+	now := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
+	upsertInputs := []store.UpsertIntegrationStatusCheckInput{}
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+		partnerReadinessSnapshot: store.PartnerReadinessSnapshot{
+			APIKeys: []store.PartnerAPIKey{{
+				ID:          1,
+				Name:        "Incomplete partner key",
+				Environment: "demo",
+				KeyPrefix:   "cp_demo_incomplete",
+				Scopes:      []string{"clinics:read"},
+				CreatedAt:   now,
+				UpdatedAt:   now,
+			}},
+			ExportRuns: []store.PartnerExportRun{{
+				ID:        1,
+				Format:    "json",
+				Scope:     map[string]any{"district": defaultTestDistrict},
+				Checksum:  "sha256:export",
+				CreatedAt: now,
+			}},
+			WebhookEvents: []store.PartnerWebhookEvent{{
+				ID:             1,
+				SubscriptionID: 1,
+				EventType:      "clinicpulse.webhook_test",
+				Status:         "preview_only",
+				CreatedAt:      now,
+			}},
+		},
+		currentStatuses:                    []store.CurrentStatus{{ClinicID: "clinic-1", Status: "operational", Freshness: "fresh", UpdatedAt: now}},
+		syncSummary:                        &store.SyncSummary{OfflineReportsReceived: 1},
+		upsertIntegrationStatusCheckInputs: &upsertInputs,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/partner-readiness", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	for _, input := range upsertInputs {
+		if input.CheckName == "api_key_active" {
+			if input.Status != "attention" {
+				t.Fatalf("expected incomplete API key scopes to require attention, got %#v", input)
+			}
+			return
+		}
+	}
+	t.Fatalf("expected api_key_active check to be recomputed, got %#v", upsertInputs)
+}
+
 func TestAdminPartnerWebhookCreateListAndTestDoesNotExposeSecret(t *testing.T) {
 	orgID := int64(77)
 	subscriptions := []store.PartnerWebhookSubscription{}

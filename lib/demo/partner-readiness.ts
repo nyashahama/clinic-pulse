@@ -29,6 +29,12 @@ export type OneTimePartnerApiKeySecret = {
 };
 
 const numberFormatter = new Intl.NumberFormat("en-ZA");
+const requiredPartnerReadinessScopes = [
+  "clinics:read",
+  "status:read",
+  "alternatives:read",
+  "exports:read",
+];
 
 export function createEmptyPartnerReadiness(): PartnerReadinessApiResponse {
   return {
@@ -75,6 +81,17 @@ export function isPartnerApiKeyActive(
   return expiresAt.getTime() > now.getTime();
 }
 
+function activeApiKeysCoverRequiredScopes(apiKeys: PartnerApiKeyApiResponse[]) {
+  const covered = new Set<string>();
+  for (const apiKey of apiKeys) {
+    for (const scope of apiKey.scopes) {
+      covered.add(scope.trim());
+    }
+  }
+
+  return requiredPartnerReadinessScopes.every((scope) => covered.has(scope));
+}
+
 function getCheckStatus(check: IntegrationStatusCheckApiResponse) {
   return check.status.trim().toLowerCase();
 }
@@ -119,7 +136,8 @@ export function buildPartnerReadinessModel(
     isPartnerApiKeyActive(apiKey),
   );
   const inactiveApiKeyCount = readiness.apiKeys.length - activeApiKeys.length;
-  const hasActiveApiKey = activeApiKeys.length > 0;
+  const activeKeysCoverRequiredScopes = activeApiKeysCoverRequiredScopes(activeApiKeys);
+  const hasActiveApiKey = activeApiKeys.length > 0 && activeKeysCoverRequiredScopes;
   const hasExportPackage = readiness.exportRuns.length > 0;
   const webhookTestCount = readiness.webhookEvents.length;
   const hasRecordedWebhookTest = hasWebhookTest(readiness);
@@ -170,9 +188,11 @@ export function buildPartnerReadinessModel(
         label: "API keys",
         value: formatCount(activeApiKeys.length),
         detail:
-          inactiveApiKeyCount > 0
-            ? `${formatCount(inactiveApiKeyCount)} inactive`
-            : `${formatCount(readiness.apiKeys.length)} total`,
+          activeApiKeys.length > 0 && !activeKeysCoverRequiredScopes
+            ? "Missing required scopes"
+            : inactiveApiKeyCount > 0
+              ? `${formatCount(inactiveApiKeyCount)} inactive`
+              : `${formatCount(readiness.apiKeys.length)} total`,
         tone: hasActiveApiKey ? "clear" : "attention",
       },
       {

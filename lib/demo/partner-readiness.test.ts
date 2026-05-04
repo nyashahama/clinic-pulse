@@ -23,7 +23,12 @@ function makeApiKey(
     name: overrides.name ?? "Demo partner",
     environment: overrides.environment ?? "demo",
     keyPrefix: overrides.keyPrefix ?? "cp_demo_abcd1234",
-    scopes: overrides.scopes ?? ["clinics:read", "status:read", "exports:read"],
+    scopes: overrides.scopes ?? [
+      "clinics:read",
+      "status:read",
+      "alternatives:read",
+      "exports:read",
+    ],
     allowedDistricts: overrides.allowedDistricts ?? ["Tshwane North Demo District"],
     expiresAt: overrides.expiresAt,
     revokedAt: overrides.revokedAt,
@@ -172,6 +177,24 @@ describe("partner readiness helpers", () => {
       expect.objectContaining({
         label: "API keys",
         value: "0",
+      }),
+    );
+  });
+
+  it("marks active API keys without required partner scopes as attention", () => {
+    const model = buildPartnerReadinessModel(
+      makeReadyReadiness({
+        apiKeys: [makeApiKey({ scopes: ["clinics:read"] })],
+      }),
+    );
+
+    expect(model.severity).toBe("attention");
+    expect(model.metrics).toContainEqual(
+      expect.objectContaining({
+        label: "API keys",
+        value: "1",
+        detail: "Missing required scopes",
+        tone: "attention",
       }),
     );
   });

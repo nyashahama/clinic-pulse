@@ -190,8 +190,8 @@ func BuildPartnerExportPayload(ctx context.Context, reader PartnerExportPayloadR
 func BuildIntegrationChecks(input IntegrationCheckInput) []store.UpsertIntegrationStatusCheckInput {
 	return []store.UpsertIntegrationStatusCheckInput{
 		integrationCheck(input, "api_key_active", input.APIKeyActive,
-			"At least one active partner API key is available.",
-			"Create or activate a partner API key."),
+			"Active partner API keys cover required partner scopes.",
+			"Create or update partner API keys with required scopes."),
 		integrationCheck(input, "export_generated", input.ExportGenerated,
 			"A partner export has been generated.",
 			"Generate a partner export."),
