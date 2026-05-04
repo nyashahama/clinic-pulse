@@ -7,6 +7,13 @@ const MANUAL_RETRY_STATUSES = new Set<OfflineReportQueueStatus>([
   "failed",
   "conflict",
 ]);
+const OPEN_DUPLICATE_STATUSES = new Set<OfflineReportQueueStatus>([
+  "queued",
+  "syncing",
+  "retry_wait",
+  "failed",
+  "conflict",
+]);
 const STALE_SYNCING_RECOVERY_MS = 2 * 60 * 1000;
 const INTERRUPTED_SYNC_ERROR =
   "Previous offline sync was interrupted before completion.";
@@ -17,6 +24,38 @@ function addMilliseconds(date: Date, milliseconds: number) {
 
 function getResultErrorMessage(result: OfflineSyncApiResult) {
   return result.error?.message ?? result.error?.code ?? result.warning ?? result.result;
+}
+
+function normalizedText(value: string) {
+  return value.trim();
+}
+
+function sameOfflineReportPayload(
+  left: OfflineReportQueueItem,
+  right: OfflineReportQueueItem,
+) {
+  return (
+    left.clinicId === right.clinicId &&
+    left.status === right.status &&
+    normalizedText(left.reason) === normalizedText(right.reason) &&
+    left.staffPressure === right.staffPressure &&
+    left.stockPressure === right.stockPressure &&
+    left.queuePressure === right.queuePressure &&
+    normalizedText(left.notes) === normalizedText(right.notes)
+  );
+}
+
+export function findMatchingOpenOfflineReport(
+  items: OfflineReportQueueItem[],
+  candidate: OfflineReportQueueItem,
+) {
+  return (
+    items.find(
+      (item) =>
+        OPEN_DUPLICATE_STATUSES.has(item.syncStatus) &&
+        sameOfflineReportPayload(item, candidate),
+    ) ?? null
+  );
 }
 
 export function getNextRetryAt(attemptCount: number, now: Date): string | null {

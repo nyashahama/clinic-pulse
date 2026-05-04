@@ -24,6 +24,7 @@ import {
 } from "@/lib/demo/offline-queue-store";
 import {
   applyOfflineSyncResult,
+  findMatchingOpenOfflineReport,
   isOfflineReportReadyForSync,
   markQueuedItemNetworkFailure,
   markQueuedItemSyncing,
@@ -35,6 +36,8 @@ import { createFieldReport, syncQueuedFieldReports } from "./actions";
 
 const OFFLINE_SAVED_MESSAGE =
   "Report saved offline. It will retry when connectivity returns.";
+const OFFLINE_DUPLICATE_MESSAGE =
+  "A matching report is already in the device queue.";
 
 function createClientReportId() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -188,8 +191,16 @@ export default function FieldPageClient() {
 
   const saveOfflineReport = useCallback(
     async (report: OnlineFieldReportInput) => {
-      await addOfflineReport(createOfflineReportQueueItem(selectedId, report));
+      const item = createOfflineReportQueueItem(selectedId, report);
+      const reports = await loadOfflineReports();
+      const existing = findMatchingOpenOfflineReport(reports, item);
+      if (existing) {
+        return { item: existing, duplicate: true };
+      }
+
+      await addOfflineReport(item);
       await loadOfflineReports();
+      return { item, duplicate: false };
     },
     [loadOfflineReports, selectedId],
   );
@@ -395,14 +406,17 @@ export default function FieldPageClient() {
             throw error;
           }
 
-          await saveOfflineReport(report);
-          setSubmitError(OFFLINE_SAVED_MESSAGE);
+          const saved = await saveOfflineReport(report);
+          setSubmitError(saved.duplicate ? OFFLINE_DUPLICATE_MESSAGE : OFFLINE_SAVED_MESSAGE);
         }
 
         return true;
       }
 
-      await saveOfflineReport(report);
+      const saved = await saveOfflineReport(report);
+      if (saved.duplicate) {
+        setSubmitError(OFFLINE_DUPLICATE_MESSAGE);
+      }
       return true;
     } catch (error) {
       setSubmitError(

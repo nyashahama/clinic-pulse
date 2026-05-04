@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   applyOfflineSyncResult,
+  findMatchingOpenOfflineReport,
   getNextRetryAt,
   isOfflineReportReadyForSync,
   markQueuedItemNetworkFailure,
@@ -324,5 +325,43 @@ describe("offline sync item selection", () => {
     expect(isOfflineReportReadyForSync(queueItem({ syncStatus: "conflict" }), now, true)).toBe(true);
     expect(isOfflineReportReadyForSync(queueItem({ syncStatus: "synced" }), now, true)).toBe(false);
     expect(isOfflineReportReadyForSync(queueItem({ syncStatus: "syncing" }), now, true)).toBe(false);
+  });
+});
+
+describe("offline report duplicate detection", () => {
+  it("finds an open queued report with the same clinic payload even when the client id differs", () => {
+    const existing = queueItem({
+      clientReportId: "already-queued-report",
+      submittedAt: "2026-05-03T07:50:00.000Z",
+      queuedAt: "2026-05-03T07:50:01.000Z",
+      updatedAt: "2026-05-03T07:50:01.000Z",
+      syncStatus: "retry_wait",
+      attemptCount: 1,
+      lastError: "Network unavailable",
+    });
+    const candidate = queueItem({
+      clientReportId: "new-client-report-id",
+      submittedAt: "2026-05-03T08:00:00.000Z",
+      queuedAt: "2026-05-03T08:00:00.000Z",
+      updatedAt: "2026-05-03T08:00:00.000Z",
+    });
+
+    expect(findMatchingOpenOfflineReport([existing], candidate)).toBe(existing);
+  });
+
+  it("ignores synced reports and payloads with meaningful differences", () => {
+    const existing = queueItem({
+      clientReportId: "already-synced-report",
+      syncStatus: "synced",
+    });
+    const differentStatus = queueItem({
+      clientReportId: "different-status-report",
+      status: "non_functional",
+    });
+    const candidate = queueItem({ clientReportId: "new-client-report-id" });
+
+    expect(
+      findMatchingOpenOfflineReport([existing, differentStatus], candidate),
+    ).toBeNull();
   });
 });
