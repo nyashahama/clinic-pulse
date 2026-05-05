@@ -73,8 +73,10 @@ export function ClinicFinder({
 
   useEffect(() => {
     let isCurrent = true;
+    const abortController = new AbortController();
 
     if (!selectedClinicRow) {
+      abortController.abort();
       return;
     }
 
@@ -82,6 +84,11 @@ export function ClinicFinder({
       sourceClinic: selectedClinicRow,
       localClinics: clinics,
       requestedService: service,
+      apiOptions: {
+        init: {
+          signal: abortController.signal,
+        },
+      },
       onFetchError: (error) => {
         console.warn("Unable to fetch backend finder alternatives.", error);
       },
@@ -96,6 +103,7 @@ export function ClinicFinder({
 
     return () => {
       isCurrent = false;
+      abortController.abort();
     };
   }, [clinics, recommendationKey, selectedClinicRow, service]);
 

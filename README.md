@@ -33,8 +33,8 @@ Default local values:
 DATABASE_URL=postgres://clinicpulse:clinicpulse@localhost:5432/clinicpulse?sslmode=disable
 CLINICPULSE_POSTGRES_PORT=5432
 CLINICPULSE_API_ADDR=:8080
-NEXT_PUBLIC_CLINICPULSE_API_BASE_URL=http://localhost:8080
 CLINICPULSE_API_BASE_URL=http://localhost:8080
+NEXT_PUBLIC_CLINICPULSE_API_BASE_URL=/api/clinicpulse
 CLINICPULSE_API_KEY_PEPPER=local-development-pepper
 CLINICPULSE_WEBHOOK_DELIVERY_ENABLED=false
 CLINICPULSE_ALLOW_DEMO_FALLBACK=false
@@ -153,7 +153,9 @@ Migrations live in `services/api/migrations`. The local auth seed lives in `serv
 
 ## Frontend Notes
 
-The frontend API clients default to `http://localhost:8080` through `NEXT_PUBLIC_CLINICPULSE_API_BASE_URL`.
+Server-side frontend calls use `CLINICPULSE_API_BASE_URL` to call the Go API directly. Browser-side frontend calls use `NEXT_PUBLIC_CLINICPULSE_API_BASE_URL`, which should normally stay on the same-origin proxy path `/api/clinicpulse`.
+
+The proxy is configured in `next.config.ts` and forwards `/api/clinicpulse/*` to `CLINICPULSE_API_BASE_URL`. This keeps client-side demo requests from depending on cross-origin browser access to the Go API.
 
 Server hydration can fall back to seeded demo state when allowed by `CLINICPULSE_ALLOW_DEMO_FALLBACK` or in non-production environments. Treat that as a demo resilience feature, not production error handling.
 

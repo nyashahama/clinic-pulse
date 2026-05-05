@@ -53,16 +53,30 @@ test.describe("phase-one demo route checklist", () => {
   test("renders protected district, clinic detail, field, and admin routes after login", async ({
     page,
   }) => {
+    const clientApiWarnings: string[] = [];
+    page.on("console", (message) => {
+      const text = message.text();
+      if (text.includes("Unable to fetch backend reroute alternatives")) {
+        clientApiWarnings.push(text);
+      }
+    });
+
     await signIn(page);
 
     await expect(page.getByRole("heading", { name: "Clinic table" })).toBeVisible();
     await expect(page.getByText("Report stream")).toBeVisible();
 
+    const alternativesResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/clinicpulse/v1/public/alternatives") &&
+        response.status() === 200,
+    );
     await page.goto("/demo/clinics/clinic-mamelodi-east");
     await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Mamelodi East Community Clinic" }),
     ).toBeVisible();
+    await alternativesResponse;
 
     await page.goto("/field");
     await expect(page.getByRole("heading", { name: "Mobile reporting flow" })).toBeVisible();
@@ -71,5 +85,6 @@ test.describe("phase-one demo route checklist", () => {
     await page.goto("/admin");
     await expect(page.getByRole("heading", { name: "Admin control deck" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Lead management" })).toBeVisible();
+    expect(clientApiWarnings).toEqual([]);
   });
 });

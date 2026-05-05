@@ -5,7 +5,8 @@ DATABASE_ADMIN_URL ?= postgres://clinicpulse:clinicpulse@localhost:$(POSTGRES_PO
 E2E_DATABASE_NAME ?= clinicpulse_e2e
 E2E_DATABASE_URL ?= postgres://clinicpulse:clinicpulse@localhost:$(E2E_POSTGRES_PORT)/$(E2E_DATABASE_NAME)?sslmode=disable
 E2E_DATABASE_ADMIN_URL ?= postgres://clinicpulse:clinicpulse@localhost:$(E2E_POSTGRES_PORT)/postgres?sslmode=disable
-NEXT_PUBLIC_CLINICPULSE_API_BASE_URL ?= http://localhost:8080
+CLINICPULSE_API_BASE_URL ?= http://localhost:8080
+NEXT_PUBLIC_CLINICPULSE_API_BASE_URL ?= /api/clinicpulse
 
 API_DIR := services/api
 MIGRATIONS := $(sort $(wildcard $(API_DIR)/migrations/*.sql))
@@ -61,7 +62,7 @@ dev-api:
 	cd "$(API_DIR)" && DATABASE_URL="$(DATABASE_URL)" go run ./cmd/api
 
 dev-web:
-	NEXT_PUBLIC_CLINICPULSE_API_BASE_URL="$(NEXT_PUBLIC_CLINICPULSE_API_BASE_URL)" npm run dev
+	CLINICPULSE_API_BASE_URL="$(CLINICPULSE_API_BASE_URL)" NEXT_PUBLIC_CLINICPULSE_API_BASE_URL="$(NEXT_PUBLIC_CLINICPULSE_API_BASE_URL)" npm run dev
 
 test-api:
 	cd "$(API_DIR)" && go test ./...

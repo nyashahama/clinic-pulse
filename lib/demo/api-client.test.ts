@@ -420,6 +420,53 @@ describe("ClinicPulse API client", () => {
     expect(fetchImpl.mock.calls[0][0]).toBe("https://env-api.example.test/base/v1/public/clinics");
   });
 
+  it("uses the private API base URL for server-side calls", async () => {
+    const previousPrivateBaseUrl = process.env.CLINICPULSE_API_BASE_URL;
+    const previousPublicBaseUrl = process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL;
+    process.env.CLINICPULSE_API_BASE_URL = "https://server-api.example.test/root";
+    process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL = "/api/clinicpulse";
+    const fetchImpl = mockFetch([]);
+
+    try {
+      await fetchClinics({ fetch: fetchImpl });
+    } finally {
+      if (previousPrivateBaseUrl === undefined) {
+        delete process.env.CLINICPULSE_API_BASE_URL;
+      } else {
+        process.env.CLINICPULSE_API_BASE_URL = previousPrivateBaseUrl;
+      }
+      if (previousPublicBaseUrl === undefined) {
+        delete process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL;
+      } else {
+        process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL = previousPublicBaseUrl;
+      }
+    }
+
+    expect(fetchImpl.mock.calls[0][0]).toBe("https://server-api.example.test/root/v1/public/clinics");
+  });
+
+  it("supports relative public API base URLs for browser calls", async () => {
+    const previousBaseUrl = process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL;
+    process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL = "/api/clinicpulse";
+    vi.stubGlobal("window", {});
+    const fetchImpl = mockFetch([]);
+
+    try {
+      await fetchAlternatives("clinic-1", "Primary care", { fetch: fetchImpl });
+    } finally {
+      vi.unstubAllGlobals();
+      if (previousBaseUrl === undefined) {
+        delete process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL;
+      } else {
+        process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL = previousBaseUrl;
+      }
+    }
+
+    expect(fetchImpl.mock.calls[0][0]).toBe(
+      "/api/clinicpulse/v1/public/alternatives?clinicId=clinic-1&service=Primary+care",
+    );
+  });
+
   it("does not add JSON content type for URLSearchParams bodies", async () => {
     const fetchImpl = mockFetch({});
 
