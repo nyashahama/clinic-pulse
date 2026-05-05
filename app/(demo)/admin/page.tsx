@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 
 import { getSessionCookieHeader } from "@/lib/auth/session";
+import { fetchAdminDemoLeads } from "@/lib/demo/api-client";
 import {
   loadPartnerReadiness,
   loadSyncSummaryForRole,
@@ -21,15 +22,17 @@ export default async function AdminPage() {
         }
       : undefined,
   };
-  const [syncSummary, partnerReadiness] = await Promise.all([
+  const [syncSummary, partnerReadiness, backendLeads] = await Promise.all([
     loadSyncSummaryForRole(session.role, apiOptions),
     loadPartnerReadiness(apiOptions),
+    fetchAdminDemoLeads(apiOptions).catch(() => []),
   ]);
 
   return (
     <AdminPageClient
       syncSummary={syncSummary}
       partnerReadiness={partnerReadiness}
+      backendLeads={backendLeads.map((lead) => ({ ...lead, id: String(lead.id) }))}
     />
   );
 }

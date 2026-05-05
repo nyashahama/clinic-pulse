@@ -106,13 +106,15 @@ The current phase-one route checklist is encoded in `lib/demo/demo-runbook.ts`.
 Review these routes on desktop and mobile:
 
 - `/` - landing page and entry into booking or demo workspace
-- `/book-demo` - booking flow and local lead capture
+- `/book-demo` - booking flow and lead capture
 - `/book-demo/thanks` - confirmation and navigation into demo/admin/finder
 - `/demo` - district console with clinic status, incidents, rerouting, and scenario controls
 - `/demo/clinics/clinic-mamelodi-east` - clinic evidence and escalation context
 - `/finder` - public clinic availability search
 - `/field` - offline-friendly report flow and sync
 - `/admin` - lead pipeline, export preview, API preview, roadmap, partner readiness, and pilot readiness
+
+Bookings in `/book-demo` are persisted through the backend when available and fall back to browser-local demo state if the API is unavailable.
 
 ## Useful Commands
 

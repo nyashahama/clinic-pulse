@@ -5,6 +5,7 @@ import {
   createDemoStoreInitialState,
   getDemoBackendHydrationSignature,
   mergeDemoBackendHydrationState,
+  mergeDemoLeadHydrationState,
 } from "@/lib/demo/demo-store";
 import { createInitialDemoState } from "@/lib/demo/scenarios";
 
@@ -127,6 +128,44 @@ describe("Demo store hydration", () => {
     expect(state.offlineQueue).toEqual(currentState.offlineQueue);
     expect(state.role).toBe("field_worker");
     expect(state.lastSyncAt).toBe("2026-05-01T06:42:00.000Z");
+  });
+
+  it("hydrates backend leads without duplicating existing lead ids", () => {
+    const state = createDemoStoreInitialState({
+      ...createInitialDemoState(),
+      leads: [
+        {
+          id: "42",
+          name: "Old Lead",
+          workEmail: "old@example.test",
+          organization: "Old Org",
+          role: "Ops",
+          interest: "government",
+          note: "",
+          createdAt: "2026-05-05T08:00:00.000Z",
+          status: "new",
+        },
+      ],
+    });
+
+    const next = mergeDemoLeadHydrationState(state, [
+      {
+        id: "42",
+        name: "Updated Lead",
+        workEmail: "updated@example.test",
+        organization: "Updated Org",
+        role: "Ops",
+        interest: "government",
+        note: "",
+        createdAt: "2026-05-05T08:00:00.000Z",
+        status: "contacted",
+      },
+    ]);
+
+    expect(next.leads).toHaveLength(1);
+    expect(next.leads[0]).toEqual(
+      expect.objectContaining({ name: "Updated Lead", status: "contacted" }),
+    );
   });
 
   it("signs only backend-owned hydration data for refresh detection", () => {

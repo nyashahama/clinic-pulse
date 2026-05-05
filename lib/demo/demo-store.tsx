@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -44,10 +45,13 @@ type DemoStoreValue = {
   queueOfflineReport: (report: QueueOfflineReportInput) => void;
   submitFieldReport: (report: SubmitFieldReportInput) => void;
   syncOfflineReports: () => void;
-  addDemoLead: (lead: AddDemoLeadInput) => void;
+  addDemoLead: (lead: DemoLeadInputWithId) => void;
+  hydrateDemoLeads: (leads: DemoLead[]) => void;
   updateLeadStatus: (leadId: string, status: DemoLeadStatus) => void;
   setRole: (role: DemoRole) => void;
 };
+
+type DemoLeadInputWithId = AddDemoLeadInput & { id?: DemoLead["id"] };
 
 type DemoAction =
   | { type: "reset"; state: DemoState }
@@ -57,7 +61,8 @@ type DemoAction =
   | { type: "queue_offline_report"; report: QueueOfflineReportInput }
   | { type: "submit_field_report"; report: SubmitFieldReportInput }
   | { type: "sync_offline_reports" }
-  | { type: "add_demo_lead"; lead: AddDemoLeadInput }
+  | { type: "add_demo_lead"; lead: DemoLeadInputWithId }
+  | { type: "hydrate_demo_leads"; leads: DemoLead[] }
   | { type: "update_lead_status"; leadId: string; status: DemoLeadStatus }
   | { type: "set_role"; role: DemoRole }
   | { type: "hydrate"; leads: DemoLead[]; offlineQueue: DemoState["offlineQueue"] };
@@ -99,6 +104,24 @@ export function mergeDemoBackendHydrationState(
     clinicStates: nextBackendState.clinicStates,
     reports: nextBackendState.reports,
     auditEvents: nextBackendState.auditEvents,
+  };
+}
+
+function normalizeLeadId(lead: DemoLead) {
+  return String(lead.id);
+}
+
+export function mergeDemoLeadHydrationState(
+  currentState: DemoState,
+  backendLeads: DemoLead[],
+): DemoState {
+  const backendIds = new Set(backendLeads.map(normalizeLeadId));
+  return {
+    ...currentState,
+    leads: [
+      ...backendLeads.map((lead) => ({ ...lead, id: normalizeLeadId(lead) })),
+      ...currentState.leads.filter((lead) => !backendIds.has(normalizeLeadId(lead))),
+    ],
   };
 }
 
@@ -184,18 +207,22 @@ function demoReducer(state: DemoState, action: DemoAction): DemoState {
         now,
       );
     case "add_demo_lead":
+      const lead = {
+        ...action.lead,
+        id: action.lead.id ? String(action.lead.id) : buildLeadId(),
+        createdAt: action.lead.createdAt ?? now,
+        status: action.lead.status ?? "new",
+      };
+
       return {
         ...state,
         leads: [
-          {
-            id: buildLeadId(),
-            createdAt: action.lead.createdAt ?? now,
-            status: action.lead.status ?? "new",
-            ...action.lead,
-          },
-          ...state.leads,
+          lead,
+          ...state.leads.filter((currentLead) => normalizeLeadId(currentLead) !== lead.id),
         ],
       };
+    case "hydrate_demo_leads":
+      return mergeDemoLeadHydrationState(state, action.leads);
     case "update_lead_status":
       return {
         ...state,
@@ -210,8 +237,7 @@ function demoReducer(state: DemoState, action: DemoAction): DemoState {
       };
     case "hydrate":
       return {
-        ...state,
-        leads: [...action.leads, ...state.leads],
+        ...mergeDemoLeadHydrationState(state, action.leads),
         offlineQueue: [...action.offlineQueue],
       };
     default:
@@ -273,32 +299,78 @@ export function DemoStoreProvider({
     saveStoredOfflineReports(state.offlineQueue);
   }, [state.offlineQueue]);
 
+  const resetDemo = useCallback(() => {
+    clearDemoStorage();
+    dispatch({
+      type: "reset",
+      state: resetState,
+    });
+  }, [resetState]);
+  const triggerStockout = useCallback(
+    (clinicId: string) => dispatch({ type: "trigger_stockout", clinicId }),
+    [],
+  );
+  const triggerStaffingShortage = useCallback(
+    (clinicId: string) => dispatch({ type: "trigger_staffing_shortage", clinicId }),
+    [],
+  );
+  const queueOfflineReport = useCallback(
+    (report: QueueOfflineReportInput) => dispatch({ type: "queue_offline_report", report }),
+    [],
+  );
+  const submitFieldReport = useCallback(
+    (report: SubmitFieldReportInput) => dispatch({ type: "submit_field_report", report }),
+    [],
+  );
+  const syncOfflineReports = useCallback(
+    () => dispatch({ type: "sync_offline_reports" }),
+    [],
+  );
+  const addDemoLead = useCallback(
+    (lead: DemoLeadInputWithId) => dispatch({ type: "add_demo_lead", lead }),
+    [],
+  );
+  const hydrateDemoLeads = useCallback(
+    (leads: DemoLead[]) => dispatch({ type: "hydrate_demo_leads", leads }),
+    [],
+  );
+  const updateLeadStatus = useCallback(
+    (leadId: string, status: DemoLeadStatus) =>
+      dispatch({ type: "update_lead_status", leadId, status }),
+    [],
+  );
+  const setRole = useCallback(
+    (role: DemoRole) => dispatch({ type: "set_role", role }),
+    [],
+  );
+
   const value = useMemo<DemoStoreValue>(
     () => ({
       state,
-      resetDemo: () => {
-        clearDemoStorage();
-        dispatch({
-          type: "reset",
-          state: resetState,
-        });
-      },
-      triggerStockout: (clinicId: string) =>
-        dispatch({ type: "trigger_stockout", clinicId }),
-      triggerStaffingShortage: (clinicId: string) =>
-        dispatch({ type: "trigger_staffing_shortage", clinicId }),
-      queueOfflineReport: (report: QueueOfflineReportInput) =>
-        dispatch({ type: "queue_offline_report", report }),
-      submitFieldReport: (report: SubmitFieldReportInput) =>
-        dispatch({ type: "submit_field_report", report }),
-      syncOfflineReports: () => dispatch({ type: "sync_offline_reports" }),
-      addDemoLead: (lead: AddDemoLeadInput) =>
-        dispatch({ type: "add_demo_lead", lead }),
-      updateLeadStatus: (leadId: string, status: DemoLeadStatus) =>
-        dispatch({ type: "update_lead_status", leadId, status }),
-      setRole: (role: DemoRole) => dispatch({ type: "set_role", role }),
+      resetDemo,
+      triggerStockout,
+      triggerStaffingShortage,
+      queueOfflineReport,
+      submitFieldReport,
+      syncOfflineReports,
+      addDemoLead,
+      hydrateDemoLeads,
+      updateLeadStatus,
+      setRole,
     }),
-    [resetState, state],
+    [
+      addDemoLead,
+      hydrateDemoLeads,
+      queueOfflineReport,
+      resetDemo,
+      setRole,
+      state,
+      submitFieldReport,
+      syncOfflineReports,
+      triggerStaffingShortage,
+      triggerStockout,
+      updateLeadStatus,
+    ],
   );
 
   return (
