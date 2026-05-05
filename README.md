@@ -31,6 +31,7 @@ Default local values:
 
 ```bash
 DATABASE_URL=postgres://clinicpulse:clinicpulse@localhost:5432/clinicpulse?sslmode=disable
+CLINICPULSE_POSTGRES_PORT=5432
 CLINICPULSE_API_ADDR=:8080
 NEXT_PUBLIC_CLINICPULSE_API_BASE_URL=http://localhost:8080
 CLINICPULSE_API_BASE_URL=http://localhost:8080
@@ -123,6 +124,7 @@ make dev-api        # run Go API on :8080
 make dev-web        # run Next.js on :3000
 make test-web       # run Vitest
 make test-api       # run Go tests
+make test-e2e       # reset isolated e2e DB and run Playwright smoke tests
 make lint           # run ESLint
 make build          # run Next production build
 make verify         # run web tests, lint, API tests, and production build
@@ -132,6 +134,7 @@ Direct equivalents:
 
 ```bash
 npm test
+npm run test:e2e
 npm run lint
 npm run build
 cd services/api && go test ./...
@@ -162,12 +165,22 @@ Before handing off a branch, run:
 make verify
 ```
 
+For browser smoke coverage, run:
+
+```bash
+make test-e2e
+```
+
+This target uses the isolated `clinicpulse_e2e` database and resets that database before running Playwright.
+It starts the compose Postgres service on host port `55432` by default, so it can run even when another local Postgres already occupies `5432`.
+
 At minimum, the branch should pass:
 
 - Vitest frontend tests
 - ESLint
 - Go API tests
 - Next.js production build
+- Playwright smoke tests before demo handoff or route-level UI changes
 
 ## Next Product Work
 
