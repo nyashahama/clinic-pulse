@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -535,6 +536,138 @@ func TestPublicAlternativesWorksWithoutCookieAndSanitizesNestedClinics(t *testin
 	assertPublicSafeResponse(t, rec.Body.String())
 	if !strings.Contains(rec.Body.String(), `"matchedService":"Primary care"`) {
 		t.Fatalf("expected ranked public alternative response, got %q", rec.Body.String())
+	}
+}
+
+func TestPublicDemoLeadCreate(t *testing.T) {
+	f := demoLeadFakeStore()
+	router := apihttp.NewRouter(f)
+	req := httptest.NewRequest(http.MethodPost, "/v1/public/demo-leads", strings.NewReader(`{
+		"name":"Nomsa Dlamini",
+		"workEmail":"nomsa@example.test",
+		"organization":"Health Access NGO",
+		"role":"Programme Lead",
+		"interest":"ngo",
+		"note":"Wants a walkthrough"
+	}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusCreated, rec.Code, rec.Body.String())
+	}
+	var got store.DemoLead
+	decodeJSON(t, rec, &got)
+	if got.Status != "new" || got.Source != "public_booking" || got.WorkEmail != "nomsa@example.test" {
+		t.Fatalf("unexpected public demo lead response: %#v", got)
+	}
+	if got.CreatedByUserID != nil {
+		t.Fatalf("expected public lead not to have creator, got %#v", got.CreatedByUserID)
+	}
+}
+
+func TestAdminDemoLeadRoutesRequireOrgAdmin(t *testing.T) {
+	router := newAuthenticatedTestRouter(t, demoLeadFakeStore())
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/demo-leads", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusForbidden, rec.Code, rec.Body.String())
+	}
+}
+
+func TestAdminDemoLeadManagement(t *testing.T) {
+	orgID := int64(77)
+	f := demoLeadFakeStore()
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, f))
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/demo-leads", strings.NewReader(`{
+		"name":"Asha Patel",
+		"workEmail":"asha@example.test",
+		"organization":"Metro Clinic Group",
+		"role":"Operations Director",
+		"interest":"clinic_operator",
+		"note":"Manual follow-up"
+	}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusCreated, rec.Code, rec.Body.String())
+	}
+	var created store.DemoLead
+	decodeJSON(t, rec, &created)
+	if created.ID == 0 || created.Status != "new" || created.Source != "manual_admin" {
+		t.Fatalf("unexpected created lead response: %#v", created)
+	}
+	if created.CreatedByUserID == nil || *created.CreatedByUserID != 42 {
+		t.Fatalf("expected created lead to record admin user 42, got %#v", created.CreatedByUserID)
+	}
+
+	req = newAuthenticatedRequest(t, http.MethodPatch, "/v1/admin/demo-leads/"+strconv.FormatInt(created.ID, 10), strings.NewReader(`{"status":"contacted"}`))
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	var updated store.DemoLead
+	decodeJSON(t, rec, &updated)
+	if updated.ID != created.ID || updated.Status != "contacted" {
+		t.Fatalf("unexpected updated lead response: %#v", updated)
+	}
+
+	req = newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/demo-leads", nil)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	var leads []store.DemoLead
+	decodeJSON(t, rec, &leads)
+	if len(leads) != 1 || leads[0].ID != created.ID || leads[0].Status != "contacted" {
+		t.Fatalf("expected listed lead with updated status, got %#v", leads)
+	}
+}
+
+func TestAdminDemoLeadValidationAndMissingLeadErrors(t *testing.T) {
+	orgID := int64(77)
+	f := demoLeadFakeStore()
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, f))
+
+	tests := []struct {
+		name   string
+		method string
+		path   string
+		body   string
+		want   int
+		code   string
+	}{
+		{name: "invalid patch lead id", method: http.MethodPatch, path: "/v1/admin/demo-leads/not-a-number", body: `{"status":"contacted"}`, want: http.StatusBadRequest, code: "validation_error"},
+		{name: "missing lead", method: http.MethodPatch, path: "/v1/admin/demo-leads/404", body: `{"status":"contacted"}`, want: http.StatusNotFound, code: "not_found"},
+		{name: "invalid create interest", method: http.MethodPost, path: "/v1/admin/demo-leads", body: `{"name":"Bad","workEmail":"bad@example.test","organization":"Org","role":"Role","interest":"bad","status":"new"}`, want: http.StatusBadRequest, code: "validation_error"},
+		{name: "invalid create status", method: http.MethodPost, path: "/v1/admin/demo-leads", body: `{"name":"Bad","workEmail":"bad@example.test","organization":"Org","role":"Role","interest":"ngo","status":"bad"}`, want: http.StatusBadRequest, code: "validation_error"},
+		{name: "invalid patch status", method: http.MethodPatch, path: "/v1/admin/demo-leads/1", body: `{"status":"bad"}`, want: http.StatusBadRequest, code: "validation_error"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := newAuthenticatedRequest(t, tt.method, tt.path, strings.NewReader(tt.body))
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != tt.want {
+				t.Fatalf("expected status %d, got %d with body %s", tt.want, rec.Code, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), `"code":"`+tt.code+`"`) {
+				t.Fatalf("expected error code %q, got %s", tt.code, rec.Body.String())
+			}
+		})
 	}
 }
 
@@ -3797,6 +3930,8 @@ type fakeStore struct {
 	partnerExportRun                      store.PartnerExportRun
 	partnerReadinessSnapshot              store.PartnerReadinessSnapshot
 	integrationStatusChecks               []store.IntegrationStatusCheck
+	demoLeads                             *[]store.DemoLead
+	demoLeadMu                            *sync.Mutex
 	upsertIntegrationStatusCheckInputs    *[]store.UpsertIntegrationStatusCheckInput
 	upsertIntegrationStatusChecks         *[]store.IntegrationStatusCheck
 	createInput                           *store.CreateReportInput
@@ -3872,6 +4007,7 @@ type fakeStore struct {
 	partnerExportRunErr                   error
 	integrationStatusChecksErr            error
 	upsertIntegrationStatusCheckErr       error
+	demoLeadErr                           error
 	readyErr                              error
 }
 
@@ -4367,6 +4503,154 @@ func (f fakeStore) ListIntegrationStatusChecks(context.Context, *int64) ([]store
 		return *f.upsertIntegrationStatusChecks, f.integrationStatusChecksErr
 	}
 	return f.integrationStatusChecks, f.integrationStatusChecksErr
+}
+
+func (f fakeStore) ListDemoLeads(context.Context) ([]store.DemoLead, error) {
+	if f.demoLeadErr != nil {
+		return nil, f.demoLeadErr
+	}
+	if f.demoLeads == nil {
+		return nil, nil
+	}
+	f.lockDemoLeads()
+	defer f.unlockDemoLeads()
+	leads := append([]store.DemoLead(nil), (*f.demoLeads)...)
+	return leads, nil
+}
+
+func (f fakeStore) CreateDemoLead(_ context.Context, input store.CreateDemoLeadInput) (store.DemoLead, error) {
+	if f.demoLeadErr != nil {
+		return store.DemoLead{}, f.demoLeadErr
+	}
+	if err := validateFakeDemoLeadInput(input); err != nil {
+		return store.DemoLead{}, err
+	}
+	if input.Status == "" {
+		input.Status = "new"
+	}
+	if input.Source == "" {
+		input.Source = "public_booking"
+	}
+	if input.CreatedAt.IsZero() {
+		input.CreatedAt = time.Now().UTC()
+	}
+	lead := store.DemoLead{
+		ID:              1,
+		Name:            strings.TrimSpace(input.Name),
+		WorkEmail:       strings.TrimSpace(input.WorkEmail),
+		Organization:    strings.TrimSpace(input.Organization),
+		Role:            strings.TrimSpace(input.Role),
+		Interest:        strings.TrimSpace(input.Interest),
+		Note:            strings.TrimSpace(input.Note),
+		Status:          strings.TrimSpace(input.Status),
+		Source:          strings.TrimSpace(input.Source),
+		CreatedByUserID: input.CreatedByUserID,
+		CreatedAt:       input.CreatedAt,
+		UpdatedAt:       input.CreatedAt,
+	}
+	if f.demoLeads != nil {
+		f.lockDemoLeads()
+		defer f.unlockDemoLeads()
+		lead.ID = int64(len(*f.demoLeads) + 1)
+		*f.demoLeads = append([]store.DemoLead{lead}, (*f.demoLeads)...)
+	}
+	return lead, nil
+}
+
+func (f fakeStore) UpdateDemoLeadStatus(_ context.Context, input store.UpdateDemoLeadStatusInput) (store.DemoLead, error) {
+	status := strings.TrimSpace(input.Status)
+	if !fakeDemoLeadStatuses[status] {
+		return store.DemoLead{}, store.ErrInvalidDemoLeadStatus
+	}
+	if f.demoLeadErr != nil {
+		return store.DemoLead{}, f.demoLeadErr
+	}
+	if f.demoLeads == nil {
+		return store.DemoLead{}, pgx.ErrNoRows
+	}
+	updatedAt := input.UpdatedAt
+	if updatedAt.IsZero() {
+		updatedAt = time.Now().UTC()
+	}
+	f.lockDemoLeads()
+	defer f.unlockDemoLeads()
+	for index := range *f.demoLeads {
+		if (*f.demoLeads)[index].ID != input.ID {
+			continue
+		}
+		(*f.demoLeads)[index].Status = status
+		(*f.demoLeads)[index].UpdatedAt = updatedAt
+		return (*f.demoLeads)[index], nil
+	}
+	return store.DemoLead{}, pgx.ErrNoRows
+}
+
+func (f fakeStore) lockDemoLeads() {
+	if f.demoLeadMu != nil {
+		f.demoLeadMu.Lock()
+	}
+}
+
+func (f fakeStore) unlockDemoLeads() {
+	if f.demoLeadMu != nil {
+		f.demoLeadMu.Unlock()
+	}
+}
+
+var fakeDemoLeadInterests = map[string]bool{
+	"government":      true,
+	"ngo":             true,
+	"investor":        true,
+	"clinic_operator": true,
+	"other":           true,
+}
+
+var fakeDemoLeadStatuses = map[string]bool{
+	"new":       true,
+	"contacted": true,
+	"scheduled": true,
+	"completed": true,
+}
+
+var fakeDemoLeadSources = map[string]bool{
+	"public_booking": true,
+	"manual_admin":   true,
+	"seed":           true,
+}
+
+func validateFakeDemoLeadInput(input store.CreateDemoLeadInput) error {
+	if strings.TrimSpace(input.Name) == "" ||
+		strings.TrimSpace(input.WorkEmail) == "" ||
+		strings.TrimSpace(input.Organization) == "" ||
+		strings.TrimSpace(input.Role) == "" {
+		return store.ErrInvalidDemoLeadRequiredFields
+	}
+	if !fakeDemoLeadInterests[strings.TrimSpace(input.Interest)] {
+		return store.ErrInvalidDemoLeadInterest
+	}
+	status := strings.TrimSpace(input.Status)
+	if status == "" {
+		status = "new"
+	}
+	if !fakeDemoLeadStatuses[status] {
+		return store.ErrInvalidDemoLeadStatus
+	}
+	source := strings.TrimSpace(input.Source)
+	if source == "" {
+		source = "public_booking"
+	}
+	if !fakeDemoLeadSources[source] {
+		return store.ErrInvalidDemoLeadSource
+	}
+	return nil
+}
+
+func demoLeadFakeStore() fakeStore {
+	leads := []store.DemoLead{}
+	return fakeStore{
+		demoLeads:  &leads,
+		demoLeadMu: &sync.Mutex{},
+	}
 }
 
 func validReportJSON() string {
