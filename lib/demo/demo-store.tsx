@@ -111,16 +111,44 @@ function normalizeLeadId(lead: DemoLead) {
   return String(lead.id);
 }
 
+function normalizeLeadEmail(lead: DemoLead) {
+  return lead.workEmail.trim().toLowerCase();
+}
+
 export function mergeDemoLeadHydrationState(
   currentState: DemoState,
   backendLeads: DemoLead[],
 ): DemoState {
   const backendIds = new Set(backendLeads.map(normalizeLeadId));
+  const backendEmails = new Set(backendLeads.map(normalizeLeadEmail).filter(Boolean));
   return {
     ...currentState,
     leads: [
       ...backendLeads.map((lead) => ({ ...lead, id: normalizeLeadId(lead) })),
-      ...currentState.leads.filter((lead) => !backendIds.has(normalizeLeadId(lead))),
+      ...currentState.leads.filter(
+        (lead) =>
+          !backendIds.has(normalizeLeadId(lead)) && !backendEmails.has(normalizeLeadEmail(lead)),
+      ),
+    ],
+  };
+}
+
+export function mergeStoredDemoLeadHydrationState(
+  currentState: DemoState,
+  storedLeads: DemoLead[],
+): DemoState {
+  const currentIds = new Set(currentState.leads.map(normalizeLeadId));
+  const currentEmails = new Set(currentState.leads.map(normalizeLeadEmail).filter(Boolean));
+  return {
+    ...currentState,
+    leads: [
+      ...currentState.leads,
+      ...storedLeads
+        .map((lead) => ({ ...lead, id: normalizeLeadId(lead) }))
+        .filter(
+          (lead) =>
+            !currentIds.has(normalizeLeadId(lead)) && !currentEmails.has(normalizeLeadEmail(lead)),
+        ),
     ],
   };
 }
@@ -237,7 +265,7 @@ function demoReducer(state: DemoState, action: DemoAction): DemoState {
       };
     case "hydrate":
       return {
-        ...mergeDemoLeadHydrationState(state, action.leads),
+        ...mergeStoredDemoLeadHydrationState(state, action.leads),
         offlineQueue: [...action.offlineQueue],
       };
     default:

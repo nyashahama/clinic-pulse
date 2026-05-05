@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type TestInfo } from "@playwright/test";
 
 import { phaseOneDemoRouteChecklist } from "../../lib/demo/demo-runbook";
 
@@ -13,6 +13,38 @@ async function signIn(page: Page) {
   await page.getByLabel("Password").fill(demoAccount.password);
   await page.getByRole("button", { name: "Log in" }).click();
   await expect(page).toHaveURL(/\/demo$/);
+}
+
+function createSmokeLead(testInfo: TestInfo) {
+  const leadId = `${testInfo.project.name}-${testInfo.workerIndex}-${Date.now()}`.replace(
+    /[^a-z0-9-]/gi,
+    "-",
+  );
+
+  return {
+    name: `Smoke Lead ${leadId}`,
+    workEmail: `smoke.lead.${leadId}@example.test`,
+    organization: `Smoke District ${leadId}`,
+    role: "Operations lead",
+  };
+}
+
+async function submitBooking(page: Page, lead: ReturnType<typeof createSmokeLead>) {
+  await page.goto("/?booking=1");
+  await page.getByLabel("Name").fill(lead.name);
+  await page.getByLabel("Work email").fill(lead.workEmail);
+  await page.getByLabel("Organization").fill(lead.organization);
+  await page.getByLabel("Role").fill(lead.role);
+
+  const createLeadResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/clinicpulse/v1/public/demo-leads") &&
+      response.status() === 201,
+  );
+  await page.getByRole("button", { name: "Submit request" }).click();
+  const createdLead = (await (await createLeadResponse).json()) as { workEmail?: string };
+  expect(createdLead.workEmail).toBe(lead.workEmail);
+  await expect(page.getByRole("heading", { name: `Thanks, ${lead.name}` })).toBeVisible();
 }
 
 test.describe("phase-one demo route checklist", () => {
@@ -52,7 +84,7 @@ test.describe("phase-one demo route checklist", () => {
 
   test("renders protected district, clinic detail, field, and admin routes after login", async ({
     page,
-  }) => {
+  }, testInfo) => {
     const clientApiWarnings: string[] = [];
     page.on("console", (message) => {
       const text = message.text();
@@ -61,6 +93,9 @@ test.describe("phase-one demo route checklist", () => {
       }
     });
 
+    const smokeLead = createSmokeLead(testInfo);
+    await submitBooking(page, smokeLead);
+    await page.evaluate(() => window.localStorage.removeItem("clinicpulse.demo.leads"));
     await signIn(page);
 
     await expect(page.getByRole("heading", { name: "Clinic table" })).toBeVisible();
@@ -82,9 +117,17 @@ test.describe("phase-one demo route checklist", () => {
     await expect(page.getByRole("heading", { name: "Mobile reporting flow" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Submit clinic status" })).toBeVisible();
 
+    const adminLeadsResponse = await page.request.get("/api/clinicpulse/v1/admin/demo-leads");
+    expect(adminLeadsResponse.status()).toBe(200);
+    const adminLeads = (await adminLeadsResponse.json()) as Array<{ workEmail?: string }>;
+    expect(adminLeads.some((lead) => lead.workEmail === smokeLead.workEmail)).toBe(true);
+
     await page.goto("/admin");
     await expect(page.getByRole("heading", { name: "Admin control deck" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Lead management" })).toBeVisible();
+    const leadTable = page.getByRole("table");
+    await expect(leadTable.getByText(smokeLead.name).first()).toBeVisible();
+    await expect(leadTable.getByText(smokeLead.workEmail).first()).toBeVisible();
     expect(clientApiWarnings).toEqual([]);
   });
 });

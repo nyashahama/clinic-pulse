@@ -6,6 +6,7 @@ import {
   getDemoBackendHydrationSignature,
   mergeDemoBackendHydrationState,
   mergeDemoLeadHydrationState,
+  mergeStoredDemoLeadHydrationState,
 } from "@/lib/demo/demo-store";
 import { createInitialDemoState } from "@/lib/demo/scenarios";
 
@@ -166,6 +167,45 @@ describe("Demo store hydration", () => {
     expect(next.leads[0]).toEqual(
       expect.objectContaining({ name: "Updated Lead", status: "contacted" }),
     );
+  });
+
+  it("hydrates backend seeded leads without duplicating local fallback seeds", () => {
+    const state = createDemoStoreInitialState();
+    const backendSeedLead = {
+      ...state.leads[0],
+      id: "101",
+      status: "completed" as const,
+    };
+
+    const next = mergeDemoLeadHydrationState(state, [backendSeedLead]);
+
+    expect(next.leads.filter((lead) => lead.workEmail === backendSeedLead.workEmail)).toHaveLength(
+      1,
+    );
+    expect(next.leads[0]).toEqual(expect.objectContaining({ id: "101", status: "completed" }));
+  });
+
+  it("hydrates stored leads without replacing matching backend leads", () => {
+    const state = createDemoStoreInitialState();
+    const backendSeedLead = {
+      ...state.leads[0],
+      id: "101",
+      status: "completed" as const,
+    };
+    const backendState = mergeDemoLeadHydrationState(state, [backendSeedLead]);
+
+    const next = mergeStoredDemoLeadHydrationState(backendState, [
+      {
+        ...state.leads[0],
+        id: "lead-001",
+        status: "new",
+      },
+    ]);
+
+    expect(next.leads.filter((lead) => lead.workEmail === backendSeedLead.workEmail)).toHaveLength(
+      1,
+    );
+    expect(next.leads[0]).toEqual(expect.objectContaining({ id: "101", status: "completed" }));
   });
 
   it("signs only backend-owned hydration data for refresh detection", () => {

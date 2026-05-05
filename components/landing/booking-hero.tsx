@@ -548,7 +548,7 @@ function BookingPanel({
           className="mt-5 h-11 w-full rounded-lg bg-neutral-950 text-white hover:bg-neutral-800"
           disabled={isSubmitDisabled}
         >
-          {isSubmitting ? "Scheduling..." : "Confirm demo"}
+          {isSubmitting ? "Scheduling..." : "Submit request"}
           {!isSubmitting ? <Check className="size-4" /> : null}
         </Button>
       </form>
