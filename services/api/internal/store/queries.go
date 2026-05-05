@@ -785,7 +785,7 @@ ORDER BY created_at DESC, id DESC`
 UPDATE demo_leads
 SET
     status = $2,
-    updated_at = $3
+    updated_at = GREATEST($3, created_at)
 WHERE id = $1
 RETURNING
     id,
