@@ -39,10 +39,12 @@ import {
   type OneTimePartnerWebhookSecret,
 } from "@/lib/demo/partner-readiness";
 import {
+  createAdminDemoLeadAction,
   createPartnerApiKeyAction,
   createPartnerExportAction,
   createPartnerWebhookAction,
   testPartnerWebhookAction,
+  updateAdminDemoLeadStatusAction,
 } from "./actions";
 
 type LeadStatusCount = Record<DemoLead["status"], number>;
@@ -99,6 +101,7 @@ function buildExportPayload(state: DemoState) {
 type AdminPageProps = {
   syncSummary: SyncSummaryApiResponse | null;
   partnerReadiness: PartnerReadinessApiResponse;
+  backendLeads: DemoLead[];
 };
 
 type PartnerReadinessAction =
@@ -118,6 +121,7 @@ function getPartnerActionErrorMessage(error: unknown) {
 export default function AdminPage({
   syncSummary,
   partnerReadiness,
+  backendLeads,
 }: AdminPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -125,6 +129,7 @@ export default function AdminPage({
     state,
     resetDemo,
     addDemoLead,
+    hydrateDemoLeads,
     updateLeadStatus,
   } = useDemoStore();
 
@@ -144,11 +149,13 @@ export default function AdminPage({
   const [partnerActionPending, setPartnerActionPending] =
     useState<PartnerReadinessAction | null>(null);
   const [partnerActionError, setPartnerActionError] = useState<string | null>(null);
+  const [leadPersistenceError, setLeadPersistenceError] = useState<string | null>(null);
   const [oneTimeApiKeySecret, setOneTimeApiKeySecret] =
     useState<OneTimePartnerApiKeySecret | null>(null);
   const [oneTimeWebhookSecret, setOneTimeWebhookSecret] =
     useState<OneTimePartnerWebhookSecret | null>(null);
   const partnerActionPendingRef = useRef<PartnerReadinessAction | null>(null);
+  const leadStatusRequestIdsRef = useRef(new Map<string, number>());
 
   const leadSorted = useMemo(
     () => [...state.leads].sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
@@ -156,13 +163,41 @@ export default function AdminPage({
   );
   const partnerActionInFlight = partnerActionPending !== null;
 
-  const handleLeadSubmit = (lead: DemoLeadFormInput) => {
-    addDemoLead({
-      ...lead,
-      createdAt: new Date().toISOString(),
-      status: "new",
-    });
+  useEffect(() => {
+    hydrateDemoLeads(backendLeads);
+  }, [backendLeads, hydrateDemoLeads]);
+
+  const handleLeadSubmit = async (lead: DemoLeadFormInput) => {
+    setLeadPersistenceError(null);
+    try {
+      const created = await createAdminDemoLeadAction({ ...lead, status: "new" });
+      addDemoLead({ ...created, id: String(created.id) });
+    } catch (error) {
+      setLeadPersistenceError(getPartnerActionErrorMessage(error));
+      addDemoLead({ ...lead, createdAt: new Date().toISOString(), status: "new" });
+    }
     setManualLeadOpen(false);
+  };
+
+  const handleLeadStatusChange = async (leadId: string, status: DemoLead["status"]) => {
+    const normalizedLeadId = String(leadId);
+    const requestId = (leadStatusRequestIdsRef.current.get(normalizedLeadId) ?? 0) + 1;
+    leadStatusRequestIdsRef.current.set(normalizedLeadId, requestId);
+    setLeadPersistenceError(null);
+
+    try {
+      const updated = await updateAdminDemoLeadStatusAction(normalizedLeadId, { status });
+      if (leadStatusRequestIdsRef.current.get(normalizedLeadId) !== requestId) {
+        return;
+      }
+      hydrateDemoLeads([{ ...updated, id: String(updated.id) }]);
+    } catch (error) {
+      if (leadStatusRequestIdsRef.current.get(normalizedLeadId) !== requestId) {
+        return;
+      }
+      setLeadPersistenceError(getPartnerActionErrorMessage(error));
+      updateLeadStatus(normalizedLeadId, status);
+    }
   };
 
   const runPartnerAction = async <Result,>(
@@ -391,10 +426,16 @@ export default function AdminPage({
           />
         </section>
 
+        {leadPersistenceError ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            {leadPersistenceError}
+          </div>
+        ) : null}
+
         <DemoLeadTable
           leads={leadSorted}
           onLeadStatusChange={(leadId, status) => {
-            updateLeadStatus(leadId, status);
+            void handleLeadStatusChange(leadId, status);
           }}
         />
 
@@ -435,7 +476,8 @@ export default function AdminPage({
             </li>
             <li className="rounded-lg border border-border-subtle bg-bg-subtle px-3 py-2">
               <span className="font-medium text-content-emphasis">Lead capture:</span>{" "}
-              Bookings in <span className="font-mono">/book-demo</span> are persisted in local storage.
+              Bookings in <span className="font-mono">/book-demo</span> persist through the backend
+              with a browser-local fallback.
             </li>
             <li className="rounded-lg border border-border-subtle bg-bg-subtle px-3 py-2">
               <span className="font-medium text-content-emphasis">Admin proof:</span>{" "}

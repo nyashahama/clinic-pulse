@@ -244,6 +244,40 @@ type PartnerReadinessSnapshot struct {
 	IntegrationChecks    []IntegrationStatusCheck     `json:"integrationChecks"`
 }
 
+type DemoLead struct {
+	ID              int64     `json:"id"`
+	Name            string    `json:"name"`
+	WorkEmail       string    `json:"workEmail"`
+	Organization    string    `json:"organization"`
+	Role            string    `json:"role"`
+	Interest        string    `json:"interest"`
+	Note            string    `json:"note"`
+	Status          string    `json:"status"`
+	Source          string    `json:"source"`
+	CreatedByUserID *int64    `json:"createdByUserId,omitempty"`
+	CreatedAt       time.Time `json:"createdAt"`
+	UpdatedAt       time.Time `json:"updatedAt"`
+}
+
+type CreateDemoLeadInput struct {
+	Name            string    `json:"name"`
+	WorkEmail       string    `json:"workEmail"`
+	Organization    string    `json:"organization"`
+	Role            string    `json:"role"`
+	Interest        string    `json:"interest"`
+	Note            string    `json:"note"`
+	Status          string    `json:"status"`
+	Source          string    `json:"source"`
+	CreatedByUserID *int64    `json:"createdByUserId,omitempty"`
+	CreatedAt       time.Time `json:"createdAt"`
+}
+
+type UpdateDemoLeadStatusInput struct {
+	ID        int64     `json:"id"`
+	Status    string    `json:"status"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
 type AuditEvent struct {
 	ID             int64          `json:"id"`
 	ExternalID     *string        `json:"externalId,omitempty"`

@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useRouter } from "next/navigation";
 
 import { FieldClinicList } from "@/components/demo/field-clinic-list";
@@ -39,6 +46,28 @@ const OFFLINE_SAVED_MESSAGE =
   "Report saved offline. It will retry when connectivity returns.";
 const OFFLINE_DUPLICATE_MESSAGE =
   "A matching report is already in the device queue.";
+
+function subscribeToOnlineStatus(onStoreChange: () => void) {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  window.addEventListener("online", onStoreChange);
+  window.addEventListener("offline", onStoreChange);
+
+  return () => {
+    window.removeEventListener("online", onStoreChange);
+    window.removeEventListener("offline", onStoreChange);
+  };
+}
+
+function getOnlineSnapshot() {
+  return typeof navigator === "undefined" ? true : navigator.onLine;
+}
+
+function getServerOnlineSnapshot() {
+  return true;
+}
 
 function createClientReportId() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -167,9 +196,13 @@ export default function FieldPageClient() {
     clinics[0]?.id ?? null,
   );
   const [offlineReports, setOfflineReports] = useState<OfflineReportQueueItem[]>([]);
-  const [isOnline, setIsOnline] = useState(() =>
-    typeof navigator === "undefined" ? true : navigator.onLine,
+  const browserIsOnline = useSyncExternalStore(
+    subscribeToOnlineStatus,
+    getOnlineSnapshot,
+    getServerOnlineSnapshot,
   );
+  const [onlineOverride, setOnlineOverride] = useState<boolean | null>(null);
+  const isOnline = onlineOverride ?? browserIsOnline;
   const [submitting, setSubmitting] = useState(false);
   const submitInFlight = useRef(false);
   const syncInFlight = useRef(false);
@@ -354,28 +387,14 @@ export default function FieldPageClient() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const handleOnline = () => {
-      setIsOnline(true);
+    if (browserIsOnline) {
       void syncQueuedReports({ assumeOnline: true });
-    };
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
-  }, [syncQueuedReports]);
+    }
+  }, [browserIsOnline, syncQueuedReports]);
 
   const handleToggleOnline = () => {
     const nextOnline = !isOnline;
-    setIsOnline(nextOnline);
+    setOnlineOverride(nextOnline);
 
     if (nextOnline) {
       void syncQueuedReports({ assumeOnline: true });

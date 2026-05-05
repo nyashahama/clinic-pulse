@@ -88,6 +88,31 @@ func (h Handler) ListPublicAlternatives(w nethttp.ResponseWriter, r *nethttp.Req
 	RespondJSON(w, nethttp.StatusOK, publicAlternatives(service.RankAlternatives(source, candidates, serviceName)))
 }
 
+func (h Handler) CreatePublicDemoLead(w nethttp.ResponseWriter, r *nethttp.Request) {
+	var payload createDemoLeadRequest
+	if !decodeDemoLeadJSON(w, r, &payload) {
+		return
+	}
+
+	lead, err := h.store.CreateDemoLead(r.Context(), store.CreateDemoLeadInput{
+		Name:         payload.Name,
+		WorkEmail:    payload.WorkEmail,
+		Organization: payload.Organization,
+		Role:         payload.Role,
+		Interest:     payload.Interest,
+		Note:         payload.Note,
+		Status:       "new",
+		Source:       "public_booking",
+		CreatedAt:    time.Now().UTC(),
+	})
+	if err != nil {
+		respondDemoLeadMutationError(w, err, "failed to create demo lead")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusCreated, lead)
+}
+
 func publicClinicDetails(clinics []store.ClinicDetail) []publicClinicDetailResponse {
 	responses := make([]publicClinicDetailResponse, 0, len(clinics))
 	for _, clinic := range clinics {

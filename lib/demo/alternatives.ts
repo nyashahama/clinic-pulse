@@ -32,6 +32,10 @@ function findLocalClinic(clinics: ClinicRow[], clinicId: string) {
   return clinics.find((clinic) => clinic.id === clinicId);
 }
 
+function isCancelledRequest(error: unknown, signal: AbortSignal | null | undefined) {
+  return signal?.aborted === true || (error instanceof Error && error.name === "AbortError");
+}
+
 export function resolveAlternativeService(
   sourceClinic: ClinicRow,
   requestedService: string | undefined,
@@ -98,6 +102,10 @@ export async function loadAlternativeRecommendations({
       apiOptions,
     });
   } catch (error) {
+    if (isCancelledRequest(error, apiOptions?.init?.signal)) {
+      return [];
+    }
+
     onFetchError?.(error);
 
     // Development recovery only: keep the old client-side ranking available

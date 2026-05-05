@@ -28,6 +28,7 @@ import (
 const (
 	sessionCookieName                   = "clinicpulse_session"
 	sessionDuration                     = 12 * time.Hour
+	demoLeadJSONBodyLimit               = 64 * 1024
 	dummyPasswordHash                   = "$2a$10$7EqJtq98hPqEX7fNZaFWoOhiYv4gfyJ5v5e26nnbuoJ6PmwKzJxYy"
 	missingClientReportIDSyncExternalID = "missing-client-report-id"
 )
@@ -78,6 +79,9 @@ type ClinicStore interface {
 	ListPartnerWebhookEvents(ctx context.Context, organisationID *int64) ([]store.PartnerWebhookEvent, error)
 	UpsertIntegrationStatusCheck(ctx context.Context, input store.UpsertIntegrationStatusCheckInput) (store.IntegrationStatusCheck, error)
 	ListIntegrationStatusChecks(ctx context.Context, organisationID *int64) ([]store.IntegrationStatusCheck, error)
+	ListDemoLeads(ctx context.Context) ([]store.DemoLead, error)
+	CreateDemoLead(ctx context.Context, input store.CreateDemoLeadInput) (store.DemoLead, error)
+	UpdateDemoLeadStatus(ctx context.Context, input store.UpdateDemoLeadStatusInput) (store.DemoLead, error)
 }
 
 type HandlerConfig struct {
@@ -491,6 +495,89 @@ func (h Handler) ListAdminPartnerAPIKeys(w nethttp.ResponseWriter, r *nethttp.Re
 	}
 
 	RespondJSON(w, nethttp.StatusOK, apiKeys)
+}
+
+func (h Handler) ListAdminDemoLeads(w nethttp.ResponseWriter, r *nethttp.Request) {
+	if _, ok := PrincipalFromContext(r.Context()); !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	leads, err := h.store.ListDemoLeads(r.Context())
+	if err != nil {
+		respondStoreError(w, err, "failed to list demo leads")
+		return
+	}
+	if leads == nil {
+		leads = []store.DemoLead{}
+	}
+
+	RespondJSON(w, nethttp.StatusOK, leads)
+}
+
+func (h Handler) CreateAdminDemoLead(w nethttp.ResponseWriter, r *nethttp.Request) {
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+	var payload createDemoLeadRequest
+	if !decodeDemoLeadJSON(w, r, &payload) {
+		return
+	}
+
+	status := strings.TrimSpace(payload.Status)
+	if status == "" {
+		status = "new"
+	}
+	now := time.Now().UTC()
+	lead, err := h.store.CreateDemoLead(r.Context(), store.CreateDemoLeadInput{
+		Name:            payload.Name,
+		WorkEmail:       payload.WorkEmail,
+		Organization:    payload.Organization,
+		Role:            payload.Role,
+		Interest:        payload.Interest,
+		Note:            payload.Note,
+		Status:          status,
+		Source:          "manual_admin",
+		CreatedByUserID: &principal.UserID,
+		CreatedAt:       now,
+	})
+	if err != nil {
+		respondDemoLeadMutationError(w, err, "failed to create demo lead")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusCreated, lead)
+}
+
+func (h Handler) UpdateAdminDemoLeadStatus(w nethttp.ResponseWriter, r *nethttp.Request) {
+	if _, ok := PrincipalFromContext(r.Context()); !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	leadID, err := strconv.ParseInt(chi.URLParam(r, "leadId"), 10, 64)
+	if err != nil || leadID <= 0 {
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "leadId: leadId must be a positive integer")
+		return
+	}
+	var payload updateDemoLeadStatusRequest
+	if !decodeDemoLeadJSON(w, r, &payload) {
+		return
+	}
+
+	lead, err := h.store.UpdateDemoLeadStatus(r.Context(), store.UpdateDemoLeadStatusInput{
+		ID:        leadID,
+		Status:    payload.Status,
+		UpdatedAt: time.Now().UTC(),
+	})
+	if err != nil {
+		respondDemoLeadMutationError(w, err, "demo lead not found")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusOK, lead)
 }
 
 func (h Handler) RevokeAdminPartnerAPIKey(w nethttp.ResponseWriter, r *nethttp.Request) {
@@ -1268,6 +1355,21 @@ func respondPartnerAdminMutationError(w nethttp.ResponseWriter, err error, notFo
 	}
 }
 
+func respondDemoLeadMutationError(w nethttp.ResponseWriter, err error, notFoundMessage string) {
+	switch {
+	case errors.Is(err, store.ErrInvalidDemoLeadRequiredFields):
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "name, workEmail, organization, and role are required")
+	case errors.Is(err, store.ErrInvalidDemoLeadInterest):
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "interest: interest must be one of: government, ngo, investor, clinic_operator, other")
+	case errors.Is(err, store.ErrInvalidDemoLeadStatus):
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "status: status must be one of: new, contacted, scheduled, completed")
+	case errors.Is(err, store.ErrInvalidDemoLeadSource):
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "source: source must be one of: public_booking, manual_admin, seed")
+	default:
+		respondStoreError(w, err, notFoundMessage)
+	}
+}
+
 func parsePositiveInt64Param(w nethttp.ResponseWriter, r *nethttp.Request, paramName string, notFoundMessage string) (int64, bool) {
 	value, err := strconv.ParseInt(chi.URLParam(r, paramName), 10, 64)
 	if err != nil || value <= 0 {
@@ -1403,6 +1505,21 @@ func decodeSingleJSON(w nethttp.ResponseWriter, r *nethttp.Request, target any) 
 	var extra any
 	if err := decoder.Decode(&extra); err != io.EOF {
 		RespondError(w, nethttp.StatusBadRequest, "invalid_json", "invalid JSON request body")
+		return false
+	}
+	return true
+}
+
+func decodeDemoLeadJSON(w nethttp.ResponseWriter, r *nethttp.Request, target any) bool {
+	r.Body = nethttp.MaxBytesReader(w, r.Body, demoLeadJSONBodyLimit)
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(target); err != nil {
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "body: invalid JSON request body")
+		return false
+	}
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "body: invalid JSON request body")
 		return false
 	}
 	return true
@@ -1633,6 +1750,20 @@ type reviewReportRequest struct {
 type reviewReportResponse struct {
 	Report        store.Report         `json:"report"`
 	CurrentStatus *store.CurrentStatus `json:"currentStatus,omitempty"`
+}
+
+type createDemoLeadRequest struct {
+	Name         string `json:"name"`
+	WorkEmail    string `json:"workEmail"`
+	Organization string `json:"organization"`
+	Role         string `json:"role"`
+	Interest     string `json:"interest"`
+	Note         string `json:"note"`
+	Status       string `json:"status"`
+}
+
+type updateDemoLeadStatusRequest struct {
+	Status string `json:"status"`
 }
 
 type createPartnerAPIKeyRequest struct {

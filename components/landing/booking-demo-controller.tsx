@@ -16,6 +16,7 @@ import {
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { createPublicDemoLead } from "@/lib/demo/api-client";
 import { useDemoStore } from "@/lib/demo/demo-store";
 import {
   shouldOpenBookingModal,
@@ -94,7 +95,7 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
     setLead((current) => ({ ...current, [field]: value }));
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (isSubmitDisabled) {
@@ -111,22 +112,37 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
       .filter(Boolean)
       .join("\n");
 
-    addDemoLead({
+    const leadInput = {
       ...lead,
       name: lead.name.trim(),
       workEmail: lead.workEmail.trim(),
       organization: lead.organization.trim(),
       role: lead.role.trim(),
       note,
-      createdAt: new Date().toISOString(),
-      status: "new",
-    });
+    };
+
+    try {
+      const created = await createPublicDemoLead(leadInput);
+      addDemoLead({
+        ...created,
+        id: String(created.id),
+        createdAt: created.createdAt,
+        status: created.status,
+      });
+    } catch {
+      addDemoLead({
+        ...leadInput,
+        createdAt: new Date().toISOString(),
+        status: "new",
+      });
+    }
 
     router.push(
-      `/book-demo/thanks?name=${encodeURIComponent(lead.name)}&organization=${encodeURIComponent(
-        lead.organization,
+      `/book-demo/thanks?name=${encodeURIComponent(leadInput.name)}&organization=${encodeURIComponent(
+        leadInput.organization,
       )}`,
     );
+    setIsSubmitting(false);
   };
 
   return (
@@ -374,7 +390,7 @@ function BookingPanel({
           className="mt-5 h-11 w-full rounded-lg bg-neutral-950 text-white hover:bg-neutral-800"
           disabled={isSubmitDisabled}
         >
-          {isSubmitting ? "Scheduling..." : "Confirm demo"}
+          {isSubmitting ? "Scheduling..." : "Submit request"}
           {!isSubmitting ? <Check className="size-4" /> : null}
         </Button>
       </form>

@@ -16,3 +16,7 @@ var ErrInvalidPartnerWebhookStatus = errors.New("store: invalid partner webhook 
 var ErrInvalidPartnerWebhookEventStatus = errors.New("store: invalid partner webhook event status")
 var ErrInvalidPartnerExportFormat = errors.New("store: invalid partner export format")
 var ErrInvalidIntegrationStatus = errors.New("store: invalid integration status")
+var ErrInvalidDemoLeadRequiredFields = errors.New("store: demo lead required fields must be non-empty")
+var ErrInvalidDemoLeadInterest = errors.New("store: invalid demo lead interest")
+var ErrInvalidDemoLeadStatus = errors.New("store: invalid demo lead status")
+var ErrInvalidDemoLeadSource = errors.New("store: invalid demo lead source")
