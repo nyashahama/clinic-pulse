@@ -184,11 +184,12 @@ At minimum, the branch should pass:
 - Next.js production build
 - Playwright smoke tests before demo handoff or route-level UI changes
 
+GitHub Actions runs the frontend, backend, and browser smoke baselines through `.github/workflows/ci.yml`.
+
 ## Next Product Work
 
 The highest-leverage next work after this runbook is:
 
-1. Add Playwright smoke coverage for the phase-one route checklist.
-2. Persist booking leads and founder pipeline updates through the backend rather than only local demo state.
-3. Document and smoke-test the partner API, webhook, and export contracts already exposed by the Go router.
-4. Make seeded fallback behavior explicit per environment so staging and production failures are visible.
+1. Persist booking leads and founder pipeline updates through the backend rather than only local demo state.
+2. Document and smoke-test the partner API, webhook, and export contracts already exposed by the Go router.
+3. Make seeded fallback behavior explicit per environment so staging and production failures are visible.
