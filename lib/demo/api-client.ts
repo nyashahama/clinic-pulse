@@ -1,6 +1,8 @@
 import type {
   AlternativeApiResponse,
   ApiErrorResponse,
+  CreateDemoLeadApiInput,
+  DemoLeadApiResponse,
   CreatePartnerApiKeyApiInput,
   CreatePartnerApiKeyApiResponse,
   CreatePartnerExportApiInput,
@@ -20,6 +22,7 @@ import type {
   StalenessReconciliationApiResponse,
   SyncSummaryApiResponse,
   AuditEventApiResponse,
+  UpdateDemoLeadStatusApiInput,
 } from "@/lib/demo/api-types";
 
 const DEFAULT_API_BASE_URL = "http://localhost:8080";
@@ -243,6 +246,56 @@ export function reconcileStatusStaleness(options?: ClinicPulseApiClientOptions) 
     ["v1", "status", "reconcile-staleness"],
     options,
     { method: "POST" },
+  );
+}
+
+export function createPublicDemoLead(
+  input: CreateDemoLeadApiInput,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<DemoLeadApiResponse>(
+    ["v1", "public", "demo-leads"],
+    options,
+    {
+      body: JSON.stringify(input),
+      method: "POST",
+    },
+  );
+}
+
+export function fetchAdminDemoLeads(options?: ClinicPulseApiClientOptions) {
+  return requestClinicPulseApi<DemoLeadApiResponse[]>(
+    ["v1", "admin", "demo-leads"],
+    options,
+  );
+}
+
+export function createAdminDemoLead(
+  input: CreateDemoLeadApiInput,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<DemoLeadApiResponse>(
+    ["v1", "admin", "demo-leads"],
+    options,
+    {
+      body: JSON.stringify(input),
+      method: "POST",
+    },
+  );
+}
+
+export function updateAdminDemoLeadStatus(
+  leadId: number | string,
+  input: UpdateDemoLeadStatusApiInput,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<DemoLeadApiResponse>(
+    ["v1", "admin", "demo-leads", String(leadId)],
+    options,
+    {
+      body: JSON.stringify(input),
+      method: "PATCH",
+    },
   );
 }
 

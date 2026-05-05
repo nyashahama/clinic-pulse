@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ClinicPulseApiError,
   type ClinicPulseFetch,
+  createPublicDemoLead,
   createReport,
   createPartnerApiKey,
   createPartnerExport,
@@ -21,6 +22,7 @@ import {
   revokePartnerApiKey,
   syncOfflineReportsApi,
   testPartnerWebhook,
+  updateAdminDemoLeadStatus,
 } from "@/lib/demo/api-client";
 import type {
   CreatePartnerApiKeyApiInput,
@@ -175,6 +177,79 @@ describe("ClinicPulse API client", () => {
       "https://api.example.test/v1/status/reconcile-staleness",
     );
     expect(fetchImpl.mock.calls[0][1]).toMatchObject({ method: "POST" });
+  });
+
+  it("creates public demo leads through the public endpoint", async () => {
+    const fetchImpl = mockFetch({
+      id: 42,
+      name: "Buyer",
+      workEmail: "buyer@example.test",
+      organization: "District",
+      role: "Ops",
+      interest: "government",
+      note: "Requested slot",
+      status: "new",
+      source: "public_booking",
+      createdAt: "2026-05-05T08:00:00.000Z",
+      updatedAt: "2026-05-05T08:00:00.000Z",
+    });
+
+    await createPublicDemoLead(
+      {
+        name: "Buyer",
+        workEmail: "buyer@example.test",
+        organization: "District",
+        role: "Ops",
+        interest: "government",
+        note: "Requested slot",
+      },
+      { baseUrl: "https://api.example.test", fetch: fetchImpl },
+    );
+
+    expect(fetchImpl.mock.calls[0][0]).toBe("https://api.example.test/v1/public/demo-leads");
+    expect(fetchImpl.mock.calls[0][1]).toEqual(
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          name: "Buyer",
+          workEmail: "buyer@example.test",
+          organization: "District",
+          role: "Ops",
+          interest: "government",
+          note: "Requested slot",
+        }),
+      }),
+    );
+  });
+
+  it("updates admin demo lead status", async () => {
+    const fetchImpl = mockFetch({
+      id: 42,
+      name: "Buyer",
+      workEmail: "buyer@example.test",
+      organization: "District",
+      role: "Ops",
+      interest: "government",
+      note: "",
+      status: "completed",
+      source: "manual_admin",
+      createdAt: "2026-05-05T08:00:00.000Z",
+      updatedAt: "2026-05-05T09:00:00.000Z",
+    });
+
+    await updateAdminDemoLeadStatus(
+      42,
+      { status: "completed" },
+      { baseUrl: "https://api.example.test", fetch: fetchImpl },
+    );
+
+    expect(fetchImpl.mock.calls[0][0]).toBe("https://api.example.test/v1/admin/demo-leads/42");
+    expect(fetchImpl.mock.calls[0][1]).toEqual(
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ status: "completed" }),
+      }),
+    );
   });
 
   it("posts partner API key creation to the admin API keys endpoint", async () => {

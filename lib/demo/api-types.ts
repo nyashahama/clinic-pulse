@@ -1,6 +1,7 @@
 import type {
   AuditEvent,
   ClinicStatus,
+  DemoLead,
   Freshness,
   QueuePressure,
   StaffPressure,
@@ -237,6 +238,27 @@ export type PartnerExportRunApiResponse = {
   checksum: string;
   payload: Record<string, unknown>;
   createdAt: string;
+};
+
+export type DemoLeadApiResponse = Omit<DemoLead, "id"> & {
+  id: number | string;
+  source: "public_booking" | "manual_admin" | "seed" | string;
+  createdByUserId?: ApiNullable<number>;
+  updatedAt: string;
+};
+
+export type CreateDemoLeadApiInput = {
+  name: string;
+  workEmail: string;
+  organization: string;
+  role: string;
+  interest: DemoLead["interest"];
+  note?: string;
+  status?: DemoLead["status"];
+};
+
+export type UpdateDemoLeadStatusApiInput = {
+  status: DemoLead["status"];
 };
 
 export type IntegrationStatusCheckApiResponse = {
