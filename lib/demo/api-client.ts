@@ -23,6 +23,7 @@ import type {
 } from "@/lib/demo/api-types";
 
 const DEFAULT_API_BASE_URL = "http://localhost:8080";
+const DEFAULT_BROWSER_API_BASE_URL = "/api/clinicpulse";
 
 export type ClinicPulseApiClientOptions = {
   baseUrl?: string;
@@ -48,10 +49,18 @@ export class ClinicPulseApiError extends Error {
 
 function getDefaultBaseUrl() {
   if (typeof process !== "undefined") {
-    return process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL || DEFAULT_API_BASE_URL;
+    if (typeof window === "undefined") {
+      return (
+        process.env.CLINICPULSE_API_BASE_URL ||
+        process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL ||
+        DEFAULT_API_BASE_URL
+      );
+    }
+
+    return process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL || DEFAULT_BROWSER_API_BASE_URL;
   }
 
-  return DEFAULT_API_BASE_URL;
+  return DEFAULT_BROWSER_API_BASE_URL;
 }
 
 function getFetch(fetchImpl: ClinicPulseApiClientOptions["fetch"]) {
@@ -78,12 +87,20 @@ function buildApiUrl(
   const baseUrl = options.baseUrl ?? getDefaultBaseUrl();
   const trimmedBaseUrl = baseUrl.replace(/\/+$/g, "");
   const encodedPath = pathSegments.map((segment) => encodeURIComponent(segment)).join("/");
-  const url = new URL(`${trimmedBaseUrl}/${encodedPath}`);
+  const isRelativeBaseUrl = trimmedBaseUrl.startsWith("/");
+  const url = new URL(
+    `${trimmedBaseUrl}/${encodedPath}`,
+    isRelativeBaseUrl ? "http://clinicpulse.local" : undefined,
+  );
 
   if (query) {
     for (const [key, value] of Object.entries(query)) {
       url.searchParams.set(key, value);
     }
+  }
+
+  if (isRelativeBaseUrl) {
+    return `${url.pathname}${url.search}`;
   }
 
   return url.toString();
