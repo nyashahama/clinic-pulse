@@ -28,6 +28,7 @@ import (
 const (
 	sessionCookieName                   = "clinicpulse_session"
 	sessionDuration                     = 12 * time.Hour
+	demoLeadJSONBodyLimit               = 64 * 1024
 	dummyPasswordHash                   = "$2a$10$7EqJtq98hPqEX7fNZaFWoOhiYv4gfyJ5v5e26nnbuoJ6PmwKzJxYy"
 	missingClientReportIDSyncExternalID = "missing-client-report-id"
 )
@@ -551,6 +552,11 @@ func (h Handler) CreateAdminDemoLead(w nethttp.ResponseWriter, r *nethttp.Reques
 }
 
 func (h Handler) UpdateAdminDemoLeadStatus(w nethttp.ResponseWriter, r *nethttp.Request) {
+	if _, ok := PrincipalFromContext(r.Context()); !ok {
+		respondUnauthorized(w)
+		return
+	}
+
 	leadID, err := strconv.ParseInt(chi.URLParam(r, "leadId"), 10, 64)
 	if err != nil || leadID <= 0 {
 		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "leadId: leadId must be a positive integer")
@@ -1505,6 +1511,7 @@ func decodeSingleJSON(w nethttp.ResponseWriter, r *nethttp.Request, target any) 
 }
 
 func decodeDemoLeadJSON(w nethttp.ResponseWriter, r *nethttp.Request, target any) bool {
+	r.Body = nethttp.MaxBytesReader(w, r.Body, demoLeadJSONBodyLimit)
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(target); err != nil {
 		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "body: invalid JSON request body")

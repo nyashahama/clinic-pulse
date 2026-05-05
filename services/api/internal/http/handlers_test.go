@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 
 	"clinicpulse/services/api/internal/auth"
@@ -567,15 +568,67 @@ func TestPublicDemoLeadCreate(t *testing.T) {
 	}
 }
 
+func TestPublicDemoLeadCreateRejectsMalformedAndOversizedJSON(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+	}{
+		{
+			name: "malformed json",
+			body: `{"name":`,
+		},
+		{
+			name: "oversized body",
+			body: `{
+				"name":"Nomsa Dlamini",
+				"workEmail":"nomsa@example.test",
+				"organization":"Health Access NGO",
+				"role":"Programme Lead",
+				"interest":"ngo",
+				"note":"` + strings.Repeat("x", 70*1024) + `"
+			}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := apihttp.NewRouter(demoLeadFakeStore())
+			req := httptest.NewRequest(http.MethodPost, "/v1/public/demo-leads", strings.NewReader(tt.body))
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("expected status %d, got %d with body %s", http.StatusBadRequest, rec.Code, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), `"code":"validation_error"`) {
+				t.Fatalf("expected validation_error code, got %s", rec.Body.String())
+			}
+		})
+	}
+}
+
 func TestAdminDemoLeadRoutesRequireOrgAdmin(t *testing.T) {
 	router := newAuthenticatedTestRouter(t, demoLeadFakeStore())
-	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/demo-leads", nil)
-	rec := httptest.NewRecorder()
+	tests := []struct {
+		method string
+		path   string
+		body   string
+	}{
+		{method: http.MethodGet, path: "/v1/admin/demo-leads"},
+		{method: http.MethodPost, path: "/v1/admin/demo-leads", body: `{"name":"Asha","workEmail":"asha@example.test","organization":"Org","role":"Role","interest":"ngo"}`},
+		{method: http.MethodPatch, path: "/v1/admin/demo-leads/1", body: `{"status":"contacted"}`},
+	}
 
-	router.ServeHTTP(rec, req)
+	for _, tt := range tests {
+		req := newAuthenticatedRequest(t, tt.method, tt.path, strings.NewReader(tt.body))
+		rec := httptest.NewRecorder()
 
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("expected status %d, got %d with body %s", http.StatusForbidden, rec.Code, rec.Body.String())
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("%s %s: expected status %d, got %d with body %s", tt.method, tt.path, http.StatusForbidden, rec.Code, rec.Body.String())
+		}
 	}
 }
 
@@ -668,6 +721,24 @@ func TestAdminDemoLeadValidationAndMissingLeadErrors(t *testing.T) {
 				t.Fatalf("expected error code %q, got %s", tt.code, rec.Body.String())
 			}
 		})
+	}
+}
+
+func TestUpdateAdminDemoLeadStatusRequiresPrincipal(t *testing.T) {
+	handler := apihttp.NewHandler(demoLeadFakeStore(), apihttp.HandlerConfig{})
+	req := httptest.NewRequest(http.MethodPatch, "/v1/admin/demo-leads/1", strings.NewReader(`{"status":"contacted"}`))
+	routeContext := chi.NewRouteContext()
+	routeContext.URLParams.Add("leadId", "1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, routeContext))
+	rec := httptest.NewRecorder()
+
+	handler.UpdateAdminDemoLeadStatus(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusUnauthorized, rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"code":"unauthorized"`) {
+		t.Fatalf("expected unauthorized code, got %s", rec.Body.String())
 	}
 }
 
