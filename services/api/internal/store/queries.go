@@ -735,6 +735,72 @@ FROM integration_status_checks
 WHERE $1::bigint IS NULL OR organisation_id = $1
 ORDER BY checked_at DESC, id DESC`
 
+	insertDemoLeadSQL = `
+INSERT INTO demo_leads (
+    name,
+    work_email,
+    organization,
+    role,
+    interest,
+    note,
+    status,
+    source,
+    created_by_user_id,
+    created_at,
+    updated_at
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10)
+RETURNING
+    id,
+    name,
+    work_email,
+    organization,
+    role,
+    interest,
+    note,
+    status,
+    source,
+    created_by_user_id,
+    created_at,
+    updated_at`
+
+	listDemoLeadsSQL = `
+SELECT
+    id,
+    name,
+    work_email,
+    organization,
+    role,
+    interest,
+    note,
+    status,
+    source,
+    created_by_user_id,
+    created_at,
+    updated_at
+FROM demo_leads
+ORDER BY created_at DESC, id DESC`
+
+	updateDemoLeadStatusSQL = `
+UPDATE demo_leads
+SET
+    status = $2,
+    updated_at = $3
+WHERE id = $1
+RETURNING
+    id,
+    name,
+    work_email,
+    organization,
+    role,
+    interest,
+    note,
+    status,
+    source,
+    created_by_user_id,
+    created_at,
+    updated_at`
+
 	syncSummarySinceSQL = `
 WITH attempt_counts AS (
     SELECT
@@ -967,6 +1033,27 @@ var allowedIntegrationStatuses = map[string]bool{
 	"passing":   true,
 	"attention": true,
 	"failing":   true,
+}
+
+var allowedDemoLeadInterests = map[string]bool{
+	"government":      true,
+	"ngo":             true,
+	"investor":        true,
+	"clinic_operator": true,
+	"other":           true,
+}
+
+var allowedDemoLeadStatuses = map[string]bool{
+	"new":       true,
+	"contacted": true,
+	"scheduled": true,
+	"completed": true,
+}
+
+var allowedDemoLeadSources = map[string]bool{
+	"public_booking": true,
+	"manual_admin":   true,
+	"seed":           true,
 }
 
 func (s Store) Ready(ctx context.Context) error {
@@ -1310,6 +1397,58 @@ func (s Store) ListIntegrationStatusChecks(ctx context.Context, organisationID *
 	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (IntegrationStatusCheck, error) {
 		return scanIntegrationStatusCheck(row)
 	})
+}
+
+func (s Store) CreateDemoLead(ctx context.Context, input CreateDemoLeadInput) (DemoLead, error) {
+	normalized, err := normalizeDemoLeadInput(input)
+	if err != nil {
+		return DemoLead{}, err
+	}
+
+	return scanDemoLead(s.pool.QueryRow(ctx, insertDemoLeadSQL,
+		normalized.Name,
+		normalized.WorkEmail,
+		normalized.Organization,
+		normalized.Role,
+		normalized.Interest,
+		normalized.Note,
+		normalized.Status,
+		normalized.Source,
+		normalized.CreatedByUserID,
+		normalized.CreatedAt,
+	))
+}
+
+func (s Store) ListDemoLeads(ctx context.Context) ([]DemoLead, error) {
+	rows, err := s.pool.Query(ctx, listDemoLeadsSQL)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	leads, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (DemoLead, error) {
+		return scanDemoLead(row)
+	})
+	if err != nil {
+		return nil, err
+	}
+	if leads == nil {
+		return []DemoLead{}, nil
+	}
+	return leads, nil
+}
+
+func (s Store) UpdateDemoLeadStatus(ctx context.Context, input UpdateDemoLeadStatusInput) (DemoLead, error) {
+	status := strings.TrimSpace(input.Status)
+	if !allowedDemoLeadStatuses[status] {
+		return DemoLead{}, ErrInvalidDemoLeadStatus
+	}
+	updatedAt := input.UpdatedAt
+	if updatedAt.IsZero() {
+		updatedAt = time.Now().UTC()
+	}
+
+	return scanDemoLead(s.pool.QueryRow(ctx, updateDemoLeadStatusSQL, input.ID, status, updatedAt))
 }
 
 func (s Store) GetPartnerReadinessSnapshot(ctx context.Context, organisationID *int64) (PartnerReadinessSnapshot, error) {
@@ -2152,6 +2291,31 @@ func scanIntegrationStatusCheck(row pgx.Row) (IntegrationStatusCheck, error) {
 	return check, nil
 }
 
+func scanDemoLead(row pgx.Row) (DemoLead, error) {
+	var lead DemoLead
+	var createdByUserID sql.NullInt64
+
+	if err := row.Scan(
+		&lead.ID,
+		&lead.Name,
+		&lead.WorkEmail,
+		&lead.Organization,
+		&lead.Role,
+		&lead.Interest,
+		&lead.Note,
+		&lead.Status,
+		&lead.Source,
+		&createdByUserID,
+		&lead.CreatedAt,
+		&lead.UpdatedAt,
+	); err != nil {
+		return DemoLead{}, err
+	}
+
+	lead.CreatedByUserID = nullInt64Ptr(createdByUserID)
+	return lead, nil
+}
+
 func scanAuditEvent(row pgx.Row) (AuditEvent, error) {
 	var event AuditEvent
 	var externalID sql.NullString
@@ -2339,6 +2503,41 @@ func normalizeUpsertIntegrationStatusCheckInput(input UpsertIntegrationStatusChe
 	if input.CheckedAt.IsZero() {
 		input.CheckedAt = time.Now().UTC()
 	}
+	return input, nil
+}
+
+func normalizeDemoLeadInput(input CreateDemoLeadInput) (CreateDemoLeadInput, error) {
+	input.Name = strings.TrimSpace(input.Name)
+	input.WorkEmail = strings.TrimSpace(input.WorkEmail)
+	input.Organization = strings.TrimSpace(input.Organization)
+	input.Role = strings.TrimSpace(input.Role)
+	input.Interest = strings.TrimSpace(input.Interest)
+	input.Note = strings.TrimSpace(input.Note)
+	input.Status = strings.TrimSpace(input.Status)
+	input.Source = strings.TrimSpace(input.Source)
+
+	if input.Status == "" {
+		input.Status = "new"
+	}
+	if input.Source == "" {
+		input.Source = "public_booking"
+	}
+	if input.CreatedAt.IsZero() {
+		input.CreatedAt = time.Now().UTC()
+	}
+	if input.Name == "" || input.WorkEmail == "" || input.Organization == "" || input.Role == "" {
+		return CreateDemoLeadInput{}, ErrInvalidDemoLeadRequiredFields
+	}
+	if !allowedDemoLeadInterests[input.Interest] {
+		return CreateDemoLeadInput{}, ErrInvalidDemoLeadInterest
+	}
+	if !allowedDemoLeadStatuses[input.Status] {
+		return CreateDemoLeadInput{}, ErrInvalidDemoLeadStatus
+	}
+	if !allowedDemoLeadSources[input.Source] {
+		return CreateDemoLeadInput{}, ErrInvalidDemoLeadSource
+	}
+
 	return input, nil
 }
 
