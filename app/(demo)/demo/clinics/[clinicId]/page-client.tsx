@@ -16,6 +16,7 @@ import {
 } from "@/lib/demo/alternatives";
 import { useDemoStore } from "@/lib/demo/demo-store";
 import { buildPatientJourneyImpact } from "@/lib/demo/patient-journey";
+import { buildRecommendationInputKey } from "@/lib/demo/recommendation-input-key";
 import { getClinicAuditEvents, getClinicReports, getClinicRows } from "@/lib/demo/selectors";
 import type { Clinic, ClinicRow } from "@/lib/demo/types";
 
@@ -144,7 +145,11 @@ export default function ClinicDetailPage() {
   );
 
   const recommendationKey = clinicRow
-    ? `${clinicRow.id}:${resolveAlternativeService(clinicRow, clinicRow.services[0])}`
+    ? buildRecommendationInputKey({
+        sourceClinic: clinicRow,
+        localClinics: clinicRows,
+        requestedService: resolveAlternativeService(clinicRow, clinicRow.services[0]),
+      })
     : "";
   const [recommendationResult, setRecommendationResult] = useState<RecommendationResult>({
     key: "",

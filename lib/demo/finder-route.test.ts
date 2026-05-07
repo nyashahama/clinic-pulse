@@ -153,6 +153,7 @@ describe("public finder route boundary", () => {
     const reroutePanelIndex = componentSource.indexOf("<ReroutePanel");
 
     expect(componentSource).toContain("buildPatientJourneyImpact");
+    expect(componentSource).toContain("buildRecommendationInputKey");
     expect(componentSource).toContain("PatientJourneyImpactPanel");
     expect(componentSource).toContain("sourceClinic: selectedClinicRow");
     expect(componentSource).toContain("requestedService: service");
@@ -177,6 +178,7 @@ describe("public finder route boundary", () => {
     const reroutePanelIndex = clientSource.indexOf("<ReroutePanel");
 
     expect(clientSource).toContain("buildPatientJourneyImpact");
+    expect(clientSource).toContain("buildRecommendationInputKey");
     expect(clientSource).toContain("PatientJourneyImpactPanel");
     expect(clientSource).toContain("displayClinicRow");
     expect(clientSource).toContain("sourceClinic: displayClinicRow");

@@ -21,6 +21,7 @@ import {
   sortClinicRowsByDistance,
 } from "@/lib/demo/finder";
 import { buildPatientJourneyImpact } from "@/lib/demo/patient-journey";
+import { buildRecommendationInputKey } from "@/lib/demo/recommendation-input-key";
 import type { ClinicRow } from "@/lib/demo/types";
 
 type ClinicFinderProps = {
@@ -70,7 +71,11 @@ export function ClinicFinder({
   const selectedDirectionsUrl = selectedClinicRow ? buildDirectionsUrl(selectedClinicRow) : null;
 
   const recommendationKey = selectedClinicRow
-    ? `${selectedClinicRow.id}:${resolveAlternativeService(selectedClinicRow, service)}`
+    ? buildRecommendationInputKey({
+        sourceClinic: selectedClinicRow,
+        localClinics: clinics,
+        requestedService: resolveAlternativeService(selectedClinicRow, service),
+      })
     : "";
   const [recommendationResult, setRecommendationResult] = useState<RecommendationResult>({
     key: "",
