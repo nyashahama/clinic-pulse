@@ -198,7 +198,7 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
   };
 
   const startIncidentReplay = () => {
-    if (replayStatus === "running" || replayStartGuardRef.current) {
+    if (replayStatus !== "idle" || replayStartGuardRef.current) {
       return;
     }
 
@@ -413,7 +413,7 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
           stockoutClinicLabel="Mamelodi East"
           staffingClinicLabel="Soshanguve Block F"
           offlineQueueCount={state.offlineQueue.length}
-          replayRunning={replayStatus === "running"}
+          replayRunning={replayStatus !== "idle"}
           onReset={() => {
             cancelIncidentReplay();
             setReplayStatus("idle");

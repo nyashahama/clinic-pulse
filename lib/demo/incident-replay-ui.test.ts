@@ -55,9 +55,11 @@ describe("incident replay controls and page wiring source boundary", () => {
     expect(pageSource).toContain("replayStartGuardRef");
     expect(pageSource).toContain("replayStartGuardRef.current = true");
     expect(pageSource).toContain("replayStartGuardRef.current = false");
+    expect(pageSource).toContain('replayStatus !== "idle" || replayStartGuardRef.current');
     expect(pageSource).toContain("replaySessionRef");
     expect(pageSource).toContain("runIncidentReplayStep(0, replaySessionRef.current)");
     expect(pageSource).toContain("sessionId !== replaySessionRef.current");
+    expect(pageSource).toContain('replayRunning={replayStatus !== "idle"}');
     expect(pageSource).toContain(
       'const visibleClinicRows = replayStatus === "idle" ? mapClinics : clinicRows',
     );
