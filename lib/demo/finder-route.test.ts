@@ -162,6 +162,10 @@ describe("public finder route boundary", () => {
     expect(componentSource).toContain("Open recommended directions");
     expect(componentSource).toContain("recommendationsReady");
     expect(componentSource).toContain("selectedClinicRow && recommendationsReady");
+    expect(componentSource).toContain('variant: "default"');
+    expect(componentSource).toContain("Checking alternatives");
+    expect(componentSource).toContain("Recommendation data is still loading");
+    expect(componentSource).toContain("recommendationsReady || !isClinicUnavailable(selectedClinicRow)");
     expect(impactPanelIndex).toBeGreaterThanOrEqual(0);
     expect(reroutePanelIndex).toBeGreaterThanOrEqual(0);
     expect(impactPanelIndex).toBeLessThan(reroutePanelIndex);

@@ -257,7 +257,7 @@ export function ClinicFinder({
                   href={recommendedDirectionsUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className={buttonVariants({ size: "sm", variant: "outline" })}
+                  className={buttonVariants({ size: "sm", variant: "default" })}
                 >
                   Open recommended directions
                   <ExternalLink className="size-3.5" />
@@ -267,7 +267,20 @@ export function ClinicFinder({
           />
         ) : null}
 
-        {selectedClinicRow ? (
+        {selectedClinicRow && !recommendationsReady && isClinicUnavailable(selectedClinicRow) ? (
+          <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
+            <SectionHeader
+              eyebrow="Routing actions"
+              title="Checking alternatives"
+              description="Compatible recommendations are loading for the selected clinic and service."
+            />
+            <div className="mt-4 rounded-lg border border-dashed border-border-subtle bg-bg-subtle p-3 text-sm text-content-subtle">
+              Recommendation data is still loading. No empty reroute result is shown until the current request completes.
+            </div>
+          </section>
+        ) : null}
+
+        {selectedClinicRow && (recommendationsReady || !isClinicUnavailable(selectedClinicRow)) ? (
           <ReroutePanel
             sourceClinicName={selectedClinicRow.name}
             unavailable={isClinicUnavailable(selectedClinicRow)}
