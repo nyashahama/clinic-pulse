@@ -178,12 +178,13 @@ describe("public finder route boundary", () => {
 
     expect(clientSource).toContain("buildPatientJourneyImpact");
     expect(clientSource).toContain("PatientJourneyImpactPanel");
-    expect(clientSource).toContain("sourceClinic: clinicRow");
-    expect(clientSource).toContain("requestedService: clinicRow.services[0]");
+    expect(clientSource).toContain("displayClinicRow");
+    expect(clientSource).toContain("sourceClinic: displayClinicRow");
+    expect(clientSource).toContain("requestedService: displayClinicRow.services[0]");
     expect(clientSource).toContain("recommendations");
     expect(clientSource).toContain('variant="evidence"');
     expect(clientSource).toContain("recommendationsReady");
-    expect(clientSource).toContain("clinicRow && recommendationsReady");
+    expect(clientSource).toContain("displayClinicRow && recommendationsReady");
     expect(clientSource).toContain("Checking alternatives");
     expect(clientSource).toContain("Recommendation data is still loading");
     expect(clientSource).toContain("recommendationsReady || !unavailableClinic");

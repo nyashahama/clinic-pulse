@@ -153,13 +153,6 @@ export default function ClinicDetailPage() {
   const recommendationsReady = recommendationResult.key === recommendationKey;
   const recommendations =
     recommendationsReady ? recommendationResult.recommendations : [];
-  const journeyImpact = clinicRow && recommendationsReady
-    ? buildPatientJourneyImpact({
-        sourceClinic: clinicRow,
-        requestedService: clinicRow.services[0],
-        recommendations,
-      })
-    : null;
 
   useEffect(() => {
     let isCurrent = true;
@@ -202,6 +195,17 @@ export default function ClinicDetailPage() {
     () => reports[0]?.reason ?? clinicRow?.reason ?? "No reason has been reported yet.",
     [reports, clinicRow?.reason],
   );
+  const displayClinicRow = useMemo(
+    () => (clinicRow ? { ...clinicRow, reason: latestReason } : null),
+    [clinicRow, latestReason],
+  );
+  const journeyImpact = displayClinicRow && recommendationsReady
+    ? buildPatientJourneyImpact({
+        sourceClinic: displayClinicRow,
+        requestedService: displayClinicRow.services[0],
+        recommendations,
+      })
+    : null;
 
   const unavailableClinic = clinicRow
     ? isUnavailableClinic(clinicRow.status, clinicRow.freshness)
@@ -241,7 +245,7 @@ export default function ClinicDetailPage() {
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(22rem,1.1fr)]">
           <div className="grid gap-4">
             <ClinicProfileHeader
-              clinic={{ ...clinicRow, reason: latestReason }}
+              clinic={displayClinicRow}
               onFindAlternative={() =>
                 router.push(
                   `/finder?query=${encodeURIComponent(clinicRow.name)}&service=${encodeURIComponent(
@@ -253,10 +257,7 @@ export default function ClinicDetailPage() {
             />
 
             <ClinicOperationalGrid
-              clinic={{
-                ...clinicRow,
-                reason: latestReason,
-              }}
+              clinic={displayClinicRow}
             />
 
             <AuditTrail clinicName={clinicRow.name} events={auditEvents} />
