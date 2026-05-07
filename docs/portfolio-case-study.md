@@ -1,6 +1,4 @@
-# Portfolio Case Study Draft
-
-Published portfolio URL: Pending publication
+# Portfolio Case Study
 
 ## Summary
 
@@ -61,7 +59,7 @@ The implementation favors:
 - Human-readable docs before generated API tooling.
 - Verification through frontend tests, backend tests, lint, build, and Playwright smoke coverage.
 
-## Evidence
+## Proof Assets
 
 Repository evidence:
 
@@ -74,14 +72,11 @@ Repository evidence:
 - `public/showcase/videos/clinicpulse-demo-walkthrough.webm` for the short demo walkthrough.
 - `.github/workflows/ci.yml` for CI baseline.
 
-Media evidence pending:
+The case study can be reviewed directly from this repository with local setup, screenshots, video, and CI coverage.
 
-- Live demo URL.
-- Published portfolio URL.
+## Publication Next Steps
 
-## What Would Ship Next
-
-- Deploy a clean live demo with seeded demo credentials.
+- Deploy a clean public demo with seeded demo credentials.
+- Publish this case study on the portfolio site with the repository screenshots and walkthrough.
 - Convert the walkthrough to MP4 if the portfolio host requires it.
-- Publish this case study on the portfolio site.
 - Create `v0.1.0-alpha` after final verification.
