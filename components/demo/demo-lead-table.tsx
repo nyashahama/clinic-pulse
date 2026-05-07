@@ -82,7 +82,86 @@ export function DemoLeadTable({ leads, onLeadStatusChange }: DemoLeadTableProps)
         />
       </div>
 
-      <div className="overflow-x-auto px-4 pb-4">
+      <div className="grid gap-3 px-4 pb-4 md:hidden" aria-label="Demo leads mobile work queue">
+        {leads.map((lead) => {
+          const tone = statusStyles[lead.status];
+
+          return (
+            <article key={lead.id} className="rounded-lg border border-border-subtle bg-bg-subtle p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-sm font-medium text-content-emphasis">
+                    <UserRound className="size-3.5 shrink-0 text-content-subtle" />
+                    <span className="truncate">{lead.name}</span>
+                  </div>
+                  <a
+                    href={`mailto:${lead.workEmail}`}
+                    className="mt-2 inline-flex max-w-full items-center gap-1.5 text-sm text-content-emphasis hover:underline"
+                  >
+                    <Mail className="size-3.5 shrink-0 text-content-subtle" />
+                    <span className="truncate">{lead.workEmail}</span>
+                  </a>
+                </div>
+                <span
+                  className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[11px] ${tone.className}`}
+                >
+                  <span className={`inline-block size-2 rounded-full ${tone.dot}`} />
+                  {tone.label}
+                </span>
+              </div>
+
+              <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <dt className="text-content-subtle">Organization</dt>
+                  <dd className="mt-1 text-content-default">{lead.organization}</dd>
+                </div>
+                <div>
+                  <dt className="text-content-subtle">Role</dt>
+                  <dd className="mt-1 text-content-default">{lead.role}</dd>
+                </div>
+                <div>
+                  <dt className="text-content-subtle">Interest</dt>
+                  <dd className="mt-1 capitalize text-content-default">
+                    {lead.interest.replaceAll("_", " ")}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-content-subtle">Created</dt>
+                  <dd className="mt-1 font-mono text-content-default">{formatDate(lead.createdAt)}</dd>
+                </div>
+              </dl>
+
+              <div className="mt-3 inline-flex gap-1.5 text-sm text-content-default">
+                <MessageCircleMore className="mt-1 size-3.5 shrink-0 text-content-subtle" />
+                <span className="leading-6">{trimNote(lead.note)}</span>
+              </div>
+
+              <label className="mt-3 grid gap-1.5 text-xs font-medium text-content-subtle">
+                Status
+                <select
+                  value={lead.status}
+                  onChange={(event) => {
+                    onLeadStatusChange?.(
+                      lead.id,
+                      event.target.value as DemoLead["status"],
+                    );
+                  }}
+                  className="w-full rounded-lg border border-border-subtle bg-bg-default px-2 py-2 text-sm text-content-default outline-none"
+                  aria-label={`Update status for ${lead.name}`}
+                >
+                  {leadStatusOptions.map((status) => (
+                    <option key={status} value={status}>
+                      {statusStyles[status].label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </article>
+          );
+        })}
+      </div>
+
+      <div className="hidden overflow-x-auto px-4 pb-4 md:block">
         <table className="min-w-[86rem] border-separate border-spacing-0 text-sm">
           <thead>
             <tr className="text-left text-xs uppercase tracking-[0.08em] text-content-subtle">

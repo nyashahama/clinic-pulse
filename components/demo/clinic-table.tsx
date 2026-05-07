@@ -49,7 +49,97 @@ export function ClinicTable({
         />
       </div>
 
-      <div className="overflow-x-auto px-4 pb-4">
+      <div className="grid gap-3 px-4 pb-4 md:hidden" aria-label="Clinic mobile work queue">
+        {clinics.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border-subtle bg-bg-subtle px-4 py-6 text-center text-sm text-content-subtle">
+            No clinics match this filter.
+          </div>
+        ) : (
+          clinics.map((clinic) => (
+            <article
+              key={clinic.id}
+              className={cn(
+                "rounded-lg border p-3 transition-colors",
+                clinic.id === selectedClinicId
+                  ? "border-teal-300 bg-teal-50/70"
+                  : "border-border-subtle bg-bg-subtle",
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => onSelectClinic(clinic.id)}
+                  className="min-w-0 text-left"
+                >
+                  <h3 className="font-medium text-content-emphasis">{clinic.name}</h3>
+                  <p className="mt-1 text-xs text-content-subtle">
+                    {clinic.facilityCode} · {clinic.district}
+                  </p>
+                </button>
+                <div className="grid shrink-0 gap-1.5 justify-items-end">
+                  <StatusBadge status={clinic.status} />
+                  <FreshnessBadge freshness={clinic.freshness} />
+                </div>
+              </div>
+
+              <p className="mt-3 text-sm leading-6 text-content-default">{clinic.reason}</p>
+
+              <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <dt className="text-content-subtle">Last report</dt>
+                  <dd className="mt-1 font-mono text-content-default">
+                    {formatTimestamp(clinic.lastReportedAt)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-content-subtle">Reporter/source</dt>
+                  <dd className="mt-1 text-content-default">
+                    {clinic.reporterName} · {formatSource(clinic.source)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-content-subtle">Staff</dt>
+                  <dd className="mt-1 capitalize text-content-default">
+                    {formatPressure(clinic.staffPressure)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-content-subtle">Stock</dt>
+                  <dd className="mt-1 capitalize text-content-default">
+                    {formatPressure(clinic.stockPressure)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-content-subtle">Queue</dt>
+                  <dd className="mt-1 capitalize text-content-default">
+                    {formatPressure(clinic.queuePressure)}
+                  </dd>
+                </div>
+              </dl>
+
+              <div className="mt-3 rounded-md border border-border-subtle bg-bg-default p-3">
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-content-subtle">
+                  Recommended action
+                </p>
+                <p className="mt-1 text-sm leading-6 text-content-default">
+                  {recommendedActionByClinicId[clinic.id]}
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 w-full"
+                  onClick={() => onSelectClinic(clinic.id)}
+                >
+                  Open
+                  <ArrowUpRight className="size-3.5" />
+                </Button>
+              </div>
+            </article>
+          ))
+        )}
+      </div>
+
+      <div className="hidden overflow-x-auto px-4 pb-4 md:block">
         <table className="min-w-[82rem] border-separate border-spacing-0 text-sm">
           <thead>
             <tr className="text-left text-xs uppercase tracking-[0.08em] text-content-subtle">
