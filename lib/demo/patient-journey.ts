@@ -38,9 +38,13 @@ export type BuildPatientJourneyImpactInput = {
   recommendations: AlternativeRecommendation[];
 };
 
-function isValidRecommendation(recommendation: AlternativeRecommendation) {
+function isValidRecommendation(
+  recommendation: AlternativeRecommendation,
+  requestedService: string,
+) {
   return (
     recommendation.compatibilityServices.length > 0 &&
+    recommendation.compatibilityServices.includes(requestedService) &&
     !isClinicUnavailable(recommendation.clinic)
   );
 }
@@ -106,7 +110,9 @@ export function buildPatientJourneyImpact({
     };
   }
 
-  const topRecommendation = recommendations.find(isValidRecommendation);
+  const topRecommendation = recommendations.find((recommendation) =>
+    isValidRecommendation(recommendation, resolvedService),
+  );
 
   if (!topRecommendation) {
     return {

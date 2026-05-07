@@ -122,6 +122,41 @@ describe("buildPatientJourneyImpact", () => {
     expect(impact.impactMetrics.wastedTripAvoided).toBe(false);
   });
 
+  it("requires compatibility with the resolved requested service", () => {
+    const rows = getRows();
+    const source = cloneClinic(rows[0], {
+      status: "non_functional",
+      services: ["Primary care", "Pharmacy"],
+    });
+    const partialMatch = cloneClinic(rows[1], {
+      id: "partial-match",
+      status: "operational",
+      freshness: "fresh",
+    });
+    const fullMatch = cloneClinic(rows[2], {
+      id: "full-match",
+      status: "operational",
+      freshness: "fresh",
+    });
+
+    const impact = buildPatientJourneyImpact({
+      sourceClinic: source,
+      requestedService: "Pharmacy",
+      recommendations: [
+        recommendation(partialMatch, {
+          compatibilityServices: ["Primary care"],
+        }),
+        recommendation(fullMatch, {
+          compatibilityServices: ["Pharmacy"],
+        }),
+      ],
+    });
+
+    expect(impact.state).toBe("reroute_recommended");
+    expect(impact.recommendedClinic?.id).toBe("full-match");
+    expect(impact.impactMetrics.compatibleServices).toEqual(["Pharmacy"]);
+  });
+
   it("does not claim a wasted trip avoided when the source clinic is available", () => {
     const rows = getRows();
     const source = cloneClinic(rows[0], {
