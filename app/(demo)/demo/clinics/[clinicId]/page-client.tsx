@@ -241,26 +241,26 @@ export default function ClinicDetailPage() {
         </section>
       ) : null}
 
-      {clinicRow ? (
+      {displayClinicRow ? (
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(22rem,1.1fr)]">
           <div className="grid gap-4">
             <ClinicProfileHeader
               clinic={displayClinicRow}
               onFindAlternative={() =>
                 router.push(
-                  `/finder?query=${encodeURIComponent(clinicRow.name)}&service=${encodeURIComponent(
-                    clinicRow.services[0] ?? "",
+                  `/finder?query=${encodeURIComponent(displayClinicRow.name)}&service=${encodeURIComponent(
+                    displayClinicRow.services[0] ?? "",
                   )}`,
                 )
               }
-              onEscalate={() => router.push(`/admin?clinicId=${encodeURIComponent(clinicRow.id)}`)}
+              onEscalate={() => router.push(`/admin?clinicId=${encodeURIComponent(displayClinicRow.id)}`)}
             />
 
             <ClinicOperationalGrid
               clinic={displayClinicRow}
             />
 
-            <AuditTrail clinicName={clinicRow.name} events={auditEvents} />
+            <AuditTrail clinicName={displayClinicRow.name} events={auditEvents} />
           </div>
 
           <div className="grid gap-4">
@@ -285,7 +285,7 @@ export default function ClinicDetailPage() {
 
             {recommendationsReady || !unavailableClinic ? (
               <ReroutePanel
-                sourceClinicName={clinicRow.name}
+                sourceClinicName={displayClinicRow.name}
                 unavailable={unavailableClinic}
                 reason={latestReason}
                 recommendations={recommendations}
