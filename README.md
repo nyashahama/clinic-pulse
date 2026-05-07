@@ -35,6 +35,7 @@ Run:
 npm install
 cp .env.example .env.local
 make db-up
+make db-wait
 make db-bootstrap
 make dev-api
 ```

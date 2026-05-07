@@ -34,7 +34,7 @@ Seeded roles are `reporter`, `district_manager`, `org_admin`, and `system_admin`
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| `GET` | `/v1/public/alternatives` | Public | Lists public alternative clinic recommendations |
+| `GET` | `/v1/public/alternatives?clinicId={clinicId}&service={service}` | Public | Lists public alternative clinic recommendations for a clinic/service pair |
 | `GET` | `/v1/public/clinics` | Public | Lists public clinic directory/status records |
 | `GET` | `/v1/public/clinics/{clinicId}` | Public | Returns one public clinic record |
 
@@ -46,7 +46,7 @@ Partner routes require an API key and the listed scope.
 | --- | --- | --- | --- |
 | `GET` | `/v1/partner/clinics` | `clinics:read` | Lists partner-visible clinics |
 | `GET` | `/v1/partner/clinics/{clinicId}/status` | `status:read` | Returns partner-visible clinic status |
-| `GET` | `/v1/partner/alternatives` | `alternatives:read` | Lists partner-visible alternatives |
+| `GET` | `/v1/partner/alternatives?clinicId={clinicId}&service={service}` | `alternatives:read` | Lists partner-visible alternatives for a clinic/service pair |
 | `GET` | `/v1/partner/export/latest` | `exports:read` | Returns latest partner export payload |
 | `GET` | `/v1/partner/integration-status` | `status:read` | Returns integration readiness/status checks |
 
@@ -72,7 +72,7 @@ Operational routes require a session with `district_manager`, `org_admin`, or `s
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/v1/alternatives` | Lists operational alternatives |
+| `GET` | `/v1/alternatives?clinicId={clinicId}&service={service}` | Lists operational alternatives for a clinic/service pair |
 | `GET` | `/v1/clinics` | Lists operational clinic rows |
 | `GET` | `/v1/clinics/{clinicId}` | Returns one operational clinic profile |
 | `GET` | `/v1/clinics/{clinicId}/status` | Returns current clinic status |
