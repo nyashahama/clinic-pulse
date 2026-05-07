@@ -76,7 +76,7 @@ describe("buildPatientJourneyImpact", () => {
     });
   });
 
-  it("uses the first valid existing recommendation without re-ranking alternatives", () => {
+  it("uses the first service-compatible existing recommendation without re-ranking alternatives", () => {
     const rows = getRows();
     const source = cloneClinic(rows[0], { status: "non_functional" });
     const first = cloneClinic(rows[1], {
@@ -99,16 +99,31 @@ describe("buildPatientJourneyImpact", () => {
       ],
     });
 
-    expect(impact.recommendedClinic?.id).toBe("second-ranked");
+    expect(impact.recommendedClinic?.id).toBe("first-ranked");
   });
 
-  it("returns no safe recommendation when alternatives are unavailable or incompatible", () => {
+  it("uses an existing ranked fallback recommendation when it covers the requested service", () => {
     const rows = getRows();
     const source = cloneClinic(rows[0], { status: "non_functional" });
-    const unavailable = cloneClinic(rows[1], {
+    const staleOperational = cloneClinic(rows[1], {
+      id: "stale-ranked-fallback",
       status: "operational",
       freshness: "stale",
     });
+
+    const impact = buildPatientJourneyImpact({
+      sourceClinic: source,
+      requestedService: "Primary care",
+      recommendations: [recommendation(staleOperational)],
+    });
+
+    expect(impact.state).toBe("reroute_recommended");
+    expect(impact.recommendedClinic?.id).toBe("stale-ranked-fallback");
+  });
+
+  it("returns no safe recommendation when alternatives do not cover the requested service", () => {
+    const rows = getRows();
+    const source = cloneClinic(rows[0], { status: "non_functional" });
     const incompatible = cloneClinic(rows[2], {
       status: "operational",
       freshness: "fresh",
@@ -118,7 +133,6 @@ describe("buildPatientJourneyImpact", () => {
       sourceClinic: source,
       requestedService: "Primary care",
       recommendations: [
-        recommendation(unavailable),
         recommendation(incompatible, { compatibilityServices: [] }),
       ],
     });

@@ -54,8 +54,7 @@ function isValidRecommendation(
     recommendation.compatibilityServices.length > 0 &&
     recommendation.compatibilityServices.some(
       (service) => normalizeService(service) === normalizeService(requestedService),
-    ) &&
-    !isClinicUnavailable(recommendation.clinic)
+    )
   );
 }
 

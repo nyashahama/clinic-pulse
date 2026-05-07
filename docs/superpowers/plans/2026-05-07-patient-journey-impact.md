@@ -103,14 +103,29 @@ describe("buildPatientJourneyImpact", () => {
     expect(impact.impactMetrics.wastedTripAvoided).toBe(true);
     expect(impact.impactMetrics.estimatedWastedTravelMinutesSaved).toBeGreaterThan(0);
     expect(impact.impactMetrics.compatibleServices).toEqual(["Primary care", "Pharmacy"]);
-    expect(impact.trustSignals.reason).toBe("Operational and fresh with requested service.");
+    expect(impact.trustSignals.reason).toBe(source.reason);
+    expect(impact.trustSignals.lastReportedAt).toBe(source.lastReportedAt);
+    expect(impact.trustSignals.recommendation).toEqual({
+      status: recommended.status,
+      freshness: recommended.freshness,
+      lastReportedAt: recommended.lastReportedAt,
+      reason: "Operational and fresh with requested service.",
+    });
   });
 
-  it("uses the first existing recommendation without re-ranking alternatives", () => {
+  it("uses the first service-compatible existing recommendation without re-ranking alternatives", () => {
     const rows = getRows();
     const source = cloneClinic(rows[0], { status: "non_functional" });
-    const first = cloneClinic(rows[1], { id: "first-ranked" });
-    const second = cloneClinic(rows[2], { id: "second-ranked" });
+    const first = cloneClinic(rows[1], {
+      id: "first-ranked",
+      status: "unknown",
+      freshness: "fresh",
+    });
+    const second = cloneClinic(rows[2], {
+      id: "second-ranked",
+      status: "operational",
+      freshness: "fresh",
+    });
 
     const impact = buildPatientJourneyImpact({
       sourceClinic: source,
@@ -122,6 +137,108 @@ describe("buildPatientJourneyImpact", () => {
     });
 
     expect(impact.recommendedClinic?.id).toBe("first-ranked");
+  });
+
+  it("uses an existing ranked fallback recommendation when it covers the requested service", () => {
+    const rows = getRows();
+    const source = cloneClinic(rows[0], { status: "non_functional" });
+    const staleOperational = cloneClinic(rows[1], {
+      id: "stale-ranked-fallback",
+      status: "operational",
+      freshness: "stale",
+    });
+
+    const impact = buildPatientJourneyImpact({
+      sourceClinic: source,
+      requestedService: "Primary care",
+      recommendations: [recommendation(staleOperational)],
+    });
+
+    expect(impact.state).toBe("reroute_recommended");
+    expect(impact.recommendedClinic?.id).toBe("stale-ranked-fallback");
+  });
+
+  it("returns no safe recommendation when alternatives do not cover the requested service", () => {
+    const rows = getRows();
+    const source = cloneClinic(rows[0], { status: "non_functional" });
+    const incompatible = cloneClinic(rows[2], {
+      status: "operational",
+      freshness: "fresh",
+    });
+
+    const impact = buildPatientJourneyImpact({
+      sourceClinic: source,
+      requestedService: "Primary care",
+      recommendations: [
+        recommendation(incompatible, { compatibilityServices: [] }),
+      ],
+    });
+
+    expect(impact.state).toBe("no_safe_recommendation");
+    expect(impact.recommendedClinic).toBeNull();
+    expect(impact.impactMetrics.wastedTripAvoided).toBe(false);
+  });
+
+  it("requires compatibility with the resolved requested service", () => {
+    const rows = getRows();
+    const source = cloneClinic(rows[0], {
+      status: "non_functional",
+      services: ["Primary care", "Pharmacy"],
+    });
+    const partialMatch = cloneClinic(rows[1], {
+      id: "partial-match",
+      status: "operational",
+      freshness: "fresh",
+    });
+    const fullMatch = cloneClinic(rows[2], {
+      id: "full-match",
+      status: "operational",
+      freshness: "fresh",
+    });
+
+    const impact = buildPatientJourneyImpact({
+      sourceClinic: source,
+      requestedService: "Pharmacy",
+      recommendations: [
+        recommendation(partialMatch, {
+          compatibilityServices: ["Primary care"],
+        }),
+        recommendation(fullMatch, {
+          compatibilityServices: ["Pharmacy"],
+        }),
+      ],
+    });
+
+    expect(impact.state).toBe("reroute_recommended");
+    expect(impact.recommendedClinic?.id).toBe("full-match");
+    expect(impact.impactMetrics.compatibleServices).toEqual(["Pharmacy"]);
+  });
+
+  it("matches requested service despite case and whitespace differences", () => {
+    const rows = getRows();
+    const source = cloneClinic(rows[0], {
+      status: "non_functional",
+      services: ["Primary care", "Pharmacy"],
+    });
+    const recommended = cloneClinic(rows[1], {
+      id: "normalized-match",
+      status: "operational",
+      freshness: "fresh",
+    });
+
+    const impact = buildPatientJourneyImpact({
+      sourceClinic: source,
+      requestedService: "  pharmacy  ",
+      recommendations: [
+        recommendation(recommended, {
+          compatibilityServices: [" Pharmacy "],
+        }),
+      ],
+    });
+
+    expect(impact.state).toBe("reroute_recommended");
+    expect(impact.requestedService).toBe("pharmacy");
+    expect(impact.recommendedClinic?.id).toBe("normalized-match");
   });
 
   it("does not claim a wasted trip avoided when the source clinic is available", () => {
@@ -241,10 +358,14 @@ export type PatientJourneyImpact = {
   trustSignals: {
     sourceStatus: ClinicRow["status"];
     sourceFreshness: ClinicRow["freshness"];
-    recommendedStatus: ClinicRow["status"] | null;
-    recommendedFreshness: ClinicRow["freshness"] | null;
     lastReportedAt: string | null;
     reason: string;
+    recommendation: {
+      status: ClinicRow["status"];
+      freshness: ClinicRow["freshness"];
+      lastReportedAt: string | null;
+      reason: string;
+    } | null;
   };
 };
 
@@ -253,6 +374,22 @@ export type BuildPatientJourneyImpactInput = {
   requestedService?: string;
   recommendations: AlternativeRecommendation[];
 };
+
+function isValidRecommendation(
+  recommendation: AlternativeRecommendation,
+  requestedService: string,
+) {
+  return (
+    recommendation.compatibilityServices.length > 0 &&
+    recommendation.compatibilityServices.some(
+      (service) => normalizeService(service) === normalizeService(requestedService),
+    )
+  );
+}
+
+function normalizeService(value: string) {
+  return value.trim().toLowerCase();
+}
 
 function resolveRequestedService(sourceClinic: ClinicRow, requestedService?: string) {
   return requestedService?.trim() || sourceClinic.services[0] || "";
@@ -289,10 +426,9 @@ function buildBaseImpact({
     trustSignals: {
       sourceStatus: sourceClinic.status,
       sourceFreshness: sourceClinic.freshness,
-      recommendedStatus: null,
-      recommendedFreshness: null,
       lastReportedAt: sourceClinic.lastReportedAt,
       reason: sourceClinic.reason,
+      recommendation: null,
     },
   };
 }
@@ -315,7 +451,9 @@ export function buildPatientJourneyImpact({
     };
   }
 
-  const [topRecommendation] = recommendations;
+  const topRecommendation = recommendations.find((recommendation) =>
+    isValidRecommendation(recommendation, resolvedService),
+  );
 
   if (!topRecommendation) {
     return {
@@ -343,9 +481,12 @@ export function buildPatientJourneyImpact({
     },
     trustSignals: {
       ...base.trustSignals,
-      recommendedStatus: topRecommendation.clinic.status,
-      recommendedFreshness: topRecommendation.clinic.freshness,
-      reason: topRecommendation.reason,
+      recommendation: {
+        status: topRecommendation.clinic.status,
+        freshness: topRecommendation.clinic.freshness,
+        lastReportedAt: topRecommendation.clinic.lastReportedAt,
+        reason: topRecommendation.reason,
+      },
     },
   };
 }
