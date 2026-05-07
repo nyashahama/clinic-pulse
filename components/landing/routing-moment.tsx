@@ -20,11 +20,12 @@ export function RoutingMoment() {
               className="mt-4 font-display text-3xl font-medium leading-[1.12] text-neutral-950 sm:text-4xl"
               style={{ textWrap: "balance" }}
             >
-              The patient-facing moment has to look operational, not theoretical.
+              Wasted trip avoided before the patient starts travelling.
             </h2>
             <p className="mt-4 text-base leading-7 text-neutral-600">
-              The finder should show unavailable clinic, compatible alternative,
-              freshness, and reason in one glance.
+              The finder should show the unavailable clinic, the best nearby
+              compatible alternative, wasted-travel time avoided, freshness,
+              and reason in one glance.
             </p>
           </div>
 
@@ -87,21 +88,21 @@ export function RoutingMoment() {
                 </div>
                 <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
                   <div className="rounded-md border border-emerald-200 bg-white p-2">
-                    <p className="text-emerald-700">Freshness</p>
-                    <p className="mt-1 font-mono font-semibold text-emerald-950">4 min</p>
+                    <p className="text-emerald-700">Impact</p>
+                    <p className="mt-1 font-mono font-semibold text-emerald-950">18 min avoided</p>
+                  </div>
+                  <div className="rounded-md border border-emerald-200 bg-white p-2">
+                    <p className="text-emerald-700">Clinic</p>
+                    <p className="mt-1 font-semibold text-emerald-950">Best nearby compatible</p>
                   </div>
                   <div className="rounded-md border border-emerald-200 bg-white p-2">
                     <p className="text-emerald-700">Service</p>
                     <p className="mt-1 font-semibold text-emerald-950">Primary care</p>
                   </div>
-                  <div className="rounded-md border border-emerald-200 bg-white p-2">
-                    <p className="text-emerald-700">Action</p>
-                    <p className="mt-1 font-semibold text-emerald-950">Directions</p>
-                  </div>
                 </div>
                 <div className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-emerald-900">
                   <SearchCheck className="size-4" />
-                  Finder recommendation ready
+                  Journey impact ready
                 </div>
               </motion.div>
 
