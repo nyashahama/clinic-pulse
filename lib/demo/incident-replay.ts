@@ -21,15 +21,12 @@ const INCIDENT_REPLAY_ACTOR_NAME = "Incident replay";
 const INCIDENT_REPLAY_FIELD_WORKER_NAME = "Incident replay field worker";
 const INCIDENT_REPLAY_ROUTED_SERVICE = "Pharmacy";
 
-const INCIDENT_REPLAY_STEP_IDS = [
-  "field_report",
-  "district_alert",
-  "reroute",
-  "audit_event",
-  "partner_webhook",
-] as const;
-
-export type IncidentReplayStepId = (typeof INCIDENT_REPLAY_STEP_IDS)[number];
+export type IncidentReplayStepId =
+  | "field_report"
+  | "district_alert"
+  | "reroute"
+  | "audit_event"
+  | "partner_webhook";
 
 export type IncidentReplayStep = {
   id: IncidentReplayStepId;
@@ -55,8 +52,22 @@ export type IncidentReplayWebhookPreview = {
   summary: string;
 };
 
-function buildId(prefix: string) {
-  return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+function normalizeIdPart(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function buildReplayId(
+  prefix: string,
+  clinicId: string,
+  stepId: IncidentReplayStepId,
+  createdAt: string,
+) {
+  return [
+    prefix,
+    normalizeIdPart(clinicId),
+    normalizeIdPart(stepId),
+    normalizeIdPart(createdAt),
+  ].join("-");
 }
 
 function cloneState(state: DemoState): DemoState {
@@ -90,6 +101,7 @@ function upsertClinicState(
 function addAuditEvent(
   auditEvents: AuditEvent[],
   clinicId: string,
+  stepId: IncidentReplayStepId,
   actorName: string,
   eventType: AuditEvent["eventType"],
   summary: string,
@@ -97,7 +109,7 @@ function addAuditEvent(
 ) {
   return [
     {
-      id: buildId("audit"),
+      id: buildReplayId("audit", clinicId, stepId, createdAt),
       clinicId,
       actorName,
       eventType,
@@ -255,7 +267,7 @@ export function applyIncidentReplayStep(
   switch (stepId) {
     case "field_report": {
       const report: ReportEvent = {
-        id: buildId("report"),
+        id: buildReplayId("report", clinic.id, "field_report", now),
         clinicId: clinic.id,
         reporterName: INCIDENT_REPLAY_FIELD_WORKER_NAME,
         source: "field_worker",
@@ -288,6 +300,7 @@ export function applyIncidentReplayStep(
       nextState.auditEvents = addAuditEvent(
         nextState.auditEvents,
         clinic.id,
+        "field_report",
         INCIDENT_REPLAY_FIELD_WORKER_NAME,
         "report.submitted",
         "Incident replay field report submitted for the stockout clinic.",
@@ -299,7 +312,7 @@ export function applyIncidentReplayStep(
 
     case "district_alert": {
       const alert: Alert = {
-        id: buildId("alert"),
+        id: buildReplayId("alert", clinic.id, "district_alert", now),
         clinicId: clinic.id,
         type: "stockout",
         severity: "critical",
@@ -316,6 +329,7 @@ export function applyIncidentReplayStep(
       nextState.auditEvents = addAuditEvent(
         nextState.auditEvents,
         clinic.id,
+        "district_alert",
         INCIDENT_REPLAY_ACTOR_NAME,
         "alert.created",
         "Incident replay created a critical stockout alert for the clinic.",
@@ -334,6 +348,7 @@ export function applyIncidentReplayStep(
       nextState.auditEvents = addAuditEvent(
         nextState.auditEvents,
         clinic.id,
+        "reroute",
         INCIDENT_REPLAY_ACTOR_NAME,
         "routing.alternative_recommended",
         summary,
@@ -347,6 +362,7 @@ export function applyIncidentReplayStep(
       nextState.auditEvents = addAuditEvent(
         nextState.auditEvents,
         clinic.id,
+        "audit_event",
         INCIDENT_REPLAY_ACTOR_NAME,
         "clinic.status_changed",
         "Incident replay linked field report, district alert, and reroute decision.",
@@ -362,6 +378,7 @@ export function applyIncidentReplayStep(
       nextState.auditEvents = addAuditEvent(
         nextState.auditEvents,
         clinic.id,
+        "partner_webhook",
         INCIDENT_REPLAY_ACTOR_NAME,
         "partner.webhook_dispatched",
         preview.summary,

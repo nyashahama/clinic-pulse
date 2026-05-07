@@ -49,6 +49,7 @@ const auditEventTypes: AuditEvent["eventType"][] = [
   "report.synced",
   "alert.created",
   "routing.alternative_recommended",
+  "partner.webhook_dispatched",
   "lead.demo_requested",
   "export.preview_opened",
   "api.preview_opened",

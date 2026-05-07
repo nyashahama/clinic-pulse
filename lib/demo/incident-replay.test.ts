@@ -79,8 +79,23 @@ describe("applyIncidentReplayStep", () => {
       type: "stockout",
       severity: "critical",
       status: "open",
+      id: `alert-${STOCKOUT_TRIGGER_CLINIC_ID}-district-alert-2026-05-03t08-05-00-000z`,
       createdAt: now,
     });
+  });
+
+  it("emits deterministic ids for the same clinic, step, and timestamp", () => {
+    const initialState = createInitialDemoState();
+    const now = "2026-05-03T08:00:00.000Z";
+
+    const firstState = applyIncidentReplayStep(initialState, "field_report", now);
+    const secondState = applyIncidentReplayStep(initialState, "field_report", now);
+
+    expect(firstState.reports[0]?.id).toBe(secondState.reports[0]?.id);
+    expect(firstState.auditEvents[0]?.id).toBe(secondState.auditEvents[0]?.id);
+    expect(firstState.reports[0]?.id).toBe(
+      `report-${STOCKOUT_TRIGGER_CLINIC_ID}-field-report-2026-05-03t08-00-00-000z`,
+    );
   });
 
   it("records reroute, audit, and partner webhook events in the replay timeline", () => {
