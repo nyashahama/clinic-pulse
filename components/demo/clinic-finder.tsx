@@ -4,6 +4,7 @@ import { ExternalLink } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { FreshnessBadge } from "@/components/demo/freshness-badge";
+import { PatientJourneyImpactPanel } from "@/components/demo/patient-journey-impact";
 import { ReroutePanel } from "@/components/demo/reroute-panel";
 import { SectionHeader } from "@/components/demo/section-header";
 import { StatusBadge } from "@/components/demo/status-badge";
@@ -19,6 +20,7 @@ import {
   resolveSelectedClinicId,
   sortClinicRowsByDistance,
 } from "@/lib/demo/finder";
+import { buildPatientJourneyImpact } from "@/lib/demo/patient-journey";
 import type { ClinicRow } from "@/lib/demo/types";
 
 type ClinicFinderProps = {
@@ -76,6 +78,16 @@ export function ClinicFinder({
   });
   const recommendations =
     recommendationResult.key === recommendationKey ? recommendationResult.recommendations : [];
+  const patientJourneyImpact = selectedClinicRow
+    ? buildPatientJourneyImpact({
+        sourceClinic: selectedClinicRow,
+        requestedService: service,
+        recommendations,
+      })
+    : null;
+  const recommendedDirectionsUrl = patientJourneyImpact?.recommendedClinic
+    ? buildDirectionsUrl(patientJourneyImpact.recommendedClinic)
+    : null;
 
   useEffect(() => {
     let isCurrent = true;
@@ -233,6 +245,25 @@ export function ClinicFinder({
               Last report: {new Date(selectedClinicRow.lastReportedAt).toLocaleString("en-ZA")}
             </div>
           </section>
+        ) : null}
+
+        {patientJourneyImpact ? (
+          <PatientJourneyImpactPanel
+            impact={patientJourneyImpact}
+            actions={
+              recommendedDirectionsUrl ? (
+                <a
+                  href={recommendedDirectionsUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={buttonVariants({ size: "sm", variant: "outline" })}
+                >
+                  Open recommended directions
+                  <ExternalLink className="size-3.5" />
+                </a>
+              ) : undefined
+            }
+          />
         ) : null}
 
         {selectedClinicRow ? (

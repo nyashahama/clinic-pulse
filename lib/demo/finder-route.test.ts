@@ -146,4 +146,21 @@ describe("public finder route boundary", () => {
     expect(componentSource).toContain("is currently available for routing.");
     expect(componentSource).toContain("No alternative should be shown as safe");
   });
+
+  it("shows patient journey impact in the finder before reroute recommendations", () => {
+    const componentSource = readFileSync(publicFinderComponent, "utf8");
+    const impactPanelIndex = componentSource.indexOf("<PatientJourneyImpactPanel");
+    const reroutePanelIndex = componentSource.indexOf("<ReroutePanel");
+
+    expect(componentSource).toContain("buildPatientJourneyImpact");
+    expect(componentSource).toContain("PatientJourneyImpactPanel");
+    expect(componentSource).toContain("sourceClinic: selectedClinicRow");
+    expect(componentSource).toContain("requestedService: service");
+    expect(componentSource).toContain("recommendations");
+    expect(componentSource).toContain("buildDirectionsUrl(patientJourneyImpact.recommendedClinic)");
+    expect(componentSource).toContain("Open recommended directions");
+    expect(impactPanelIndex).toBeGreaterThanOrEqual(0);
+    expect(reroutePanelIndex).toBeGreaterThanOrEqual(0);
+    expect(impactPanelIndex).toBeLessThan(reroutePanelIndex);
+  });
 });
