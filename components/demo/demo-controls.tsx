@@ -2,6 +2,7 @@
 
 import type { ComponentType } from "react";
 import {
+  PlayCircle,
   RefreshCw,
   Route,
   Syringe,
@@ -16,7 +17,9 @@ type DemoControlsProps = {
   stockoutClinicLabel: string;
   staffingClinicLabel: string;
   offlineQueueCount: number;
+  replayRunning?: boolean;
   onReset: () => void;
+  onReplayIncident: () => void;
   onTriggerStockout: () => void;
   onTriggerStaffingShortage: () => void;
   onSyncOfflineReports: () => void;
@@ -29,13 +32,16 @@ type ControlAction = {
   icon: ComponentType<{ className?: string }>;
   onClick: () => void;
   variant?: "outline" | "destructive";
+  disabled?: boolean;
 };
 
 export function DemoControls({
   stockoutClinicLabel,
   staffingClinicLabel,
   offlineQueueCount,
+  replayRunning,
   onReset,
+  onReplayIncident,
   onTriggerStockout,
   onTriggerStaffingShortage,
   onSyncOfflineReports,
@@ -48,6 +54,14 @@ export function DemoControls({
       icon: RefreshCw,
       onClick: onReset,
       variant: "outline",
+    },
+    {
+      title: "Replay incident",
+      description: "Animate one incident from field report to partner webhook evidence.",
+      icon: PlayCircle,
+      onClick: onReplayIncident,
+      variant: "outline",
+      disabled: replayRunning,
     },
     {
       title: "Trigger stockout",
@@ -115,6 +129,7 @@ export function DemoControls({
                   variant={action.variant ?? "outline"}
                   size="sm"
                   onClick={action.onClick}
+                  disabled={action.disabled}
                 >
                   {action.title}
                 </Button>

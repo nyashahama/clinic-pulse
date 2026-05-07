@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { AlertList } from "@/components/demo/alert-list";
@@ -9,11 +9,19 @@ import { ClinicMap } from "@/components/demo/clinic-map";
 import { ClinicSidePanel } from "@/components/demo/clinic-side-panel";
 import { ClinicTable } from "@/components/demo/clinic-table";
 import { DemoControls } from "@/components/demo/demo-controls";
+import { IncidentReplayPanel } from "@/components/demo/incident-replay-panel";
 import { PilotReadinessPanel } from "@/components/demo/pilot-readiness-panel";
 import { ReportStream } from "@/components/demo/report-stream";
 import { StatusSummary } from "@/components/demo/status-summary";
 import { buttonVariants } from "@/components/ui/button";
 import type { SyncSummaryApiResponse } from "@/lib/demo/api-types";
+import {
+  INCIDENT_REPLAY_SOURCE_CLINIC_ID,
+  buildIncidentReplayWebhookPreview,
+  incidentReplaySteps,
+  type IncidentReplayStepId,
+  type IncidentReplayWebhookPreview,
+} from "@/lib/demo/incident-replay";
 import {
   STAFFING_TRIGGER_CLINIC_ID,
   STOCKOUT_TRIGGER_CLINIC_ID,
@@ -57,6 +65,7 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
     triggerStaffingShortage,
     syncOfflineReports,
     queueOfflineReport,
+    applyIncidentReplayStep,
   } = useDemoStore();
 
   const clinicRows = useMemo(() => getClinicRows(state), [state]);
@@ -76,6 +85,17 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
   const [selectedClinicId, setSelectedClinicId] = useState<string | null>(null);
   const [clinicPanelOpen, setClinicPanelOpen] = useState(false);
   const [rerouteClinicId, setRerouteClinicId] = useState<string | null>(null);
+  const replayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestDemoStateRef = useRef(state);
+  const [replayStatus, setReplayStatus] = useState<"idle" | "running" | "complete">("idle");
+  const [activeReplayStepId, setActiveReplayStepId] = useState<IncidentReplayStepId | null>(
+    null,
+  );
+  const [completedReplayStepIds, setCompletedReplayStepIds] = useState<IncidentReplayStepId[]>([]);
+  const [completedReplayAtByStepId, setCompletedReplayAtByStepId] = useState<
+    Partial<Record<IncidentReplayStepId, string>>
+  >({});
+  const [webhookPreview, setWebhookPreview] = useState<IncidentReplayWebhookPreview | null>(null);
   const hasStatusFilter = Boolean(statusFilter);
   const statusFilterLabel = statusFilter.replaceAll("_", " ");
 
@@ -99,6 +119,76 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
 
   const selectedClinic =
     mapClinics.find((clinic) => clinic.id === resolvedSelectedClinicId) ?? null;
+
+  useEffect(() => {
+    latestDemoStateRef.current = state;
+  }, [state]);
+
+  useEffect(() => {
+    return () => {
+      if (replayTimeoutRef.current) {
+        clearTimeout(replayTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const clearReplayTimer = () => {
+    if (!replayTimeoutRef.current) {
+      return;
+    }
+
+    clearTimeout(replayTimeoutRef.current);
+    replayTimeoutRef.current = null;
+  };
+
+  const runIncidentReplayStep = (stepIndex: number) => {
+    const step = incidentReplaySteps[stepIndex];
+
+    if (!step) {
+      clearReplayTimer();
+      setActiveReplayStepId(null);
+      setReplayStatus("complete");
+      return;
+    }
+
+    const stepNow = new Date().toISOString();
+
+    setActiveReplayStepId(step.id);
+    applyIncidentReplayStep(step.id, stepNow);
+
+    if (step.id === "reroute") {
+      setRerouteClinicId(INCIDENT_REPLAY_SOURCE_CLINIC_ID);
+    }
+
+    if (step.id === "partner_webhook") {
+      setWebhookPreview(
+        buildIncidentReplayWebhookPreview(latestDemoStateRef.current, stepNow),
+      );
+    }
+
+    replayTimeoutRef.current = window.setTimeout(() => {
+      setCompletedReplayStepIds((current) => [...current, step.id]);
+      setCompletedReplayAtByStepId((current) => ({
+        ...current,
+        [step.id]: stepNow,
+      }));
+      runIncidentReplayStep(stepIndex + 1);
+    }, step.durationMs);
+  };
+
+  const startIncidentReplay = () => {
+    if (replayStatus === "running") {
+      return;
+    }
+
+    clearReplayTimer();
+    setReplayStatus("running");
+    setActiveReplayStepId(null);
+    setCompletedReplayStepIds([]);
+    setCompletedReplayAtByStepId({});
+    setWebhookPreview(null);
+    runIncidentReplayStep(0);
+  };
 
   useEffect(() => {
     if (!selectedClinic) {
@@ -288,10 +378,18 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
           stockoutClinicLabel="Mamelodi East"
           staffingClinicLabel="Soshanguve Block F"
           offlineQueueCount={state.offlineQueue.length}
+          replayRunning={replayStatus === "running"}
           onReset={() => {
+            clearReplayTimer();
+            setReplayStatus("idle");
+            setActiveReplayStepId(null);
+            setCompletedReplayStepIds([]);
+            setCompletedReplayAtByStepId({});
+            setWebhookPreview(null);
             resetDemo();
             handleCloseClinicPanel();
           }}
+          onReplayIncident={startIncidentReplay}
           onTriggerStockout={() => {
             setSelectedClinicId(STOCKOUT_TRIGGER_CLINIC_ID);
             setClinicPanelOpen(true);
@@ -306,6 +404,14 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
           }}
           onSyncOfflineReports={handleSyncOfflineReports}
           onTriggerReroute={handleTriggerReroute}
+        />
+
+        <IncidentReplayPanel
+          status={replayStatus}
+          activeStepId={activeReplayStepId}
+          completedStepIds={completedReplayStepIds}
+          completedAtByStepId={completedReplayAtByStepId}
+          webhookPreview={webhookPreview}
         />
       </div>
 
