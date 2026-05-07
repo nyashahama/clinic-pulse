@@ -66,8 +66,14 @@ describe("buildPatientJourneyImpact", () => {
     expect(impact.impactMetrics.wastedTripAvoided).toBe(true);
     expect(impact.impactMetrics.estimatedWastedTravelMinutesSaved).toBeGreaterThan(0);
     expect(impact.impactMetrics.compatibleServices).toEqual(["Primary care", "Pharmacy"]);
-    expect(impact.trustSignals.reason).toBe("Operational and fresh with requested service.");
-    expect(impact.trustSignals.lastReportedAt).toBe(recommended.lastReportedAt);
+    expect(impact.trustSignals.reason).toBe(source.reason);
+    expect(impact.trustSignals.lastReportedAt).toBe(source.lastReportedAt);
+    expect(impact.trustSignals.recommendation).toEqual({
+      status: recommended.status,
+      freshness: recommended.freshness,
+      lastReportedAt: recommended.lastReportedAt,
+      reason: "Operational and fresh with requested service.",
+    });
   });
 
   it("uses the first valid existing recommendation without re-ranking alternatives", () => {
@@ -155,6 +161,33 @@ describe("buildPatientJourneyImpact", () => {
     expect(impact.state).toBe("reroute_recommended");
     expect(impact.recommendedClinic?.id).toBe("full-match");
     expect(impact.impactMetrics.compatibleServices).toEqual(["Pharmacy"]);
+  });
+
+  it("matches requested service despite case and whitespace differences", () => {
+    const rows = getRows();
+    const source = cloneClinic(rows[0], {
+      status: "non_functional",
+      services: ["Primary care", "Pharmacy"],
+    });
+    const recommended = cloneClinic(rows[1], {
+      id: "normalized-match",
+      status: "operational",
+      freshness: "fresh",
+    });
+
+    const impact = buildPatientJourneyImpact({
+      sourceClinic: source,
+      requestedService: "  pharmacy  ",
+      recommendations: [
+        recommendation(recommended, {
+          compatibilityServices: [" Pharmacy "],
+        }),
+      ],
+    });
+
+    expect(impact.state).toBe("reroute_recommended");
+    expect(impact.requestedService).toBe("pharmacy");
+    expect(impact.recommendedClinic?.id).toBe("normalized-match");
   });
 
   it("does not claim a wasted trip avoided when the source clinic is available", () => {

@@ -25,10 +25,14 @@ export type PatientJourneyImpact = {
   trustSignals: {
     sourceStatus: ClinicRow["status"];
     sourceFreshness: ClinicRow["freshness"];
-    recommendedStatus: ClinicRow["status"] | null;
-    recommendedFreshness: ClinicRow["freshness"] | null;
     lastReportedAt: string | null;
     reason: string;
+    recommendation: {
+      status: ClinicRow["status"];
+      freshness: ClinicRow["freshness"];
+      lastReportedAt: string | null;
+      reason: string;
+    } | null;
   };
 };
 
@@ -38,13 +42,19 @@ export type BuildPatientJourneyImpactInput = {
   recommendations: AlternativeRecommendation[];
 };
 
+function normalizeService(value: string) {
+  return value.trim().toLowerCase();
+}
+
 function isValidRecommendation(
   recommendation: AlternativeRecommendation,
   requestedService: string,
 ) {
   return (
     recommendation.compatibilityServices.length > 0 &&
-    recommendation.compatibilityServices.includes(requestedService) &&
+    recommendation.compatibilityServices.some(
+      (service) => normalizeService(service) === normalizeService(requestedService),
+    ) &&
     !isClinicUnavailable(recommendation.clinic)
   );
 }
@@ -84,10 +94,9 @@ function buildBaseImpact({
     trustSignals: {
       sourceStatus: sourceClinic.status,
       sourceFreshness: sourceClinic.freshness,
-      recommendedStatus: null,
-      recommendedFreshness: null,
       lastReportedAt: sourceClinic.lastReportedAt,
       reason: sourceClinic.reason,
+      recommendation: null,
     },
   };
 }
@@ -140,10 +149,12 @@ export function buildPatientJourneyImpact({
     },
     trustSignals: {
       ...base.trustSignals,
-      recommendedStatus: topRecommendation.clinic.status,
-      recommendedFreshness: topRecommendation.clinic.freshness,
-      lastReportedAt: topRecommendation.clinic.lastReportedAt,
-      reason: topRecommendation.reason,
+      recommendation: {
+        status: topRecommendation.clinic.status,
+        freshness: topRecommendation.clinic.freshness,
+        lastReportedAt: topRecommendation.clinic.lastReportedAt,
+        reason: topRecommendation.reason,
+      },
     },
   };
 }
