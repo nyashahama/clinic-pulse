@@ -1,23 +1,90 @@
 # ClinicPulse
 
-ClinicPulse is a full-stack demo product for district clinic operations. The app combines a Next.js frontend with a Go API and Postgres backend for clinic status, public finder data, field reports, offline sync, audit events, auth, partner readiness, API keys, webhooks, and export previews.
+ClinicPulse is a full-stack clinic operations demo for district teams that need live facility status, offline field reporting, patient rerouting context, audit history, partner APIs, and export readiness.
 
-## Current State
+## Live Demo
 
-The repository is past the default scaffold stage:
+- Public demo URL: Pending deployment
+- Local demo URL: `http://localhost:3000` after running the local setup below
+- Demo API URL: `http://localhost:8080` after running the Go API locally
 
-- Next.js app routes cover the landing page, booking flow, demo district console, clinic detail, public finder, field reporting, admin, login, and registration.
-- The Go API exposes public clinic endpoints, authenticated operational endpoints, role-protected admin endpoints, partner API-key endpoints, webhook previews, exports, and readiness checks.
-- Seeded demo data lives in SQL migrations. Local auth users live in a separate seed file so privileged demo accounts are not part of normal migrations.
-- Frontend and backend tests are both active.
+### Demo Credentials
 
-## Requirements
+The local seed creates these demo users:
+
+| Role | Email | Password | Access |
+| --- | --- | --- | --- |
+| System admin | `system-admin@clinicpulse.local` | `ClinicPulseDemo123!` | `/field`, `/demo`, `/admin` |
+| Organisation admin | `org-admin@clinicpulse.local` | `ClinicPulseDemo123!` | `/field`, `/demo`, `/admin` |
+| District manager | `district-manager@clinicpulse.local` | `ClinicPulseDemo123!` | `/field`, `/demo` |
+| Reporter | `reporter@clinicpulse.local` | `ClinicPulseDemo123!` | `/field` |
+
+## Run Locally In 5 Minutes
+
+Requirements:
 
 - Node.js compatible with Next.js 16
 - npm
 - Go 1.25 or newer
 - Docker with Compose
 - PostgreSQL client tools, especially `psql`
+
+Run:
+
+```bash
+npm install
+cp .env.example .env.local
+make db-up
+make db-bootstrap
+make dev-api
+```
+
+In a second terminal:
+
+```bash
+make dev-web
+```
+
+Open `http://localhost:3000`.
+
+The migration command is intended for a fresh local database. The local auth seed is safe to rerun with `make db-seed-auth`.
+
+## Core Workflows
+
+| Workflow | Route | What it shows |
+| --- | --- | --- |
+| Landing and booking entry | `/` | Product positioning, operating gap, workflows, and booking entry |
+| Booking flow | `/book-demo` and `/book-demo/thanks` | Lead capture flow and handoff into demo routes |
+| District console | `/demo` | Clinic status map, incidents, rerouting context, offline sync, and scenario controls |
+| Clinic evidence | `/demo/clinics/clinic-mamelodi-east` | Clinic-specific service, report, and audit context |
+| Public finder | `/finder` | Public clinic availability search and alternatives |
+| Field reporting | `/field` | Offline-friendly report submission and sync path |
+| Admin workspace | `/admin` | Lead pipeline, export preview, API preview, partner readiness, and pilot readiness |
+
+## Documentation
+
+- [Architecture](docs/architecture.md)
+- [API reference](docs/api.md)
+- [Database schema overview](docs/database-schema.md)
+- [Engineering decisions](docs/engineering-decisions.md)
+- [Screenshots checklist](docs/screenshots.md)
+- [Demo video script](docs/demo-video.md)
+- [Portfolio case study draft](docs/portfolio-case-study.md)
+- [Release checklist](docs/release.md)
+
+## Architecture Snapshot
+
+ClinicPulse combines a Next.js app, same-origin browser proxy, Go chi API, and Postgres database. The frontend can hydrate from backend data and falls back to seeded demo state in non-production/demo contexts when configured.
+
+```mermaid
+flowchart LR
+  Browser["Browser"] --> Next["Next.js app"]
+  Next --> Proxy["/api/clinicpulse proxy"]
+  Proxy --> API["Go chi API"]
+  API --> Postgres["Postgres"]
+  Next --> DemoStore["Demo store and seeded fallback"]
+  API --> Partner["Partner API keys, webhooks, exports"]
+```
 
 ## Environment
 
@@ -40,79 +107,7 @@ CLINICPULSE_WEBHOOK_DELIVERY_ENABLED=false
 CLINICPULSE_ALLOW_DEMO_FALLBACK=false
 ```
 
-`CLINICPULSE_ALLOW_DEMO_FALLBACK` should stay `false` in staging or production unless you intentionally want API failures to fall back to seeded demo state.
-
-## Local Full-Stack Setup
-
-Install dependencies:
-
-```bash
-npm install
-```
-
-Start Postgres:
-
-```bash
-make db-up
-```
-
-Apply SQL migrations and seed local auth users:
-
-```bash
-make db-bootstrap
-```
-
-The migration command is intended for a fresh local database. The auth seed is safe to rerun, but the migrations do not currently use a migration ledger.
-
-Start the Go API in one terminal:
-
-```bash
-make dev-api
-```
-
-Start the Next.js app in another terminal:
-
-```bash
-make dev-web
-```
-
-Open `http://localhost:3000`.
-
-## Local Demo Accounts
-
-The local seed creates these users:
-
-- `system-admin@clinicpulse.local`
-- `org-admin@clinicpulse.local`
-- `district-manager@clinicpulse.local`
-- `reporter@clinicpulse.local`
-
-Local demo password:
-
-```text
-ClinicPulseDemo123!
-```
-
-Role access:
-
-- Reporter: `/field`
-- District manager: `/field`, `/demo`
-- Organisation admin and system admin: `/field`, `/demo`, `/admin`
-
-## Demo Walkthrough
-
-The current phase-one route checklist is encoded in `lib/demo/demo-runbook.ts`.
-
-Review these routes on desktop and mobile:
-
-- `/` - landing page and entry into booking or demo workspace
-- `/book-demo` - booking flow and local lead capture
-- `/book-demo/thanks` - confirmation and navigation into demo/admin/finder
-- `/demo` - district console with clinic status, incidents, rerouting, and scenario controls
-- `/demo/clinics/clinic-mamelodi-east` - clinic evidence and escalation context
-- `/finder` - public clinic availability search
-- `/field` - offline-friendly report flow and sync
-- `/admin` - lead pipeline, export preview, API preview, roadmap, partner readiness, and pilot readiness
+`CLINICPULSE_ALLOW_DEMO_FALLBACK` should stay `false` in staging or production unless API failures should intentionally fall back to seeded demo state.
 
 ## Useful Commands
 
@@ -159,6 +154,12 @@ The proxy is configured in `next.config.ts` and forwards `/api/clinicpulse/*` to
 
 Server hydration can fall back to seeded demo state when allowed by `CLINICPULSE_ALLOW_DEMO_FALLBACK` or in non-production environments. Treat that as a demo resilience feature, not production error handling.
 
+## Release Status
+
+Current package target: `v0.1.0-alpha`
+
+Release tag status: Pending final verification and user approval. See [release checklist](docs/release.md).
+
 ## Validation Baseline
 
 Before handing off a branch, run:
@@ -167,29 +168,10 @@ Before handing off a branch, run:
 make verify
 ```
 
-For browser smoke coverage, run:
+Before tagging a release or recording a final demo, also run:
 
 ```bash
 make test-e2e
 ```
 
-This target uses the isolated `clinicpulse_e2e` database and resets that database before running Playwright.
-It starts the compose Postgres service on host port `55432` by default, so it can run even when another local Postgres already occupies `5432`.
-
-At minimum, the branch should pass:
-
-- Vitest frontend tests
-- ESLint
-- Go API tests
-- Next.js production build
-- Playwright smoke tests before demo handoff or route-level UI changes
-
 GitHub Actions runs the frontend, backend, and browser smoke baselines through `.github/workflows/ci.yml`.
-
-## Next Product Work
-
-The highest-leverage next work after this runbook is:
-
-1. Persist booking leads and founder pipeline updates through the backend rather than only local demo state.
-2. Document and smoke-test the partner API, webhook, and export contracts already exposed by the Go router.
-3. Make seeded fallback behavior explicit per environment so staging and production failures are visible.
