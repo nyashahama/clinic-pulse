@@ -160,4 +160,38 @@ describe("loadAlternativeRecommendations", () => {
       }),
     ).resolves.toEqual([]);
   });
+
+  it("quietly ignores aborted backend recommendation fetches", async () => {
+    const rows = getRows();
+    const source = rows[0];
+    const onFetchError = vi.fn();
+    const localFallback = vi.fn(() => buildFinderAlternativeFallback(rows, source));
+    const abortController = new AbortController();
+    const fetchImpl = vi
+      .fn<ClinicPulseFetch>()
+      .mockImplementation(() => {
+        abortController.abort();
+        return Promise.reject(new TypeError("Failed to fetch"));
+      });
+
+    const recommendations = await loadAlternativeRecommendations({
+      sourceClinic: source,
+      localClinics: rows,
+      requestedService: source.services[0],
+      apiOptions: {
+        baseUrl: "https://api.example.test",
+        fetch: fetchImpl,
+        init: {
+          signal: abortController.signal,
+        },
+      },
+      allowLocalFallback: true,
+      localFallback,
+      onFetchError,
+    });
+
+    expect(recommendations).toEqual([]);
+    expect(onFetchError).not.toHaveBeenCalled();
+    expect(localFallback).not.toHaveBeenCalled();
+  });
 });

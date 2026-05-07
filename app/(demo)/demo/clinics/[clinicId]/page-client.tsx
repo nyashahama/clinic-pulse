@@ -153,8 +153,10 @@ export default function ClinicDetailPage() {
 
   useEffect(() => {
     let isCurrent = true;
+    const abortController = new AbortController();
 
     if (!clinicRow) {
+      abortController.abort();
       return;
     }
 
@@ -162,6 +164,11 @@ export default function ClinicDetailPage() {
       sourceClinic: clinicRow,
       localClinics: clinicRows,
       requestedService: clinicRow.services[0],
+      apiOptions: {
+        init: {
+          signal: abortController.signal,
+        },
+      },
       localFallback: () => buildRerouteRecommendations(clinicRow, clinicRows),
       onFetchError: (error) => {
         console.warn("Unable to fetch backend reroute alternatives.", error);
@@ -177,6 +184,7 @@ export default function ClinicDetailPage() {
 
     return () => {
       isCurrent = false;
+      abortController.abort();
     };
   }, [clinicRow, clinicRows, recommendationKey]);
 

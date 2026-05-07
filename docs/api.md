@@ -1,0 +1,101 @@
+# API Reference
+
+The Go API is mounted from `services/api/internal/http/router.go`. Local default base URL: `http://localhost:8080`.
+
+Browser requests from the Next.js app normally use `/api/clinicpulse/*`, which is rewritten to the Go API by `next.config.ts`.
+
+## Auth Model
+
+| Auth type | How it is used |
+| --- | --- |
+| Public | No session or API key required |
+| Session auth | Login-created session cookie required |
+| Role auth | Session plus one of the allowed roles |
+| Partner API key | Partner key plus required scope |
+
+Seeded roles are `reporter`, `district_manager`, `org_admin`, and `system_admin`.
+
+## Health
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `GET` | `/healthz` | Public | Process health check |
+| `GET` | `/readyz` | Public | Database-backed readiness check |
+
+## Auth
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `POST` | `/v1/auth/login` | Public | Creates a session from email and password |
+| `POST` | `/v1/auth/logout` | Public | Revokes the current session when present |
+| `GET` | `/v1/auth/me` | Session | Returns the current authenticated user and roles |
+
+## Public Clinic Data
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `GET` | `/v1/public/alternatives?clinicId={clinicId}&service={service}` | Public | Lists public alternative clinic recommendations for a clinic/service pair |
+| `GET` | `/v1/public/clinics` | Public | Lists public clinic directory/status records |
+| `GET` | `/v1/public/clinics/{clinicId}` | Public | Returns one public clinic record |
+
+## Partner API
+
+Partner routes require an API key and the listed scope.
+
+| Method | Path | Scope | Purpose |
+| --- | --- | --- | --- |
+| `GET` | `/v1/partner/clinics` | `clinics:read` | Lists partner-visible clinics |
+| `GET` | `/v1/partner/clinics/{clinicId}/status` | `status:read` | Returns partner-visible clinic status |
+| `GET` | `/v1/partner/alternatives?clinicId={clinicId}&service={service}` | `alternatives:read` | Lists partner-visible alternatives for a clinic/service pair |
+| `GET` | `/v1/partner/export/latest` | `exports:read` | Returns latest partner export payload |
+| `GET` | `/v1/partner/integration-status` | `status:read` | Returns integration readiness/status checks |
+
+## Admin Partner Readiness
+
+Admin routes require a session with `org_admin` or `system_admin`.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/v1/admin/partner-readiness` | Returns partner readiness summary |
+| `POST` | `/v1/admin/api-keys` | Creates a partner API key and returns the one-time secret |
+| `GET` | `/v1/admin/api-keys` | Lists partner API keys |
+| `POST` | `/v1/admin/api-keys/{keyId}/revoke` | Revokes a partner API key |
+| `GET` | `/v1/admin/webhooks` | Lists partner webhook subscriptions |
+| `POST` | `/v1/admin/webhooks` | Creates a partner webhook subscription |
+| `POST` | `/v1/admin/webhooks/{subscriptionId}/test` | Creates a test webhook event or preview |
+| `POST` | `/v1/admin/exports` | Creates a partner export run |
+| `GET` | `/v1/admin/exports/{exportId}` | Returns one partner export run |
+
+## Operational Clinic Data
+
+Operational routes require a session with `district_manager`, `org_admin`, or `system_admin`.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/v1/alternatives?clinicId={clinicId}&service={service}` | Lists operational alternatives for a clinic/service pair |
+| `GET` | `/v1/clinics` | Lists operational clinic rows |
+| `GET` | `/v1/clinics/{clinicId}` | Returns one operational clinic profile |
+| `GET` | `/v1/clinics/{clinicId}/status` | Returns current clinic status |
+| `GET` | `/v1/clinics/{clinicId}/reports` | Lists reports for a clinic |
+| `GET` | `/v1/clinics/{clinicId}/audit-events` | Lists audit events for a clinic |
+| `GET` | `/v1/reports/pending` | Lists reports waiting for review |
+| `POST` | `/v1/status/reconcile-staleness` | Reconciles stale clinic status |
+| `POST` | `/v1/reports/{reportId}/review` | Accepts or rejects a report |
+| `GET` | `/v1/sync/summary` | Returns offline sync and pilot readiness summary |
+
+## Reporter Routes
+
+Reporter routes require a session with `reporter`, `district_manager`, `org_admin`, or `system_admin`.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/v1/reports` | Creates a field report |
+| `POST` | `/v1/reports/offline-sync` | Syncs queued offline reports |
+
+## Response And Error Shape
+
+Handlers use the shared response helpers in `services/api/internal/http/respond.go`. Validation and auth failures return JSON error responses with appropriate HTTP status codes. Route-specific response models live in `services/api/internal/store/models.go`, service files under `services/api/internal/service`, and frontend API types under `lib/demo/api-types.ts`.
+
+## Future OpenAPI Path
+
+This document is a human-readable route reference. A later release can add an OpenAPI document if ClinicPulse needs generated clients, schema validation, or public partner onboarding artifacts.

@@ -1,36 +1,184 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ClinicPulse
 
-## Getting Started
+ClinicPulse is a full-stack clinic operations demo for district teams that need live facility status, offline field reporting, patient rerouting context, audit history, partner APIs, and export readiness.
 
-First, run the development server:
+## Live Demo
+
+- Public demo URL: Pending deployment
+- Local demo URL: `http://localhost:3000` after running the local setup below
+- Demo API URL: `http://localhost:8080` after running the Go API locally
+
+### Demo Credentials
+
+The local seed creates these demo users:
+
+| Role | Email | Password | Access |
+| --- | --- | --- | --- |
+| System admin | `system-admin@clinicpulse.local` | `ClinicPulseDemo123!` | `/field`, `/demo`, `/admin` |
+| Organisation admin | `org-admin@clinicpulse.local` | `ClinicPulseDemo123!` | `/field`, `/demo`, `/admin` |
+| District manager | `district-manager@clinicpulse.local` | `ClinicPulseDemo123!` | `/field`, `/demo` |
+| Reporter | `reporter@clinicpulse.local` | `ClinicPulseDemo123!` | `/field` |
+
+## Run Locally In 5 Minutes
+
+Requirements:
+
+- Node.js compatible with Next.js 16
+- npm
+- Go 1.25 or newer
+- Docker with Compose
+- PostgreSQL client tools, especially `psql`
+
+Run:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local
+make db-up
+make db-wait
+make db-bootstrap
+make dev-api
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+In a second terminal:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+make dev-web
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open `http://localhost:3000`.
 
-## Learn More
+The migration command is intended for a fresh local database. The local auth seed is safe to rerun with `make db-seed-auth`.
 
-To learn more about Next.js, take a look at the following resources:
+## Core Workflows
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Workflow | Route | What it shows |
+| --- | --- | --- |
+| Landing and booking entry | `/` | Product positioning, operating gap, workflows, and booking entry |
+| Booking flow | `/book-demo` and `/book-demo/thanks` | Lead capture flow and handoff into demo routes |
+| District console | `/demo` | Clinic status map, incidents, rerouting context, offline sync, and scenario controls |
+| Clinic evidence | `/demo/clinics/clinic-mamelodi-east` | Clinic-specific service, report, and audit context |
+| Public finder | `/finder` | Public clinic availability search and alternatives |
+| Field reporting | `/field` | Offline-friendly report submission and sync path |
+| Admin workspace | `/admin` | Lead pipeline, export preview, API preview, partner readiness, and pilot readiness |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Documentation
 
-## Deploy on Vercel
+- [Architecture](docs/architecture.md)
+- [API reference](docs/api.md)
+- [Database schema overview](docs/database-schema.md)
+- [Engineering decisions](docs/engineering-decisions.md)
+- [Screenshots and capture guide](docs/screenshots.md)
+- [Demo video script and asset](docs/demo-video.md)
+- [Portfolio case study draft](docs/portfolio-case-study.md)
+- [Release checklist](docs/release.md)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Showcase Assets
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Workflow screenshots: [`public/showcase/screenshots/`](public/showcase/screenshots/)
+- Short demo walkthrough: [`public/showcase/videos/clinicpulse-demo-walkthrough.webm`](public/showcase/videos/clinicpulse-demo-walkthrough.webm)
+- Regenerate local assets with `npm run capture:showcase` after resetting the isolated e2e database.
+
+## Architecture Snapshot
+
+ClinicPulse combines a Next.js app, same-origin browser proxy, Go chi API, and Postgres database. The frontend can hydrate from backend data and falls back to seeded demo state in non-production/demo contexts when configured.
+
+```mermaid
+flowchart LR
+  Browser["Browser"] --> Next["Next.js app"]
+  Next --> Proxy["/api/clinicpulse proxy"]
+  Proxy --> API["Go chi API"]
+  API --> Postgres["Postgres"]
+  Next --> DemoStore["Demo store and seeded fallback"]
+  API --> Partner["Partner API keys, webhooks, exports"]
+```
+
+## Environment
+
+Start from the tracked example:
+
+```bash
+cp .env.example .env.local
+```
+
+Default local values:
+
+```bash
+DATABASE_URL=postgres://clinicpulse:clinicpulse@localhost:5432/clinicpulse?sslmode=disable
+CLINICPULSE_POSTGRES_PORT=5432
+CLINICPULSE_API_ADDR=:8080
+CLINICPULSE_API_BASE_URL=http://localhost:8080
+NEXT_PUBLIC_CLINICPULSE_API_BASE_URL=/api/clinicpulse
+CLINICPULSE_API_KEY_PEPPER=local-development-pepper
+CLINICPULSE_WEBHOOK_DELIVERY_ENABLED=false
+CLINICPULSE_ALLOW_DEMO_FALLBACK=false
+```
+
+`CLINICPULSE_ALLOW_DEMO_FALLBACK` should stay `false` in staging or production unless API failures should intentionally fall back to seeded demo state.
+
+## Useful Commands
+
+```bash
+make db-up          # start local Postgres
+make db-bootstrap   # apply migrations and local auth seed to a fresh DB
+make db-seed-auth   # rerun only local auth seed
+make dev-api        # run Go API on :8080
+make dev-web        # run Next.js on :3000
+make test-web       # run Vitest
+make test-api       # run Go tests
+make test-e2e       # reset isolated e2e DB and run Playwright smoke tests
+make lint           # run ESLint
+make build          # run Next production build
+make verify         # run web tests, lint, API tests, and production build
+```
+
+Direct equivalents:
+
+```bash
+npm test
+npm run test:e2e
+npm run lint
+npm run build
+cd services/api && go test ./...
+```
+
+## Backend Notes
+
+API defaults are defined in `services/api/internal/config/config.go`.
+
+- `DATABASE_URL` defaults to the local compose database.
+- `CLINICPULSE_API_ADDR` defaults to `:8080`.
+- `CLINICPULSE_API_KEY_PEPPER` is used when hashing partner API keys.
+- `CLINICPULSE_WEBHOOK_DELIVERY_ENABLED=true` enables actual webhook delivery behavior. Keep it disabled for normal local demos.
+
+Migrations live in `services/api/migrations`. The local auth seed lives in `services/api/seeds/local_phase3_auth_users.sql`.
+
+## Frontend Notes
+
+Server-side frontend calls use `CLINICPULSE_API_BASE_URL` to call the Go API directly. Browser-side frontend calls use `NEXT_PUBLIC_CLINICPULSE_API_BASE_URL`, which should normally stay on the same-origin proxy path `/api/clinicpulse`.
+
+The proxy is configured in `next.config.ts` and forwards `/api/clinicpulse/*` to `CLINICPULSE_API_BASE_URL`. This keeps client-side demo requests from depending on cross-origin browser access to the Go API.
+
+Server hydration can fall back to seeded demo state when allowed by `CLINICPULSE_ALLOW_DEMO_FALLBACK` or in non-production environments. Treat that as a demo resilience feature, not production error handling.
+
+## Release Status
+
+Current package target: `v0.1.0-alpha`
+
+Release tag status: Pending final verification and user approval. See [release checklist](docs/release.md).
+
+## Validation Baseline
+
+Before handing off a branch, run:
+
+```bash
+make verify
+```
+
+Before tagging a release or recording a final demo, also run:
+
+```bash
+make test-e2e
+```
+
+GitHub Actions runs the frontend, backend, and browser smoke baselines through `.github/workflows/ci.yml`.

@@ -146,6 +146,45 @@ describe("auth API client", () => {
       expect.objectContaining({ method: "POST" }),
     );
   });
+
+  it("uses the private API base URL by default for server-side auth calls", async () => {
+    const previousPrivateBaseUrl = process.env.CLINICPULSE_API_BASE_URL;
+    const previousPublicBaseUrl = process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL;
+    process.env.CLINICPULSE_API_BASE_URL = "https://server-api.example.test/root";
+    process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL = "/api/clinicpulse";
+    const fetchImpl = vi.fn<AuthApiFetch>().mockResolvedValue(
+      jsonResponse({
+        user: authUser(),
+        session: {
+          id: 100,
+          userId: 42,
+          createdAt: "2026-05-01T08:00:00.000Z",
+          expiresAt: "2026-05-08T08:00:00.000Z",
+        },
+        memberships: [membership("district_manager")],
+      }),
+    );
+
+    try {
+      await me({ fetch: fetchImpl });
+    } finally {
+      if (previousPrivateBaseUrl === undefined) {
+        delete process.env.CLINICPULSE_API_BASE_URL;
+      } else {
+        process.env.CLINICPULSE_API_BASE_URL = previousPrivateBaseUrl;
+      }
+      if (previousPublicBaseUrl === undefined) {
+        delete process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL;
+      } else {
+        process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL = previousPublicBaseUrl;
+      }
+    }
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "https://server-api.example.test/root/v1/auth/me",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
 });
 
 describe("auth session role guard", () => {

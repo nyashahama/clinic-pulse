@@ -1,4 +1,5 @@
 const DEFAULT_API_BASE_URL = "http://localhost:8080";
+const DEFAULT_BROWSER_API_BASE_URL = "/api/clinicpulse";
 
 export const AUTH_COOKIE_NAME = "clinicpulse_session";
 
@@ -92,10 +93,18 @@ type ApiErrorResponse = {
 
 function getDefaultBaseUrl() {
   if (typeof process !== "undefined") {
-    return process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL || DEFAULT_API_BASE_URL;
+    if (typeof window === "undefined") {
+      return (
+        process.env.CLINICPULSE_API_BASE_URL ||
+        process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL ||
+        DEFAULT_API_BASE_URL
+      );
+    }
+
+    return process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL || DEFAULT_BROWSER_API_BASE_URL;
   }
 
-  return DEFAULT_API_BASE_URL;
+  return DEFAULT_BROWSER_API_BASE_URL;
 }
 
 function getFetch(fetchImpl: AuthApiClientOptions["fetch"]) {
@@ -118,8 +127,17 @@ function buildApiUrl(pathSegments: string[], options: AuthApiClientOptions = {})
   const baseUrl = options.baseUrl ?? getDefaultBaseUrl();
   const trimmedBaseUrl = baseUrl.replace(/\/+$/g, "");
   const encodedPath = pathSegments.map((segment) => encodeURIComponent(segment)).join("/");
+  const isRelativeBaseUrl = trimmedBaseUrl.startsWith("/");
+  const url = new URL(
+    `${trimmedBaseUrl}/${encodedPath}`,
+    isRelativeBaseUrl ? "http://clinicpulse.local" : undefined,
+  );
 
-  return new URL(`${trimmedBaseUrl}/${encodedPath}`).toString();
+  if (isRelativeBaseUrl) {
+    return `${url.pathname}${url.search}`;
+  }
+
+  return url.toString();
 }
 
 function copyHeaders(target: Headers, source: HeadersInit | undefined) {

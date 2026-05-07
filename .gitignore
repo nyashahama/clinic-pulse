@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+/playwright-report
+/test-results
 
 # next.js
 /.next/
@@ -41,6 +43,7 @@ yarn-error.log*
 next-env.d.ts
 .superpowers/
 .worktrees/
+specs/
 docs/superpowers/
 clinicpulse-system-deliverable.md
 clinicpulse-yc-demo-product-ux-spec.md
