@@ -156,9 +156,12 @@ describe("public finder route boundary", () => {
     expect(componentSource).toContain("PatientJourneyImpactPanel");
     expect(componentSource).toContain("sourceClinic: selectedClinicRow");
     expect(componentSource).toContain("requestedService: service");
-    expect(componentSource).toContain("recommendations");
+    expect(componentSource).toContain("recommendations={recommendations}");
+    expect(componentSource).toContain("recommendedDirectionsUrl");
     expect(componentSource).toContain("buildDirectionsUrl(patientJourneyImpact.recommendedClinic)");
     expect(componentSource).toContain("Open recommended directions");
+    expect(componentSource).toContain("recommendationsReady");
+    expect(componentSource).toContain("selectedClinicRow && recommendationsReady");
     expect(impactPanelIndex).toBeGreaterThanOrEqual(0);
     expect(reroutePanelIndex).toBeGreaterThanOrEqual(0);
     expect(impactPanelIndex).toBeLessThan(reroutePanelIndex);

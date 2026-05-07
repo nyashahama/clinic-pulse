@@ -76,9 +76,10 @@ export function ClinicFinder({
     key: "",
     recommendations: [],
   });
+  const recommendationsReady = recommendationResult.key === recommendationKey;
   const recommendations =
-    recommendationResult.key === recommendationKey ? recommendationResult.recommendations : [];
-  const patientJourneyImpact = selectedClinicRow
+    recommendationsReady ? recommendationResult.recommendations : [];
+  const patientJourneyImpact = selectedClinicRow && recommendationsReady
     ? buildPatientJourneyImpact({
         sourceClinic: selectedClinicRow,
         requestedService: service,
