@@ -70,19 +70,18 @@ Repository evidence:
 - `docs/api.md` for API routes.
 - `docs/database-schema.md` for persistence model.
 - `docs/engineering-decisions.md` for tradeoffs.
+- `public/showcase/screenshots/` for workflow screenshots.
+- `public/showcase/videos/clinicpulse-demo-walkthrough.webm` for the short demo walkthrough.
 - `.github/workflows/ci.yml` for CI baseline.
 
 Media evidence pending:
 
 - Live demo URL.
-- Workflow screenshots.
-- Short demo video.
 - Published portfolio URL.
 
 ## What Would Ship Next
 
 - Deploy a clean live demo with seeded demo credentials.
-- Capture final workflow screenshots.
-- Record the short demo video.
+- Convert the walkthrough to MP4 if the portfolio host requires it.
 - Publish this case study on the portfolio site.
 - Create `v0.1.0-alpha` after final verification.

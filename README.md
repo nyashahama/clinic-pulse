@@ -68,10 +68,16 @@ The migration command is intended for a fresh local database. The local auth see
 - [API reference](docs/api.md)
 - [Database schema overview](docs/database-schema.md)
 - [Engineering decisions](docs/engineering-decisions.md)
-- [Screenshots checklist](docs/screenshots.md)
-- [Demo video script](docs/demo-video.md)
+- [Screenshots and capture guide](docs/screenshots.md)
+- [Demo video script and asset](docs/demo-video.md)
 - [Portfolio case study draft](docs/portfolio-case-study.md)
 - [Release checklist](docs/release.md)
+
+## Showcase Assets
+
+- Workflow screenshots: [`public/showcase/screenshots/`](public/showcase/screenshots/)
+- Short demo walkthrough: [`public/showcase/videos/clinicpulse-demo-walkthrough.webm`](public/showcase/videos/clinicpulse-demo-walkthrough.webm)
+- Regenerate local assets with `npm run capture:showcase` after resetting the isolated e2e database.
 
 ## Architecture Snapshot
 

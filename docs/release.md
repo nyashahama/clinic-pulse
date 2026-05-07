@@ -46,6 +46,5 @@ This alpha packages ClinicPulse as a full-stack clinic operations demo with:
 Known pending external assets:
 
 - Deployed live demo URL.
-- Captured workflow screenshots.
-- Recorded demo video.
+- Publicly hosted MP4 demo video URL, if needed outside GitHub.
 - Published portfolio case study URL.

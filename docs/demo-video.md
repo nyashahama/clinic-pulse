@@ -1,6 +1,6 @@
 # Demo Video Script
 
-Final demo video URL: Pending recording
+Demo walkthrough asset: [`public/showcase/videos/clinicpulse-demo-walkthrough.webm`](../public/showcase/videos/clinicpulse-demo-walkthrough.webm)
 
 Target length: 60 to 90 seconds.
 
@@ -25,10 +25,21 @@ Target length: 60 to 90 seconds.
 
 ## Capture Checklist
 
-- Run a fresh local demo or use the deployed demo URL once available.
+- Reset the isolated e2e database before recording.
 - Use seeded demo credentials from `README.md`.
 - Keep browser zoom at 100%.
 - Hide browser bookmarks and unrelated local windows.
-- Record at 1080p or higher.
+- Record at 1080p or higher for external publishing.
 - Keep narration factual and implementation-specific.
-- Export as MP4 and publish the final link in `README.md` after review.
+- The checked-in walkthrough is WebM from Playwright. Convert to MP4 only for portfolio or social platforms that require it.
+
+## Regenerate Local Walkthrough
+
+```bash
+make db-up-e2e
+make db-reset-e2e
+E2E_DATABASE_URL='postgres://clinicpulse:clinicpulse@localhost:55432/clinicpulse_e2e?sslmode=disable' \
+  CLINICPULSE_E2E_API_PORT=18080 \
+  CLINICPULSE_E2E_WEB_PORT=13000 \
+  npm run capture:showcase
+```
