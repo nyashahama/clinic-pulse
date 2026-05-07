@@ -87,7 +87,7 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
   const [rerouteClinicId, setRerouteClinicId] = useState<string | null>(null);
   const replayStartGuardRef = useRef(false);
   const replaySessionRef = useRef(0);
-  const replayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const replayTimeoutRef = useRef<number | null>(null);
   const latestDemoStateRef = useRef(state);
   const [replayStatus, setReplayStatus] = useState<"idle" | "running" | "complete">("idle");
   const [activeReplayStepId, setActiveReplayStepId] = useState<IncidentReplayStepId | null>(
@@ -133,7 +133,7 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
       replaySessionRef.current += 1;
       replayStartGuardRef.current = false;
       if (replayTimeoutRef.current) {
-        clearTimeout(replayTimeoutRef.current);
+        window.clearTimeout(replayTimeoutRef.current);
       }
     };
   }, []);
@@ -143,7 +143,7 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
       return;
     }
 
-    clearTimeout(replayTimeoutRef.current);
+    window.clearTimeout(replayTimeoutRef.current);
     replayTimeoutRef.current = null;
   };
 
