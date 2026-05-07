@@ -142,5 +142,8 @@ describe("public finder route boundary", () => {
     expect(componentSource).toContain("formatImpactMinutes");
     expect(componentSource).toContain("trustSignals.reason");
     expect(componentSource).toContain("trustSignals.recommendation?.reason");
+    expect(componentSource).toContain("afterDescription");
+    expect(componentSource).toContain("is currently available for routing.");
+    expect(componentSource).toContain("No alternative should be shown as safe");
   });
 });

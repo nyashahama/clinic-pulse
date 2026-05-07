@@ -75,6 +75,12 @@ export function PatientJourneyImpactPanel({
   const recommendationReason = impact.trustSignals.recommendation?.reason;
   const isEvidence = variant === "evidence";
   const panelCopy = getPanelCopy(impact, isEvidence);
+  const afterDescription =
+    impact.state === "available"
+      ? `${impact.sourceClinic.name} is currently available for routing.`
+      : recommendedClinic
+        ? `${recommendedClinic.name} is the current recommended alternative.`
+        : "No alternative should be shown as safe without compatible recommendation data.";
 
   return (
     <section
@@ -115,9 +121,7 @@ export function PatientJourneyImpactPanel({
               {impact.afterOutcome}
             </p>
             <p className="mt-1 text-xs leading-5 text-emerald-900">
-              {recommendedClinic
-                ? `${recommendedClinic.name} is the current recommended alternative.`
-                : "No alternative should be shown as safe without compatible recommendation data."}
+              {afterDescription}
             </p>
           </div>
         </div>
