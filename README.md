@@ -4,9 +4,10 @@ ClinicPulse is a full-stack clinic operations demo for district teams that need 
 
 ## Live Demo
 
-- Public demo URL: Pending deployment
 - Local demo URL: `http://localhost:3000` after running the local setup below
 - Demo API URL: `http://localhost:8080` after running the Go API locally
+- Workflow screenshots: [`public/showcase/screenshots/`](public/showcase/screenshots/)
+- Recorded walkthrough: [`public/showcase/videos/clinicpulse-demo-walkthrough.webm`](public/showcase/videos/clinicpulse-demo-walkthrough.webm)
 
 ### Demo Credentials
 
