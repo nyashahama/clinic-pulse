@@ -73,7 +73,7 @@ export const heroIncident = {
   reason: "Pharmacy stockout",
   age: "Fresh - 2 min ago",
   recommendedRoute: "Akasia Hills Clinic",
-  routeDetail: "8.4 km away / ARV pickup accepting",
+  routeDetail: "18 min wasted travel avoided / best nearby compatible",
   auditId: "AUD-2026-0504-017",
 } as const;
 
@@ -140,10 +140,10 @@ export const workflowSteps = [
     detail: "Fresh - 2 min ago",
   },
   {
-    title: "Patient reroute",
+    title: "Wasted trip avoided",
     description:
-      "The public finder recommends the nearest compatible operational clinic.",
-    detail: "Route to Akasia Hills Clinic",
+      "The public finder warns the patient before travel and recommends the best nearby compatible clinic.",
+    detail: "18 min avoided wasted travel",
   },
   {
     title: "Audit record",
@@ -170,9 +170,9 @@ export const workflowIncidentStages = [
   },
   {
     surface: "Public finder",
-    title: "Patient reroute prepared",
-    detail: "Akasia Hills Clinic can accept ARV pickup",
-    state: "Route ready",
+    title: "Wasted trip avoided",
+    detail: "Akasia Hills Clinic is best nearby compatible for ARV pickup",
+    state: "18 min avoided",
     tone: "healthy",
   },
   {
@@ -222,15 +222,15 @@ export const featureCards = [
   {
     title: "Patient rerouting",
     description:
-      "Unavailable clinic context is paired with a compatible alternative so patients avoid wasted trips.",
+      "Unavailable clinic context is paired with a best nearby compatible alternative so patients avoid wasted trips.",
     icon: "navigation",
     miniature: {
       type: "patient-reroute",
       label: "Public route",
       badge: "ready",
       rows: [
-        "Nearest compatible: Akasia Hills",
-        "Distance: 8.4 km",
+        "Impact: 18 min avoided",
+        "Clinic: Best nearby compatible",
         "Service: ARV pickup accepting",
       ],
     },
@@ -251,8 +251,8 @@ export const productSurfacePreviewRows = {
     { label: "Action", value: "Open alert", tone: "neutral" },
   ],
   "patient-reroute": [
-    { label: "Nearest compatible", value: "Akasia Hills", tone: "healthy" },
-    { label: "Distance", value: "8.4 km", tone: "neutral" },
+    { label: "Impact", value: "18 min avoided", tone: "healthy" },
+    { label: "Clinic", value: "Best nearby compatible", tone: "healthy" },
     { label: "Service", value: "ARV pickup accepting", tone: "healthy" },
   ],
 } as const;
