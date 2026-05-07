@@ -19,7 +19,7 @@ export const INCIDENT_REPLAY_SOURCE_CLINIC_ID = STOCKOUT_TRIGGER_CLINIC_ID;
 
 const INCIDENT_REPLAY_ACTOR_NAME = "Incident replay";
 const INCIDENT_REPLAY_FIELD_WORKER_NAME = "Incident replay field worker";
-const INCIDENT_REPLAY_ROUTED_SERVICE = "Pharmacy";
+export const INCIDENT_REPLAY_ROUTED_SERVICE = "Pharmacy";
 
 export type IncidentReplayStepId =
   | "field_report"

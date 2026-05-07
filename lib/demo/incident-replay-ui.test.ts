@@ -43,13 +43,22 @@ describe("incident replay controls and page wiring source boundary", () => {
     expect(controlsSource).toContain("Replay incident");
     expect(controlsSource).toContain("onReplayIncident");
     expect(controlsSource).toContain("replayRunning");
+    expect(controlsSource).toContain('disabled: replayRunning');
+    expect(controlsSource).toContain("onTriggerStockout");
+    expect(controlsSource).toContain("onTriggerStaffingShortage");
+    expect(controlsSource).toContain("onSyncOfflineReports");
+    expect(controlsSource).toContain("onTriggerReroute");
 
     expect(pageSource).toContain("IncidentReplayPanel");
     expect(pageSource).toContain("startIncidentReplay");
+    expect(pageSource).toContain("const replayNonIdle = replayStatus !== \"idle\"");
+    expect(pageSource).toContain("resetDemo();");
+    expect(pageSource).toContain("setPendingReplaySessionId(sessionId)");
     expect(pageSource).toContain("setSelectedClinicId(INCIDENT_REPLAY_SOURCE_CLINIC_ID)");
     expect(pageSource).toContain("setClinicPanelOpen(true)");
     expect(pageSource).toContain("setRerouteClinicId(null)");
     expect(pageSource).toContain("applyIncidentReplayStep(step.id");
+    expect(pageSource).toContain("if (replayNonIdle) {");
     expect(pageSource).toContain("buildIncidentReplayWebhookPreview");
     expect(pageSource).toContain('replayStatus === "idle" ? mapClinics : clinicRows');
     expect(pageSource).toContain("replayStartGuardRef");
@@ -57,11 +66,15 @@ describe("incident replay controls and page wiring source boundary", () => {
     expect(pageSource).toContain("replayStartGuardRef.current = false");
     expect(pageSource).toContain('replayStatus !== "idle" || replayStartGuardRef.current');
     expect(pageSource).toContain("replaySessionRef");
-    expect(pageSource).toContain("runIncidentReplayStep(0, replaySessionRef.current)");
+    expect(pageSource).toContain("runIncidentReplayStep(0, pendingReplaySessionId)");
     expect(pageSource).toContain("sessionId !== replaySessionRef.current");
-    expect(pageSource).toContain('replayRunning={replayStatus !== "idle"}');
+    expect(pageSource).toContain("replayRunning={replayNonIdle}");
+    expect(pageSource).toContain("INCIDENT_REPLAY_ROUTED_SERVICE");
     expect(pageSource).toContain(
       'const visibleClinicRows = replayStatus === "idle" ? mapClinics : clinicRows',
+    );
+    expect(pageSource).toContain(
+      "selectedClinic?.id === INCIDENT_REPLAY_SOURCE_CLINIC_ID && replayNonIdle",
     );
     expect(pageSource).toContain("clinics={visibleClinicRows}");
     expect(pageSource).toContain('replayStatus === "idle"');

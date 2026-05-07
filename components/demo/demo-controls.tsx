@@ -69,6 +69,7 @@ export function DemoControls({
       icon: Syringe,
       onClick: onTriggerStockout,
       variant: "destructive",
+      disabled: replayRunning,
     },
     {
       title: "Trigger staffing shortage",
@@ -76,6 +77,7 @@ export function DemoControls({
       icon: UsersRound,
       onClick: onTriggerStaffingShortage,
       variant: "outline",
+      disabled: replayRunning,
     },
     {
       title: "Sync offline reports",
@@ -86,6 +88,7 @@ export function DemoControls({
       icon: TriangleAlert,
       onClick: onSyncOfflineReports,
       variant: "outline",
+      disabled: replayRunning,
     },
     {
       title: "Trigger reroute scenario",
@@ -93,6 +96,7 @@ export function DemoControls({
       icon: Route,
       onClick: onTriggerReroute,
       variant: "outline",
+      disabled: replayRunning,
     },
   ];
 
