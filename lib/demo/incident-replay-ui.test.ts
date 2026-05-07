@@ -53,7 +53,7 @@ describe("incident replay controls and page wiring source boundary", () => {
     expect(pageSource).toContain("startIncidentReplay");
     expect(pageSource).toContain("const replayNonIdle = replayStatus !== \"idle\"");
     expect(pageSource).toContain("resetDemo();");
-    expect(pageSource).toContain("setPendingReplaySessionId(sessionId)");
+    expect(pageSource).toContain("window.setTimeout(() => {");
     expect(pageSource).toContain("setSelectedClinicId(INCIDENT_REPLAY_SOURCE_CLINIC_ID)");
     expect(pageSource).toContain("setClinicPanelOpen(true)");
     expect(pageSource).toContain("setRerouteClinicId(null)");
@@ -66,7 +66,7 @@ describe("incident replay controls and page wiring source boundary", () => {
     expect(pageSource).toContain("replayStartGuardRef.current = false");
     expect(pageSource).toContain('replayStatus !== "idle" || replayStartGuardRef.current');
     expect(pageSource).toContain("replaySessionRef");
-    expect(pageSource).toContain("runIncidentReplayStep(0, pendingReplaySessionId)");
+    expect(pageSource).toContain("runIncidentReplayStep(0, sessionId)");
     expect(pageSource).toContain("sessionId !== replaySessionRef.current");
     expect(pageSource).toContain("replayRunning={replayNonIdle}");
     expect(pageSource).toContain("INCIDENT_REPLAY_ROUTED_SERVICE");

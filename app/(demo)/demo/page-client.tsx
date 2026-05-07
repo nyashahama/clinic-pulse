@@ -91,7 +91,6 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
   const replayTimeoutRef = useRef<number | null>(null);
   const latestDemoStateRef = useRef(state);
   const [replayStatus, setReplayStatus] = useState<"idle" | "running" | "complete">("idle");
-  const [pendingReplaySessionId, setPendingReplaySessionId] = useState<number | null>(null);
   const [activeReplayStepId, setActiveReplayStepId] = useState<IncidentReplayStepId | null>(
     null,
   );
@@ -153,18 +152,8 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
   const cancelIncidentReplay = () => {
     replaySessionRef.current += 1;
     replayStartGuardRef.current = false;
-    setPendingReplaySessionId(null);
     clearReplayTimer();
   };
-
-  useEffect(() => {
-    if (pendingReplaySessionId === null || replayStatus !== "running") {
-      return;
-    }
-
-    setPendingReplaySessionId(null);
-    runIncidentReplayStep(0, pendingReplaySessionId);
-  }, [pendingReplaySessionId, replayStatus]);
 
   const runIncidentReplayStep = (stepIndex: number, sessionId: number) => {
     if (sessionId !== replaySessionRef.current) {
@@ -228,7 +217,9 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
     setCompletedReplayAtByStepId({});
     setWebhookPreview(null);
     resetDemo();
-    setPendingReplaySessionId(sessionId);
+    replayTimeoutRef.current = window.setTimeout(() => {
+      runIncidentReplayStep(0, sessionId);
+    }, 0);
   };
 
   useEffect(() => {
