@@ -111,14 +111,15 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
     setRerouteClinicId(null);
   };
 
+  const visibleClinicRows = replayStatus === "idle" ? mapClinics : clinicRows;
   const resolvedSelectedClinicId = resolveVisibleClinicId({
-    clinicIds: mapClinics.map((clinic) => clinic.id),
+    clinicIds: visibleClinicRows.map((clinic) => clinic.id),
     selectedClinicId,
     panelOpen: clinicPanelOpen,
   });
 
   const selectedClinic =
-    mapClinics.find((clinic) => clinic.id === resolvedSelectedClinicId) ?? null;
+    visibleClinicRows.find((clinic) => clinic.id === resolvedSelectedClinicId) ?? null;
 
   useEffect(() => {
     latestDemoStateRef.current = state;
