@@ -119,7 +119,7 @@ describe("partner readiness helpers", () => {
     );
   });
 
-  it("marks empty readiness as attention with setup copy", () => {
+  it("marks empty readiness as attention with integration review copy", () => {
     const readiness = createEmptyPartnerReadiness();
     const model = buildPartnerReadinessModel(readiness);
 
@@ -131,7 +131,7 @@ describe("partner readiness helpers", () => {
       integrationChecks: [],
     });
     expect(model.severity).toBe("attention");
-    expect(model.title).toBe("Partner readiness needs setup");
+    expect(model.title).toBe("Integration checks need attention");
   });
 
   it("marks attention checks as watch when core assets exist", () => {

@@ -30,4 +30,18 @@ describe("admin partner readiness workflow", () => {
     expect(adminClientSource).not.toContain("generatedAt: new Date().toISOString()");
     expect(adminClientSource).not.toContain("Last admin interaction: {formatDate(new Date().toISOString())}");
   });
+
+  it("keeps scaffold wording out of the admin proof copy", () => {
+    const adminClientSource = readFileSync(adminClient, "utf8");
+    const scaffoldPhrases = [
+      ["mock", "first"].join("-"),
+      ["solo", "founder", "pacing"].join(" "),
+      ["demo", "state"].join(" "),
+    ];
+
+    for (const phrase of scaffoldPhrases) {
+      expect(adminClientSource).not.toContain(phrase);
+    }
+    expect(adminClientSource).toContain("operating evidence");
+  });
 });

@@ -83,7 +83,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
           <p className="mt-1 text-xs leading-5 text-neutral-500">
             Use <span className="font-mono text-[11px] text-neutral-700">Ctrl/⌘ K</span>{" "}
             for quick actions and <span className="font-mono text-[11px] text-neutral-700">Ctrl/⌘+Shift+R</span>{" "}
-            to reset demo state.
+            to reset walkthrough data.
           </p>
         </div>
       </div>

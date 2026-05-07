@@ -189,9 +189,9 @@ export function buildPartnerReadinessModel(
         "Webhook preview or attention check evidence needs review before partner handoff.",
     },
     attention: {
-      title: "Partner readiness needs setup",
+      title: "Integration checks need attention",
       description:
-        "Partner API access, export handoff, or integration health is not ready for handoff.",
+        "Partner API access, export handoff, or integration health needs review before handoff.",
     },
   } satisfies Record<
     PartnerReadinessSeverity,
