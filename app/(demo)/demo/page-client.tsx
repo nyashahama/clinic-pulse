@@ -85,6 +85,7 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
   const [selectedClinicId, setSelectedClinicId] = useState<string | null>(null);
   const [clinicPanelOpen, setClinicPanelOpen] = useState(false);
   const [rerouteClinicId, setRerouteClinicId] = useState<string | null>(null);
+  const replayStartGuardRef = useRef(false);
   const replayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestDemoStateRef = useRef(state);
   const [replayStatus, setReplayStatus] = useState<"idle" | "running" | "complete">("idle");
@@ -127,6 +128,7 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
 
   useEffect(() => {
     return () => {
+      replayStartGuardRef.current = false;
       if (replayTimeoutRef.current) {
         clearTimeout(replayTimeoutRef.current);
       }
@@ -147,6 +149,7 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
 
     if (!step) {
       clearReplayTimer();
+      replayStartGuardRef.current = false;
       setActiveReplayStepId(null);
       setReplayStatus("complete");
       return;
@@ -178,10 +181,11 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
   };
 
   const startIncidentReplay = () => {
-    if (replayStatus === "running") {
+    if (replayStatus === "running" || replayStartGuardRef.current) {
       return;
     }
 
+    replayStartGuardRef.current = true;
     clearReplayTimer();
     setSelectedClinicId(INCIDENT_REPLAY_SOURCE_CLINIC_ID);
     setClinicPanelOpen(true);
@@ -384,6 +388,7 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
           offlineQueueCount={state.offlineQueue.length}
           replayRunning={replayStatus === "running"}
           onReset={() => {
+            replayStartGuardRef.current = false;
             clearReplayTimer();
             setReplayStatus("idle");
             setActiveReplayStepId(null);

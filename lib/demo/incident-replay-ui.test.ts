@@ -52,5 +52,8 @@ describe("incident replay controls and page wiring source boundary", () => {
     expect(pageSource).toContain("applyIncidentReplayStep(step.id");
     expect(pageSource).toContain("buildIncidentReplayWebhookPreview");
     expect(pageSource).toContain('replayStatus === "idle" ? mapClinics : clinicRows');
+    expect(pageSource).toContain("replayStartGuardRef");
+    expect(pageSource).toContain("replayStartGuardRef.current = true");
+    expect(pageSource).toContain("replayStartGuardRef.current = false");
   });
 });
