@@ -65,6 +65,10 @@ test.describe("phase-one demo route checklist", () => {
 
     await expect(page.getByRole("heading", { name: "Clinic table" })).toBeVisible();
     await expect(page.getByText("Report stream")).toBeVisible();
+    await page.getByRole("button", { name: "Replay incident" }).click();
+    await expect(page.getByRole("heading", { name: "Incident replay" })).toBeVisible();
+    await expect(page.getByText("Partner webhook")).toBeVisible();
+    await expect(page.getByText("Delivered preview")).toBeVisible({ timeout: 7000 });
 
     const alternativesResponse = page.waitForResponse(
       (response) =>
