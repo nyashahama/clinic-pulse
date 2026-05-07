@@ -121,4 +121,26 @@ describe("public finder route boundary", () => {
     expect(componentSource).not.toContain('"Get directions"');
     expect(componentSource).not.toContain('"Directions reroute"');
   });
+
+  it("defines a reusable patient journey impact component with patient and evidence variants", () => {
+    const componentPath = path.join(
+      process.cwd(),
+      "components",
+      "demo",
+      "patient-journey-impact.tsx",
+    );
+
+    expect(existsSync(componentPath)).toBe(true);
+
+    const componentSource = readFileSync(componentPath, "utf8");
+
+    expect(componentSource).toContain("PatientJourneyImpactPanel");
+    expect(componentSource).toContain('variant?: "patient" | "evidence"');
+    expect(componentSource).toContain("Wasted trip avoided");
+    expect(componentSource).toContain("No compatible safe recommendation");
+    expect(componentSource).toContain("formatImpactDistance");
+    expect(componentSource).toContain("formatImpactMinutes");
+    expect(componentSource).toContain("trustSignals.reason");
+    expect(componentSource).toContain("trustSignals.recommendation?.reason");
+  });
 });
