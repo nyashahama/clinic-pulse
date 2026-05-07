@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import { AuditTrail } from "@/components/demo/audit-trail";
 import { ClinicOperationalGrid } from "@/components/demo/clinic-operational-grid";
 import { ClinicProfileHeader } from "@/components/demo/clinic-profile-header";
+import { PatientJourneyImpactPanel } from "@/components/demo/patient-journey-impact";
 import { ReroutePanel, type RerouteRecommendation } from "@/components/demo/reroute-panel";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +15,7 @@ import {
   resolveAlternativeService,
 } from "@/lib/demo/alternatives";
 import { useDemoStore } from "@/lib/demo/demo-store";
+import { buildPatientJourneyImpact } from "@/lib/demo/patient-journey";
 import { getClinicAuditEvents, getClinicReports, getClinicRows } from "@/lib/demo/selectors";
 import type { Clinic, ClinicRow } from "@/lib/demo/types";
 
@@ -148,8 +150,16 @@ export default function ClinicDetailPage() {
     key: "",
     recommendations: [],
   });
+  const recommendationsReady = recommendationResult.key === recommendationKey;
   const recommendations =
-    recommendationResult.key === recommendationKey ? recommendationResult.recommendations : [];
+    recommendationsReady ? recommendationResult.recommendations : [];
+  const journeyImpact = clinicRow && recommendationsReady
+    ? buildPatientJourneyImpact({
+        sourceClinic: clinicRow,
+        requestedService: clinicRow.services[0],
+        recommendations,
+      })
+    : null;
 
   useEffect(() => {
     let isCurrent = true;
@@ -253,12 +263,33 @@ export default function ClinicDetailPage() {
           </div>
 
           <div className="grid gap-4">
-            <ReroutePanel
-              sourceClinicName={clinicRow.name}
-              unavailable={unavailableClinic}
-              reason={latestReason}
-              recommendations={recommendations}
-            />
+            {journeyImpact ? (
+              <PatientJourneyImpactPanel impact={journeyImpact} variant="evidence" />
+            ) : null}
+
+            {!recommendationsReady && unavailableClinic ? (
+              <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-content-subtle">
+                  Routing actions
+                </p>
+                <p className="mt-1 text-sm font-semibold text-content-emphasis">
+                  Checking alternatives
+                </p>
+                <p className="mt-1 text-sm leading-6 text-content-subtle">
+                  Recommendation data is still loading. No empty reroute result is shown until
+                  the current request completes.
+                </p>
+              </section>
+            ) : null}
+
+            {recommendationsReady || !unavailableClinic ? (
+              <ReroutePanel
+                sourceClinicName={clinicRow.name}
+                unavailable={unavailableClinic}
+                reason={latestReason}
+                recommendations={recommendations}
+              />
+            ) : null}
           </div>
         </div>
       ) : null}

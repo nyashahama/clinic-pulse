@@ -170,4 +170,25 @@ describe("public finder route boundary", () => {
     expect(reroutePanelIndex).toBeGreaterThanOrEqual(0);
     expect(impactPanelIndex).toBeLessThan(reroutePanelIndex);
   });
+
+  it("shows patient journey evidence in operational clinic detail before reroute recommendations", () => {
+    const clientSource = readFileSync(restrictedDemoClinicDetailClient, "utf8");
+    const impactPanelIndex = clientSource.indexOf("<PatientJourneyImpactPanel");
+    const reroutePanelIndex = clientSource.indexOf("<ReroutePanel");
+
+    expect(clientSource).toContain("buildPatientJourneyImpact");
+    expect(clientSource).toContain("PatientJourneyImpactPanel");
+    expect(clientSource).toContain("sourceClinic: clinicRow");
+    expect(clientSource).toContain("requestedService: clinicRow.services[0]");
+    expect(clientSource).toContain("recommendations");
+    expect(clientSource).toContain('variant="evidence"');
+    expect(clientSource).toContain("recommendationsReady");
+    expect(clientSource).toContain("clinicRow && recommendationsReady");
+    expect(clientSource).toContain("Checking alternatives");
+    expect(clientSource).toContain("Recommendation data is still loading");
+    expect(clientSource).toContain("recommendationsReady || !unavailableClinic");
+    expect(impactPanelIndex).toBeGreaterThanOrEqual(0);
+    expect(reroutePanelIndex).toBeGreaterThanOrEqual(0);
+    expect(impactPanelIndex).toBeLessThan(reroutePanelIndex);
+  });
 });
