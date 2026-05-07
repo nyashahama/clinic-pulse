@@ -113,7 +113,7 @@ describe("buildPatientJourneyImpact", () => {
     });
   });
 
-  it("uses the first service-compatible existing recommendation without re-ranking alternatives", () => {
+  it("uses the first eligible service-compatible recommendation without re-ranking alternatives", () => {
     const rows = getRows();
     const source = cloneClinic(rows[0], { status: "non_functional" });
     const first = cloneClinic(rows[1], {
@@ -136,7 +136,7 @@ describe("buildPatientJourneyImpact", () => {
       ],
     });
 
-    expect(impact.recommendedClinic?.id).toBe("first-ranked");
+    expect(impact.recommendedClinic?.id).toBe("second-ranked");
   });
 
   it("uses an existing ranked fallback recommendation when it covers the requested service", () => {
@@ -156,6 +156,28 @@ describe("buildPatientJourneyImpact", () => {
 
     expect(impact.state).toBe("reroute_recommended");
     expect(impact.recommendedClinic?.id).toBe("stale-ranked-fallback");
+  });
+
+  it("returns no safe recommendation for non-functional or unknown targets", () => {
+    const rows = getRows();
+    const source = cloneClinic(rows[0], { status: "non_functional" });
+    const unknown = cloneClinic(rows[1], {
+      status: "unknown",
+      freshness: "fresh",
+    });
+    const nonFunctional = cloneClinic(rows[2], {
+      status: "non_functional",
+      freshness: "fresh",
+    });
+
+    const impact = buildPatientJourneyImpact({
+      sourceClinic: source,
+      requestedService: "Primary care",
+      recommendations: [recommendation(unknown), recommendation(nonFunctional)],
+    });
+
+    expect(impact.state).toBe("no_safe_recommendation");
+    expect(impact.recommendedClinic).toBeNull();
   });
 
   it("returns no safe recommendation when alternatives do not cover the requested service", () => {
@@ -380,11 +402,16 @@ function isValidRecommendation(
   requestedService: string,
 ) {
   return (
+    isEligibleDestination(recommendation.clinic) &&
     recommendation.compatibilityServices.length > 0 &&
     recommendation.compatibilityServices.some(
       (service) => normalizeService(service) === normalizeService(requestedService),
     )
   );
+}
+
+function isEligibleDestination(clinic: ClinicRow) {
+  return clinic.status !== "non_functional" && clinic.status !== "unknown";
 }
 
 function normalizeService(value: string) {

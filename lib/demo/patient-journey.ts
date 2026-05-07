@@ -51,11 +51,16 @@ function isValidRecommendation(
   requestedService: string,
 ) {
   return (
+    isEligibleDestination(recommendation.clinic) &&
     recommendation.compatibilityServices.length > 0 &&
     recommendation.compatibilityServices.some(
       (service) => normalizeService(service) === normalizeService(requestedService),
     )
   );
+}
+
+function isEligibleDestination(clinic: ClinicRow) {
+  return clinic.status !== "non_functional" && clinic.status !== "unknown";
 }
 
 function resolveRequestedService(sourceClinic: ClinicRow, requestedService?: string) {
