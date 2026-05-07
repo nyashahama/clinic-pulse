@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { AlertList } from "@/components/demo/alert-list";
 import { ClinicMap } from "@/components/demo/clinic-map";
-import { ClinicSidePanel } from "@/components/demo/clinic-side-panel";
 import { ClinicTable } from "@/components/demo/clinic-table";
 import { DemoControls } from "@/components/demo/demo-controls";
 import { IncidentReplayPanel } from "@/components/demo/incident-replay-panel";
@@ -17,7 +16,6 @@ import { buttonVariants } from "@/components/ui/button";
 import type { SyncSummaryApiResponse } from "@/lib/demo/api-types";
 import {
   INCIDENT_REPLAY_SOURCE_CLINIC_ID,
-  INCIDENT_REPLAY_ROUTED_SERVICE,
   buildIncidentReplayWebhookPreview,
   incidentReplaySteps,
   type IncidentReplayStepId,
@@ -28,11 +26,9 @@ import {
   STOCKOUT_TRIGGER_CLINIC_ID,
 } from "@/lib/demo/clinics";
 import { useDemoStore } from "@/lib/demo/demo-store";
-import { resolveVisibleClinicId } from "@/lib/demo/panel-state";
 import {
   getActiveAlerts,
   getAlternativeClinics,
-  getClinicReports,
   getClinicRows,
   getRecentReportStream,
   getStatusCounts,
@@ -58,6 +54,7 @@ type DistrictConsolePageProps = {
 };
 
 export default function DistrictConsolePage({ syncSummary }: DistrictConsolePageProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const {
     state,
@@ -84,7 +81,6 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
   const statusCounts = useMemo(() => getStatusCounts(state), [state]);
 
   const [selectedClinicId, setSelectedClinicId] = useState<string | null>(null);
-  const [clinicPanelOpen, setClinicPanelOpen] = useState(false);
   const [rerouteClinicId, setRerouteClinicId] = useState<string | null>(null);
   const replayStartGuardRef = useRef(false);
   const replaySessionRef = useRef(0);
@@ -104,27 +100,11 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
   const replayNonIdle = replayStatus !== "idle";
   const isReplayFilterBypassed = hasStatusFilter && replayStatus !== "idle";
 
-  const selectClinic = (clinicId: string | null) => {
-    setSelectedClinicId(clinicId);
-    setClinicPanelOpen(Boolean(clinicId));
-    setRerouteClinicId((previous) => (previous === clinicId ? previous : null));
-  };
-
-  const handleCloseClinicPanel = () => {
-    setClinicPanelOpen(false);
-    setSelectedClinicId(null);
-    setRerouteClinicId(null);
+  const openClinicDetail = (clinicId: string) => {
+    router.push(`/demo/clinics/${encodeURIComponent(clinicId)}`);
   };
 
   const visibleClinicRows = replayStatus === "idle" ? mapClinics : clinicRows;
-  const resolvedSelectedClinicId = resolveVisibleClinicId({
-    clinicIds: visibleClinicRows.map((clinic) => clinic.id),
-    selectedClinicId,
-    panelOpen: clinicPanelOpen,
-  });
-
-  const selectedClinic =
-    visibleClinicRows.find((clinic) => clinic.id === resolvedSelectedClinicId) ?? null;
 
   useEffect(() => {
     latestDemoStateRef.current = state;
@@ -209,7 +189,6 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
     const sessionId = replaySessionRef.current + 1;
     replaySessionRef.current = sessionId;
     setSelectedClinicId(INCIDENT_REPLAY_SOURCE_CLINIC_ID);
-    setClinicPanelOpen(true);
     setRerouteClinicId(null);
     setReplayStatus("running");
     setActiveReplayStepId(null);
@@ -221,44 +200,6 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
       runIncidentReplayStep(0, sessionId);
     }, 0);
   };
-
-  useEffect(() => {
-    if (!selectedClinic) {
-      return;
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        handleCloseClinicPanel();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedClinic]);
-
-  const clinicReports = useMemo(
-    () => (selectedClinic ? getClinicReports(state, selectedClinic.id) : []),
-    [selectedClinic, state],
-  );
-  const clinicAlerts = useMemo(
-    () =>
-      selectedClinic
-        ? activeAlerts.filter((alert) => alert.clinicId === selectedClinic.id)
-        : [],
-    [activeAlerts, selectedClinic],
-  );
-  const selectedService =
-    selectedClinic?.id === INCIDENT_REPLAY_SOURCE_CLINIC_ID && replayNonIdle
-      ? INCIDENT_REPLAY_ROUTED_SERVICE
-      : selectedClinic?.services[0];
-  const alternatives = useMemo(
-    () =>
-      selectedClinic && selectedService
-        ? getAlternativeClinics(state, selectedClinic.id, selectedService).slice(0, 3)
-        : [],
-    [selectedClinic, selectedService, state],
-  );
 
   const consequenceByReportId = useMemo(() => {
     const auditByClinic = new Map<string, string>();
@@ -350,8 +291,8 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
       });
     }
 
-    selectClinic(queuedClinicId);
     syncOfflineReports();
+    openClinicDetail(queuedClinicId);
   };
 
   const handleTriggerReroute = () => {
@@ -365,17 +306,16 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
           clinic.status !== "operational" &&
           clinic.services.length > 0 &&
           getAlternativeClinics(state, clinic.id, clinic.services[0]).length > 0,
-      ) ?? selectedClinic;
+      ) ?? null;
 
     if (!rerouteCandidate) {
       setRerouteClinicId(null);
-      setClinicPanelOpen(false);
       return;
     }
 
     setSelectedClinicId(rerouteCandidate.id);
-    setClinicPanelOpen(true);
     setRerouteClinicId(rerouteCandidate.id);
+    openClinicDetail(rerouteCandidate.id);
   };
 
   return (
@@ -414,16 +354,16 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
         <ClinicMap
           clinics={visibleClinicRows}
           referenceClinics={clinicRows}
-          selectedClinicId={selectedClinic?.id ?? null}
+          selectedClinicId={selectedClinicId}
           rerouteClinicId={rerouteClinicId}
-          onSelectClinic={selectClinic}
+          onSelectClinic={openClinicDetail}
         />
 
         <ClinicTable
           clinics={visibleClinicRows}
-          selectedClinicId={selectedClinic?.id ?? null}
+          selectedClinicId={selectedClinicId}
           recommendedActionByClinicId={recommendedActionByClinicId}
-          onSelectClinic={selectClinic}
+          onSelectClinic={openClinicDetail}
         />
 
         <DemoControls
@@ -439,7 +379,8 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
             setCompletedReplayAtByStepId({});
             setWebhookPreview(null);
             resetDemo();
-            handleCloseClinicPanel();
+            setSelectedClinicId(null);
+            setRerouteClinicId(null);
           }}
           onReplayIncident={startIncidentReplay}
           onTriggerStockout={() => {
@@ -448,9 +389,9 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
             }
 
             setSelectedClinicId(STOCKOUT_TRIGGER_CLINIC_ID);
-            setClinicPanelOpen(true);
             setRerouteClinicId(STOCKOUT_TRIGGER_CLINIC_ID);
             triggerStockout(STOCKOUT_TRIGGER_CLINIC_ID);
+            openClinicDetail(STOCKOUT_TRIGGER_CLINIC_ID);
           }}
           onTriggerStaffingShortage={() => {
             if (replayNonIdle) {
@@ -458,9 +399,9 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
             }
 
             setSelectedClinicId(STAFFING_TRIGGER_CLINIC_ID);
-            setClinicPanelOpen(true);
             setRerouteClinicId(null);
             triggerStaffingShortage(STAFFING_TRIGGER_CLINIC_ID);
+            openClinicDetail(STAFFING_TRIGGER_CLINIC_ID);
           }}
           onSyncOfflineReports={handleSyncOfflineReports}
           onTriggerReroute={handleTriggerReroute}
@@ -475,39 +416,14 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
         />
       </div>
 
-      {selectedClinic ? (
-        <div
-          className="fixed inset-0 z-50 bg-neutral-950/20 backdrop-blur-[1px]"
-          role="presentation"
-          onClick={handleCloseClinicPanel}
-        >
-          <aside
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Selected clinic: ${selectedClinic.name}`}
-            className="ml-auto h-full w-full max-w-[30rem] overflow-y-auto border-l border-border-subtle bg-bg-subtle p-3 shadow-2xl sm:p-4"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <ClinicSidePanel
-              clinic={selectedClinic}
-              latestReport={clinicReports[0] ?? null}
-              alerts={clinicAlerts}
-              alternatives={alternatives}
-              rerouteActive={rerouteClinicId === selectedClinic.id}
-              onClose={handleCloseClinicPanel}
-            />
-          </aside>
-        </div>
-      ) : null}
-
       <div className="grid gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-        <AlertList alerts={activeAlerts} clinics={clinicRows} onSelectClinic={selectClinic} />
+        <AlertList alerts={activeAlerts} clinics={clinicRows} onSelectClinic={openClinicDetail} />
         <ReportStream
           reports={reportStream}
-          selectedClinicId={selectedClinic?.id ?? null}
+          selectedClinicId={selectedClinicId}
           consequenceByReportId={consequenceByReportId}
           statusChangeByReportId={statusChangeByReportId}
-          onSelectClinic={selectClinic}
+          onSelectClinic={openClinicDetail}
         />
       </div>
     </div>
