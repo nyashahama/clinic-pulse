@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { STOCKOUT_TRIGGER_CLINIC_ID } from "@/lib/demo/clinics";
@@ -7,6 +10,8 @@ import {
   buildIncidentReplayWebhookPreview,
   incidentReplaySteps,
 } from "@/lib/demo/incident-replay";
+
+const demoStoreSourcePath = path.join(process.cwd(), "lib", "demo", "demo-store.tsx");
 
 describe("incidentReplaySteps", () => {
   it("keeps the replay steps in the expected incident order", () => {
@@ -165,5 +170,21 @@ describe("applyIncidentReplayStep", () => {
       }),
     });
     expect(preview.summary).toContain("Partner webhook delivered for");
+  });
+});
+
+describe("demo store incident replay wiring", () => {
+  it("exposes the replay store method, action type, and reducer wiring", () => {
+    const demoStoreSource = readFileSync(demoStoreSourcePath, "utf8");
+
+    expect(demoStoreSource).toContain(
+      "applyIncidentReplayStep: (stepId: IncidentReplayStepId, now?: string) => void;",
+    );
+    expect(demoStoreSource).toContain('type: "apply_incident_replay_step"');
+    expect(demoStoreSource).toContain('case "apply_incident_replay_step":');
+    expect(demoStoreSource).toContain(
+      "return applyIncidentReplayStep(state, action.stepId, action.now);",
+    );
+    expect(demoStoreSource).toContain("applyIncidentReplayStep: (stepId, stepNow?) =>");
   });
 });

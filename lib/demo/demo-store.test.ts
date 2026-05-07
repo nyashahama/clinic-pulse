@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { allowsSeededDemoFallback } from "@/lib/demo/demo-hydration";
+import { STOCKOUT_TRIGGER_CLINIC_ID } from "@/lib/demo/clinics";
+import { applyIncidentReplayStep } from "@/lib/demo/incident-replay";
 import {
   createDemoStoreInitialState,
   getDemoBackendHydrationSignature,
@@ -153,5 +155,26 @@ describe("Demo store hydration", () => {
     expect(getDemoBackendHydrationSignature(nextBackendState)).not.toBe(
       getDemoBackendHydrationSignature(baseState),
     );
+  });
+
+  it("applies the field report replay step through the store contract state shape", () => {
+    const now = "2026-05-03T08:00:00.000Z";
+    const state = applyIncidentReplayStep(createDemoStoreInitialState(), "field_report", now);
+
+    expect(state.reports[0]).toMatchObject({
+      clinicId: STOCKOUT_TRIGGER_CLINIC_ID,
+      reporterName: "Incident replay field worker",
+      submittedAt: now,
+      source: "field_worker",
+      offlineCreated: false,
+    });
+    expect(
+      state.clinicStates.find((clinicState) => clinicState.clinicId === STOCKOUT_TRIGGER_CLINIC_ID),
+    ).toMatchObject({
+      clinicId: STOCKOUT_TRIGGER_CLINIC_ID,
+      status: "non_functional",
+      lastReportedAt: now,
+      reporterName: "Incident replay field worker",
+    });
   });
 });
