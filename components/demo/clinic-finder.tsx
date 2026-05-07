@@ -7,7 +7,7 @@ import { FreshnessBadge } from "@/components/demo/freshness-badge";
 import { ReroutePanel } from "@/components/demo/reroute-panel";
 import { SectionHeader } from "@/components/demo/section-header";
 import { StatusBadge } from "@/components/demo/status-badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   type AlternativeRecommendation,
   loadAlternativeRecommendations,
@@ -33,6 +33,11 @@ type RecommendationResult = {
   key: string;
   recommendations: AlternativeRecommendation[];
 };
+
+function buildDirectionsUrl(clinic: ClinicRow) {
+  const destination = `${clinic.name}, ${clinic.district}, ${clinic.province}`;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destination)}`;
+}
 
 export function ClinicFinder({
   clinics,
@@ -60,6 +65,7 @@ export function ClinicFinder({
   const selectedClinicRow = sorted.find(
     (entry) => entry.clinic.id === resolvedSelectedClinicId,
   )?.clinic;
+  const selectedDirectionsUrl = selectedClinicRow ? buildDirectionsUrl(selectedClinicRow) : null;
 
   const recommendationKey = selectedClinicRow
     ? `${selectedClinicRow.id}:${resolveAlternativeService(selectedClinicRow, service)}`
@@ -179,7 +185,7 @@ export function ClinicFinder({
                             : "border-emerald-200 bg-emerald-50 text-emerald-800"
                       }`}
                     >
-                      {isUnavailable ? "Directions reroute" : "Get directions"}
+                      {isUnavailable ? "Reroute recommended" : "Routing available"}
                     </span>
                   </div>
                 </button>
@@ -202,7 +208,7 @@ export function ClinicFinder({
               <StatusBadge status={selectedClinicRow.status} />
               <FreshnessBadge freshness={selectedClinicRow.freshness} />
             </div>
-            <div className="mt-4">
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
               <Button
                 onClick={() => onNavigateToDetail(selectedClinicRow.id)}
                 className="w-full"
@@ -211,6 +217,17 @@ export function ClinicFinder({
                 Open clinic detail
                 <ExternalLink className="size-3.5" />
               </Button>
+              {selectedDirectionsUrl ? (
+                <a
+                  href={selectedDirectionsUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={buttonVariants({ size: "sm", variant: "outline", className: "w-full" })}
+                >
+                  Open directions
+                  <ExternalLink className="size-3.5" />
+                </a>
+              ) : null}
             </div>
             <div className="mt-4 rounded-lg border border-dashed border-border-subtle bg-bg-subtle p-3 text-xs text-content-subtle">
               Last report: {new Date(selectedClinicRow.lastReportedAt).toLocaleString("en-ZA")}

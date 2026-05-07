@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 const appDir = path.join(process.cwd(), "app");
 const publicFinderPage = path.join(appDir, "finder", "page.tsx");
 const publicFinderClient = path.join(appDir, "finder", "page-client.tsx");
+const publicFinderComponent = path.join(process.cwd(), "components", "demo", "clinic-finder.tsx");
 const demoFinderPage = path.join(appDir, "(demo)", "finder", "page.tsx");
 const demoLayout = path.join(appDir, "(demo)", "layout.tsx");
 const publicClinicDetailPage = path.join(appDir, "clinics", "[clinicId]", "page.tsx");
@@ -110,5 +111,14 @@ describe("public finder route boundary", () => {
     expect(clientSource).toContain("router.push(`/clinics/${clinicId}`)");
     expect(runbookSource).toContain('path: "/demo/clinics/clinic-mamelodi-east"');
     expect(runbookSource).not.toContain('path: "/clinics/clinic-mamelodi-east"');
+  });
+
+  it("uses a real map link for finder directions instead of inert row copy", () => {
+    const componentSource = readFileSync(publicFinderComponent, "utf8");
+
+    expect(componentSource).toContain("buildDirectionsUrl(selectedClinicRow)");
+    expect(componentSource).toContain('target="_blank"');
+    expect(componentSource).not.toContain('"Get directions"');
+    expect(componentSource).not.toContain('"Directions reroute"');
   });
 });
