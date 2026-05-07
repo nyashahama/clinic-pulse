@@ -100,6 +100,7 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
   const [webhookPreview, setWebhookPreview] = useState<IncidentReplayWebhookPreview | null>(null);
   const hasStatusFilter = Boolean(statusFilter);
   const statusFilterLabel = statusFilter.replaceAll("_", " ");
+  const isReplayFilterBypassed = hasStatusFilter && replayStatus !== "idle";
 
   const selectClinic = (clinicId: string | null) => {
     setSelectedClinicId(clinicId);
@@ -373,8 +374,17 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
         <section className="rounded-lg border border-amber-200/80 bg-amber-50/70 px-4 py-3 text-sm text-amber-950">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p>
-              Displaying only <span className="font-semibold capitalize">{statusFilterLabel}</span>{" "}
-              clinics. {filteredClinicRows.length === 0 ? "No matches yet." : ""}
+              {isReplayFilterBypassed ? (
+                <>
+                  Status filter is paused during replay. Showing all clinics until replay is reset.
+                </>
+              ) : (
+                <>
+                  Displaying only{" "}
+                  <span className="font-semibold capitalize">{statusFilterLabel}</span> clinics.{" "}
+                  {filteredClinicRows.length === 0 ? "No matches yet." : ""}
+                </>
+              )}
             </p>
             <Link href="/demo" className={buttonVariants({ size: "sm", variant: "outline" })}>
               Clear status filter
@@ -385,7 +395,7 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
 
       <div className="grid gap-4">
         <ClinicMap
-          clinics={mapClinics}
+          clinics={visibleClinicRows}
           referenceClinics={clinicRows}
           selectedClinicId={selectedClinic?.id ?? null}
           rerouteClinicId={rerouteClinicId}
@@ -393,7 +403,7 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
         />
 
         <ClinicTable
-          clinics={filteredClinicRows}
+          clinics={visibleClinicRows}
           selectedClinicId={selectedClinic?.id ?? null}
           recommendedActionByClinicId={recommendedActionByClinicId}
           onSelectClinic={selectClinic}
