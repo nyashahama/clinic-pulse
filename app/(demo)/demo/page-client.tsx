@@ -182,6 +182,9 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
     }
 
     clearReplayTimer();
+    setSelectedClinicId(INCIDENT_REPLAY_SOURCE_CLINIC_ID);
+    setClinicPanelOpen(true);
+    setRerouteClinicId(null);
     setReplayStatus("running");
     setActiveReplayStepId(null);
     setCompletedReplayStepIds([]);

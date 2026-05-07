@@ -46,6 +46,9 @@ describe("incident replay controls and page wiring source boundary", () => {
 
     expect(pageSource).toContain("IncidentReplayPanel");
     expect(pageSource).toContain("startIncidentReplay");
+    expect(pageSource).toContain("setSelectedClinicId(INCIDENT_REPLAY_SOURCE_CLINIC_ID)");
+    expect(pageSource).toContain("setClinicPanelOpen(true)");
+    expect(pageSource).toContain("setRerouteClinicId(null)");
     expect(pageSource).toContain("applyIncidentReplayStep(step.id");
     expect(pageSource).toContain("buildIncidentReplayWebhookPreview");
   });
