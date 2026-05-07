@@ -16,7 +16,7 @@ import {
 } from "@/lib/demo/incident-replay";
 import { cn } from "@/lib/utils";
 
-type IncidentReplayPanelStatus = "idle" | "running" | "completed";
+type IncidentReplayPanelStatus = "idle" | "running" | "complete";
 
 export type IncidentReplayPanelProps = {
   status: IncidentReplayPanelStatus;
