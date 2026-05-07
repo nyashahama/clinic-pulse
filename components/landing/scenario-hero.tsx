@@ -618,7 +618,7 @@ export function ScenarioHero() {
           <div className="rounded-md border border-neutral-200 bg-white/90 p-4 shadow-sm">
             <p className="text-xs font-semibold uppercase text-neutral-500">District console</p>
             <p className="mt-2 text-sm leading-6 text-neutral-700">
-              Status counts, facility table, active alerts, and routing recommendations from the same demo state.
+              Status counts, facility table, active alerts, and routing recommendations from the same operating data.
             </p>
           </div>
           <div className="rounded-md border border-neutral-200 bg-white/90 p-4 shadow-sm">

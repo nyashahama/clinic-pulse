@@ -276,17 +276,17 @@ export default function AdminPage({
           <SectionHeader
             eyebrow="Founder operations"
             title="Admin control deck"
-            description="Use this surface to capture leads, review seeded state, and prepare a premium demo handoff."
+            description="Use this surface to capture leads, review operating evidence, and prepare a premium demo handoff."
           />
           <p className="mt-2 text-sm leading-6 text-content-subtle">
-            You are editing live mock data. Use demo controls and export surfaces to simulate how a
-            founder-led demo ends with a clean, shareable artifact.
+            Use walkthrough controls and export surfaces to show how a founder-led demo ends with a
+            clean, shareable artifact.
           </p>
 
           <div className="mt-4 flex flex-wrap gap-2">
             <Button size="sm" onClick={resetDemo}>
               <RefreshCcw className="size-3.5" />
-              Reset demo state
+              Reset walkthrough data
             </Button>
             <Link
               href="/book-demo"
@@ -455,7 +455,7 @@ export default function AdminPage({
             </li>
             <li className="rounded-lg border border-border-subtle bg-bg-subtle px-3 py-2">
               <span className="font-medium text-content-emphasis">Admin proof:</span>{" "}
-              Export payload and API schema are intentionally mock-first for solo founder pacing.
+              Export payload, API schema, and partner checks show completed operating evidence.
             </li>
           </ul>
           <div className="mt-4 flex items-center gap-2 rounded-md border border-border-subtle bg-bg-subtle px-3 py-2 text-sm text-content-subtle">

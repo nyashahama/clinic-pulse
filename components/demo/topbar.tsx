@@ -145,7 +145,7 @@ export function Topbar({ authSession, logoutAction, onOpenSidebar }: TopbarProps
             variant="outline"
             size="sm"
             onClick={resetDemo}
-            aria-label="Reset demo state"
+            aria-label="Reset walkthrough data"
           >
             <RotateCcw className="size-4" />
             <span className="hidden sm:inline">Reset</span>
