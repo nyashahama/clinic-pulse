@@ -55,5 +55,8 @@ describe("incident replay controls and page wiring source boundary", () => {
     expect(pageSource).toContain("replayStartGuardRef");
     expect(pageSource).toContain("replayStartGuardRef.current = true");
     expect(pageSource).toContain("replayStartGuardRef.current = false");
+    expect(pageSource).toContain("replaySessionRef");
+    expect(pageSource).toContain("runIncidentReplayStep(0, replaySessionRef.current)");
+    expect(pageSource).toContain("sessionId !== replaySessionRef.current");
   });
 });
