@@ -1,4 +1,4 @@
-import { RefreshCw, UserRound, Workflow, type LucideIcon } from "lucide-react";
+import { RefreshCw, UserRound, Webhook, Workflow, type LucideIcon } from "lucide-react";
 
 import type { AuditEvent } from "@/lib/demo/types";
 
@@ -74,6 +74,11 @@ const systemResponseByType: Record<AuditEvent["eventType"], SystemResponseTone> 
     title: "Routing recommendation",
     action: "Alternative routing list was refreshed and surfaced in the reroute panel.",
     icon: Workflow,
+  },
+  "partner.webhook_dispatched": {
+    title: "Partner webhook",
+    action: "Partner-facing webhook payload was prepared and marked delivered for the replay.",
+    icon: Webhook,
   },
   "lead.demo_requested": {
     title: "Demo lead event",

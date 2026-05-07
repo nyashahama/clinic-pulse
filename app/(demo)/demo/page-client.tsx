@@ -1,29 +1,34 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { AlertList } from "@/components/demo/alert-list";
 import { ClinicMap } from "@/components/demo/clinic-map";
-import { ClinicSidePanel } from "@/components/demo/clinic-side-panel";
 import { ClinicTable } from "@/components/demo/clinic-table";
 import { DemoControls } from "@/components/demo/demo-controls";
+import { IncidentReplayPanel } from "@/components/demo/incident-replay-panel";
 import { PilotReadinessPanel } from "@/components/demo/pilot-readiness-panel";
 import { ReportStream } from "@/components/demo/report-stream";
 import { StatusSummary } from "@/components/demo/status-summary";
 import { buttonVariants } from "@/components/ui/button";
 import type { SyncSummaryApiResponse } from "@/lib/demo/api-types";
 import {
+  INCIDENT_REPLAY_SOURCE_CLINIC_ID,
+  buildIncidentReplayWebhookPreview,
+  incidentReplaySteps,
+  type IncidentReplayStepId,
+  type IncidentReplayWebhookPreview,
+} from "@/lib/demo/incident-replay";
+import {
   STAFFING_TRIGGER_CLINIC_ID,
   STOCKOUT_TRIGGER_CLINIC_ID,
 } from "@/lib/demo/clinics";
 import { useDemoStore } from "@/lib/demo/demo-store";
-import { resolveVisibleClinicId } from "@/lib/demo/panel-state";
 import {
   getActiveAlerts,
   getAlternativeClinics,
-  getClinicReports,
   getClinicRows,
   getRecentReportStream,
   getStatusCounts,
@@ -49,6 +54,7 @@ type DistrictConsolePageProps = {
 };
 
 export default function DistrictConsolePage({ syncSummary }: DistrictConsolePageProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const {
     state,
@@ -57,6 +63,7 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
     triggerStaffingShortage,
     syncOfflineReports,
     queueOfflineReport,
+    applyIncidentReplayStep,
   } = useDemoStore();
 
   const clinicRows = useMemo(() => getClinicRows(state), [state]);
@@ -74,66 +81,125 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
   const statusCounts = useMemo(() => getStatusCounts(state), [state]);
 
   const [selectedClinicId, setSelectedClinicId] = useState<string | null>(null);
-  const [clinicPanelOpen, setClinicPanelOpen] = useState(false);
   const [rerouteClinicId, setRerouteClinicId] = useState<string | null>(null);
+  const replayStartGuardRef = useRef(false);
+  const replaySessionRef = useRef(0);
+  const replayTimeoutRef = useRef<number | null>(null);
+  const latestDemoStateRef = useRef(state);
+  const [replayStatus, setReplayStatus] = useState<"idle" | "running" | "complete">("idle");
+  const [activeReplayStepId, setActiveReplayStepId] = useState<IncidentReplayStepId | null>(
+    null,
+  );
+  const [completedReplayStepIds, setCompletedReplayStepIds] = useState<IncidentReplayStepId[]>([]);
+  const [completedReplayAtByStepId, setCompletedReplayAtByStepId] = useState<
+    Partial<Record<IncidentReplayStepId, string>>
+  >({});
+  const [webhookPreview, setWebhookPreview] = useState<IncidentReplayWebhookPreview | null>(null);
   const hasStatusFilter = Boolean(statusFilter);
   const statusFilterLabel = statusFilter.replaceAll("_", " ");
+  const replayNonIdle = replayStatus !== "idle";
+  const isReplayFilterBypassed = hasStatusFilter && replayStatus !== "idle";
 
-  const selectClinic = (clinicId: string | null) => {
-    setSelectedClinicId(clinicId);
-    setClinicPanelOpen(Boolean(clinicId));
-    setRerouteClinicId((previous) => (previous === clinicId ? previous : null));
+  const openClinicDetail = (clinicId: string) => {
+    router.push(`/demo/clinics/${encodeURIComponent(clinicId)}`);
   };
 
-  const handleCloseClinicPanel = () => {
-    setClinicPanelOpen(false);
-    setSelectedClinicId(null);
-    setRerouteClinicId(null);
-  };
-
-  const resolvedSelectedClinicId = resolveVisibleClinicId({
-    clinicIds: mapClinics.map((clinic) => clinic.id),
-    selectedClinicId,
-    panelOpen: clinicPanelOpen,
-  });
-
-  const selectedClinic =
-    mapClinics.find((clinic) => clinic.id === resolvedSelectedClinicId) ?? null;
+  const visibleClinicRows = replayStatus === "idle" ? mapClinics : clinicRows;
 
   useEffect(() => {
-    if (!selectedClinic) {
+    latestDemoStateRef.current = state;
+  }, [state]);
+
+  useEffect(() => {
+    return () => {
+      replaySessionRef.current += 1;
+      replayStartGuardRef.current = false;
+      if (replayTimeoutRef.current) {
+        window.clearTimeout(replayTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const clearReplayTimer = () => {
+    if (!replayTimeoutRef.current) {
       return;
     }
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        handleCloseClinicPanel();
+    window.clearTimeout(replayTimeoutRef.current);
+    replayTimeoutRef.current = null;
+  };
+
+  const cancelIncidentReplay = () => {
+    replaySessionRef.current += 1;
+    replayStartGuardRef.current = false;
+    clearReplayTimer();
+  };
+
+  const runIncidentReplayStep = (stepIndex: number, sessionId: number) => {
+    if (sessionId !== replaySessionRef.current) {
+      return;
+    }
+
+    const step = incidentReplaySteps[stepIndex];
+
+    if (!step) {
+      clearReplayTimer();
+      replayStartGuardRef.current = false;
+      setActiveReplayStepId(null);
+      setReplayStatus("complete");
+      return;
+    }
+
+    const stepNow = new Date().toISOString();
+
+    setActiveReplayStepId(step.id);
+    applyIncidentReplayStep(step.id, stepNow);
+
+    if (step.id === "reroute") {
+      setRerouteClinicId(INCIDENT_REPLAY_SOURCE_CLINIC_ID);
+    }
+
+    if (step.id === "partner_webhook") {
+      setWebhookPreview(
+        buildIncidentReplayWebhookPreview(latestDemoStateRef.current, stepNow),
+      );
+    }
+
+    replayTimeoutRef.current = window.setTimeout(() => {
+      if (sessionId !== replaySessionRef.current) {
+        return;
       }
-    };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedClinic]);
+      setCompletedReplayStepIds((current) => [...current, step.id]);
+      setCompletedReplayAtByStepId((current) => ({
+        ...current,
+        [step.id]: stepNow,
+      }));
+      runIncidentReplayStep(stepIndex + 1, sessionId);
+    }, step.durationMs);
+  };
 
-  const clinicReports = useMemo(
-    () => (selectedClinic ? getClinicReports(state, selectedClinic.id) : []),
-    [selectedClinic, state],
-  );
-  const clinicAlerts = useMemo(
-    () =>
-      selectedClinic
-        ? activeAlerts.filter((alert) => alert.clinicId === selectedClinic.id)
-        : [],
-    [activeAlerts, selectedClinic],
-  );
-  const selectedService = selectedClinic?.services[0];
-  const alternatives = useMemo(
-    () =>
-      selectedClinic && selectedService
-        ? getAlternativeClinics(state, selectedClinic.id, selectedService).slice(0, 3)
-        : [],
-    [selectedClinic, selectedService, state],
-  );
+  const startIncidentReplay = () => {
+    if (replayStatus !== "idle" || replayStartGuardRef.current) {
+      return;
+    }
+
+    replayStartGuardRef.current = true;
+    clearReplayTimer();
+    const sessionId = replaySessionRef.current + 1;
+    replaySessionRef.current = sessionId;
+    setSelectedClinicId(INCIDENT_REPLAY_SOURCE_CLINIC_ID);
+    setRerouteClinicId(null);
+    setReplayStatus("running");
+    setActiveReplayStepId(null);
+    setCompletedReplayStepIds([]);
+    setCompletedReplayAtByStepId({});
+    setWebhookPreview(null);
+    resetDemo();
+    replayTimeoutRef.current = window.setTimeout(() => {
+      runIncidentReplayStep(0, sessionId);
+    }, 0);
+  };
 
   const consequenceByReportId = useMemo(() => {
     const auditByClinic = new Map<string, string>();
@@ -200,6 +266,10 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
   );
 
   const handleSyncOfflineReports = () => {
+    if (replayNonIdle) {
+      return;
+    }
+
     const fallbackClinicId = clinicRows[0]?.id;
     const queuedClinicId = state.offlineQueue[0]?.clinicId ?? fallbackClinicId;
 
@@ -221,28 +291,31 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
       });
     }
 
-    selectClinic(queuedClinicId);
     syncOfflineReports();
+    openClinicDetail(queuedClinicId);
   };
 
   const handleTriggerReroute = () => {
+    if (replayNonIdle) {
+      return;
+    }
+
     const rerouteCandidate =
       clinicRows.find(
         (clinic) =>
           clinic.status !== "operational" &&
           clinic.services.length > 0 &&
           getAlternativeClinics(state, clinic.id, clinic.services[0]).length > 0,
-      ) ?? selectedClinic;
+      ) ?? null;
 
     if (!rerouteCandidate) {
       setRerouteClinicId(null);
-      setClinicPanelOpen(false);
       return;
     }
 
     setSelectedClinicId(rerouteCandidate.id);
-    setClinicPanelOpen(true);
     setRerouteClinicId(rerouteCandidate.id);
+    openClinicDetail(rerouteCandidate.id);
   };
 
   return (
@@ -258,8 +331,17 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
         <section className="rounded-lg border border-amber-200/80 bg-amber-50/70 px-4 py-3 text-sm text-amber-950">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p>
-              Displaying only <span className="font-semibold capitalize">{statusFilterLabel}</span>{" "}
-              clinics. {filteredClinicRows.length === 0 ? "No matches yet." : ""}
+              {isReplayFilterBypassed ? (
+                <>
+                  Status filter is paused during replay. Showing all clinics until replay is reset.
+                </>
+              ) : (
+                <>
+                  Displaying only{" "}
+                  <span className="font-semibold capitalize">{statusFilterLabel}</span> clinics.{" "}
+                  {filteredClinicRows.length === 0 ? "No matches yet." : ""}
+                </>
+              )}
             </p>
             <Link href="/demo" className={buttonVariants({ size: "sm", variant: "outline" })}>
               Clear status filter
@@ -270,78 +352,78 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
 
       <div className="grid gap-4">
         <ClinicMap
-          clinics={mapClinics}
+          clinics={visibleClinicRows}
           referenceClinics={clinicRows}
-          selectedClinicId={selectedClinic?.id ?? null}
+          selectedClinicId={selectedClinicId}
           rerouteClinicId={rerouteClinicId}
-          onSelectClinic={selectClinic}
+          onSelectClinic={openClinicDetail}
         />
 
         <ClinicTable
-          clinics={filteredClinicRows}
-          selectedClinicId={selectedClinic?.id ?? null}
+          clinics={visibleClinicRows}
+          selectedClinicId={selectedClinicId}
           recommendedActionByClinicId={recommendedActionByClinicId}
-          onSelectClinic={selectClinic}
+          onSelectClinic={openClinicDetail}
         />
 
         <DemoControls
           stockoutClinicLabel="Mamelodi East"
           staffingClinicLabel="Soshanguve Block F"
           offlineQueueCount={state.offlineQueue.length}
+          replayRunning={replayNonIdle}
           onReset={() => {
+            cancelIncidentReplay();
+            setReplayStatus("idle");
+            setActiveReplayStepId(null);
+            setCompletedReplayStepIds([]);
+            setCompletedReplayAtByStepId({});
+            setWebhookPreview(null);
             resetDemo();
-            handleCloseClinicPanel();
+            setSelectedClinicId(null);
+            setRerouteClinicId(null);
           }}
+          onReplayIncident={startIncidentReplay}
           onTriggerStockout={() => {
+            if (replayNonIdle) {
+              return;
+            }
+
             setSelectedClinicId(STOCKOUT_TRIGGER_CLINIC_ID);
-            setClinicPanelOpen(true);
             setRerouteClinicId(STOCKOUT_TRIGGER_CLINIC_ID);
             triggerStockout(STOCKOUT_TRIGGER_CLINIC_ID);
+            openClinicDetail(STOCKOUT_TRIGGER_CLINIC_ID);
           }}
           onTriggerStaffingShortage={() => {
+            if (replayNonIdle) {
+              return;
+            }
+
             setSelectedClinicId(STAFFING_TRIGGER_CLINIC_ID);
-            setClinicPanelOpen(true);
             setRerouteClinicId(null);
             triggerStaffingShortage(STAFFING_TRIGGER_CLINIC_ID);
+            openClinicDetail(STAFFING_TRIGGER_CLINIC_ID);
           }}
           onSyncOfflineReports={handleSyncOfflineReports}
           onTriggerReroute={handleTriggerReroute}
         />
+
+        <IncidentReplayPanel
+          status={replayStatus}
+          activeStepId={activeReplayStepId}
+          completedStepIds={completedReplayStepIds}
+          completedAtByStepId={completedReplayAtByStepId}
+          webhookPreview={webhookPreview}
+        />
       </div>
 
-      {selectedClinic ? (
-        <div
-          className="fixed inset-0 z-50 bg-neutral-950/20 backdrop-blur-[1px]"
-          role="presentation"
-          onClick={handleCloseClinicPanel}
-        >
-          <aside
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Selected clinic: ${selectedClinic.name}`}
-            className="ml-auto h-full w-full max-w-[30rem] overflow-y-auto border-l border-border-subtle bg-bg-subtle p-3 shadow-2xl sm:p-4"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <ClinicSidePanel
-              clinic={selectedClinic}
-              latestReport={clinicReports[0] ?? null}
-              alerts={clinicAlerts}
-              alternatives={alternatives}
-              rerouteActive={rerouteClinicId === selectedClinic.id}
-              onClose={handleCloseClinicPanel}
-            />
-          </aside>
-        </div>
-      ) : null}
-
       <div className="grid gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-        <AlertList alerts={activeAlerts} clinics={clinicRows} onSelectClinic={selectClinic} />
+        <AlertList alerts={activeAlerts} clinics={clinicRows} onSelectClinic={openClinicDetail} />
         <ReportStream
           reports={reportStream}
-          selectedClinicId={selectedClinic?.id ?? null}
+          selectedClinicId={selectedClinicId}
           consequenceByReportId={consequenceByReportId}
           statusChangeByReportId={statusChangeByReportId}
-          onSelectClinic={selectClinic}
+          onSelectClinic={openClinicDetail}
         />
       </div>
     </div>

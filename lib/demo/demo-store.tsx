@@ -19,6 +19,10 @@ import {
   triggerStockoutScenario,
 } from "@/lib/demo/scenarios";
 import {
+  applyIncidentReplayStep,
+  type IncidentReplayStepId,
+} from "@/lib/demo/incident-replay";
+import {
   clearDemoStorage,
   loadStoredDemoLeads,
   loadStoredOfflineReports,
@@ -44,6 +48,7 @@ type DemoStoreValue = {
   queueOfflineReport: (report: QueueOfflineReportInput) => void;
   submitFieldReport: (report: SubmitFieldReportInput) => void;
   syncOfflineReports: () => void;
+  applyIncidentReplayStep: (stepId: IncidentReplayStepId, now?: string) => void;
   addDemoLead: (lead: AddDemoLeadInput) => void;
   updateLeadStatus: (leadId: string, status: DemoLeadStatus) => void;
   setRole: (role: DemoRole) => void;
@@ -57,6 +62,7 @@ type DemoAction =
   | { type: "queue_offline_report"; report: QueueOfflineReportInput }
   | { type: "submit_field_report"; report: SubmitFieldReportInput }
   | { type: "sync_offline_reports" }
+  | { type: "apply_incident_replay_step"; stepId: IncidentReplayStepId; now: string }
   | { type: "add_demo_lead"; lead: AddDemoLeadInput }
   | { type: "update_lead_status"; leadId: string; status: DemoLeadStatus }
   | { type: "set_role"; role: DemoRole }
@@ -174,6 +180,8 @@ function demoReducer(state: DemoState, action: DemoAction): DemoState {
     }
     case "sync_offline_reports":
       return syncOfflineReportsScenario(state, now);
+    case "apply_incident_replay_step":
+      return applyIncidentReplayStep(state, action.stepId, action.now);
     case "submit_field_report":
       return submitFieldReportScenario(
         state,
@@ -292,6 +300,12 @@ export function DemoStoreProvider({
       submitFieldReport: (report: SubmitFieldReportInput) =>
         dispatch({ type: "submit_field_report", report }),
       syncOfflineReports: () => dispatch({ type: "sync_offline_reports" }),
+      applyIncidentReplayStep: (stepId, stepNow?) =>
+        dispatch({
+          type: "apply_incident_replay_step",
+          stepId,
+          now: stepNow ?? new Date().toISOString(),
+        }),
       addDemoLead: (lead: AddDemoLeadInput) =>
         dispatch({ type: "add_demo_lead", lead }),
       updateLeadStatus: (leadId: string, status: DemoLeadStatus) =>

@@ -300,6 +300,27 @@ describe("ClinicPulse API mappers", () => {
     } satisfies AuditEvent);
   });
 
+  it("preserves partner webhook audit events for replay timelines", () => {
+    const event: AuditEventApiResponse = {
+      id: 12,
+      externalId: "audit-webhook-12",
+      clinicId: "clinic-mamelodi-east",
+      actorName: "Partner relay",
+      eventType: "partner.webhook_dispatched",
+      summary: "Partner webhook delivered for replay evidence.",
+      createdAt: "2026-05-01T06:44:00.000Z",
+    };
+
+    expect(mapApiAuditEvent(event)).toEqual({
+      id: "audit-webhook-12",
+      clinicId: "clinic-mamelodi-east",
+      actorName: "Partner relay",
+      eventType: "partner.webhook_dispatched",
+      summary: "Partner webhook delivered for replay evidence.",
+      createdAt: "2026-05-01T06:44:00.000Z",
+    } satisfies AuditEvent);
+  });
+
   it("maps backend audit events missing nullable actor names to defaults", () => {
     const event: AuditEventApiResponse = {
       id: 10,
