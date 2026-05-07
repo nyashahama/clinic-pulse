@@ -67,13 +67,22 @@ describe("buildPatientJourneyImpact", () => {
     expect(impact.impactMetrics.estimatedWastedTravelMinutesSaved).toBeGreaterThan(0);
     expect(impact.impactMetrics.compatibleServices).toEqual(["Primary care", "Pharmacy"]);
     expect(impact.trustSignals.reason).toBe("Operational and fresh with requested service.");
+    expect(impact.trustSignals.lastReportedAt).toBe(recommended.lastReportedAt);
   });
 
-  it("uses the first existing recommendation without re-ranking alternatives", () => {
+  it("uses the first valid existing recommendation without re-ranking alternatives", () => {
     const rows = getRows();
     const source = cloneClinic(rows[0], { status: "non_functional" });
-    const first = cloneClinic(rows[1], { id: "first-ranked" });
-    const second = cloneClinic(rows[2], { id: "second-ranked" });
+    const first = cloneClinic(rows[1], {
+      id: "first-ranked",
+      status: "unknown",
+      freshness: "fresh",
+    });
+    const second = cloneClinic(rows[2], {
+      id: "second-ranked",
+      status: "operational",
+      freshness: "fresh",
+    });
 
     const impact = buildPatientJourneyImpact({
       sourceClinic: source,
@@ -84,7 +93,33 @@ describe("buildPatientJourneyImpact", () => {
       ],
     });
 
-    expect(impact.recommendedClinic?.id).toBe("first-ranked");
+    expect(impact.recommendedClinic?.id).toBe("second-ranked");
+  });
+
+  it("returns no safe recommendation when alternatives are unavailable or incompatible", () => {
+    const rows = getRows();
+    const source = cloneClinic(rows[0], { status: "non_functional" });
+    const unavailable = cloneClinic(rows[1], {
+      status: "operational",
+      freshness: "stale",
+    });
+    const incompatible = cloneClinic(rows[2], {
+      status: "operational",
+      freshness: "fresh",
+    });
+
+    const impact = buildPatientJourneyImpact({
+      sourceClinic: source,
+      requestedService: "Primary care",
+      recommendations: [
+        recommendation(unavailable),
+        recommendation(incompatible, { compatibilityServices: [] }),
+      ],
+    });
+
+    expect(impact.state).toBe("no_safe_recommendation");
+    expect(impact.recommendedClinic).toBeNull();
+    expect(impact.impactMetrics.wastedTripAvoided).toBe(false);
   });
 
   it("does not claim a wasted trip avoided when the source clinic is available", () => {

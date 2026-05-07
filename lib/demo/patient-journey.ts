@@ -38,6 +38,13 @@ export type BuildPatientJourneyImpactInput = {
   recommendations: AlternativeRecommendation[];
 };
 
+function isValidRecommendation(recommendation: AlternativeRecommendation) {
+  return (
+    recommendation.compatibilityServices.length > 0 &&
+    !isClinicUnavailable(recommendation.clinic)
+  );
+}
+
 function resolveRequestedService(sourceClinic: ClinicRow, requestedService?: string) {
   return requestedService?.trim() || sourceClinic.services[0] || "";
 }
@@ -99,7 +106,7 @@ export function buildPatientJourneyImpact({
     };
   }
 
-  const [topRecommendation] = recommendations;
+  const topRecommendation = recommendations.find(isValidRecommendation);
 
   if (!topRecommendation) {
     return {
@@ -129,6 +136,7 @@ export function buildPatientJourneyImpact({
       ...base.trustSignals,
       recommendedStatus: topRecommendation.clinic.status,
       recommendedFreshness: topRecommendation.clinic.freshness,
+      lastReportedAt: topRecommendation.clinic.lastReportedAt,
       reason: topRecommendation.reason,
     },
   };
