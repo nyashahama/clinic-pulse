@@ -12,11 +12,11 @@ import {
   workflowSteps,
 } from "@/lib/landing/openpanel-refactor-content";
 
-const routingMomentComponent = path.join(
+const productSurfacePreviewsComponent = path.join(
   process.cwd(),
   "components",
   "landing",
-  "routing-moment.tsx",
+  "product-surface-previews.tsx",
 );
 
 describe("patient journey landing copy", () => {
@@ -26,14 +26,6 @@ describe("patient journey landing copy", () => {
     expect(routingMoment.reasons).toContain("Wasted travel avoided: 18 min");
     expect(routingMoment.reasons).toContain("Best nearby compatible clinic");
     expect(productFlowSteps[3].title).toBe("Wasted trip avoided");
-  });
-
-  it("renders the landing visual with journey impact proof labels", () => {
-    const source = readFileSync(routingMomentComponent, "utf8");
-
-    expect(source).toContain("Wasted trip avoided");
-    expect(source).toContain("18 min avoided");
-    expect(source).toContain("Best nearby compatible");
   });
 
   it("aligns the active landing patient reroute preview with journey impact proof", () => {
@@ -59,5 +51,12 @@ describe("patient journey landing copy", () => {
       { label: "Clinic", value: "Best nearby compatible", tone: "healthy" },
       { label: "Service", value: "ARV pickup accepting", tone: "healthy" },
     ]);
+  });
+
+  it("keeps active reroute preview labels compact enough for product cards", () => {
+    const source = readFileSync(productSurfacePreviewsComponent, "utf8");
+
+    expect(source).not.toContain("sm:flex-row");
+    expect(source).toContain("lg:flex-row");
   });
 });
