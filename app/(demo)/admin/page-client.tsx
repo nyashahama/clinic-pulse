@@ -66,11 +66,22 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-function buildExportPayload(state: DemoState) {
+function getLatestAdminInteractionAt(state: DemoState) {
+  const timestamps = [
+    ...state.auditEvents.map((event) => event.createdAt),
+    ...state.leads.map((lead) => lead.createdAt),
+    ...state.reports.map((report) => report.receivedAt),
+    state.lastSyncAt,
+  ].filter((timestamp): timestamp is string => Boolean(timestamp));
+
+  return timestamps.sort((left, right) => right.localeCompare(left))[0] ?? null;
+}
+
+function buildExportPayload(state: DemoState, generatedAt: string) {
   const clinics = getClinicRows(state);
 
   return {
-    generatedAt: new Date().toISOString(),
+    generatedAt,
     district: state.district,
     province: state.province,
     clinics: clinics.map((clinic) => ({
@@ -139,7 +150,12 @@ export default function AdminPage({
   const alertCount = state.alerts.length;
   const queuedReports = state.offlineQueue.length;
   const activeAlertCount = state.alerts.filter((alert) => alert.status === "open").length;
-  const exportPayload = useMemo(() => buildExportPayload(state), [state]);
+  const adminInteractionAt = useMemo(() => getLatestAdminInteractionAt(state), [state]);
+  const exportGeneratedAt = adminInteractionAt ?? "1970-01-01T00:00:00.000Z";
+  const exportPayload = useMemo(
+    () => buildExportPayload(state, exportGeneratedAt),
+    [state, exportGeneratedAt],
+  );
   const [manualLeadOpen, setManualLeadOpen] = useState(false);
   const [partnerActionPending, setPartnerActionPending] =
     useState<PartnerReadinessAction | null>(null);
@@ -444,7 +460,7 @@ export default function AdminPage({
           </ul>
           <div className="mt-4 flex items-center gap-2 rounded-md border border-border-subtle bg-bg-subtle px-3 py-2 text-sm text-content-subtle">
             <CalendarClock className="size-4" />
-            Last admin interaction: {formatDate(new Date().toISOString())}
+            Last admin interaction: {adminInteractionAt ? formatDate(adminInteractionAt) : "No activity yet"}
           </div>
         </section>
       </div>

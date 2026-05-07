@@ -22,4 +22,12 @@ describe("admin partner readiness workflow", () => {
     expect(panelSource).toContain("onCreateWebhook");
     expect(panelSource).toContain("Create webhook");
   });
+
+  it("keeps wall-clock timestamps out of the admin render path", () => {
+    const adminClientSource = readFileSync(adminClient, "utf8");
+
+    expect(adminClientSource).toContain("buildExportPayload(state, exportGeneratedAt)");
+    expect(adminClientSource).not.toContain("generatedAt: new Date().toISOString()");
+    expect(adminClientSource).not.toContain("Last admin interaction: {formatDate(new Date().toISOString())}");
+  });
 });
