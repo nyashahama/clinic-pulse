@@ -346,3 +346,181 @@ export const demoCta = {
   },
   note: "Demo data is seeded to show the operating model clearly.",
 } as const;
+
+export const liveIncidentHero = {
+  eyebrow: "Live clinic operations",
+  title: "Know which clinics can help before patients travel.",
+  description:
+    "Clinic Pulse turns field reports, clinic availability, patient rerouting, and audit-ready records into one live operating view for district teams.",
+  primaryCta: { label: "Book demo", href: "/?booking=1" },
+  secondaryCta: { label: "Watch the incident flow", href: "#flow" },
+  metrics: [
+    { value: "42", label: "demo clinics monitored", detail: "Tshwane North workspace" },
+    { value: "17", label: "reports synced", detail: "field updates since 07:00" },
+    { value: "3m", label: "freshness target", detail: "median status age" },
+  ],
+  incident: {
+    clinic: "Mamelodi East Community Clinic",
+    status: "Non-functional",
+    service: "ARV pickup",
+    source: "Offline field report",
+    reason: "Pharmacy stockout reported by field worker",
+    freshness: "Fresh - 2 min ago",
+    recommendedRoute: "Akasia Hills Clinic",
+    routeDetail: "18 min wasted travel avoided",
+    auditId: "AUD-2026-0504-017",
+  },
+} as const;
+
+export const stakeholderImpactItems = [
+  {
+    role: "District team",
+    outcome: "Acts on source, reason, and freshness before making a public routing decision.",
+    signal: "Live district view",
+    photo: "clinicTeam",
+  },
+  {
+    role: "Field worker",
+    outcome: "Submits the service update even when the report has to queue offline.",
+    signal: "Queued field report",
+    photo: "fieldWorker",
+  },
+  {
+    role: "Clinic coordinator",
+    outcome: "Confirms the service impact without losing the original source record.",
+    signal: "Traceable status change",
+    photo: "clinicExterior",
+  },
+  {
+    role: "Patient",
+    outcome: "Sees the safer nearby route before spending time travelling to a blocked service.",
+    signal: "18 min avoided",
+    photo: "patientCare",
+  },
+] as const;
+
+export const statusGapTimeline = [
+  {
+    label: "08:07",
+    title: "Service pressure starts locally",
+    detail: "ARV pickup stock pressure is known at the clinic before the district view changes.",
+    tone: "warning",
+  },
+  {
+    label: "08:11",
+    title: "Field report queues offline",
+    detail: "A weak-signal report keeps the source and notes until connectivity returns.",
+    tone: "neutral",
+  },
+  {
+    label: "08:13",
+    title: "Stale public data creates risk",
+    detail: "Patients can still see the clinic as available unless freshness is visible.",
+    tone: "critical",
+  },
+  {
+    label: "08:15",
+    title: "ClinicPulse updates the operating record",
+    detail: "The district console, public finder, and audit ledger receive the same incident state.",
+    tone: "healthy",
+  },
+] as const;
+
+export const incidentFlowSteps = [
+  {
+    step: "01",
+    surface: "Field report",
+    title: "Offline report queued",
+    detail: "Mamelodi East / ARV pickup / pharmacy stockout",
+    state: "Queued offline",
+    tone: "warning",
+  },
+  {
+    step: "02",
+    surface: "District alert",
+    title: "Clinic status changed",
+    detail: "Operational to non-functional from field source",
+    state: "Fresh - 2 min ago",
+    tone: "critical",
+  },
+  {
+    step: "03",
+    surface: "Public finder",
+    title: "Wasted trip avoided",
+    detail: "Akasia Hills Clinic is best nearby compatible for ARV pickup",
+    state: "18 min avoided",
+    tone: "healthy",
+  },
+  {
+    step: "04",
+    surface: "Audit ledger",
+    title: "Operating record sealed",
+    detail: "Source, sync, status change, and reroute linked",
+    state: "AUD-2026-0504-017",
+    tone: "neutral",
+  },
+] as const;
+
+export const productOperationsModules = [
+  {
+    title: "District command center",
+    description:
+      "See service availability, field source, freshness, and routing action in one operating view.",
+    metric: "42 clinics monitored",
+    type: "district-console",
+  },
+  {
+    title: "Offline field reports",
+    description:
+      "Capture service pressure and notes in weak-signal environments, then sync with source intact.",
+    metric: "3 reports queued",
+    type: "field-report",
+  },
+  {
+    title: "Patient rerouting",
+    description:
+      "Warn patients before a wasted trip and recommend the best nearby compatible clinic.",
+    metric: "18 min avoided",
+    type: "patient-reroute",
+  },
+  {
+    title: "Audit and export readiness",
+    description:
+      "Keep the source, status change, reroute, export, and API evidence attached to the decision.",
+    metric: "5 events linked",
+    type: "audit-ledger",
+  },
+] as const;
+
+export const trustEvidencePanels = [
+  {
+    title: "Source and permissions",
+    label: "field_worker / district_manager",
+    lines: ["actor=field_worker", "permission=publish_status", "source=offline_sync"],
+  },
+  {
+    title: "Freshness and audit",
+    label: "AUD-2026-0504-017",
+    lines: ["status=non_functional", "freshness=2m", "route=Akasia Hills Clinic"],
+  },
+  {
+    title: "District export",
+    label: "CSV ready",
+    lines: ["report=incident_summary", "district=Tshwane North Demo", "rows=42 clinics"],
+  },
+  {
+    title: "Partner handoff",
+    label: "200 OK",
+    lines: ["GET /v1/clinics/mamelodi-east/status", "webhook=preview_sent", "retry=false"],
+  },
+] as const;
+
+export const incidentDemoCta = {
+  eyebrow: "Pilot walkthrough",
+  title: "Walk through a live clinic status incident.",
+  description:
+    "Follow the same incident through district visibility, offline field reporting, patient rerouting, audit history, exports, and partner readiness.",
+  primaryCta: { label: "Book demo", href: "/?booking=1" },
+  secondaryCta: { label: "Open demo workspace", href: "/demo" },
+  note: "Demo data is seeded to show the operating model clearly.",
+} as const;
