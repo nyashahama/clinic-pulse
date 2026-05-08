@@ -161,6 +161,44 @@
   20% { transform: translateY(var(--offset, -10%)); }
 }
 
+@keyframes clinic-signal-drift {
+  0% { opacity: 0; transform: translate3d(-16px, 14px, 0) scale(0.96); }
+  14% { opacity: 0.9; }
+  72% { opacity: 0.9; }
+  100% { opacity: 0; transform: translate3d(72px, -28px, 0) scale(1); }
+}
+
+@keyframes clinic-route-dash {
+  0% { stroke-dashoffset: 96; opacity: 0.35; }
+  45% { opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 0.75; }
+}
+
+@keyframes clinic-packet-travel {
+  0% { offset-distance: 0%; opacity: 0; }
+  8% { opacity: 1; }
+  92% { opacity: 1; }
+  100% { offset-distance: 100%; opacity: 0; }
+}
+
+@keyframes clinic-rail-scroll {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(var(--clinic-rail-x, -50%), var(--clinic-rail-y, 0), 0); }
+}
+
+@keyframes clinic-soft-blink {
+  0%, 100% { opacity: 0.62; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-motion-layer="true"] *,
+  [data-motion-object="true"] {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 @keyframes accordion-down {
   from { height: 0; }
   to { height: var(--radix-accordion-content-height); }
