@@ -15,11 +15,23 @@ test.describe("landing page 2026", () => {
         name: "Know which clinics can help before patients travel.",
       }),
     ).toBeVisible();
+    const incidentProof = hero.locator("[data-incident-proof='true']").filter({
+      visible: true,
+    });
+    const routeProof = hero.locator("[data-route-proof='true']").filter({
+      visible: true,
+    });
+
+    await expect(incidentProof).toBeVisible();
     await expect(
-      hero.getByText("Mamelodi East Community Clinic", { exact: true }).first(),
+      incidentProof.getByText("Mamelodi East Community Clinic", { exact: true }),
     ).toBeVisible();
-    await expect(hero.getByText("Akasia Hills Clinic", { exact: true }).first()).toBeVisible();
-    await expect(hero.getByText("AUD-2026-0504-017", { exact: true }).first()).toBeVisible();
+    await expect(
+      routeProof.getByText("Akasia Hills Clinic", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      incidentProof.getByText("AUD-2026-0504-017", { exact: true }),
+    ).toBeVisible();
     await expect(
       page.getByRole("img", {
         name: /clinic entrance used to frame a live service availability incident/i,

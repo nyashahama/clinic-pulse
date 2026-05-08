@@ -17,7 +17,7 @@ export function ProductOperationsShowcase() {
         title="The operating surfaces behind the decision."
         description="Clinic Pulse gives each team the right surface for the same operating record: district visibility, offline reports, patient guidance, and audit-ready evidence."
       />
-      <div className="mt-12 grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+      <div className="mt-12 grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)] lg:items-start">
         <OperationModuleCard module={primaryModule} variant="primary" />
         <div className="grid min-w-0 gap-5 sm:grid-cols-2 lg:grid-cols-1">
           {supportingModules.map((module) => (
@@ -42,7 +42,7 @@ function OperationModuleCard({
     <article
       className={cn(
         "min-w-0 overflow-hidden rounded-xl border border-neutral-200 bg-white p-5 shadow-sm",
-        variant === "primary" ? "grid gap-6 lg:min-h-[34rem] lg:p-6" : "grid gap-5",
+        variant === "primary" ? "grid gap-6 lg:p-6" : "grid gap-5",
       )}
     >
       <div className="min-w-0">

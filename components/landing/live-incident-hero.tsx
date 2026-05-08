@@ -57,23 +57,43 @@ export function LiveIncidentHero({ onBookDemo }: LiveIncidentHeroProps) {
             </a>
           </div>
 
-          <div className="mt-8 grid gap-3 sm:grid-cols-3">
+          <div className="mt-6 grid grid-cols-3 gap-2 sm:mt-8 sm:gap-3">
             {liveIncidentHero.metrics.map((metric) => (
               <div
                 key={metric.label}
-                className="rounded-lg border border-white/15 bg-white/10 p-3 backdrop-blur"
+                className="rounded-lg border border-white/15 bg-white/10 p-2 backdrop-blur sm:p-3"
               >
-                <p className="font-display text-2xl text-white">{metric.value}</p>
-                <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-white/60">
+                <p className="font-display text-xl text-white sm:text-2xl">{metric.value}</p>
+                <p className="mt-1 text-[9px] font-semibold uppercase leading-4 tracking-[0.12em] text-white/60 sm:text-xs">
                   {metric.label}
                 </p>
-                <p className="mt-2 text-xs leading-5 text-white/58">{metric.detail}</p>
+                <p className="mt-2 hidden text-xs leading-5 text-white/58 sm:block">
+                  {metric.detail}
+                </p>
               </div>
             ))}
           </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-lg border border-red-300/25 bg-red-950/45 p-4 backdrop-blur">
+          <div
+            data-incident-proof="true"
+            data-route-proof="true"
+            className="mt-4 rounded-lg border border-white/15 bg-white/10 p-3 text-xs leading-5 text-white/70 backdrop-blur sm:hidden"
+          >
+            <p className="font-semibold text-white">{incident.clinic}</p>
+            <p className="mt-1">
+              Reroute to{" "}
+              <span className="font-semibold text-white">
+                {incident.recommendedRoute}
+              </span>
+            </p>
+            <p className="mt-1 font-mono text-white/60">{incident.auditId}</p>
+          </div>
+
+          <div className="mt-5 hidden gap-3 sm:grid sm:grid-cols-2">
+            <div
+              data-incident-proof="true"
+              className="rounded-lg border border-red-300/25 bg-red-950/45 p-4 backdrop-blur"
+            >
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-100/70">
                   Active incident
@@ -90,7 +110,10 @@ export function LiveIncidentHero({ onBookDemo }: LiveIncidentHeroProps) {
               </div>
             </div>
 
-            <div className="rounded-lg border border-emerald-300/25 bg-emerald-950/45 p-4 backdrop-blur">
+            <div
+              data-route-proof="true"
+              className="rounded-lg border border-emerald-300/25 bg-emerald-950/45 p-4 backdrop-blur"
+            >
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-100/70">
                 Recommended route
               </p>
