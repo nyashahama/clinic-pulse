@@ -28,4 +28,37 @@ test.describe("landing page 2026", () => {
     await expect(page.getByRole("button", { name: "Book demo" }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Watch the incident flow" })).toBeVisible();
   });
+
+  test("connects real-world stakeholders to the status gap", async ({ page }) => {
+    await page.goto("/");
+
+    const impactStrip = page.locator("section").filter({
+      has: page.getByRole("heading", { name: "One status change affects everyone." }),
+    });
+    const statusGap = page.locator("section").filter({
+      has: page.getByRole("heading", {
+        name: "Clinic status changes before district systems catch up.",
+      }),
+    });
+
+    await expect(
+      impactStrip.getByRole("heading", { name: "One status change affects everyone." }),
+    ).toBeVisible();
+    await expect(impactStrip.getByText("District team")).toBeVisible();
+    await expect(impactStrip.getByText("Field worker")).toBeVisible();
+    await expect(impactStrip.getByText("Clinic coordinator")).toBeVisible();
+    await expect(impactStrip.getByText("Patient")).toBeVisible();
+
+    await expect(
+      statusGap.getByRole("heading", {
+        name: "Clinic status changes before district systems catch up.",
+      }),
+    ).toBeVisible();
+    await expect(statusGap.getByText("Stale public data creates risk")).toBeVisible();
+    await expect(
+      statusGap.getByRole("img", {
+        name: /clinic status context for a public availability update/i,
+      }),
+    ).toBeVisible();
+  });
 });
