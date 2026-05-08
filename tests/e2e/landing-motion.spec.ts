@@ -45,11 +45,15 @@ test.describe("landing motion system", () => {
     await page.goto("/");
 
     await expect(page.locator("[data-motion-layer='true']").first()).toBeVisible();
-    await expect
-      .poll(() => customMotionAnimationCount(page), {
-        timeout: 10000,
-      })
-      .toBe(0);
+    await page.waitForTimeout(1500);
+
+    const motionLayerCount = await page.locator("[data-motion-layer='true']").count();
+    const motionObjectCount = await page.locator("[data-motion-object='true']").count();
+    const runningAnimationCount = await customMotionAnimationCount(page);
+
+    expect(motionLayerCount).toBeGreaterThanOrEqual(5);
+    expect(motionObjectCount).toBeGreaterThanOrEqual(18);
+    expect(runningAnimationCount).toBe(0);
   });
 
   test("keeps animated landing surfaces inside mobile viewport", async ({ page }) => {
@@ -57,6 +61,8 @@ test.describe("landing motion system", () => {
 
     await page.setViewportSize({ width: 390, height: 1000 });
     await page.goto("/");
+    await expect(page.locator("[data-hero-console='true']")).toBeVisible();
+    await page.waitForTimeout(1500);
 
     const overflow = await page.evaluate(() => {
       const doc = document.documentElement;
@@ -65,7 +71,6 @@ test.describe("landing motion system", () => {
     });
 
     expect(overflow).toBe(false);
-    await expect(page.locator("[data-hero-console='true']")).toBeVisible();
 
     const hero = page.locator("section").filter({
       has: page.getByRole("heading", {
