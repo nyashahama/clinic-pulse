@@ -1,6 +1,7 @@
 import { ArrowRight, ClipboardCheck, ExternalLink } from "lucide-react";
 
 import { ButtonLink } from "@/components/landing/button-link";
+import { AuditSealStream } from "@/components/landing/motion/audit-seal-stream";
 import {
   incidentDemoCta,
   liveIncidentHero,
@@ -81,6 +82,8 @@ export function IncidentDemoCTA() {
                   </div>
                 ))}
               </div>
+
+              <AuditSealStream className="mt-2 rounded-xl border border-white/10 bg-white/[0.04] p-2" />
             </div>
           </div>
         </div>

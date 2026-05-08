@@ -56,14 +56,22 @@ function PreviewRowContent({ row }: { row: PreviewRow }) {
 
 function FieldReportPreview() {
   return (
-    <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+    <div
+      data-motion-layer="true"
+      className="rounded-xl border border-neutral-200 bg-neutral-50 p-3"
+    >
       <div className="mx-auto max-w-[15rem] rounded-2xl border border-neutral-300 bg-white p-2 shadow-sm">
         <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
           <div className="flex items-center gap-2 text-xs font-semibold text-neutral-950">
             <Smartphone className="size-3.5 text-primary" />
             Field report
           </div>
-          <StatusPill tone="warning">offline</StatusPill>
+          <span
+            data-motion-object="true"
+            className="[animation:clinic-soft-blink_2.8s_ease-in-out_infinite]"
+          >
+            <StatusPill tone="warning">offline</StatusPill>
+          </span>
         </div>
         <div className="mt-2 grid gap-2">
           {productSurfacePreviewRows["field-report"].map((row) => (
@@ -79,7 +87,10 @@ function FieldReportPreview() {
 
 function DistrictConsolePreview() {
   return (
-    <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+    <div
+      data-motion-layer="true"
+      className="rounded-xl border border-neutral-200 bg-neutral-50 p-3"
+    >
       <div className="rounded-lg border border-neutral-200 bg-white p-3">
         <div className="flex items-center justify-between gap-3 border-b border-neutral-100 pb-2">
           <div className="flex items-center gap-2 text-xs font-semibold text-neutral-950">
@@ -89,15 +100,28 @@ function DistrictConsolePreview() {
           <StatusPill tone="healthy">live</StatusPill>
         </div>
         <div className="mt-3 grid gap-2">
-          {productSurfacePreviewRows["district-console"].map((row, index) => (
-            <ProductRow
-              key={row.label}
-              active={index === 0}
-              activeTone={toneMap[row.tone]}
-            >
-              <PreviewRowContent row={row} />
-            </ProductRow>
-          ))}
+          {productSurfacePreviewRows["district-console"].map((row, index) => {
+            const isActiveRow = index === 0;
+
+            return (
+              <div
+                key={row.label}
+                data-motion-object={isActiveRow ? "true" : undefined}
+                className={
+                  isActiveRow
+                    ? "[animation:clinic-soft-blink_2.8s_ease-in-out_infinite]"
+                    : undefined
+                }
+              >
+                <ProductRow
+                  active={isActiveRow}
+                  activeTone={toneMap[row.tone]}
+                >
+                  <PreviewRowContent row={row} />
+                </ProductRow>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -106,24 +130,38 @@ function DistrictConsolePreview() {
 
 function PatientReroutePreview() {
   return (
-    <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+    <div
+      data-motion-layer="true"
+      className="rounded-xl border border-neutral-200 bg-neutral-50 p-3"
+    >
       <div className="rounded-lg border border-neutral-200 bg-white p-3">
         <div className="flex items-center gap-2 rounded-lg border border-neutral-200 px-2.5 py-2 text-xs text-neutral-500">
           <Search className="size-3.5" />
           Mamelodi ARV pickup
         </div>
         <div className="mt-3 grid gap-2">
-          {productSurfacePreviewRows["patient-reroute"].map((row, index) => (
-            <ProductRow
-              key={row.label}
-              active={index === 0}
-              activeTone={toneMap[row.tone]}
-            >
-              <PreviewRowContent row={row} />
-            </ProductRow>
-          ))}
+          {productSurfacePreviewRows["patient-reroute"].map((row, index) => {
+            const isActiveRow = index === 0;
+
+            return (
+              <div
+                key={row.label}
+                data-motion-object={isActiveRow ? "true" : undefined}
+              >
+                <ProductRow
+                  active={isActiveRow}
+                  activeTone={toneMap[row.tone]}
+                >
+                  <PreviewRowContent row={row} />
+                </ProductRow>
+              </div>
+            );
+          })}
         </div>
-        <div className="mt-3 flex items-center justify-center gap-1.5 rounded-lg bg-neutral-950 px-3 py-2 text-xs font-semibold text-white">
+        <div
+          data-motion-object="true"
+          className="mt-3 flex items-center justify-center gap-1.5 rounded-lg bg-neutral-950 px-3 py-2 text-xs font-semibold text-white [animation:clinic-soft-blink_2.8s_ease-in-out_infinite]"
+        >
           <MapPin className="size-3.5" />
           Open route
         </div>
@@ -134,7 +172,10 @@ function PatientReroutePreview() {
 
 function AuditLedgerPreview() {
   return (
-    <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+    <div
+      data-motion-layer="true"
+      className="rounded-xl border border-neutral-200 bg-neutral-50 p-3"
+    >
       <div className="rounded-lg border border-neutral-200 bg-white p-3">
         <div className="flex min-w-0 items-center justify-between gap-3 border-b border-neutral-100 pb-2">
           <div className="flex min-w-0 items-center gap-2 text-xs font-semibold text-neutral-950">
@@ -144,15 +185,29 @@ function AuditLedgerPreview() {
           <StatusPill tone="neutral">recording</StatusPill>
         </div>
         <div className="mt-3 grid gap-2">
-          {productSurfacePreviewRows["audit-ledger"].map((row, index) => (
-            <ProductRow
-              key={row.label}
-              active={index === 1}
-              activeTone={toneMap[row.tone]}
-            >
-              <PreviewRowContent row={row} />
-            </ProductRow>
-          ))}
+          {productSurfacePreviewRows["audit-ledger"].map((row, index, rows) => {
+            const isEvidenceRow = index === 1;
+            const isFinalRow = index === rows.length - 1;
+
+            return (
+              <div
+                key={row.label}
+                data-motion-object={isEvidenceRow || isFinalRow ? "true" : undefined}
+                className={
+                  isEvidenceRow || isFinalRow
+                    ? "[animation:clinic-soft-blink_2.8s_ease-in-out_infinite]"
+                    : undefined
+                }
+              >
+                <ProductRow
+                  active={isEvidenceRow}
+                  activeTone={toneMap[row.tone]}
+                >
+                  <PreviewRowContent row={row} />
+                </ProductRow>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
