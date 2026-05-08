@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import Image from "next/image";
 
 import {
@@ -89,7 +90,23 @@ export function IncidentFlowStoryboard() {
             </div>
           </div>
 
-          <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-4 lg:gap-0">
+          <div className="relative grid gap-4 overflow-hidden p-4 sm:p-5 lg:grid-cols-4 lg:gap-0">
+            <div
+              aria-hidden="true"
+              data-motion-layer="true"
+              className="pointer-events-none absolute inset-x-8 top-24 hidden h-px bg-neutral-200 lg:block"
+            >
+              <span
+                data-motion-object="true"
+                className="absolute -top-1 size-2 rounded-full bg-primary shadow-[0_0_18px_rgba(13,122,107,0.75)] [animation:clinic-rail-scroll_7s_linear_infinite]"
+                style={
+                  {
+                    "--clinic-rail-x": "calc(100vw - 16rem)",
+                    "--clinic-rail-y": "0",
+                  } as CSSProperties
+                }
+              />
+            </div>
             {incidentFlowSteps.map((step, index) => {
               const tone = toneClasses[step.tone];
               const isLast = index === incidentFlowSteps.length - 1;
@@ -97,7 +114,7 @@ export function IncidentFlowStoryboard() {
               return (
                 <article
                   key={step.step}
-                  className="relative min-w-0 lg:px-2"
+                  className="relative z-10 min-w-0 lg:px-2"
                   aria-label={`${step.surface}: ${step.title}`}
                 >
                   <div

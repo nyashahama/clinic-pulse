@@ -50,8 +50,8 @@ export function StatusGapStory() {
           </div>
 
           <div className="border-t border-neutral-200 p-4 sm:p-5">
-            <div className="grid gap-3">
-              {statusGapTimeline.map((item) => (
+            <div className="grid gap-3" data-motion-layer="true">
+              {statusGapTimeline.map((item, index) => (
                 <article
                   key={`${item.label}-${item.title}`}
                   className={cn(
@@ -61,7 +61,12 @@ export function StatusGapStory() {
                 >
                   <div className="flex items-center gap-2">
                     <span
-                      className={cn("size-2.5 shrink-0 rounded-full", dotClassNames[item.tone])}
+                      data-motion-object="true"
+                      className={cn(
+                        "size-2.5 shrink-0 rounded-full [animation:clinic-soft-blink_3s_ease-in-out_infinite]",
+                        dotClassNames[item.tone],
+                      )}
+                      style={{ animationDelay: `${index * 0.25}s` }}
                     />
                     <p className="text-sm font-semibold tabular-nums">{item.label}</p>
                   </div>
