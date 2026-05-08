@@ -61,4 +61,20 @@ test.describe("landing page 2026", () => {
       }),
     ).toBeVisible();
   });
+
+  test("shows one connected incident flow from report to audit", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("link", { name: "Watch the incident flow" }).click();
+
+    const flow = page.locator("#flow");
+
+    await expect(page).toHaveURL(/#flow$/);
+    await expect(
+      flow.getByRole("heading", { name: "From field signal to operating record." }),
+    ).toBeVisible();
+    await expect(flow.getByText("Offline report queued")).toBeVisible();
+    await expect(flow.getByText("Clinic status changed")).toBeVisible();
+    await expect(flow.getByText("Wasted trip avoided")).toBeVisible();
+    await expect(flow.getByText("Operating record sealed")).toBeVisible();
+  });
 });
