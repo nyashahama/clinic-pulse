@@ -192,6 +192,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  [data-motion-layer="true"],
   [data-motion-layer="true"] *,
   [data-motion-object="true"] {
     animation: none !important;
