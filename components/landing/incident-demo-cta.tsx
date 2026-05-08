@@ -1,10 +1,16 @@
 import { ArrowRight, ClipboardCheck, ExternalLink } from "lucide-react";
 
 import { ButtonLink } from "@/components/landing/button-link";
+import { AuditSealStream } from "@/components/landing/motion/audit-seal-stream";
 import {
   incidentDemoCta,
   liveIncidentHero,
 } from "@/lib/landing/openpanel-refactor-content";
+import { auditSealEvents } from "@/lib/landing/landing-motion-content";
+
+const ctaAuditSealEvents = auditSealEvents.filter(
+  (event) => event.id !== "seal-route",
+);
 
 export function IncidentDemoCTA() {
   const incidentSummary = [
@@ -81,6 +87,11 @@ export function IncidentDemoCTA() {
                   </div>
                 ))}
               </div>
+
+              <AuditSealStream
+                className="mt-2 rounded-xl border border-white/10 bg-white/[0.04] p-2"
+                events={ctaAuditSealEvents}
+              />
             </div>
           </div>
         </div>

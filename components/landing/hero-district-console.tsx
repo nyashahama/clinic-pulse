@@ -14,6 +14,7 @@ import {
   ProductRow,
   StatusPill,
 } from "@/components/landing/product-preview-primitives";
+import { RoutePulseMap } from "@/components/landing/motion/route-pulse-map";
 import {
   heroClinicRows,
   heroConsoleMetrics,
@@ -134,6 +135,7 @@ export function HeroDistrictConsole({ className }: { className?: string }) {
             <div className="mt-3 grid min-w-0 gap-3">
               <div className="relative min-h-40 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100 sm:min-h-56">
                 <div className="absolute inset-0 opacity-80 [background-image:linear-gradient(rgba(255,255,255,0.72)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.72)_1px,transparent_1px)] [background-size:28px_28px]" />
+                <RoutePulseMap />
                 <MapPinDot className="left-[24%] top-[28%]" tone="healthy" />
                 <MapPinDot className="left-[48%] top-[32%]" tone="healthy" />
                 <MapPinDot className="left-[61%] top-[24%]" tone="warning" />

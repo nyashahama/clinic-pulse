@@ -65,7 +65,7 @@ export function Footer() {
               </div>
             </div>
           </div>
-          <div className="mt-12 flex items-center justify-between">
+          <div className="mt-12 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <span className="relative flex h-2 w-2">
                 <span className="animate-pulse-dot absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
@@ -73,7 +73,7 @@ export function Footer() {
               </span>
               <span className="text-xs text-neutral-500">All systems operational</span>
             </div>
-            <p className="text-xs text-neutral-500">
+            <p className="max-w-72 text-xs text-neutral-500 sm:text-right">
               Demo data is seeded to show the Clinic Pulse operating model.
             </p>
           </div>

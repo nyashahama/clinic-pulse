@@ -1,3 +1,4 @@
+import { AuditSealStream } from "@/components/landing/motion/audit-seal-stream";
 import { trustEvidencePanels } from "@/lib/landing/openpanel-refactor-content";
 
 export function EvidenceInfrastructure() {
@@ -20,33 +21,37 @@ export function EvidenceInfrastructure() {
           </p>
         </div>
 
-        <div className="grid min-w-0 gap-4 sm:grid-cols-2">
-          {trustEvidencePanels.map((panel) => (
-            <article
-              key={panel.title}
-              className="min-w-0 rounded-lg border border-white/10 bg-white/[0.04] p-4 shadow-2xl shadow-black/20 sm:p-5"
-            >
-              <div className="flex min-w-0 flex-col gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-white">{panel.title}</p>
-                  <p className="mt-1 break-words font-mono text-xs text-emerald-300">
-                    {panel.label}
-                  </p>
-                </div>
+        <div className="grid min-w-0 gap-4">
+          <AuditSealStream className="rounded-xl border border-white/10 bg-white/[0.04] p-2" />
 
-                <div className="grid gap-2 border-t border-white/10 pt-4">
-                  {panel.lines.map((line) => (
-                    <p
-                      key={line}
-                      className="min-w-0 break-all rounded-md border border-white/10 bg-neutral-900 px-3 py-2 font-mono text-xs leading-5 text-white/72"
-                    >
-                      {line}
+          <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+            {trustEvidencePanels.map((panel) => (
+              <article
+                key={panel.title}
+                className="min-w-0 rounded-lg border border-white/10 bg-white/[0.04] p-4 shadow-2xl shadow-black/20 sm:p-5"
+              >
+                <div className="flex min-w-0 flex-col gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-white">{panel.title}</p>
+                    <p className="mt-1 break-words font-mono text-xs text-emerald-300">
+                      {panel.label}
                     </p>
-                  ))}
+                  </div>
+
+                  <div className="grid gap-2 border-t border-white/10 pt-4">
+                    {panel.lines.map((line) => (
+                      <p
+                        key={line}
+                        className="min-w-0 break-all rounded-md border border-white/10 bg-neutral-900 px-3 py-2 font-mono text-xs leading-5 text-white/72"
+                      >
+                        {line}
+                      </p>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))}
+              </article>
+            ))}
+          </div>
         </div>
       </div>
     </section>

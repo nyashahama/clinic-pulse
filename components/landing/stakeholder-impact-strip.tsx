@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import Image from "next/image";
 
 import { LandingSection } from "@/components/landing/landing-section";
@@ -25,7 +26,23 @@ export function StakeholderImpactStrip() {
           </p>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="relative grid gap-3 overflow-hidden sm:grid-cols-2">
+          <div
+            aria-hidden="true"
+            data-motion-layer="true"
+            className="pointer-events-none absolute inset-x-6 top-1/2 hidden h-px bg-white/15 lg:block"
+          >
+            <span
+              data-motion-object="true"
+              className="absolute left-0 top-1/2 h-1 w-24 -translate-y-1/2 rounded-full bg-primary/80 shadow-[0_0_24px_rgba(13,122,107,0.65)] [animation:clinic-rail-scroll_8s_linear_infinite]"
+              style={
+                {
+                  "--clinic-rail-x": "calc(100vw - 12rem)",
+                  "--clinic-rail-y": "0",
+                } as CSSProperties
+              }
+            />
+          </div>
           {stakeholderImpactItems.map((item, index) => {
             const photo = landingPhotos[item.photo];
             const isProminent = index === 0 || index === 3;
@@ -33,7 +50,7 @@ export function StakeholderImpactStrip() {
             return (
               <article
                 key={item.role}
-                className="relative min-h-44 overflow-hidden rounded-xl border border-white/10 bg-white p-4 shadow-sm"
+                className="relative z-10 min-h-44 overflow-hidden rounded-xl border border-white/10 bg-white p-4 shadow-sm"
               >
                 <Image
                   src={photo.src}

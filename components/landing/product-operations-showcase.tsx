@@ -2,6 +2,7 @@ import {
   LandingSection,
   LandingSectionHeader,
 } from "@/components/landing/landing-section";
+import { ScrollReveal } from "@/components/landing/motion/scroll-reveal";
 import { ProductSurfacePreview } from "@/components/landing/product-surface-previews";
 import { productOperationsModules } from "@/lib/landing/openpanel-refactor-content";
 import { cn } from "@/lib/utils";
@@ -17,11 +18,16 @@ export function ProductOperationsShowcase() {
       />
       <div className="mt-12 grid min-w-0 gap-5 lg:grid-cols-2 lg:items-stretch">
         {productOperationsModules.map((module, index) => (
-          <OperationModuleCard
+          <ScrollReveal
             key={module.title}
-            module={module}
-            variant={index === 0 ? "primary" : "supporting"}
-          />
+            delay={index * 0.06}
+            className="h-full"
+          >
+            <OperationModuleCard
+              module={module}
+              variant={index === 0 ? "primary" : "supporting"}
+            />
+          </ScrollReveal>
         ))}
       </div>
     </LandingSection>
@@ -40,7 +46,7 @@ function OperationModuleCard({
   return (
     <article
       className={cn(
-        "grid min-w-0 content-start overflow-hidden rounded-xl border border-neutral-200 bg-white p-5 shadow-sm",
+        "grid h-full min-w-0 content-start overflow-hidden rounded-xl border border-neutral-200 bg-white p-5 shadow-sm",
         variant === "primary" ? "gap-6 lg:p-6" : "gap-5",
       )}
     >
