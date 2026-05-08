@@ -35,7 +35,10 @@ const statusTone = {
 
 export function HeroDistrictConsole({ className }: { className?: string }) {
   return (
-    <div className={cn("relative min-w-0 max-w-full", className)}>
+    <div
+      data-hero-console="true"
+      className={cn("relative min-w-0 max-w-full", className)}
+    >
       <BrowserFrame title="clinicpulse.demo/district-console">
         <div className="grid min-h-[560px] min-w-0 grid-cols-1 bg-white lg:grid-cols-[9rem_minmax(0,1fr)] 2xl:grid-cols-[10rem_minmax(0,1fr)_16rem]">
           <aside className="hidden border-r border-neutral-200 bg-neutral-50/80 p-3 lg:block">
@@ -92,6 +95,42 @@ export function HeroDistrictConsole({ className }: { className?: string }) {
               {heroConsoleMetrics.map((metric) => (
                 <MetricTile key={metric.label} {...metric} />
               ))}
+            </div>
+
+            <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">
+                    Active incident
+                  </p>
+                  <p className="mt-1 truncate text-sm font-semibold text-neutral-950">
+                    {heroIncident.clinic}
+                  </p>
+                </div>
+                <StatusPill tone="critical">{heroIncident.status}</StatusPill>
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <InfoLine
+                  icon={Radio}
+                  label="Source"
+                  value={heroIncident.source}
+                />
+                <InfoLine
+                  icon={DatabaseZap}
+                  label="Service"
+                  value={heroIncident.service}
+                />
+                <InfoLine
+                  icon={Route}
+                  label="Reroute"
+                  value={heroIncident.recommendedRoute}
+                />
+                <InfoLine
+                  icon={ShieldCheck}
+                  label="Audit"
+                  value={heroIncident.auditId}
+                />
+              </div>
             </div>
 
             <div className="mt-3 grid min-w-0 gap-3">

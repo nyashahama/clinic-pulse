@@ -32,7 +32,22 @@ describe("landing page 2026 content", () => {
     expect(statusGapTimeline).toHaveLength(4);
     expect(incidentFlowSteps).toHaveLength(4);
     expect(productOperationsModules).toHaveLength(4);
-    expect(trustEvidencePanels).toHaveLength(4);
+    expect(trustEvidencePanels.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it("labels every required trust evidence object", () => {
+    const trustTitles = trustEvidencePanels.map((panel) => panel.title);
+
+    expect(trustTitles).toEqual(
+      expect.arrayContaining([
+        "Source and permissions",
+        "Freshness and audit",
+        "Offline queue",
+        "District export",
+        "API/status endpoint",
+        "Webhook preview",
+      ]),
+    );
   });
 
   it("uses local real-image assets for landing imagery", () => {

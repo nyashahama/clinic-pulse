@@ -1,6 +1,19 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("landing page 2026", () => {
+  test("keeps required navigation and demo actions reachable", async ({ page }) => {
+    await page.goto("/");
+
+    const header = page.locator("header");
+
+    await expect(header.getByRole("link", { name: "Problem" })).toBeVisible();
+    await expect(header.getByRole("link", { name: "Flow" })).toBeVisible();
+    await expect(header.getByRole("link", { name: "Product" })).toBeVisible();
+    await expect(header.getByRole("link", { name: "Trust" })).toBeVisible();
+    await expect(header.getByRole("link", { name: "Sign in" })).toBeVisible();
+    await expect(header.getByRole("link", { name: "Book demo" })).toBeVisible();
+  });
+
   test("opens with the live operations incident narrative", async ({ page }) => {
     await page.goto("/");
 
@@ -21,6 +34,7 @@ test.describe("landing page 2026", () => {
     const routeProof = hero.locator("[data-route-proof='true']").filter({
       visible: true,
     });
+    const console = hero.locator("[data-hero-console='true']");
 
     await expect(incidentProof).toBeVisible();
     await expect(
@@ -32,6 +46,10 @@ test.describe("landing page 2026", () => {
     await expect(
       incidentProof.getByText("AUD-2026-0504-017", { exact: true }),
     ).toBeVisible();
+    await expect(console).toBeVisible();
+    await expect(console).toContainText("Offline field report");
+    await expect(console).toContainText("ARV pickup");
+    await expect(console).toContainText("AUD-2026-0504-017");
     await expect(
       page.getByRole("img", {
         name: /clinic entrance used to frame a live service availability incident/i,
@@ -39,6 +57,26 @@ test.describe("landing page 2026", () => {
     ).toBeVisible();
     await expect(page.getByRole("button", { name: "Book demo" }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Watch the incident flow" })).toBeVisible();
+  });
+
+  test("keeps responsive surfaces inside the viewport", async ({ page }) => {
+    await page.goto("/");
+
+    const overflow = await page.evaluate(() => {
+      const doc = document.documentElement;
+      const body = document.body;
+
+      return Math.max(doc.scrollWidth, body.scrollWidth) > doc.clientWidth + 1;
+    });
+
+    expect(overflow).toBe(false);
+    await expect(page.getByRole("button", { name: "Book demo" }).first()).toBeVisible();
+    await expect(page.locator("[data-hero-console='true']")).toBeVisible();
+    await expect(
+      page.locator("#product").getByRole("heading", {
+        name: "The operating surfaces behind the decision.",
+      }),
+    ).toBeVisible();
   });
 
   test("connects real-world stakeholders to the status gap", async ({ page }) => {
@@ -119,8 +157,10 @@ test.describe("landing page 2026", () => {
     ).toBeVisible();
     await expect(trust.getByText("Source and permissions")).toBeVisible();
     await expect(trust.getByText("Freshness and audit")).toBeVisible();
+    await expect(trust.getByText("Offline queue")).toBeVisible();
     await expect(trust.getByText("District export")).toBeVisible();
-    await expect(trust.getByText("Partner handoff", { exact: true })).toBeVisible();
+    await expect(trust.getByText("API/status endpoint")).toBeVisible();
+    await expect(trust.getByText("Webhook preview")).toBeVisible();
 
     await expect(
       cta.getByRole("heading", { name: "Walk through a live clinic status incident." }),

@@ -68,7 +68,7 @@ export const heroConsoleMetrics = [
 export const heroIncident = {
   clinic: "Mamelodi East Community Clinic",
   status: "Non-functional",
-  source: "Field worker report",
+  source: "Offline field report",
   service: "ARV pickup",
   reason: "Pharmacy stockout",
   age: "Fresh - 2 min ago",
@@ -511,14 +511,24 @@ export const trustEvidencePanels = [
     lines: ["status=non_functional", "freshness=2m", "route=Akasia Hills Clinic"],
   },
   {
+    title: "Offline queue",
+    label: "3 reports queued",
+    lines: ["queue=offline_reports", "sync=when_signal_returns", "source_notes=preserved"],
+  },
+  {
     title: "District export",
     label: "CSV ready",
     lines: ["report=incident_summary", "district=Tshwane North Demo", "rows=42 clinics"],
   },
   {
-    title: "Partner handoff",
+    title: "API/status endpoint",
     label: "200 OK",
-    lines: ["GET /v1/clinics/mamelodi-east/status", "webhook=preview_sent", "retry=false"],
+    lines: ["GET /v1/clinics/mamelodi-east/status", "payload=status_incident", "freshness=2m"],
+  },
+  {
+    title: "Webhook preview",
+    label: "partner handoff",
+    lines: ["webhook=preview_sent", "recipient=partner_app", "retry=false"],
   },
 ] as const;
 
