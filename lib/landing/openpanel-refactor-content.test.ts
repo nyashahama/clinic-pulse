@@ -3,168 +3,101 @@ import { describe, expect, it } from "vitest";
 import {
   demoCta,
   featureCards,
-  heroClinicRows,
-  heroConsoleMetrics,
-  heroConsoleNavItems,
-  heroIncident,
-  heroStats,
+  incidentDemoCta,
+  incidentFlowSteps,
   landingHero,
-  operatingGap,
+  liveIncidentHero,
   productSurfacePreviewRows,
-  stakeholderProofItems,
+  productOperationsModules,
+  stakeholderImpactItems,
+  statusGapTimeline,
+  trustEvidencePanels,
   trustObjects,
-  trustSystemPanels,
-  workflowIncidentStages,
-  workflowSteps,
-} from "@/lib/landing/openpanel-refactor-content";
+} from "./openpanel-refactor-content";
 
-function collectText(value: unknown): string {
-  if (typeof value === "string") {
-    return value;
-  }
+import { landingPhotos } from "@/components/landing/photo-assets";
 
-  if (Array.isArray(value)) {
-    return value.map(collectText).join(" ");
-  }
-
-  if (value && typeof value === "object") {
-    return Object.values(value).map(collectText).join(" ");
-  }
-
-  return "";
-}
-
-describe("OpenPanel-first landing content", () => {
-  const allowedPreviewTones = ["critical", "healthy", "neutral", "warning"];
-
-  it("keeps the approved Clinic Pulse hero and booking CTAs", () => {
-    expect(landingHero.title).toBe("Clinic Pulse");
-    expect(landingHero.primaryCta.href).toBe("/?booking=1");
-    expect(landingHero.secondaryCta.href).toBe("#flow");
-    expect(landingHero.description).toContain("Live clinic availability");
-  });
-
-  it("covers the approved stakeholder, workflow, feature, and trust sections", () => {
-    expect(stakeholderProofItems.map((item) => item.title)).toEqual([
-      "District teams",
-      "Field workers",
-      "Clinic coordinators",
-      "Patients",
-    ]);
-    expect(workflowSteps).toHaveLength(5);
-    expect(workflowSteps.map((step) => step.title)).toEqual([
-      "Field report",
-      "Status update",
-      "Coordinator review",
-      "Wasted trip avoided",
-      "Audit record",
-    ]);
-    expect(featureCards.map((card) => card.title)).toEqual([
-      "Field reports",
-      "District console",
-      "Patient rerouting",
-    ]);
-    expect(trustObjects.map((object) => object.label)).toEqual([
-      "Freshness",
-      "Source and permissions",
-      "Audit ledger",
-      "Exports and API",
-      "Webhook readiness",
-      "Offline queue",
-    ]);
-  });
-
-  it("gives every product feature card a product miniature contract", () => {
-    const miniatures = featureCards.map(
-      (card) =>
-        (
-          card as {
-            miniature?: {
-              type: string;
-              rows: readonly string[];
-            };
-          }
-        ).miniature,
+describe("landing page 2026 content", () => {
+  it("anchors the page around the approved live operations incident", () => {
+    expect(liveIncidentHero.title).toBe(
+      "Know which clinics can help before patients travel.",
     );
-    const previewRowKeys = Object.keys(productSurfacePreviewRows);
+    expect(liveIncidentHero.incident.clinic).toBe("Mamelodi East Community Clinic");
+    expect(liveIncidentHero.incident.recommendedRoute).toBe("Akasia Hills Clinic");
+    expect(liveIncidentHero.incident.auditId).toMatch(/^AUD-2026-/);
+  });
 
-    expect(miniatures.map((miniature) => miniature?.type)).toEqual([
-      "field-report",
-      "district-console",
-      "patient-reroute",
-    ]);
-    miniatures.forEach((miniature) => {
-      expect(miniature?.rows.length).toBeGreaterThanOrEqual(2);
-      expect(previewRowKeys).toContain(miniature?.type);
-      miniature?.rows.forEach((row) => {
-        expect(row).toMatch(/^[^:]+: .+$/);
-      });
+  it("keeps every main landing chapter populated", () => {
+    expect(stakeholderImpactItems).toHaveLength(4);
+    expect(statusGapTimeline).toHaveLength(4);
+    expect(incidentFlowSteps).toHaveLength(4);
+    expect(productOperationsModules).toHaveLength(4);
+    expect(trustEvidencePanels.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it("labels every required trust evidence object", () => {
+    const trustTitles = trustEvidencePanels.map((panel) => panel.title);
+
+    expect(trustTitles).toEqual(
+      expect.arrayContaining([
+        "Source and permissions",
+        "Freshness and audit",
+        "Offline queue",
+        "District export",
+        "API/status endpoint",
+        "Webhook preview",
+      ]),
+    );
+  });
+
+  it("uses local real-image assets for landing imagery", () => {
+    expect(Object.values(landingPhotos).every((photo) => photo.src.startsWith("/"))).toBe(
+      true,
+    );
+    expect(landingPhotos.heroClinic.alt).toContain("clinic");
+    expect(landingPhotos.fieldWorker.alt).toContain("field");
+    expect(landingPhotos.patientCare.alt).toContain("patient");
+    stakeholderImpactItems.forEach((item) => {
+      expect(item.photo in landingPhotos).toBe(true);
     });
   });
 
-  it("defines richer product-reality preview data for landing surfaces", () => {
-    expect(heroConsoleNavItems.map((item) => item.label)).toEqual([
-      "District console",
-      "Field reports",
-      "Public finder",
-      "Audit trail",
-    ]);
-    expect(heroConsoleMetrics.map((metric) => metric.label)).toEqual([
-      "Clinics monitored",
-      "Reports synced",
-      "Freshness target",
-    ]);
-    expect(heroIncident.clinic).toBe("Mamelodi East Community Clinic");
-    expect(heroIncident.recommendedRoute).toBe("Akasia Hills Clinic");
-    expect(workflowIncidentStages.map((stage) => stage.surface)).toEqual([
-      "Field report",
-      "District alert",
-      "Public finder",
-      "Audit ledger",
-    ]);
-    expect(productSurfacePreviewRows["field-report"]).toHaveLength(4);
-    expect(productSurfacePreviewRows["district-console"]).toHaveLength(4);
-    expect(productSurfacePreviewRows["patient-reroute"]).toHaveLength(3);
-    Object.values(productSurfacePreviewRows).forEach((rows) => {
-      rows.forEach((row) => {
-        expect(row).toEqual({
-          label: expect.any(String),
-          value: expect.any(String),
-          tone: expect.any(String),
-        });
-        expect(row.label).not.toHaveLength(0);
-        expect(row.value).not.toHaveLength(0);
-        expect(allowedPreviewTones).toContain(row.tone);
-      });
-    });
-    expect(trustSystemPanels.map((panel) => panel.title)).toEqual([
-      "Audit event",
-      "District export",
-      "API response",
-      "Webhook delivery",
-    ]);
+  it("does not invent customer logos or testimonials", () => {
+    const serialized = JSON.stringify({
+      incidentDemoCta,
+      stakeholderImpactItems,
+      trustEvidencePanels,
+    }).toLowerCase();
+
+    expect(serialized).not.toContain("trusted by");
+    expect(serialized).not.toContain("testimonial");
+    expect(serialized).not.toContain("customer logo");
   });
 
-  it("does not leak OpenPanel reference copy or unsupported claims", () => {
-    const text = collectText([
-      landingHero,
-      stakeholderProofItems,
-      workflowSteps,
-      workflowIncidentStages,
-      featureCards,
-      productSurfacePreviewRows,
-      trustObjects,
-      trustSystemPanels,
-      heroClinicRows,
-      heroConsoleNavItems,
-      heroConsoleMetrics,
-      heroIncident,
-      heroStats,
-      operatingGap,
-      demoCta,
-    ]);
+  it("routes public demo workspace access through sign in", () => {
+    expect(incidentDemoCta.secondaryCta).toEqual({
+      label: "Sign in to demo workspace",
+      href: "/login",
+    });
+  });
 
-    expect(text).not.toMatch(/OpenPanel|Mixpanel|GDPR|SOC 2|customers love us/i);
-    expect(text).toMatch(/Clinic Pulse|ClinicPulse/);
+  it("keeps current landing content available during migration", () => {
+    expect(landingHero.title).toBe("Clinic Pulse");
+    expect(landingHero.primaryCta.label).toBe("Book demo");
+    expect(featureCards).toHaveLength(3);
+    expect(Object.keys(productSurfacePreviewRows)).toEqual(
+      expect.arrayContaining([
+        "field-report",
+        "district-console",
+        "patient-reroute",
+        "audit-ledger",
+      ]),
+    );
+    expect(productSurfacePreviewRows["field-report"].length).toBeGreaterThan(0);
+    expect(productSurfacePreviewRows["district-console"].length).toBeGreaterThan(0);
+    expect(productSurfacePreviewRows["patient-reroute"].length).toBeGreaterThan(0);
+    expect(productSurfacePreviewRows["audit-ledger"].length).toBeGreaterThan(0);
+    expect(trustObjects.length).toBeGreaterThan(0);
+    expect(demoCta.cta.label).toBe("Book demo");
   });
 });

@@ -31,7 +31,11 @@ test.describe("phase-one demo route checklist", () => {
 
   test("renders public landing and booking routes", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: "Clinic Pulse", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("heading", {
+        name: "Know which clinics can help before patients travel.",
+      }),
+    ).toBeVisible();
     await expect(page.getByRole("button", { name: "Book demo" })).toBeVisible();
 
     await page.goto("/book-demo");

@@ -1,9 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Bell,
   DatabaseZap,
   Filter,
-  MapPin,
   Radio,
   Route,
   Search,
@@ -33,11 +31,14 @@ const statusTone = {
   "critical" | "warning" | "healthy"
 >;
 
-export function HeroDistrictConsole() {
+export function HeroDistrictConsole({ className }: { className?: string }) {
   return (
-    <div className="relative min-w-0 max-w-full">
+    <div
+      data-hero-console="true"
+      className={cn("relative min-w-0 max-w-full", className)}
+    >
       <BrowserFrame title="clinicpulse.demo/district-console">
-        <div className="grid min-h-[560px] min-w-0 grid-cols-1 bg-white lg:grid-cols-[9rem_minmax(0,1fr)] 2xl:grid-cols-[10rem_minmax(0,1fr)_16rem]">
+        <div className="grid min-h-0 min-w-0 grid-cols-1 bg-white sm:min-h-[560px] lg:grid-cols-[9rem_minmax(0,1fr)] 2xl:grid-cols-[10rem_minmax(0,1fr)]">
           <aside className="hidden border-r border-neutral-200 bg-neutral-50/80 p-3 lg:block">
             <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
               Workspace
@@ -65,7 +66,7 @@ export function HeroDistrictConsole() {
             </div>
           </aside>
 
-          <main className="min-w-0 p-3 sm:p-4">
+          <main className="min-w-0 p-2.5 sm:p-4">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 pb-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
@@ -76,11 +77,11 @@ export function HeroDistrictConsole() {
                 </h2>
               </div>
               <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs font-semibold text-neutral-500">
-                <span className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5">
+                <span className="hidden items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 sm:inline-flex">
                   <Search className="size-3.5" />
                   Search clinics
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5">
+                <span className="hidden items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 sm:inline-flex">
                   <Filter className="size-3.5" />
                   Status filters
                 </span>
@@ -88,14 +89,50 @@ export function HeroDistrictConsole() {
               </div>
             </div>
 
-            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <div className="mt-3 grid grid-cols-3 gap-2">
               {heroConsoleMetrics.map((metric) => (
                 <MetricTile key={metric.label} {...metric} />
               ))}
             </div>
 
+            <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">
+                    Active incident
+                  </p>
+                  <p className="mt-1 truncate text-sm font-semibold text-neutral-950">
+                    {heroIncident.clinic}
+                  </p>
+                </div>
+                <StatusPill tone="critical">{heroIncident.status}</StatusPill>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <InfoLine
+                  icon={Radio}
+                  label="Source"
+                  value={heroIncident.source}
+                />
+                <InfoLine
+                  icon={DatabaseZap}
+                  label="Service"
+                  value={heroIncident.service}
+                />
+                <InfoLine
+                  icon={Route}
+                  label="Reroute"
+                  value={heroIncident.recommendedRoute}
+                />
+                <InfoLine
+                  icon={ShieldCheck}
+                  label="Audit"
+                  value={heroIncident.auditId}
+                />
+              </div>
+            </div>
+
             <div className="mt-3 grid min-w-0 gap-3">
-              <div className="relative min-h-56 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
+              <div className="relative min-h-40 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100 sm:min-h-56">
                 <div className="absolute inset-0 opacity-80 [background-image:linear-gradient(rgba(255,255,255,0.72)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.72)_1px,transparent_1px)] [background-size:28px_28px]" />
                 <MapPinDot className="left-[24%] top-[28%]" tone="healthy" />
                 <MapPinDot className="left-[48%] top-[32%]" tone="healthy" />
@@ -126,7 +163,7 @@ export function HeroDistrictConsole() {
                         <p className="truncate font-semibold text-neutral-950">
                           {row.clinic}
                         </p>
-                        <p className="mt-1 line-clamp-2 text-neutral-500">
+                        <p className="mt-1 hidden text-neutral-500 sm:line-clamp-2">
                           {row.reason}
                         </p>
                       </div>
@@ -147,58 +184,8 @@ export function HeroDistrictConsole() {
             </div>
           </main>
 
-          <aside className="hidden border-l border-neutral-200 bg-white p-3 2xl:block">
-            <div className="rounded-xl border border-red-200 bg-red-50 p-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <Bell className="size-4 text-red-700" />
-                  <p className="text-sm font-semibold text-red-950">
-                    Active incident
-                  </p>
-                </div>
-                <StatusPill tone="critical">{heroIncident.status}</StatusPill>
-              </div>
-              <p className="mt-3 text-sm font-semibold text-neutral-950">
-                {heroIncident.clinic}
-              </p>
-              <div className="mt-3 grid gap-2 text-xs text-neutral-700">
-                <InfoLine
-                  icon={Radio}
-                  label="Source"
-                  value={heroIncident.source}
-                />
-                <InfoLine
-                  icon={DatabaseZap}
-                  label="Service"
-                  value={heroIncident.service}
-                />
-                <InfoLine
-                  icon={ShieldCheck}
-                  label="Audit"
-                  value={heroIncident.auditId}
-                />
-              </div>
-            </div>
-            <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">
-                Recommended reroute
-              </p>
-              <p className="mt-2 text-sm font-semibold text-neutral-950">
-                {heroIncident.recommendedRoute}
-              </p>
-              <p className="mt-1 text-xs leading-5 text-neutral-600">
-                {heroIncident.routeDetail}
-              </p>
-            </div>
-          </aside>
         </div>
       </BrowserFrame>
-      <div className="absolute -bottom-5 right-6 hidden rounded-xl border border-neutral-200 bg-white p-3 shadow-xl lg:block">
-        <div className="flex items-center gap-2 text-sm font-semibold text-neutral-950">
-          <MapPin className="size-4 text-primary" />
-          {heroIncident.recommendedRoute} ready for reroutes
-        </div>
-      </div>
     </div>
   );
 }
@@ -241,13 +228,13 @@ function InfoLine({
   value: string;
 }) {
   return (
-    <div className="flex items-start gap-2 rounded-lg border border-white/80 bg-white/70 px-2.5 py-2">
+    <div className="flex items-start gap-2 rounded-lg border border-white/80 bg-white/70 px-2 py-1.5 sm:px-2.5 sm:py-2">
       <Icon className="mt-0.5 size-3.5 shrink-0 text-neutral-500" />
       <div className="min-w-0">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-400">
+        <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-neutral-400 sm:text-[10px]">
           {label}
         </p>
-        <p className="mt-0.5 break-words font-semibold text-neutral-800">
+        <p className="mt-0.5 break-words text-xs font-semibold text-neutral-800 sm:text-sm">
           {value}
         </p>
       </div>
