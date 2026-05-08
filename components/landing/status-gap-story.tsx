@@ -61,6 +61,7 @@ export function StatusGapStory() {
                 >
                   <div className="flex items-center gap-2">
                     <span
+                      aria-hidden="true"
                       data-motion-object="true"
                       className={cn(
                         "size-2.5 shrink-0 rounded-full [animation:clinic-soft-blink_3s_ease-in-out_infinite]",

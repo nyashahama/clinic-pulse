@@ -26,7 +26,7 @@ export function StakeholderImpactStrip() {
           </p>
         </div>
 
-        <div className="relative grid gap-3 sm:grid-cols-2">
+        <div className="relative grid gap-3 overflow-hidden sm:grid-cols-2">
           <div
             aria-hidden="true"
             data-motion-layer="true"
