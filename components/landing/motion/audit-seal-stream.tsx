@@ -1,15 +1,25 @@
 import type { CSSProperties } from "react";
 import { ShieldCheck } from "lucide-react";
-import { auditSealEvents } from "@/lib/landing/landing-motion-content";
+import {
+  auditSealEvents,
+  type OperationsTickerEvent,
+} from "@/lib/landing/landing-motion-content";
 import { cn } from "@/lib/utils";
 
 type AuditSealStreamProps = {
   className?: string;
+  events?: readonly OperationsTickerEvent[];
 };
 
 const duplicatedEvents = [...auditSealEvents, ...auditSealEvents];
 
-export function AuditSealStream({ className }: AuditSealStreamProps) {
+export function AuditSealStream({
+  className,
+  events = auditSealEvents,
+}: AuditSealStreamProps) {
+  const streamEvents =
+    events === auditSealEvents ? duplicatedEvents : [...events, ...events];
+
   return (
     <div
       aria-hidden="true"
@@ -20,7 +30,7 @@ export function AuditSealStream({ className }: AuditSealStreamProps) {
       }
     >
       <div className="flex w-max gap-3 [animation:clinic-rail-scroll_30s_linear_infinite]">
-        {duplicatedEvents.map((event, index) => (
+        {streamEvents.map((event, index) => (
           <div
             key={`${event.id}-${index}`}
             data-motion-object="true"
