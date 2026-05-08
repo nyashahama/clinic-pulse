@@ -17,11 +17,12 @@ const chipToneClasses: Record<LandingMotionTone, string> = {
   neutral: "border-slate-200 bg-slate-50 text-slate-700",
 };
 
+const duplicatedEvents = [...operationsTickerEvents, ...operationsTickerEvents];
+
 export function OperationsActivityRail({
   direction = "horizontal",
   className,
 }: OperationsActivityRailProps) {
-  const events = [...operationsTickerEvents, ...operationsTickerEvents];
   const isVertical = direction === "vertical";
   const railStyle = {
     "--clinic-rail-x": isVertical ? "0" : "-50%",
@@ -30,8 +31,9 @@ export function OperationsActivityRail({
 
   return (
     <div
+      aria-hidden="true"
       data-motion-layer="true"
-      className={cn("overflow-hidden", className)}
+      className={cn("overflow-hidden", isVertical && "max-h-72", className)}
       style={railStyle}
     >
       <div
@@ -40,7 +42,7 @@ export function OperationsActivityRail({
           isVertical ? "w-full flex-col" : "w-max",
         )}
       >
-        {events.map((event, index) => (
+        {duplicatedEvents.map((event, index) => (
           <div
             key={`${event.id}-${index}`}
             data-motion-object="true"

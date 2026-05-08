@@ -1,21 +1,14 @@
 "use client";
 
-import type { HTMLAttributes, ReactNode } from "react";
-import { motion, useReducedMotion, type HTMLMotionProps } from "motion/react";
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 
-type ControlledMotionProps =
-  | "initial"
-  | "animate"
-  | "whileInView"
-  | "transition"
-  | "viewport";
-
-type ScrollRevealProps = Omit<HTMLMotionProps<"div">, ControlledMotionProps> & {
+type ScrollRevealProps = {
   children: ReactNode;
   className?: string;
   delay?: number;
-};
+} & Omit<ComponentPropsWithoutRef<"div">, "children" | "className">;
 
 export function ScrollReveal({
   children,
@@ -27,7 +20,7 @@ export function ScrollReveal({
 
   if (shouldReduceMotion) {
     return (
-      <div className={className} {...(props as HTMLAttributes<HTMLDivElement>)}>
+      <div className={className} {...props}>
         {children}
       </div>
     );
@@ -40,7 +33,7 @@ export function ScrollReveal({
       transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
       viewport={{ once: true, margin: "-12% 0px" }}
       className={cn("will-change-transform", className)}
-      {...props}
+      {...(props as ComponentPropsWithoutRef<typeof motion.div>)}
     >
       {children}
     </motion.div>

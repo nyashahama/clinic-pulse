@@ -31,6 +31,7 @@ export function RoutePulseMap({ className }: RoutePulseMapProps) {
         preserveAspectRatio="none"
       >
         <path
+          data-motion-object="true"
           d="M36 58 C44 44 52 66 61 24 S70 42 70 60"
           fill="none"
           stroke="currentColor"

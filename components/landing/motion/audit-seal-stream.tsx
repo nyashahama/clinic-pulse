@@ -7,11 +7,12 @@ type AuditSealStreamProps = {
   className?: string;
 };
 
-export function AuditSealStream({ className }: AuditSealStreamProps) {
-  const events = [...auditSealEvents, ...auditSealEvents];
+const duplicatedEvents = [...auditSealEvents, ...auditSealEvents];
 
+export function AuditSealStream({ className }: AuditSealStreamProps) {
   return (
     <div
+      aria-hidden="true"
       data-motion-layer="true"
       className={cn("overflow-hidden", className)}
       style={
@@ -19,7 +20,7 @@ export function AuditSealStream({ className }: AuditSealStreamProps) {
       }
     >
       <div className="flex w-max gap-3 [animation:clinic-rail-scroll_30s_linear_infinite]">
-        {events.map((event, index) => (
+        {duplicatedEvents.map((event, index) => (
           <div
             key={`${event.id}-${index}`}
             data-motion-object="true"
