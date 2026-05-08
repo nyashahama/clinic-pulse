@@ -196,6 +196,33 @@ test.describe("landing page 2026", () => {
     ).toBeVisible();
   });
 
+  test("keeps the desktop product surfaces in a compact grid", async ({ page }) => {
+    await page.goto("/");
+
+    const viewport = page.viewportSize();
+    test.skip(!viewport || viewport.width < 1024, "desktop-only product layout check");
+
+    const product = page.locator("#product");
+    const districtBox = await product
+      .getByRole("heading", { name: "District command center" })
+      .locator("xpath=ancestor::article[1]")
+      .boundingBox();
+    const patientBox = await product
+      .getByRole("heading", { name: "Patient rerouting" })
+      .locator("xpath=ancestor::article[1]")
+      .boundingBox();
+    const auditBox = await product
+      .getByRole("heading", { name: "Audit and export readiness" })
+      .locator("xpath=ancestor::article[1]")
+      .boundingBox();
+
+    expect(districtBox).not.toBeNull();
+    expect(patientBox).not.toBeNull();
+    expect(auditBox).not.toBeNull();
+    expect(patientBox?.x ?? 0).toBeLessThan((districtBox?.x ?? 0) + 80);
+    expect(Math.abs((patientBox?.y ?? 0) - (auditBox?.y ?? 0))).toBeLessThanOrEqual(80);
+  });
+
   test("ends with public-sector evidence and an incident-specific CTA", async ({ page }) => {
     await page.goto("/");
 
