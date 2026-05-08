@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { ArrowRight, MapPin, ShieldCheck } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 import { HeroDistrictConsole } from "@/components/landing/hero-district-console";
 import { landingPhotos } from "@/components/landing/photo-assets";
@@ -12,8 +12,6 @@ type LiveIncidentHeroProps = {
 };
 
 export function LiveIncidentHero({ onBookDemo }: LiveIncidentHeroProps) {
-  const incident = liveIncidentHero.incident;
-
   return (
     <section className="relative isolate overflow-hidden border-b border-neutral-950 bg-neutral-950 text-white">
       <Image
@@ -72,63 +70,6 @@ export function LiveIncidentHero({ onBookDemo }: LiveIncidentHeroProps) {
                 </p>
               </div>
             ))}
-          </div>
-
-          <div
-            data-incident-proof="true"
-            data-route-proof="true"
-            className="mt-4 rounded-lg border border-white/15 bg-white/10 p-3 text-xs leading-5 text-white/70 backdrop-blur sm:hidden"
-          >
-            <p className="font-semibold text-white">{incident.clinic}</p>
-            <p className="mt-1">
-              Reroute to{" "}
-              <span className="font-semibold text-white">
-                {incident.recommendedRoute}
-              </span>
-            </p>
-            <p className="mt-1 font-mono text-white/60">{incident.auditId}</p>
-          </div>
-
-          <div className="mt-5 hidden gap-3 sm:grid sm:grid-cols-2">
-            <div
-              data-incident-proof="true"
-              className="rounded-lg border border-red-300/25 bg-red-950/45 p-4 backdrop-blur"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-100/70">
-                  Active incident
-                </p>
-                <span className="rounded-full bg-red-300 px-2.5 py-1 text-[11px] font-bold text-red-950">
-                  {incident.status}
-                </span>
-              </div>
-              <p className="mt-3 text-sm font-semibold text-white">{incident.clinic}</p>
-              <p className="mt-1 text-sm leading-6 text-white/68">{incident.reason}</p>
-              <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-white/65">
-                <ShieldCheck className="size-3.5" />
-                {incident.auditId}
-              </div>
-            </div>
-
-            <div
-              data-route-proof="true"
-              className="rounded-lg border border-emerald-300/25 bg-emerald-950/45 p-4 backdrop-blur"
-            >
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-100/70">
-                Recommended route
-              </p>
-              <div className="mt-3 flex items-start gap-2">
-                <MapPin className="mt-0.5 size-4 shrink-0 text-emerald-200" />
-                <div>
-                  <p className="text-sm font-semibold text-white">
-                    {incident.recommendedRoute}
-                  </p>
-                  <p className="mt-1 text-sm leading-6 text-white/68">
-                    {incident.routeDetail} / {incident.service} accepting
-                  </p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 

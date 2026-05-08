@@ -1,9 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Bell,
   DatabaseZap,
   Filter,
-  MapPin,
   Radio,
   Route,
   Search,
@@ -40,7 +38,7 @@ export function HeroDistrictConsole({ className }: { className?: string }) {
       className={cn("relative min-w-0 max-w-full", className)}
     >
       <BrowserFrame title="clinicpulse.demo/district-console">
-        <div className="grid min-h-0 min-w-0 grid-cols-1 bg-white sm:min-h-[560px] lg:grid-cols-[9rem_minmax(0,1fr)] 2xl:grid-cols-[10rem_minmax(0,1fr)_16rem]">
+        <div className="grid min-h-0 min-w-0 grid-cols-1 bg-white sm:min-h-[560px] lg:grid-cols-[9rem_minmax(0,1fr)] 2xl:grid-cols-[10rem_minmax(0,1fr)]">
           <aside className="hidden border-r border-neutral-200 bg-neutral-50/80 p-3 lg:block">
             <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
               Workspace
@@ -186,58 +184,8 @@ export function HeroDistrictConsole({ className }: { className?: string }) {
             </div>
           </main>
 
-          <aside className="hidden border-l border-neutral-200 bg-white p-3 2xl:block">
-            <div className="rounded-xl border border-red-200 bg-red-50 p-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <Bell className="size-4 text-red-700" />
-                  <p className="text-sm font-semibold text-red-950">
-                    Active incident
-                  </p>
-                </div>
-                <StatusPill tone="critical">{heroIncident.status}</StatusPill>
-              </div>
-              <p className="mt-3 text-sm font-semibold text-neutral-950">
-                {heroIncident.clinic}
-              </p>
-              <div className="mt-3 grid gap-2 text-xs text-neutral-700">
-                <InfoLine
-                  icon={Radio}
-                  label="Source"
-                  value={heroIncident.source}
-                />
-                <InfoLine
-                  icon={DatabaseZap}
-                  label="Service"
-                  value={heroIncident.service}
-                />
-                <InfoLine
-                  icon={ShieldCheck}
-                  label="Audit"
-                  value={heroIncident.auditId}
-                />
-              </div>
-            </div>
-            <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">
-                Recommended reroute
-              </p>
-              <p className="mt-2 text-sm font-semibold text-neutral-950">
-                {heroIncident.recommendedRoute}
-              </p>
-              <p className="mt-1 text-xs leading-5 text-neutral-600">
-                {heroIncident.routeDetail}
-              </p>
-            </div>
-          </aside>
         </div>
       </BrowserFrame>
-      <div className="absolute -bottom-5 right-6 hidden rounded-xl border border-neutral-200 bg-white p-3 shadow-xl lg:block">
-        <div className="flex items-center gap-2 text-sm font-semibold text-neutral-950">
-          <MapPin className="size-4 text-primary" />
-          {heroIncident.recommendedRoute} ready for reroutes
-        </div>
-      </div>
     </div>
   );
 }

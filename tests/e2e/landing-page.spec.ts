@@ -28,25 +28,11 @@ test.describe("landing page 2026", () => {
         name: "Know which clinics can help before patients travel.",
       }),
     ).toBeVisible();
-    const incidentProof = hero.locator("[data-incident-proof='true']").filter({
-      visible: true,
-    });
-    const routeProof = hero.locator("[data-route-proof='true']").filter({
-      visible: true,
-    });
     const console = hero.locator("[data-hero-console='true']");
 
-    await expect(incidentProof).toBeVisible();
-    await expect(
-      incidentProof.getByText("Mamelodi East Community Clinic", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      routeProof.getByText("Akasia Hills Clinic", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      incidentProof.getByText("AUD-2026-0504-017", { exact: true }),
-    ).toBeVisible();
     await expect(console).toBeVisible();
+    await expect(console).toContainText("Mamelodi East Community Clinic");
+    await expect(console).toContainText("Akasia Hills Clinic");
     await expect(console).toContainText("Offline field report");
     await expect(console).toContainText("ARV pickup");
     await expect(console).toContainText("AUD-2026-0504-017");
@@ -57,6 +43,33 @@ test.describe("landing page 2026", () => {
     ).toBeVisible();
     await expect(page.getByRole("button", { name: "Book demo" }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Watch the incident flow" })).toBeVisible();
+  });
+
+  test("keeps hero incident proof owned by the console", async ({ page }) => {
+    for (const viewport of [
+      { width: 1800, height: 1100 },
+      { width: 900, height: 1200 },
+      { width: 390, height: 1000 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto("/");
+
+      const hero = page.locator("section").filter({
+        has: page.getByRole("heading", {
+          name: "Know which clinics can help before patients travel.",
+        }),
+      });
+      const console = hero.locator("[data-hero-console='true']");
+
+      await expect(
+        hero.getByText("Active incident", { exact: true }).filter({ visible: true }),
+      ).toHaveCount(1);
+      await expect(
+        hero.locator("[data-incident-proof='true']").filter({ visible: true }),
+      ).toHaveCount(0);
+      await expect(console).toContainText("Akasia Hills Clinic");
+      await expect(console).toContainText("AUD-2026-0504-017");
+    }
   });
 
   test("keeps responsive surfaces inside the viewport", async ({ page }) => {
