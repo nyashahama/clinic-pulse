@@ -2,13 +2,13 @@ import type { CSSProperties } from "react";
 import { ShieldCheck } from "lucide-react";
 import {
   auditSealEvents,
-  type OperationsTickerEvent,
+  type LandingMotionEvent,
 } from "@/lib/landing/landing-motion-content";
 import { cn } from "@/lib/utils";
 
 type AuditSealStreamProps = {
   className?: string;
-  events?: readonly OperationsTickerEvent[];
+  events?: readonly LandingMotionEvent[];
 };
 
 const duplicatedEvents = [...auditSealEvents, ...auditSealEvents];

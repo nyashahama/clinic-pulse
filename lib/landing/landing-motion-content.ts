@@ -20,7 +20,7 @@ export type HeroMapPulse = {
   active?: boolean;
 };
 
-export type OperationsTickerEvent = {
+export type LandingMotionEvent = {
   id: string;
   label: string;
   detail: string;
@@ -44,18 +44,7 @@ export const heroMapPulses: HeroMapPulse[] = [
   { id: "map-tshwane-north", label: "Tshwane North", tone: "healthy", x: 48, y: 32 },
 ];
 
-export const operationsTickerEvents: OperationsTickerEvent[] = [
-  { id: "event-report-queued", label: "Offline report queued", detail: "Mamelodi East / ARV pickup", stage: "report", tone: "warning" },
-  { id: "event-sync-started", label: "Sync started", detail: "field source preserved", stage: "sync", tone: "neutral" },
-  { id: "event-status-change", label: "Status changed", detail: "operational to non-functional", stage: "status", tone: "critical" },
-  { id: "event-console-alert", label: "District alert opened", detail: "freshness verified", stage: "status", tone: "critical" },
-  { id: "event-route-ready", label: "Route ready", detail: "Akasia Hills accepting", stage: "route", tone: "healthy" },
-  { id: "event-public-warning", label: "Patient warned", detail: "18 min wasted travel avoided", stage: "route", tone: "healthy" },
-  { id: "event-audit-source", label: "Source attached", detail: "offline field report", stage: "audit", tone: "neutral" },
-  { id: "event-audit-sealed", label: "Audit sealed", detail: "AUD-2026-0504-017", stage: "audit", tone: "healthy" },
-];
-
-export const auditSealEvents: OperationsTickerEvent[] = [
+export const auditSealEvents: LandingMotionEvent[] = [
   { id: "seal-source", label: "Source", detail: "Offline field report", stage: "audit", tone: "neutral" },
   { id: "seal-freshness", label: "Freshness", detail: "Fresh - 2 min ago", stage: "audit", tone: "healthy" },
   { id: "seal-route", label: "Route", detail: "Akasia Hills Clinic", stage: "route", tone: "healthy" },
