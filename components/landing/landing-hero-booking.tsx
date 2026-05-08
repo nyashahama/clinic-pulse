@@ -1,12 +1,12 @@
 "use client";
 
 import { BookingDemoController } from "@/components/landing/booking-demo-controller";
-import { OpenPanelProductHero } from "@/components/landing/openpanel-product-hero";
+import { LiveIncidentHero } from "@/components/landing/live-incident-hero";
 
 export function LandingHeroBooking() {
   return (
     <BookingDemoController>
-      {({ openBooking }) => <OpenPanelProductHero onBookDemo={openBooking} />}
+      {({ openBooking }) => <LiveIncidentHero onBookDemo={openBooking} />}
     </BookingDemoController>
   );
 }

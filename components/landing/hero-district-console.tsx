@@ -33,9 +33,9 @@ const statusTone = {
   "critical" | "warning" | "healthy"
 >;
 
-export function HeroDistrictConsole() {
+export function HeroDistrictConsole({ className }: { className?: string }) {
   return (
-    <div className="relative min-w-0 max-w-full">
+    <div className={cn("relative min-w-0 max-w-full", className)}>
       <BrowserFrame title="clinicpulse.demo/district-console">
         <div className="grid min-h-[560px] min-w-0 grid-cols-1 bg-white lg:grid-cols-[9rem_minmax(0,1fr)] 2xl:grid-cols-[10rem_minmax(0,1fr)_16rem]">
           <aside className="hidden border-r border-neutral-200 bg-neutral-50/80 p-3 lg:block">

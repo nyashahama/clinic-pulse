@@ -43,7 +43,11 @@ async function captureScreenshots(page: Page) {
 
   await page.setViewportSize({ width: 1440, height: 1100 });
   await gotoStable(page, "/");
-  await expect(page.getByRole("heading", { name: "Clinic Pulse", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "Know which clinics can help before patients travel.",
+    }),
+  ).toBeVisible();
   await capture(page, "landing-desktop.png");
 
   await gotoStable(page, "/book-demo");
