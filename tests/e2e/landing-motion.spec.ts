@@ -26,21 +26,15 @@ test.describe("landing motion system", () => {
     await expect(page.locator("[data-motion-layer='true']").first()).toBeVisible({
       timeout: 10000,
     });
-    await expect
-      .poll(() => page.locator("[data-motion-layer='true']").count(), {
-        timeout: 10000,
-      })
-      .toBeGreaterThanOrEqual(5);
-    await expect
-      .poll(() => page.locator("[data-motion-object='true']").count(), {
-        timeout: 10000,
-      })
-      .toBeGreaterThanOrEqual(18);
-    await expect
-      .poll(() => customMotionAnimationCount(page), {
-        timeout: 10000,
-      })
-      .toBeGreaterThanOrEqual(8);
+    await page.waitForTimeout(1500);
+
+    const motionLayerCount = await page.locator("[data-motion-layer='true']").count();
+    const motionObjectCount = await page.locator("[data-motion-object='true']").count();
+    const runningAnimationCount = await customMotionAnimationCount(page);
+
+    expect(motionLayerCount).toBeGreaterThanOrEqual(5);
+    expect(motionObjectCount).toBeGreaterThanOrEqual(18);
+    expect(runningAnimationCount).toBeGreaterThanOrEqual(8);
   });
 
   test("keeps reduced motion calm", async ({ page }) => {
@@ -72,5 +66,43 @@ test.describe("landing motion system", () => {
 
     expect(overflow).toBe(false);
     await expect(page.locator("[data-hero-console='true']")).toBeVisible();
+
+    const hero = page.locator("section").filter({
+      has: page.getByRole("heading", {
+        name: "Know which clinics can help before patients travel.",
+      }),
+    });
+    const heroHeight = await hero.evaluate((element) =>
+      Math.round(element.getBoundingClientRect().height),
+    );
+
+    expect(heroHeight).toBeLessThanOrEqual(1900);
+  });
+
+  test("keeps the desktop product surfaces in a compact grid", async ({ page }) => {
+    test.skip(test.info().project.name !== "desktop-chrome", "desktop-only product layout check");
+
+    await page.setViewportSize({ width: 1440, height: 1200 });
+    await page.goto("/");
+
+    const product = page.locator("#product");
+    const districtBox = await product
+      .getByRole("heading", { name: "District command center" })
+      .locator("xpath=ancestor::article[1]")
+      .boundingBox();
+    const patientBox = await product
+      .getByRole("heading", { name: "Patient rerouting" })
+      .locator("xpath=ancestor::article[1]")
+      .boundingBox();
+    const auditBox = await product
+      .getByRole("heading", { name: "Audit and export readiness" })
+      .locator("xpath=ancestor::article[1]")
+      .boundingBox();
+
+    expect(districtBox).not.toBeNull();
+    expect(patientBox).not.toBeNull();
+    expect(auditBox).not.toBeNull();
+    expect(patientBox?.x ?? 0).toBeLessThan((districtBox?.x ?? 0) + 80);
+    expect(Math.abs((patientBox?.y ?? 0) - (auditBox?.y ?? 0))).toBeLessThanOrEqual(80);
   });
 });
