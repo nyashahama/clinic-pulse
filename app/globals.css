@@ -198,6 +198,10 @@
     animation: none !important;
     transition-duration: 0.01ms !important;
   }
+
+  .clinic-route-packet {
+    display: none !important;
+  }
 }
 
 @keyframes accordion-down {

@@ -40,12 +40,22 @@ export function RoutePulseMap({ className }: RoutePulseMapProps) {
           strokeDasharray="7 8"
           className="text-emerald-400/70 [animation:clinic-route-dash_4.8s_ease-in-out_infinite]"
         />
+        <circle
+          data-motion-object="true"
+          r="1.6"
+          fill="rgb(16,185,129)"
+          stroke="white"
+          strokeWidth="0.8"
+          className="clinic-route-packet drop-shadow-[0_0_8px_rgba(16,185,129,0.9)]"
+        >
+          <animateMotion
+            dur="4.8s"
+            path="M36 58 C44 44 52 66 61 24 S70 42 70 60"
+            repeatCount="indefinite"
+            rotate="auto"
+          />
+        </circle>
       </svg>
-
-      <span
-        data-motion-object="true"
-        className="absolute size-2 rounded-full bg-white shadow-[0_0_22px_rgba(16,185,129,0.75)] [animation:clinic-packet-travel_4.8s_linear_infinite] [offset-path:path('M_36_58_C_44_44_52_66_61_24_S_70_42_70_60')]"
-      />
 
       {heroMapPulses.map((pulse, index) => (
         <span
