@@ -1,7 +1,8 @@
 "use client";
 
-import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import type { ComponentPropsWithoutRef, CSSProperties, ReactNode } from "react";
 import {
+  isMotionValue,
   isValidMotionProp,
   motion,
   useReducedMotion,
@@ -30,12 +31,67 @@ type ScrollRevealPassthroughProps = Omit<
   "children" | "className" | "delay"
 >;
 
+const motionStyleOnlyKeys = new Set([
+  "x",
+  "y",
+  "z",
+  "scale",
+  "scaleX",
+  "scaleY",
+  "scaleZ",
+  "rotate",
+  "rotateX",
+  "rotateY",
+  "rotateZ",
+  "skew",
+  "skewX",
+  "skewY",
+  "originX",
+  "originY",
+  "originZ",
+  "pathLength",
+  "pathOffset",
+  "pathSpacing",
+]);
+
+function sanitizeStyle(style: unknown): CSSProperties | undefined {
+  if (!style || typeof style !== "object") {
+    return undefined;
+  }
+
+  const domStyle: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(style)) {
+    if (motionStyleOnlyKeys.has(key) || isMotionValue(value)) {
+      continue;
+    }
+
+    domStyle[key] = value;
+  }
+
+  if (Object.keys(domStyle).length === 0) {
+    return undefined;
+  }
+
+  return domStyle as CSSProperties;
+}
+
 function getDomProps(
   props: ScrollRevealPassthroughProps,
 ): ComponentPropsWithoutRef<"div"> {
   const domProps: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(props)) {
+    if (key === "style") {
+      const style = sanitizeStyle(value);
+
+      if (style) {
+        domProps.style = style;
+      }
+
+      continue;
+    }
+
     if (!isValidMotionProp(key)) {
       domProps[key] = value;
     }
