@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { MapPin, Radio, Search, Smartphone } from "lucide-react";
+import { Database, MapPin, Radio, Search, Smartphone } from "lucide-react";
 
 import {
   ProductRow,
@@ -8,9 +8,13 @@ import {
 import { productSurfacePreviewRows } from "@/lib/landing/openpanel-refactor-content";
 
 type PreviewType = keyof typeof productSurfacePreviewRows;
-type PreviewRow = (typeof productSurfacePreviewRows)[PreviewType][number];
 type PreviewTone =
   (typeof productSurfacePreviewRows)[PreviewType][number]["tone"];
+type PreviewRow = {
+  label: string;
+  tone: PreviewTone;
+  value: string;
+};
 type StatusTone = NonNullable<ComponentProps<typeof StatusPill>["tone"]>;
 
 const toneMap: Record<PreviewTone, StatusTone> = {
@@ -20,7 +24,11 @@ const toneMap: Record<PreviewTone, StatusTone> = {
   neutral: "neutral",
 } as const;
 
-export function ProductSurfacePreview({ type }: { type: PreviewType }) {
+export function ProductSurfacePreview({
+  type,
+}: {
+  type: PreviewType;
+}) {
   switch (type) {
     case "field-report":
       return <FieldReportPreview />;
@@ -28,6 +36,8 @@ export function ProductSurfacePreview({ type }: { type: PreviewType }) {
       return <DistrictConsolePreview />;
     case "patient-reroute":
       return <PatientReroutePreview />;
+    case "audit-ledger":
+      return <AuditLedgerPreview />;
     default: {
       const exhaustiveType: never = type;
       return exhaustiveType;
@@ -38,7 +48,7 @@ export function ProductSurfacePreview({ type }: { type: PreviewType }) {
 function PreviewRowContent({ row }: { row: PreviewRow }) {
   return (
     <div className="flex min-w-0 flex-col items-start gap-1 lg:flex-row lg:items-center lg:justify-between lg:gap-3">
-      <span className="min-w-0 text-neutral-500">{row.label}</span>
+      <span className="min-w-0 break-words text-neutral-500">{row.label}</span>
       <StatusPill tone={toneMap[row.tone]}>{row.value}</StatusPill>
     </div>
   );
@@ -116,6 +126,33 @@ function PatientReroutePreview() {
         <div className="mt-3 flex items-center justify-center gap-1.5 rounded-lg bg-neutral-950 px-3 py-2 text-xs font-semibold text-white">
           <MapPin className="size-3.5" />
           Open route
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AuditLedgerPreview() {
+  return (
+    <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+      <div className="rounded-lg border border-neutral-200 bg-white p-3">
+        <div className="flex min-w-0 items-center justify-between gap-3 border-b border-neutral-100 pb-2">
+          <div className="flex min-w-0 items-center gap-2 text-xs font-semibold text-neutral-950">
+            <Database className="size-3.5 shrink-0 text-primary" />
+            <span className="min-w-0 break-words">Audit ledger</span>
+          </div>
+          <StatusPill tone="neutral">recording</StatusPill>
+        </div>
+        <div className="mt-3 grid gap-2">
+          {productSurfacePreviewRows["audit-ledger"].map((row, index) => (
+            <ProductRow
+              key={row.label}
+              active={index === 1}
+              activeTone={toneMap[row.tone]}
+            >
+              <PreviewRowContent row={row} />
+            </ProductRow>
+          ))}
         </div>
       </div>
     </div>

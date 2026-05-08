@@ -64,11 +64,17 @@ describe("landing page 2026 content", () => {
     expect(landingHero.primaryCta.label).toBe("Book demo");
     expect(featureCards).toHaveLength(3);
     expect(Object.keys(productSurfacePreviewRows)).toEqual(
-      expect.arrayContaining(["field-report", "district-console", "patient-reroute"]),
+      expect.arrayContaining([
+        "field-report",
+        "district-console",
+        "patient-reroute",
+        "audit-ledger",
+      ]),
     );
     expect(productSurfacePreviewRows["field-report"].length).toBeGreaterThan(0);
     expect(productSurfacePreviewRows["district-console"].length).toBeGreaterThan(0);
     expect(productSurfacePreviewRows["patient-reroute"].length).toBeGreaterThan(0);
+    expect(productSurfacePreviewRows["audit-ledger"].length).toBeGreaterThan(0);
     expect(trustObjects.length).toBeGreaterThan(0);
     expect(demoCta.cta.label).toBe("Book demo");
   });

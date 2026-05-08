@@ -255,6 +255,13 @@ export const productSurfacePreviewRows = {
     { label: "Clinic", value: "Best nearby compatible", tone: "healthy" },
     { label: "Service", value: "ARV pickup accepting", tone: "healthy" },
   ],
+  "audit-ledger": [
+    { label: "Source", value: "Offline field report", tone: "neutral" },
+    { label: "Status change", value: "Operational to non-functional", tone: "critical" },
+    { label: "Reroute", value: "Akasia Hills Clinic", tone: "healthy" },
+    { label: "Export", value: "CSV ready", tone: "neutral" },
+    { label: "API status", value: "200 OK", tone: "healthy" },
+  ],
 } as const;
 
 export const trustObjects = [

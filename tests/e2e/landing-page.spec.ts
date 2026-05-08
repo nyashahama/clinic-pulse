@@ -77,4 +77,20 @@ test.describe("landing page 2026", () => {
     await expect(flow.getByText("Wasted trip avoided")).toBeVisible();
     await expect(flow.getByText("Operating record sealed")).toBeVisible();
   });
+
+  test("presents product surfaces with a clear operations hierarchy", async ({ page }) => {
+    await page.goto("/");
+
+    const product = page.locator("#product");
+
+    await expect(
+      product.getByRole("heading", { name: "The operating surfaces behind the decision." }),
+    ).toBeVisible();
+    await expect(product.getByRole("heading", { name: "District command center" })).toBeVisible();
+    await expect(product.getByRole("heading", { name: "Offline field reports" })).toBeVisible();
+    await expect(product.getByRole("heading", { name: "Patient rerouting" })).toBeVisible();
+    await expect(
+      product.getByRole("heading", { name: "Audit and export readiness" }),
+    ).toBeVisible();
+  });
 });
