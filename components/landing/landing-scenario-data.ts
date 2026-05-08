@@ -85,11 +85,11 @@ export const productFlowSteps = [
   },
   {
     step: "04",
-    title: "Patient is rerouted",
+    title: "Wasted trip avoided",
     description:
-      "ClinicPulse recommends the closest operational clinic that can handle the needed service.",
-    artifactTitle: "Routing decision",
-    artifactDetail: "Send to Akasia Hills Clinic",
+      "ClinicPulse warns the patient before travel and recommends the best nearby compatible clinic.",
+    artifactTitle: "Journey impact",
+    artifactDetail: "18 min avoided wasted travel",
   },
   {
     step: "05",
@@ -102,14 +102,14 @@ export const productFlowSteps = [
 ] as const;
 
 export const routingMoment = {
-  before: "Patient would travel to Mamelodi East Community Clinic.",
+  before: "Patient would make a wasted trip to Mamelodi East Community Clinic.",
   incident: "Mamelodi East Community Clinic is non-functional because pharmacy stock is unavailable.",
   recommendation: "Send patient to Akasia Hills Clinic.",
   reasons: [
+    "Wasted travel avoided: 18 min",
+    "Best nearby compatible clinic",
     "Service compatible: primary care supported",
     "Operational status fresh - 4 min ago",
-    "Estimated travel: 18 min",
-    "Queue pressure: moderate",
   ],
 } as const;
 

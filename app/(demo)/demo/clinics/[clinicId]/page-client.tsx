@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import { AuditTrail } from "@/components/demo/audit-trail";
 import { ClinicOperationalGrid } from "@/components/demo/clinic-operational-grid";
 import { ClinicProfileHeader } from "@/components/demo/clinic-profile-header";
+import { PatientJourneyImpactPanel } from "@/components/demo/patient-journey-impact";
 import { ReroutePanel, type RerouteRecommendation } from "@/components/demo/reroute-panel";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +15,8 @@ import {
   resolveAlternativeService,
 } from "@/lib/demo/alternatives";
 import { useDemoStore } from "@/lib/demo/demo-store";
+import { buildPatientJourneyImpact } from "@/lib/demo/patient-journey";
+import { buildRecommendationInputKey } from "@/lib/demo/recommendation-input-key";
 import { getClinicAuditEvents, getClinicReports, getClinicRows } from "@/lib/demo/selectors";
 import type { Clinic, ClinicRow } from "@/lib/demo/types";
 
@@ -142,14 +145,19 @@ export default function ClinicDetailPage() {
   );
 
   const recommendationKey = clinicRow
-    ? `${clinicRow.id}:${resolveAlternativeService(clinicRow, clinicRow.services[0])}`
+    ? buildRecommendationInputKey({
+        sourceClinic: clinicRow,
+        localClinics: clinicRows,
+        requestedService: resolveAlternativeService(clinicRow, clinicRow.services[0]),
+      })
     : "";
   const [recommendationResult, setRecommendationResult] = useState<RecommendationResult>({
     key: "",
     recommendations: [],
   });
+  const recommendationsReady = recommendationResult.key === recommendationKey;
   const recommendations =
-    recommendationResult.key === recommendationKey ? recommendationResult.recommendations : [];
+    recommendationsReady ? recommendationResult.recommendations : [];
 
   useEffect(() => {
     let isCurrent = true;
@@ -192,6 +200,17 @@ export default function ClinicDetailPage() {
     () => reports[0]?.reason ?? clinicRow?.reason ?? "No reason has been reported yet.",
     [reports, clinicRow?.reason],
   );
+  const displayClinicRow = useMemo(
+    () => (clinicRow ? { ...clinicRow, reason: latestReason } : null),
+    [clinicRow, latestReason],
+  );
+  const journeyImpact = displayClinicRow && recommendationsReady
+    ? buildPatientJourneyImpact({
+        sourceClinic: displayClinicRow,
+        requestedService: displayClinicRow.services[0],
+        recommendations,
+      })
+    : null;
 
   const unavailableClinic = clinicRow
     ? isUnavailableClinic(clinicRow.status, clinicRow.freshness)
@@ -227,38 +246,56 @@ export default function ClinicDetailPage() {
         </section>
       ) : null}
 
-      {clinicRow ? (
+      {displayClinicRow ? (
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(22rem,1.1fr)]">
           <div className="grid gap-4">
             <ClinicProfileHeader
-              clinic={{ ...clinicRow, reason: latestReason }}
+              clinic={displayClinicRow}
               onFindAlternative={() =>
                 router.push(
-                  `/finder?query=${encodeURIComponent(clinicRow.name)}&service=${encodeURIComponent(
-                    clinicRow.services[0] ?? "",
+                  `/finder?query=${encodeURIComponent(displayClinicRow.name)}&service=${encodeURIComponent(
+                    displayClinicRow.services[0] ?? "",
                   )}`,
                 )
               }
-              onEscalate={() => router.push(`/admin?clinicId=${encodeURIComponent(clinicRow.id)}`)}
+              onEscalate={() => router.push(`/admin?clinicId=${encodeURIComponent(displayClinicRow.id)}`)}
             />
 
             <ClinicOperationalGrid
-              clinic={{
-                ...clinicRow,
-                reason: latestReason,
-              }}
+              clinic={displayClinicRow}
             />
 
-            <AuditTrail clinicName={clinicRow.name} events={auditEvents} />
+            <AuditTrail clinicName={displayClinicRow.name} events={auditEvents} />
           </div>
 
           <div className="grid gap-4">
-            <ReroutePanel
-              sourceClinicName={clinicRow.name}
-              unavailable={unavailableClinic}
-              reason={latestReason}
-              recommendations={recommendations}
-            />
+            {journeyImpact ? (
+              <PatientJourneyImpactPanel impact={journeyImpact} variant="evidence" />
+            ) : null}
+
+            {!recommendationsReady && unavailableClinic ? (
+              <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-content-subtle">
+                  Routing actions
+                </p>
+                <p className="mt-1 text-sm font-semibold text-content-emphasis">
+                  Checking alternatives
+                </p>
+                <p className="mt-1 text-sm leading-6 text-content-subtle">
+                  Recommendation data is still loading. No empty reroute result is shown until
+                  the current request completes.
+                </p>
+              </section>
+            ) : null}
+
+            {recommendationsReady || !unavailableClinic ? (
+              <ReroutePanel
+                sourceClinicName={displayClinicRow.name}
+                unavailable={unavailableClinic}
+                reason={latestReason}
+                recommendations={recommendations}
+              />
+            ) : null}
           </div>
         </div>
       ) : null}

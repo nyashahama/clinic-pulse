@@ -59,7 +59,7 @@ export function StatusPill({
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+        "inline-flex max-w-full items-center whitespace-normal break-words rounded-full border px-2 py-0.5 text-[11px] font-semibold",
         toneClasses[tone],
       )}
     >

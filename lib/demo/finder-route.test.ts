@@ -121,4 +121,77 @@ describe("public finder route boundary", () => {
     expect(componentSource).not.toContain('"Get directions"');
     expect(componentSource).not.toContain('"Directions reroute"');
   });
+
+  it("defines a reusable patient journey impact component with patient and evidence variants", () => {
+    const componentPath = path.join(
+      process.cwd(),
+      "components",
+      "demo",
+      "patient-journey-impact.tsx",
+    );
+
+    expect(existsSync(componentPath)).toBe(true);
+
+    const componentSource = readFileSync(componentPath, "utf8");
+
+    expect(componentSource).toContain("PatientJourneyImpactPanel");
+    expect(componentSource).toContain('variant?: "patient" | "evidence"');
+    expect(componentSource).toContain("Wasted trip avoided");
+    expect(componentSource).toContain("No compatible safe recommendation");
+    expect(componentSource).toContain("formatImpactDistance");
+    expect(componentSource).toContain("formatImpactMinutes");
+    expect(componentSource).toContain("trustSignals.reason");
+    expect(componentSource).toContain("trustSignals.recommendation?.reason");
+    expect(componentSource).toContain("afterDescription");
+    expect(componentSource).toContain("is currently available for routing.");
+    expect(componentSource).toContain("No alternative should be shown as safe");
+  });
+
+  it("shows patient journey impact in the finder before reroute recommendations", () => {
+    const componentSource = readFileSync(publicFinderComponent, "utf8");
+    const impactPanelIndex = componentSource.indexOf("<PatientJourneyImpactPanel");
+    const reroutePanelIndex = componentSource.indexOf("<ReroutePanel");
+
+    expect(componentSource).toContain("buildPatientJourneyImpact");
+    expect(componentSource).toContain("buildRecommendationInputKey");
+    expect(componentSource).toContain("PatientJourneyImpactPanel");
+    expect(componentSource).toContain("sourceClinic: selectedClinicRow");
+    expect(componentSource).toContain("requestedService: service");
+    expect(componentSource).toContain("recommendations={recommendations}");
+    expect(componentSource).toContain("recommendedDirectionsUrl");
+    expect(componentSource).toContain("buildDirectionsUrl(patientJourneyImpact.recommendedClinic)");
+    expect(componentSource).toContain("Open recommended directions");
+    expect(componentSource).toContain("recommendationsReady");
+    expect(componentSource).toContain("selectedClinicRow && recommendationsReady");
+    expect(componentSource).toContain('variant: "default"');
+    expect(componentSource).toContain("Checking alternatives");
+    expect(componentSource).toContain("Recommendation data is still loading");
+    expect(componentSource).toContain("recommendationsReady || !isClinicUnavailable(selectedClinicRow)");
+    expect(impactPanelIndex).toBeGreaterThanOrEqual(0);
+    expect(reroutePanelIndex).toBeGreaterThanOrEqual(0);
+    expect(impactPanelIndex).toBeLessThan(reroutePanelIndex);
+  });
+
+  it("shows patient journey evidence in operational clinic detail before reroute recommendations", () => {
+    const clientSource = readFileSync(restrictedDemoClinicDetailClient, "utf8");
+    const impactPanelIndex = clientSource.indexOf("<PatientJourneyImpactPanel");
+    const reroutePanelIndex = clientSource.indexOf("<ReroutePanel");
+
+    expect(clientSource).toContain("buildPatientJourneyImpact");
+    expect(clientSource).toContain("buildRecommendationInputKey");
+    expect(clientSource).toContain("PatientJourneyImpactPanel");
+    expect(clientSource).toContain("displayClinicRow");
+    expect(clientSource).toContain("sourceClinic: displayClinicRow");
+    expect(clientSource).toContain("requestedService: displayClinicRow.services[0]");
+    expect(clientSource).toContain("recommendations");
+    expect(clientSource).toContain('variant="evidence"');
+    expect(clientSource).toContain("recommendationsReady");
+    expect(clientSource).toContain("displayClinicRow && recommendationsReady");
+    expect(clientSource).toContain("Checking alternatives");
+    expect(clientSource).toContain("Recommendation data is still loading");
+    expect(clientSource).toContain("recommendationsReady || !unavailableClinic");
+    expect(impactPanelIndex).toBeGreaterThanOrEqual(0);
+    expect(reroutePanelIndex).toBeGreaterThanOrEqual(0);
+    expect(impactPanelIndex).toBeLessThan(reroutePanelIndex);
+  });
 });

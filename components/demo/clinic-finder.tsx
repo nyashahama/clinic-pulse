@@ -4,6 +4,7 @@ import { ExternalLink } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { FreshnessBadge } from "@/components/demo/freshness-badge";
+import { PatientJourneyImpactPanel } from "@/components/demo/patient-journey-impact";
 import { ReroutePanel } from "@/components/demo/reroute-panel";
 import { SectionHeader } from "@/components/demo/section-header";
 import { StatusBadge } from "@/components/demo/status-badge";
@@ -19,6 +20,8 @@ import {
   resolveSelectedClinicId,
   sortClinicRowsByDistance,
 } from "@/lib/demo/finder";
+import { buildPatientJourneyImpact } from "@/lib/demo/patient-journey";
+import { buildRecommendationInputKey } from "@/lib/demo/recommendation-input-key";
 import type { ClinicRow } from "@/lib/demo/types";
 
 type ClinicFinderProps = {
@@ -68,14 +71,29 @@ export function ClinicFinder({
   const selectedDirectionsUrl = selectedClinicRow ? buildDirectionsUrl(selectedClinicRow) : null;
 
   const recommendationKey = selectedClinicRow
-    ? `${selectedClinicRow.id}:${resolveAlternativeService(selectedClinicRow, service)}`
+    ? buildRecommendationInputKey({
+        sourceClinic: selectedClinicRow,
+        localClinics: clinics,
+        requestedService: resolveAlternativeService(selectedClinicRow, service),
+      })
     : "";
   const [recommendationResult, setRecommendationResult] = useState<RecommendationResult>({
     key: "",
     recommendations: [],
   });
+  const recommendationsReady = recommendationResult.key === recommendationKey;
   const recommendations =
-    recommendationResult.key === recommendationKey ? recommendationResult.recommendations : [];
+    recommendationsReady ? recommendationResult.recommendations : [];
+  const patientJourneyImpact = selectedClinicRow && recommendationsReady
+    ? buildPatientJourneyImpact({
+        sourceClinic: selectedClinicRow,
+        requestedService: service,
+        recommendations,
+      })
+    : null;
+  const recommendedDirectionsUrl = patientJourneyImpact?.recommendedClinic
+    ? buildDirectionsUrl(patientJourneyImpact.recommendedClinic)
+    : null;
 
   useEffect(() => {
     let isCurrent = true;
@@ -235,7 +253,39 @@ export function ClinicFinder({
           </section>
         ) : null}
 
-        {selectedClinicRow ? (
+        {patientJourneyImpact ? (
+          <PatientJourneyImpactPanel
+            impact={patientJourneyImpact}
+            actions={
+              recommendedDirectionsUrl ? (
+                <a
+                  href={recommendedDirectionsUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={buttonVariants({ size: "sm", variant: "default" })}
+                >
+                  Open recommended directions
+                  <ExternalLink className="size-3.5" />
+                </a>
+              ) : undefined
+            }
+          />
+        ) : null}
+
+        {selectedClinicRow && !recommendationsReady && isClinicUnavailable(selectedClinicRow) ? (
+          <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
+            <SectionHeader
+              eyebrow="Routing actions"
+              title="Checking alternatives"
+              description="Compatible recommendations are loading for the selected clinic and service."
+            />
+            <div className="mt-4 rounded-lg border border-dashed border-border-subtle bg-bg-subtle p-3 text-sm text-content-subtle">
+              Recommendation data is still loading. No empty reroute result is shown until the current request completes.
+            </div>
+          </section>
+        ) : null}
+
+        {selectedClinicRow && (recommendationsReady || !isClinicUnavailable(selectedClinicRow)) ? (
           <ReroutePanel
             sourceClinicName={selectedClinicRow.name}
             unavailable={isClinicUnavailable(selectedClinicRow)}

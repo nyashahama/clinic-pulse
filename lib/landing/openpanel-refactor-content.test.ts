@@ -56,7 +56,7 @@ describe("OpenPanel-first landing content", () => {
       "Field report",
       "Status update",
       "Coordinator review",
-      "Patient reroute",
+      "Wasted trip avoided",
       "Audit record",
     ]);
     expect(featureCards.map((card) => card.title)).toEqual([
