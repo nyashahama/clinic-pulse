@@ -78,12 +78,12 @@ export function MetricTile({
   value: string;
 }) {
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-3">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-400">
+    <div className="rounded-lg border border-neutral-200 bg-white p-2 sm:p-3">
+      <p className="text-[9px] font-semibold uppercase leading-4 tracking-[0.12em] text-neutral-400 sm:text-[11px]">
         {label}
       </p>
-      <p className="mt-1 text-xl font-semibold text-neutral-950">{value}</p>
-      <p className="mt-1 text-xs text-neutral-500">{detail}</p>
+      <p className="mt-1 text-lg font-semibold text-neutral-950 sm:text-xl">{value}</p>
+      <p className="mt-1 hidden text-xs text-neutral-500 sm:block">{detail}</p>
     </div>
   );
 }

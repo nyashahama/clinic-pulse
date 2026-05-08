@@ -25,15 +25,15 @@ export function LiveIncidentHero({ onBookDemo }: LiveIncidentHeroProps) {
         className="absolute inset-0 -z-20 object-cover"
         style={{ objectPosition: landingPhotos.heroClinic.position }}
       />
-      <div className="absolute inset-0 -z-10 bg-neutral-950/78" />
-      <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(10,10,10,0.92)_0%,rgba(10,10,10,0.72)_46%,rgba(10,10,10,0.42)_100%)]" />
+      <div className="absolute inset-0 -z-10 bg-neutral-950/68 sm:bg-neutral-950/62" />
+      <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(10,10,10,0.94)_0%,rgba(10,10,10,0.84)_46%,rgba(10,10,10,0.62)_100%)] lg:bg-[linear-gradient(90deg,rgba(10,10,10,0.94)_0%,rgba(10,10,10,0.66)_46%,rgba(10,10,10,0.18)_100%)]" />
 
-      <div className="mx-auto grid min-h-[calc(100svh-5rem)] w-full max-w-screen-xl grid-cols-1 gap-7 px-4 py-8 sm:px-6 lg:grid-cols-[0.86fr_1.14fr] lg:items-center lg:gap-8 lg:px-10 lg:py-10">
+      <div className="mx-auto grid min-h-[calc(100svh-5rem)] w-full max-w-screen-xl grid-cols-1 gap-6 px-4 py-7 sm:px-6 sm:py-8 lg:grid-cols-[0.86fr_1.14fr] lg:items-center lg:gap-8 lg:px-10 lg:py-10">
         <div className="min-w-0 max-w-2xl">
           <p className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white/72 backdrop-blur">
             {liveIncidentHero.eyebrow}
           </p>
-          <h1 className="mt-5 max-w-3xl font-display text-5xl leading-[0.98] text-white sm:text-6xl lg:text-7xl">
+          <h1 className="mt-5 max-w-3xl font-display text-[2.85rem] leading-[0.98] text-white sm:text-6xl lg:text-7xl">
             {liveIncidentHero.title}
           </h1>
           <p className="mt-5 max-w-xl text-base leading-7 text-white/76 sm:text-lg sm:leading-8">

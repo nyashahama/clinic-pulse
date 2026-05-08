@@ -79,6 +79,24 @@ test.describe("landing page 2026", () => {
     ).toBeVisible();
   });
 
+  test("keeps the mobile hero compact enough to reach the story", async ({ page }) => {
+    await page.goto("/");
+
+    const viewport = page.viewportSize();
+    test.skip(!viewport || viewport.width > 500, "mobile-only hero compactness check");
+
+    const hero = page.locator("section").filter({
+      has: page.getByRole("heading", {
+        name: "Know which clinics can help before patients travel.",
+      }),
+    });
+    const heroHeight = await hero.evaluate((element) =>
+      Math.round(element.getBoundingClientRect().height),
+    );
+
+    expect(heroHeight).toBeLessThanOrEqual(1900);
+  });
+
   test("connects real-world stakeholders to the status gap", async ({ page }) => {
     await page.goto("/");
 
