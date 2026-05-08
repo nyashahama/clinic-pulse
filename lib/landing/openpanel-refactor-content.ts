@@ -528,6 +528,6 @@ export const incidentDemoCta = {
   description:
     "Follow the same incident through district visibility, offline field reporting, patient rerouting, audit history, exports, and partner readiness.",
   primaryCta: { label: "Book demo", href: "/?booking=1" },
-  secondaryCta: { label: "Open demo workspace", href: "/demo" },
+  secondaryCta: { label: "Sign in to demo workspace", href: "/login" },
   note: "Demo data is seeded to show the operating model clearly.",
 } as const;

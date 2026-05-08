@@ -59,6 +59,13 @@ describe("landing page 2026 content", () => {
     expect(serialized).not.toContain("customer logo");
   });
 
+  it("routes public demo workspace access through sign in", () => {
+    expect(incidentDemoCta.secondaryCta).toEqual({
+      label: "Sign in to demo workspace",
+      href: "/login",
+    });
+  });
+
   it("keeps current landing content available during migration", () => {
     expect(landingHero.title).toBe("Clinic Pulse");
     expect(landingHero.primaryCta.label).toBe("Book demo");

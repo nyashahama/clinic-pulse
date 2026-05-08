@@ -93,4 +93,34 @@ test.describe("landing page 2026", () => {
       product.getByRole("heading", { name: "Audit and export readiness" }),
     ).toBeVisible();
   });
+
+  test("ends with public-sector evidence and an incident-specific CTA", async ({ page }) => {
+    await page.goto("/");
+
+    const trust = page.locator("#trust");
+    const cta = page.locator("section").filter({
+      has: page.getByRole("heading", { name: "Walk through a live clinic status incident." }),
+    });
+
+    await expect(
+      trust.getByRole("heading", { name: "Public-sector trust lives in the evidence chain." }),
+    ).toBeVisible();
+    await expect(trust.getByText("Source and permissions")).toBeVisible();
+    await expect(trust.getByText("Freshness and audit")).toBeVisible();
+    await expect(trust.getByText("District export")).toBeVisible();
+    await expect(trust.getByText("Partner handoff", { exact: true })).toBeVisible();
+
+    await expect(
+      cta.getByRole("heading", { name: "Walk through a live clinic status incident." }),
+    ).toBeVisible();
+    await expect(cta.getByText("Mamelodi East Community Clinic")).toBeVisible();
+    await expect(cta.getByText("Akasia Hills Clinic")).toBeVisible();
+    await expect(cta.getByText("AUD-2026-0504-017")).toBeVisible();
+    await expect(cta.getByRole("link", { name: "Sign in to demo workspace" })).toHaveAttribute(
+      "href",
+      "/login",
+    );
+    await cta.getByRole("link", { name: "Book demo" }).click();
+    await expect(page.getByRole("dialog", { name: "Book a Clinic Pulse demo" })).toBeVisible();
+  });
 });
