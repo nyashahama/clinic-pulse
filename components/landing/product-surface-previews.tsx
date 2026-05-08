@@ -147,6 +147,11 @@ function PatientReroutePreview() {
               <div
                 key={row.label}
                 data-motion-object={isActiveRow ? "true" : undefined}
+                className={
+                  isActiveRow
+                    ? "[animation:clinic-soft-blink_2.8s_ease-in-out_infinite]"
+                    : undefined
+                }
               >
                 <ProductRow
                   active={isActiveRow}
