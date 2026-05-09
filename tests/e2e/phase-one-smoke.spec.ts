@@ -12,7 +12,7 @@ async function signIn(page: Page) {
   await page.getByLabel("Email").fill(demoAccount.email);
   await page.getByLabel("Password").fill(demoAccount.password);
   await page.getByRole("button", { name: "Log in" }).click();
-  await expect(page).toHaveURL(/\/demo$/);
+  await expect(page).toHaveURL(/\/admin$/);
 }
 
 test.describe("phase-one demo route checklist", () => {
@@ -66,6 +66,7 @@ test.describe("phase-one demo route checklist", () => {
     });
 
     await signIn(page);
+    await page.goto("/demo");
 
     await expect(page.getByText(/district command brief/i)).toBeVisible();
     await expect(page.getByText(/unified severity queue/i)).toBeVisible();
@@ -87,12 +88,12 @@ test.describe("phase-one demo route checklist", () => {
     ).toBeVisible();
 
     await page.goto("/field");
-    await expect(page.getByRole("heading", { name: "Mobile reporting flow" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Field workbench" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Submit clinic status" })).toBeVisible();
 
     await page.goto("/admin");
-    await expect(page.getByRole("heading", { name: "Admin control deck" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Lead management" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Operations admin deck" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Stakeholder activity queue" })).toBeVisible();
 
     await page.goto("/demo");
     const supportingOperations = page.getByText("Supporting operations");
