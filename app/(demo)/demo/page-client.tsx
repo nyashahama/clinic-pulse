@@ -7,13 +7,24 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AlertList } from "@/components/demo/alert-list";
 import { ClinicMap } from "@/components/demo/clinic-map";
 import { ClinicTable } from "@/components/demo/clinic-table";
+import { DistrictCommandBrief } from "@/components/demo/command-center/district-command-brief";
+import { InterventionRail } from "@/components/demo/command-center/intervention-rail";
+import { SeverityQueue } from "@/components/demo/command-center/severity-queue";
+import { SignalAnalytics } from "@/components/demo/command-center/signal-analytics";
+import { SupportingOperations } from "@/components/demo/command-center/supporting-operations";
+import { VerificationHandover } from "@/components/demo/command-center/verification-handover";
 import { DemoControls } from "@/components/demo/demo-controls";
 import { IncidentReplayPanel } from "@/components/demo/incident-replay-panel";
 import { PilotReadinessPanel } from "@/components/demo/pilot-readiness-panel";
 import { ReportStream } from "@/components/demo/report-stream";
 import { StatusSummary } from "@/components/demo/status-summary";
 import { buttonVariants } from "@/components/ui/button";
+import type { ClientAuthSession } from "@/lib/auth/api";
 import type { SyncSummaryApiResponse } from "@/lib/demo/api-types";
+import {
+  buildDistrictCommandCenter,
+  type DistrictCommandClinicInput,
+} from "@/lib/demo/district-command-center";
 import {
   INCIDENT_REPLAY_SOURCE_CLINIC_ID,
   buildIncidentReplayWebhookPreview,
@@ -50,10 +61,27 @@ function formatStatusTransition(from: string, to: string) {
 }
 
 type DistrictConsolePageProps = {
+  session: ClientAuthSession;
   syncSummary: SyncSummaryApiResponse | null;
 };
 
-export default function DistrictConsolePage({ syncSummary }: DistrictConsolePageProps) {
+function statusRiskRank(status: DistrictCommandClinicInput["status"]) {
+  if (status === "non_functional") {
+    return 3;
+  }
+
+  if (status === "degraded") {
+    return 2;
+  }
+
+  if (status === "unknown") {
+    return 1;
+  }
+
+  return 0;
+}
+
+export default function DistrictConsolePage({ session, syncSummary }: DistrictConsolePageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const {
@@ -81,6 +109,7 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
   const statusCounts = useMemo(() => getStatusCounts(state), [state]);
 
   const [selectedClinicId, setSelectedClinicId] = useState<string | null>(null);
+  const [selectedCommandClinicId, setSelectedCommandClinicId] = useState<string | null>(null);
   const [rerouteClinicId, setRerouteClinicId] = useState<string | null>(null);
   const replayStartGuardRef = useRef(false);
   const replaySessionRef = useRef(0);
@@ -104,7 +133,86 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
     router.push(`/demo/clinics/${encodeURIComponent(clinicId)}`);
   };
 
+  const selectCommandClinic = (clinicId: string) => {
+    setSelectedCommandClinicId(clinicId);
+    setSelectedClinicId(clinicId);
+  };
+
   const visibleClinicRows = replayStatus === "idle" ? mapClinics : clinicRows;
+
+  const commandClinicInputs = useMemo<DistrictCommandClinicInput[]>(() => {
+    const activeAlertClinicIds = new Set(activeAlerts.map((alert) => alert.clinicId));
+    const offlineQueueClinicIds = new Set(state.offlineQueue.map((report) => report.clinicId));
+    const reportsByClinicId = new Map<string, typeof reportStream>();
+
+    for (const report of reportStream) {
+      const clinicReports = reportsByClinicId.get(report.clinicId) ?? [];
+      clinicReports.push(report);
+      reportsByClinicId.set(report.clinicId, clinicReports);
+    }
+
+    return clinicRows.map((clinic) => {
+      const alternativeClinicIds = new Set<string>();
+
+      for (const service of clinic.services) {
+        for (const alternative of getAlternativeClinics(state, clinic.id, service)) {
+          alternativeClinicIds.add(alternative.id);
+        }
+      }
+
+      const clinicReports = reportsByClinicId.get(clinic.id) ?? [];
+      const latestReport = clinicReports[0];
+      const previousReport = clinicReports[1];
+      let recentTrend: DistrictCommandClinicInput["recentTrend"] = "unknown";
+
+      if (latestReport && previousReport) {
+        const latestRisk = statusRiskRank(latestReport.status);
+        const previousRisk = statusRiskRank(previousReport.status);
+
+        if (latestRisk > previousRisk) {
+          recentTrend = "worsening";
+        } else if (latestRisk < previousRisk) {
+          recentTrend = "improving";
+        } else {
+          recentTrend = "stable";
+        }
+      }
+
+      return {
+        id: clinic.id,
+        name: clinic.name,
+        district: clinic.district,
+        status: clinic.status,
+        freshness: clinic.freshness,
+        services: clinic.services,
+        updatedAt: clinic.lastReportedAt,
+        hasActiveAlert: activeAlertClinicIds.has(clinic.id),
+        isInOfflineQueue: offlineQueueClinicIds.has(clinic.id),
+        alternativeCount: alternativeClinicIds.size,
+        recentTrend,
+      };
+    });
+  }, [activeAlerts, clinicRows, reportStream, state]);
+
+  const commandCenter = useMemo(
+    () =>
+      buildDistrictCommandCenter({
+        session,
+        clinics: commandClinicInputs,
+        activeAlertCount: activeAlerts.length,
+        offlineQueueCount: state.offlineQueue.length,
+        lastSyncAt: state.lastSyncAt,
+        selectedClinicId: selectedCommandClinicId,
+      }),
+    [
+      activeAlerts.length,
+      commandClinicInputs,
+      selectedCommandClinicId,
+      session,
+      state.lastSyncAt,
+      state.offlineQueue.length,
+    ],
+  );
 
   useEffect(() => {
     latestDemoStateRef.current = state;
@@ -189,6 +297,7 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
     const sessionId = replaySessionRef.current + 1;
     replaySessionRef.current = sessionId;
     setSelectedClinicId(INCIDENT_REPLAY_SOURCE_CLINIC_ID);
+    setSelectedCommandClinicId(INCIDENT_REPLAY_SOURCE_CLINIC_ID);
     setRerouteClinicId(null);
     setReplayStatus("running");
     setActiveReplayStepId(null);
@@ -314,43 +423,82 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
     }
 
     setSelectedClinicId(rerouteCandidate.id);
+    setSelectedCommandClinicId(rerouteCandidate.id);
     setRerouteClinicId(rerouteCandidate.id);
     openClinicDetail(rerouteCandidate.id);
   };
 
-  return (
-    <div className="grid gap-4 pb-4">
-      <StatusSummary
-        counts={statusCounts}
-        activeAlertCount={activeAlerts.length}
-        offlineQueueCount={state.offlineQueue.length}
-        lastSyncAt={state.lastSyncAt}
-      />
-      {syncSummary ? <PilotReadinessPanel summary={syncSummary} /> : null}
-      {hasStatusFilter ? (
-        <section className="rounded-lg border border-amber-200/80 bg-amber-50/70 px-4 py-3 text-sm text-amber-950">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p>
-              {isReplayFilterBypassed ? (
-                <>
-                  Status filter is paused during replay. Showing all clinics until replay is reset.
-                </>
-              ) : (
-                <>
-                  Displaying only{" "}
-                  <span className="font-semibold capitalize">{statusFilterLabel}</span> clinics.{" "}
-                  {filteredClinicRows.length === 0 ? "No matches yet." : ""}
-                </>
-              )}
-            </p>
-            <Link href="/demo" className={buttonVariants({ size: "sm", variant: "outline" })}>
-              Clear status filter
-            </Link>
-          </div>
-        </section>
-      ) : null}
+  const handleResetWalkthrough = () => {
+    cancelIncidentReplay();
+    setReplayStatus("idle");
+    setActiveReplayStepId(null);
+    setCompletedReplayStepIds([]);
+    setCompletedReplayAtByStepId({});
+    setWebhookPreview(null);
+    resetDemo();
+    setSelectedClinicId(null);
+    setSelectedCommandClinicId(null);
+    setRerouteClinicId(null);
+  };
 
-      <div className="grid gap-4">
+  return (
+    <div className="grid gap-5 pb-6">
+      <DistrictCommandBrief brief={commandCenter.brief} />
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+        <SeverityQueue
+          items={commandCenter.queue}
+          selectedClinicId={commandCenter.selectedItem?.clinicId ?? null}
+          onSelectClinic={selectCommandClinic}
+        />
+        <InterventionRail
+          selectedItem={commandCenter.selectedItem}
+          intervention={commandCenter.intervention}
+          replayDisabled={replayNonIdle}
+          onOpenClinic={openClinicDetail}
+          onTriggerReroute={handleTriggerReroute}
+          onSyncOfflineReports={handleSyncOfflineReports}
+          onStartIncidentReplay={startIncidentReplay}
+        />
+      </div>
+
+      <SignalAnalytics analytics={commandCenter.analytics} />
+      <VerificationHandover handover={commandCenter.handover} />
+
+      <SupportingOperations>
+        {hasStatusFilter ? (
+          <section className="rounded-lg border border-amber-200/80 bg-amber-50/70 px-4 py-3 text-sm text-amber-950">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p>
+                {isReplayFilterBypassed ? (
+                  <>
+                    Status filter is paused during replay. Showing all clinics until replay is reset.
+                  </>
+                ) : (
+                  <>
+                    Displaying only{" "}
+                    <span className="font-semibold capitalize">{statusFilterLabel}</span> clinics.{" "}
+                    {filteredClinicRows.length === 0 ? "No matches yet." : ""}
+                  </>
+                )}
+              </p>
+              <Link href="/demo" className={buttonVariants({ size: "sm", variant: "outline" })}>
+                Clear status filter
+              </Link>
+            </div>
+          </section>
+        ) : null}
+
+        <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <StatusSummary
+            counts={statusCounts}
+            activeAlertCount={activeAlerts.length}
+            offlineQueueCount={state.offlineQueue.length}
+            lastSyncAt={state.lastSyncAt}
+          />
+          {syncSummary ? <PilotReadinessPanel summary={syncSummary} /> : null}
+        </div>
+
         <ClinicMap
           clinics={visibleClinicRows}
           referenceClinics={clinicRows}
@@ -359,29 +507,12 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
           onSelectClinic={openClinicDetail}
         />
 
-        <ClinicTable
-          clinics={visibleClinicRows}
-          selectedClinicId={selectedClinicId}
-          recommendedActionByClinicId={recommendedActionByClinicId}
-          onSelectClinic={openClinicDetail}
-        />
-
         <DemoControls
           stockoutClinicLabel="Mamelodi East"
           staffingClinicLabel="Soshanguve Block F"
           offlineQueueCount={state.offlineQueue.length}
           replayRunning={replayNonIdle}
-          onReset={() => {
-            cancelIncidentReplay();
-            setReplayStatus("idle");
-            setActiveReplayStepId(null);
-            setCompletedReplayStepIds([]);
-            setCompletedReplayAtByStepId({});
-            setWebhookPreview(null);
-            resetDemo();
-            setSelectedClinicId(null);
-            setRerouteClinicId(null);
-          }}
+          onReset={handleResetWalkthrough}
           onReplayIncident={startIncidentReplay}
           onTriggerStockout={() => {
             if (replayNonIdle) {
@@ -389,6 +520,7 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
             }
 
             setSelectedClinicId(STOCKOUT_TRIGGER_CLINIC_ID);
+            setSelectedCommandClinicId(STOCKOUT_TRIGGER_CLINIC_ID);
             setRerouteClinicId(STOCKOUT_TRIGGER_CLINIC_ID);
             triggerStockout(STOCKOUT_TRIGGER_CLINIC_ID);
             openClinicDetail(STOCKOUT_TRIGGER_CLINIC_ID);
@@ -399,6 +531,7 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
             }
 
             setSelectedClinicId(STAFFING_TRIGGER_CLINIC_ID);
+            setSelectedCommandClinicId(STAFFING_TRIGGER_CLINIC_ID);
             setRerouteClinicId(null);
             triggerStaffingShortage(STAFFING_TRIGGER_CLINIC_ID);
             openClinicDetail(STAFFING_TRIGGER_CLINIC_ID);
@@ -414,18 +547,25 @@ export default function DistrictConsolePage({ syncSummary }: DistrictConsolePage
           completedAtByStepId={completedReplayAtByStepId}
           webhookPreview={webhookPreview}
         />
-      </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-        <AlertList alerts={activeAlerts} clinics={clinicRows} onSelectClinic={openClinicDetail} />
-        <ReportStream
-          reports={reportStream}
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+          <AlertList alerts={activeAlerts} clinics={clinicRows} onSelectClinic={openClinicDetail} />
+          <ReportStream
+            reports={reportStream}
+            selectedClinicId={selectedClinicId}
+            consequenceByReportId={consequenceByReportId}
+            statusChangeByReportId={statusChangeByReportId}
+            onSelectClinic={openClinicDetail}
+          />
+        </div>
+
+        <ClinicTable
+          clinics={visibleClinicRows}
           selectedClinicId={selectedClinicId}
-          consequenceByReportId={consequenceByReportId}
-          statusChangeByReportId={statusChangeByReportId}
+          recommendedActionByClinicId={recommendedActionByClinicId}
           onSelectClinic={openClinicDetail}
         />
-      </div>
+      </SupportingOperations>
     </div>
   );
 }
