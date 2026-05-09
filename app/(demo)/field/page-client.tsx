@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   useCallback,
   useEffect,
@@ -14,9 +13,11 @@ import { useRouter } from "next/navigation";
 import { FieldClinicList } from "@/components/demo/field-clinic-list";
 import { OfflineQueue } from "@/components/demo/offline-queue";
 import { ReportForm } from "@/components/demo/report-form";
+import { RoleWorkspaceHero } from "@/components/demo/role-workspace-hero";
 import { SyncStatus } from "@/components/demo/sync-status";
 import { SectionHeader } from "@/components/demo/section-header";
 import { Button } from "@/components/ui/button";
+import type { ClientAuthSession } from "@/lib/auth/api";
 import { ClinicPulseApiError } from "@/lib/demo/api-client";
 import { useDemoStore } from "@/lib/demo/demo-store";
 import {
@@ -187,7 +188,11 @@ function createOfflineReportQueueItem(
   };
 }
 
-export default function FieldPageClient() {
+type FieldPageClientProps = {
+  session: ClientAuthSession;
+};
+
+export default function FieldPageClient({ session }: FieldPageClientProps) {
   const router = useRouter();
   const { state } = useDemoStore();
 
@@ -462,10 +467,65 @@ export default function FieldPageClient() {
 
   return (
     <div className="grid gap-4 pb-4">
+      <RoleWorkspaceHero
+        session={session}
+        workspaceRole="reporter"
+        metrics={[
+          {
+            label: "Assigned clinics",
+            value: String(clinics.length),
+            description: "Clinics available for field updates.",
+          },
+          {
+            label: "Waiting sync",
+            value: String(waitingOfflineReportCount),
+            description: "Reports still held on this device.",
+            tone: waitingOfflineReportCount > 0 ? "warning" : "good",
+          },
+          {
+            label: "Connection",
+            value: isOnline ? "Online" : "Offline",
+            description: "Controls whether reports submit now or queue locally.",
+            tone: isOnline ? "good" : "warning",
+          },
+        ]}
+        focusItems={[
+          {
+            label: "Current clinic",
+            title: selectedName,
+            description: selectedClinic
+              ? `${selectedClinic.status.replaceAll("_", " ")} status, last updated from ${selectedClinic.source.replaceAll("_", " ")} signal.`
+              : "Select a clinic before starting the report.",
+          },
+          {
+            label: "Draft safety",
+            title: waitingOfflineReportCount > 0 ? "Queue needs review" : "No waiting reports",
+            description:
+              waitingOfflineReportCount > 0
+                ? "Sync when connectivity returns so district managers can see the latest status."
+                : "New offline submissions will stay recoverable until the device reconnects.",
+          },
+          {
+            label: "Flow",
+            title: "Pick clinic, submit report, confirm sync",
+            description: "The page is ordered around the actual field worker task sequence.",
+          },
+        ]}
+      >
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleToggleOnline}
+          className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+        >
+          {isOnline ? "Switch to offline mode" : "Switch to online mode"}
+        </Button>
+      </RoleWorkspaceHero>
+
       <div className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
         <SectionHeader
-          eyebrow="Field worker"
-          title="Mobile reporting flow"
+          eyebrow="Device state"
+          title="Connection and submission controls"
           description="Submit a clinic update from offline or online mode. Queued items merge into district state when back online."
         />
         <div className="mt-3 flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
@@ -546,11 +606,7 @@ export default function FieldPageClient() {
             3) In offline mode, report stays queued and is sent to district when you press sync.
           </p>
           <p className="text-content-subtle">
-            4) Open{" "}
-            <Link href="/demo" className="text-primary underline underline-offset-4">
-              /demo
-            </Link>{" "}
-            to verify the report stream updates in the operations screen.
+            4) District managers see synced reports in their command center after the queue clears.
           </p>
         </div>
       </section>

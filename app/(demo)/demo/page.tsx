@@ -25,6 +25,9 @@ export default async function DistrictConsolePage() {
     displayName: workflowSession.user.displayName,
     email: workflowSession.user.email,
     role: workflowSession.role,
+    ...(workflowSession.activeMembership.organisation?.name
+      ? { organisationName: workflowSession.activeMembership.organisation.name }
+      : {}),
     ...(workflowSession.activeMembership.district
       ? { district: workflowSession.activeMembership.district }
       : {}),

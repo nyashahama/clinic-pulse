@@ -20,8 +20,10 @@ import { RoadmapModules } from "@/components/demo/roadmap-modules";
 import { MetricTile } from "@/components/demo/metric-tile";
 import { PartnerReadinessPanel } from "@/components/demo/partner-readiness-panel";
 import { PilotReadinessPanel } from "@/components/demo/pilot-readiness-panel";
+import { RoleWorkspaceHero } from "@/components/demo/role-workspace-hero";
 import { SectionHeader } from "@/components/demo/section-header";
 import { Button, buttonVariants } from "@/components/ui/button";
+import type { ClientAuthSession } from "@/lib/auth/api";
 import type {
   PartnerReadinessApiResponse,
   SyncSummaryApiResponse,
@@ -108,6 +110,7 @@ function buildExportPayload(state: DemoState, generatedAt: string) {
 }
 
 type AdminPageProps = {
+  session: ClientAuthSession;
   syncSummary: SyncSummaryApiResponse | null;
   partnerReadiness: PartnerReadinessApiResponse;
 };
@@ -127,6 +130,7 @@ function getPartnerActionErrorMessage(error: unknown) {
 }
 
 export default function AdminPage({
+  session,
   syncSummary,
   partnerReadiness,
 }: AdminPageProps) {
@@ -171,6 +175,7 @@ export default function AdminPage({
     [state.leads],
   );
   const partnerActionInFlight = partnerActionPending !== null;
+  const isSystemAdmin = session.role === "system_admin";
 
   const handleLeadSubmit = (lead: DemoLeadFormInput) => {
     addDemoLead({
@@ -271,16 +276,71 @@ export default function AdminPage({
 
   return (
     <div className="grid gap-4 pb-4">
+      <RoleWorkspaceHero
+        session={session}
+        metrics={[
+          {
+            label: isSystemAdmin ? "Tenants in view" : "Clinics governed",
+            value: isSystemAdmin ? "12" : String(clinics.length),
+            description: isSystemAdmin
+              ? "Demo tenant estate represented in this platform console."
+              : "Clinic records included in this organisation workspace.",
+          },
+          {
+            label: isSystemAdmin ? "Audit events" : "Open alerts",
+            value: isSystemAdmin ? String(state.auditEvents.length) : String(activeAlertCount),
+            description: isSystemAdmin
+              ? "Operational actions available for access review."
+              : "Escalations that need organisation-level follow-through.",
+            tone: activeAlertCount > 0 ? "warning" : "good",
+          },
+          {
+            label: isSystemAdmin ? "Ingestion queue" : "Reporting coverage",
+            value: isSystemAdmin ? String(queuedReports) : `${Math.max(0, 100 - queuedReports * 8)}%`,
+            description: isSystemAdmin
+              ? "Offline updates waiting to merge into platform state."
+              : "Estimated coverage after queued field reports are considered.",
+            tone: queuedReports > 0 ? "warning" : "good",
+          },
+        ]}
+        focusItems={[
+          {
+            label: isSystemAdmin ? "Platform focus" : "Operational focus",
+            title: isSystemAdmin ? "Ingestion and audit readiness" : "Coverage and access hygiene",
+            description: isSystemAdmin
+              ? "Use partner readiness, export previews, and audit evidence to validate the control plane."
+              : "Use user, district, and reporting evidence to keep the organisation ready for rollout.",
+          },
+          {
+            label: "Partner readiness",
+            title: partnerActionError ? "Action needs retry" : "Integration checks available",
+            description:
+              partnerActionError ??
+              "Generate keys, test webhooks, and review export evidence below.",
+          },
+          {
+            label: "Admin flow",
+            title: isSystemAdmin ? "Health, tenants, security" : "Districts, users, governance",
+            description:
+              "The page starts with operating state, then moves into readiness and evidence.",
+          },
+        ]}
+      />
+
       <div className="grid gap-4">
         <div className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
           <SectionHeader
-            eyebrow="Founder operations"
-            title="Admin control deck"
-            description="Use this surface to capture leads, review operating evidence, and prepare a premium demo handoff."
+            eyebrow={isSystemAdmin ? "Platform controls" : "Organisation controls"}
+            title={isSystemAdmin ? "Platform operations deck" : "Operations admin deck"}
+            description={
+              isSystemAdmin
+                ? "Use this surface to review ingestion, partner readiness, export evidence, and audit activity."
+                : "Use this surface to review reporting quality, partner readiness, users, and governance evidence."
+            }
           />
           <p className="mt-2 text-sm leading-6 text-content-subtle">
-            Use walkthrough controls and export surfaces to show how a founder-led demo ends with a
-            clean, shareable artifact.
+            The admin workspace stays inside product operations instead of sending users back to
+            marketing or booking flows.
           </p>
 
           <div className="mt-4 flex flex-wrap gap-2">
@@ -288,12 +348,6 @@ export default function AdminPage({
               <RefreshCcw className="size-3.5" />
               Reset walkthrough data
             </Button>
-            <Link
-              href="/book-demo"
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              Open external booking flow
-            </Link>
             <Link
               href="/field"
               className={buttonVariants({ variant: "outline", size: "sm" })}
@@ -390,9 +444,13 @@ export default function AdminPage({
           data-admin-section={adminWorkspaceSections[0]}
         >
           <SectionHeader
-            eyebrow="Founder pipeline"
-            title="Lead management"
-            description="Track booking leads from the public demo flow and move each prospect through follow-up."
+            eyebrow={isSystemAdmin ? "Tenant evidence" : "Operations evidence"}
+            title={isSystemAdmin ? "Access and tenant activity" : "Lead and stakeholder follow-up"}
+            description={
+              isSystemAdmin
+                ? "Review activity that proves the platform can support auditable tenant operations."
+                : "Track operational stakeholders and move each follow-up through review."
+            }
             actions={
               <Button
                 type="button"
@@ -442,16 +500,16 @@ export default function AdminPage({
           />
           <ul className="mt-4 space-y-2 text-sm text-content-default">
             <li className="rounded-lg border border-border-subtle bg-bg-subtle px-3 py-2">
-              <span className="font-medium text-content-emphasis">Demo flow:</span>{" "}
-              Start at <span className="font-mono">/demo</span>, then open finder and field flows.
+              <span className="font-medium text-content-emphasis">Workspace flow:</span>{" "}
+              Start at the role home, then open command, finder, and field modules as needed.
             </li>
             <li className="rounded-lg border border-border-subtle bg-bg-subtle px-3 py-2">
               <span className="font-medium text-content-emphasis">Escalation path:</span>{" "}
               Use alert list and status actions to show reroute confidence.
             </li>
             <li className="rounded-lg border border-border-subtle bg-bg-subtle px-3 py-2">
-              <span className="font-medium text-content-emphasis">Lead capture:</span>{" "}
-              Bookings in <span className="font-mono">/book-demo</span> are persisted in local storage.
+              <span className="font-medium text-content-emphasis">Access hygiene:</span>{" "}
+              Review users, stale accounts, and partner credentials before rollout.
             </li>
             <li className="rounded-lg border border-border-subtle bg-bg-subtle px-3 py-2">
               <span className="font-medium text-content-emphasis">Admin proof:</span>{" "}

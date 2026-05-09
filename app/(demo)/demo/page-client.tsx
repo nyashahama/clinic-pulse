@@ -17,6 +17,7 @@ import { DemoControls } from "@/components/demo/demo-controls";
 import { IncidentReplayPanel } from "@/components/demo/incident-replay-panel";
 import { PilotReadinessPanel } from "@/components/demo/pilot-readiness-panel";
 import { ReportStream } from "@/components/demo/report-stream";
+import { RoleWorkspaceHero } from "@/components/demo/role-workspace-hero";
 import { StatusSummary } from "@/components/demo/status-summary";
 import { buttonVariants } from "@/components/ui/button";
 import type { ClientAuthSession } from "@/lib/auth/api";
@@ -468,6 +469,50 @@ export default function DistrictConsolePage({ session, syncSummary }: DistrictCo
 
   return (
     <div className="grid gap-5 pb-6">
+      <RoleWorkspaceHero
+        session={session}
+        workspaceRole="district_manager"
+        metrics={[
+          {
+            label: "Severity queue",
+            value: String(commandCenter.queue.length),
+            description: "Clinics ranked by action urgency.",
+            tone: commandCenter.queue.length > 0 ? "warning" : "good",
+          },
+          {
+            label: "Open alerts",
+            value: String(activeAlerts.length),
+            description: "Signals requiring district attention.",
+            tone: activeAlerts.length > 0 ? "critical" : "good",
+          },
+          {
+            label: "Offline reports",
+            value: String(state.offlineQueue.length),
+            description: "Field updates waiting to merge.",
+            tone: state.offlineQueue.length > 0 ? "warning" : "default",
+          },
+        ]}
+        focusItems={[
+          {
+            label: "Next decision",
+            title: commandCenter.queue.length > 0 ? "Start with the ranked queue" : "No urgent queue items",
+            description:
+              "Select a clinic, confirm the intervention, and use routing context before changing public guidance.",
+          },
+          {
+            label: "Field signal",
+            title: `${reportStream.length} recent reports`,
+            description: "Recent reports explain why the district view changed.",
+          },
+          {
+            label: "Continuity",
+            title: syncSummary ? "Pilot readiness is available" : "Local scenario mode",
+            description:
+              "Use the operational panels below to verify readiness, routing, alerts, and audit handover.",
+          },
+        ]}
+      />
+
       <DistrictCommandBrief brief={commandCenter.brief} />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
