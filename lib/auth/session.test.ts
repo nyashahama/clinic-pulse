@@ -220,13 +220,18 @@ describe("auth session role guard", () => {
     );
   });
 
-  it("creates a client-safe session DTO without session or membership metadata", () => {
+  it("creates a client-safe session DTO with district context and without raw metadata", () => {
     const session = authSession("org_admin");
 
     expect(toClientAuthSession(session)).toEqual({
       displayName: "District Manager",
+      district: undefined,
       email: "manager@example.test",
+      name: "District Manager",
+      organisationId: 3,
+      organisationName: undefined,
       role: "org_admin",
+      userId: 42,
     });
   });
 });

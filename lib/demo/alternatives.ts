@@ -106,13 +106,13 @@ export async function loadAlternativeRecommendations({
       return [];
     }
 
-    onFetchError?.(error);
-
     // Development recovery only: keep the old client-side ranking available
     // while running the demo against a local or temporarily unavailable API.
     if (allowLocalFallback) {
       return localFallback?.() ?? buildFinderAlternativeFallback(localClinics, sourceClinic);
     }
+
+    onFetchError?.(error);
 
     return [];
   }

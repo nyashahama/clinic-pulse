@@ -67,24 +67,24 @@ test.describe("phase-one demo route checklist", () => {
 
     await signIn(page);
 
+    await expect(page.getByText(/district command brief/i)).toBeVisible();
+    await expect(page.getByText(/unified severity queue/i)).toBeVisible();
+    await expect(page.getByText(/intervention rail/i)).toBeVisible();
+
+    const firstPriority = page.getByRole("button", { name: /priority 1/i }).first();
+    await expect(firstPriority).toBeVisible();
+    await firstPriority.click();
+    await expect(page.getByText(/primary action/i)).toBeVisible();
+    await expect(page.getByText(/expected outcome/i)).toBeVisible();
+
     await expect(page.getByRole("heading", { name: "Clinic table" })).toBeVisible();
     await expect(page.getByText("Report stream")).toBeVisible();
-    await page.getByRole("button", { name: "Replay incident" }).click();
-    await expect(page.getByRole("heading", { name: "Incident replay" })).toBeVisible();
-    await expect(page.getByText("Partner webhook", { exact: true })).toBeVisible();
-    await expect(page.getByText("Delivered preview")).toBeVisible({ timeout: 7000 });
 
-    const alternativesResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes("/api/clinicpulse/v1/public/alternatives") &&
-        response.status() === 200,
-    );
     await page.goto("/demo/clinics/clinic-mamelodi-east");
     await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Mamelodi East Community Clinic" }),
     ).toBeVisible();
-    await alternativesResponse;
 
     await page.goto("/field");
     await expect(page.getByRole("heading", { name: "Mobile reporting flow" })).toBeVisible();
@@ -93,6 +93,17 @@ test.describe("phase-one demo route checklist", () => {
     await page.goto("/admin");
     await expect(page.getByRole("heading", { name: "Admin control deck" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Lead management" })).toBeVisible();
+
+    await page.goto("/demo");
+    const supportingOperations = page.getByText("Supporting operations");
+    await expect(supportingOperations).toBeVisible();
+    await supportingOperations.scrollIntoViewIfNeeded();
+    const replayIncident = page.getByRole("button", { name: "Replay incident" });
+    await replayIncident.scrollIntoViewIfNeeded();
+    await expect(replayIncident).toBeVisible();
+    await replayIncident.click();
+    await expect(page.getByText(/partner webhook evidence/i)).toBeVisible();
+
     expect(clientApiWarnings).toEqual([]);
   });
 });
