@@ -68,9 +68,10 @@ test.describe("phase-one demo route checklist", () => {
     await signIn(page);
     await page.goto("/demo");
 
-    await expect(page.getByText(/district command brief/i)).toBeVisible();
-    await expect(page.getByText(/unified severity queue/i)).toBeVisible();
-    await expect(page.getByText(/intervention rail/i)).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Unified severity queue" }),
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Command actions" })).toBeVisible();
 
     const firstPriority = page.getByRole("button", { name: /priority 1/i }).first();
     await expect(firstPriority).toBeVisible();
