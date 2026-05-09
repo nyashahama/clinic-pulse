@@ -1,34 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import {
-  ArrowUpRight,
-  BookOpen,
-  Building2,
-  Compass,
-  Globe,
-  Map,
-  Shield,
-} from "lucide-react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Building2 } from "lucide-react";
 
+import type { ClientAuthSession } from "@/lib/auth/api";
 import { cn } from "@/lib/utils";
-
-const NAV_LINKS = [
-  { label: "District Console", href: "/demo", icon: Building2 },
-  { label: "Clinic Finder", href: "/finder", icon: Compass },
-  { label: "Field Report", href: "/field", icon: Map },
-  { label: "Admin", href: "/admin", icon: Shield },
-  { label: "Landing", href: "/", icon: Globe },
-  { label: "Book Demo", href: "/book-demo", icon: BookOpen },
-];
+import { getRoleWorkspace } from "./role-workspace";
 
 type SidebarProps = {
   onNavigate?: () => void;
+  session: ClientAuthSession;
 };
 
-export function Sidebar({ onNavigate }: SidebarProps) {
+function getHrefPath(href: string) {
+  return href.split(/[?#]/)[0] || href;
+}
+
+export function Sidebar({ onNavigate, session }: SidebarProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const workspace = getRoleWorkspace(session.role);
+  const scope = session.organisationName ?? session.district ?? workspace.label;
 
   return (
     <aside className="flex h-full w-full flex-col bg-white">
@@ -40,50 +33,79 @@ export function Sidebar({ onNavigate }: SidebarProps) {
           <div className="min-w-0">
             <p className="font-display text-sm text-neutral-900">ClinicPulse</p>
             <p className="truncate text-xs text-neutral-500">
-              Tshwane North Demo District
+              {scope}
             </p>
           </div>
         </div>
+        <div className="mt-3 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
+            {workspace.roleLabel}
+          </p>
+          <p className="mt-0.5 text-sm font-medium text-neutral-900">
+            {workspace.label}
+          </p>
+        </div>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3 py-4">
-        {NAV_LINKS.map(({ label, href, icon: Icon }) => {
-          const active =
-            href === "/"
-              ? pathname === href
-              : pathname === href || pathname.startsWith(`${href}/`);
+      <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
+        {workspace.sidebarGroups.map((group) => (
+          <div key={group.label}>
+            <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
+              {group.label}
+            </p>
+            <div className="mt-2 space-y-1">
+              {group.items.map(({ badge, href, icon: Icon, label }) => {
+                const hrefPath = getHrefPath(href);
+                const hrefQuery = href.includes("?") ? href.split("?")[1] : "";
+                const pathActive =
+                  pathname === hrefPath || pathname.startsWith(`${hrefPath}/`);
+                const active = hrefQuery
+                  ? pathname === hrefPath && searchParams.toString() === hrefQuery
+                  : pathActive;
 
-          return (
-            <Link
-              key={href}
-              href={href}
-              onClick={onNavigate}
-              className={cn(
-                "flex items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors",
-                active
-                  ? "bg-neutral-900 text-white"
-                  : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900",
-              )}
-            >
-              <span className="flex min-w-0 items-center gap-3">
-                <Icon className="size-4" />
-                <span className="truncate">{label}</span>
-              </span>
-              {href === "/" || href === "/book-demo" ? (
-                <ArrowUpRight className="size-4 opacity-70" />
-              ) : null}
-            </Link>
-          );
-        })}
+                return (
+                  <Link
+                    key={`${group.label}-${href}-${label}`}
+                    href={href}
+                    onClick={onNavigate}
+                    className={cn(
+                      "flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm transition-colors",
+                      active
+                        ? "bg-neutral-900 text-white"
+                        : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900",
+                    )}
+                  >
+                    <span className="flex min-w-0 items-center gap-3">
+                      <Icon className="size-4 shrink-0" />
+                      <span className="truncate">{label}</span>
+                    </span>
+                    {badge ? (
+                      <span
+                        className={cn(
+                          "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                          active
+                            ? "bg-white/15 text-white"
+                            : "bg-neutral-100 text-neutral-500",
+                        )}
+                      >
+                        {badge}
+                      </span>
+                    ) : null}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       <div className="border-t border-neutral-200 px-4 py-4">
         <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-3">
-            <p className="text-xs font-medium text-neutral-900">Demo Controls</p>
+          <p className="text-xs font-medium text-neutral-900">
+            {workspace.footer.title}
+          </p>
           <p className="mt-1 text-xs leading-5 text-neutral-500">
-            Use <span className="font-mono text-[11px] text-neutral-700">Ctrl/⌘ K</span>{" "}
-            for quick actions and <span className="font-mono text-[11px] text-neutral-700">Ctrl/⌘+Shift+R</span>{" "}
-            to reset walkthrough data.
+            {workspace.footer.description}
           </p>
         </div>
       </div>

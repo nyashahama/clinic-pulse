@@ -20,7 +20,7 @@ export function DemoShell({ children, detail, logoutAction, session }: DemoShell
   return (
     <div className="flex h-dvh bg-[#eef3f2] text-neutral-900">
       <div className="hidden w-72 shrink-0 border-r border-neutral-200 lg:block">
-        <Sidebar />
+        <Sidebar session={session} />
       </div>
 
       <button
@@ -40,7 +40,7 @@ export function DemoShell({ children, detail, logoutAction, session }: DemoShell
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <Sidebar onNavigate={() => setSidebarOpen(false)} />
+        <Sidebar session={session} onNavigate={() => setSidebarOpen(false)} />
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">

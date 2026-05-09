@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LogOut, Menu, RotateCcw, Search, UserRound } from "lucide-react";
 
 import { CommandPalette } from "@/components/demo/command-palette";
 import { LiveIndicator } from "@/components/demo/live-indicator";
-import { Button } from "@/components/ui/button";
-import type { AuthRole, ClientAuthSession } from "@/lib/auth/api";
+import { Button, buttonVariants } from "@/components/ui/button";
+import type { ClientAuthSession } from "@/lib/auth/api";
 import { useDemoStore } from "@/lib/demo/demo-store";
+import { cn } from "@/lib/utils";
+import { getRoleWorkspace } from "./role-workspace";
 
 type TopbarProps = {
   authSession: ClientAuthSession;
@@ -16,18 +19,13 @@ type TopbarProps = {
   onOpenSidebar?: () => void;
 };
 
-const ROLE_LABELS: Record<AuthRole, string> = {
-  system_admin: "System admin",
-  org_admin: "Org admin",
-  district_manager: "District manager",
-  reporter: "Reporter",
-};
-
 export function Topbar({ authSession, logoutAction, onOpenSidebar }: TopbarProps) {
   const router = useRouter();
   const { resetDemo } = useDemoStore();
   const [query, setQuery] = useState("");
   const [commandOpen, setCommandOpen] = useState(false);
+  const workspace = getRoleWorkspace(authSession.role);
+  const PrimaryActionIcon = workspace.primaryAction.icon;
 
   const isTextField = (target: EventTarget | null) => {
     if (!(target instanceof HTMLElement)) {
@@ -96,10 +94,21 @@ export function Topbar({ authSession, logoutAction, onOpenSidebar }: TopbarProps
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search clinics, services, or facility codes"
+              placeholder={workspace.searchPlaceholder}
               className="h-10 min-w-0 flex-1 bg-transparent text-sm text-neutral-900 outline-none placeholder:text-neutral-400"
             />
           </form>
+
+          <Link
+            href={workspace.primaryAction.href}
+            className={cn(
+              buttonVariants({ size: "sm", variant: "default" }),
+              "hidden lg:inline-flex",
+            )}
+          >
+            <PrimaryActionIcon className="size-4" />
+            {workspace.primaryAction.label}
+          </Link>
 
           <Button
             variant="outline"
@@ -125,7 +134,7 @@ export function Topbar({ authSession, logoutAction, onOpenSidebar }: TopbarProps
                 {authSession.displayName || authSession.email}
               </p>
               <p className="truncate text-[11px] font-medium text-neutral-500">
-                {ROLE_LABELS[authSession.role]}
+                {workspace.roleLabel}
               </p>
             </div>
           </div>
