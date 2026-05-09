@@ -26,6 +26,11 @@ export function InterventionRail({
   onStartIncidentReplay,
 }: InterventionRailProps) {
   const replayActionDisabled = replayDisabled || !selectedItem;
+  const disabledDescriptionId = replayDisabled
+    ? "intervention-replay-disabled"
+    : !selectedItem
+      ? "intervention-no-selection-disabled"
+      : undefined;
 
   return (
     <CommandCard
@@ -78,6 +83,12 @@ export function InterventionRail({
           </p>
         )}
 
+        {!selectedItem && (
+          <p id="intervention-no-selection-disabled" className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm leading-6 text-slate-600">
+            Select a clinic from the severity queue before triggering a reroute or running an incident replay.
+          </p>
+        )}
+
         <div className="grid gap-2 sm:grid-cols-2">
           {selectedItem && (
             <button
@@ -92,7 +103,7 @@ export function InterventionRail({
             type="button"
             onClick={onTriggerReroute}
             disabled={replayActionDisabled}
-            aria-describedby={replayDisabled ? "intervention-replay-disabled" : undefined}
+            aria-describedby={disabledDescriptionId}
             className={cn(buttonVariants({ variant: "outline", size: "lg" }), "w-full")}
           >
             Trigger reroute
@@ -108,7 +119,7 @@ export function InterventionRail({
             type="button"
             onClick={onStartIncidentReplay}
             disabled={replayActionDisabled}
-            aria-describedby={replayDisabled ? "intervention-replay-disabled" : undefined}
+            aria-describedby={disabledDescriptionId}
             className={cn(buttonVariants({ variant: "outline", size: "lg" }), "w-full")}
           >
             Run incident replay

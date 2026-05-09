@@ -21,7 +21,7 @@ export function VerificationHandover({ handover }: VerificationHandoverProps) {
         <ol className="space-y-3">
           {handover.items.map((item, index) => (
             <li key={`${index}-${item}`} className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-4">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white">
+              <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white">
                 {index + 1}
               </span>
               <p className="text-sm leading-6 text-slate-700">{item}</p>
