@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   useCallback,
   useEffect,
@@ -13,10 +12,13 @@ import { useRouter } from "next/navigation";
 
 import { FieldClinicList } from "@/components/demo/field-clinic-list";
 import { OfflineQueue } from "@/components/demo/offline-queue";
+import { ReferencePanel } from "@/components/demo/reference-dashboard";
+import { ReferenceSectionCards } from "@/components/demo/reference-section-cards";
 import { ReportForm } from "@/components/demo/report-form";
 import { SyncStatus } from "@/components/demo/sync-status";
 import { SectionHeader } from "@/components/demo/section-header";
 import { Button } from "@/components/ui/button";
+import type { ClientAuthSession } from "@/lib/auth/api";
 import { ClinicPulseApiError } from "@/lib/demo/api-client";
 import { useDemoStore } from "@/lib/demo/demo-store";
 import {
@@ -187,7 +189,11 @@ function createOfflineReportQueueItem(
   };
 }
 
-export default function FieldPageClient() {
+type FieldPageClientProps = {
+  session: ClientAuthSession;
+};
+
+export default function FieldPageClient({ session }: FieldPageClientProps) {
   const router = useRouter();
   const { state } = useDemoStore();
 
@@ -462,16 +468,47 @@ export default function FieldPageClient() {
 
   return (
     <div className="grid gap-4 pb-4">
-      <div className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
-        <SectionHeader
-          eyebrow="Field worker"
-          title="Mobile reporting flow"
-          description="Submit a clinic update from offline or online mode. Queued items merge into district state when back online."
-        />
-        <div className="mt-3 flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-content-subtle">
-            Clinic status stream is currently {isOnline ? "online" : "offline"}.
-          </p>
+      <ReferenceSectionCards
+        cards={[
+          {
+            title: "Assigned clinics",
+            value: String(clinics.length),
+            badge: "Route",
+            trend: "up",
+            footer: `${session.displayName || session.email} has this route`,
+            detail: "The list, report form, and queue use the same assigned clinics.",
+          },
+          {
+            title: "Waiting sync",
+            value: String(waitingOfflineReportCount),
+            badge: waitingOfflineReportCount > 0 ? "Queued" : "Clear",
+            trend: waitingOfflineReportCount > 0 ? "down" : "neutral",
+            footer: "Reports still held on this device",
+            detail: "The field view starts with local queue pressure before submission.",
+          },
+          {
+            title: "Connection",
+            value: isOnline ? "Online" : "Offline",
+            badge: isOnline ? "Live" : "Offline",
+            trend: isOnline ? "neutral" : "down",
+            footer: "Submission mode controls queue behavior",
+            detail: "Online reports submit now; offline reports wait for sync.",
+          },
+          {
+            title: "Selected clinic",
+            value: selectedClinic ? selectedClinic.status.replaceAll("_", " ") : "None",
+            badge: "Visit context",
+            trend: selectedClinic ? "up" : "down",
+            footer: selectedName,
+            detail: "The selected clinic drives the form and offline queue context.",
+          },
+        ]}
+      />
+
+      <ReferencePanel
+        title="Field workbench"
+        description="The field flow is ordered around the actual visit sequence: route, report, queue, and sync."
+        actions={
           <Button
             variant="outline"
             size="sm"
@@ -480,8 +517,19 @@ export default function FieldPageClient() {
           >
             {isOnline ? "Set offline mode" : "Set online mode"}
           </Button>
+        }
+      >
+        <SectionHeader
+          eyebrow="Device state"
+          title="Connection and submission controls"
+          description="Submit a clinic update from offline or online mode. Queued items merge into district state when back online."
+        />
+        <div className="mt-3 flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-content-subtle">
+            Clinic status stream is currently {isOnline ? "online" : "offline"}.
+          </p>
         </div>
-      </div>
+      </ReferencePanel>
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
         <FieldClinicList
@@ -546,11 +594,7 @@ export default function FieldPageClient() {
             3) In offline mode, report stays queued and is sent to district when you press sync.
           </p>
           <p className="text-content-subtle">
-            4) Open{" "}
-            <Link href="/demo" className="text-primary underline underline-offset-4">
-              /demo
-            </Link>{" "}
-            to verify the report stream updates in the operations screen.
+            4) District managers see synced reports in their command center after the queue clears.
           </p>
         </div>
       </section>
