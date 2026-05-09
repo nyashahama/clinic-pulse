@@ -50,6 +50,7 @@ export type ClientAuthSession = {
   userId: number;
   email: string;
   name: string;
+  displayName: string;
   role: AuthRole;
   organisationName?: string;
   district?: string;

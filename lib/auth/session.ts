@@ -259,6 +259,7 @@ export function toClientAuthSession(session: AuthSession): ClientAuthSession {
     userId: session.user.id,
     email: session.user.email,
     name: session.user.displayName,
+    displayName: session.user.displayName,
     role: activeMembership.role,
     organisationName: activeMembership.organisation?.name,
     district: activeMembership.organisation?.district ?? activeMembership.district ?? undefined,
