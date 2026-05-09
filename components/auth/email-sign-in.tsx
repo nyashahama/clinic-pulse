@@ -13,6 +13,12 @@ export type EmailSignInAction = (
   formData: FormData,
 ) => Promise<EmailSignInActionState>;
 
+const inputClassName =
+  "block w-full min-w-0 appearance-none rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-950 shadow-sm outline-none transition placeholder:text-neutral-400 focus:border-[#0D7A6B] focus:ring-4 focus:ring-[#0D7A6B]/10";
+
+const buttonClassName =
+  "inline-flex w-full shrink-0 items-center justify-center rounded-xl border border-neutral-950 bg-neutral-950 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/10 transition hover:-translate-y-0.5 hover:bg-neutral-800 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70";
+
 export function EmailSignIn({ action }: { action?: EmailSignInAction }) {
   if (!action) {
     return <EmailOnlySignIn />;
@@ -27,10 +33,10 @@ function EmailOnlySignIn() {
   return (
     <form
       onSubmit={(event) => event.preventDefault()}
-      className="flex flex-col gap-y-3"
+      className="flex flex-col gap-y-4"
     >
       <label>
-        <span className="text-content-emphasis mb-2 block text-sm font-medium leading-none">
+        <span className="mb-2 block text-sm font-semibold leading-none text-neutral-900">
           Email
         </span>
         <input
@@ -43,17 +49,12 @@ function EmailOnlySignIn() {
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          className={cn(
-            "block w-full min-w-0 appearance-none rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm placeholder-neutral-400 shadow-sm focus:border-black focus:outline-none focus:ring-black",
-          )}
+          className={cn(inputClassName)}
         />
       </label>
 
-      <button
-        type="submit"
-        className="inline-flex w-full shrink-0 items-center justify-center rounded-lg border border-neutral-900 bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
-      >
-        Log in with email
+      <button type="submit" className={buttonClassName}>
+        Continue with email
       </button>
     </form>
   );
@@ -63,9 +64,9 @@ function PasswordEmailSignIn({ action }: { action: EmailSignInAction }) {
   const [state, formAction, pending] = useActionState(action, {});
 
   return (
-    <form action={formAction} className="flex flex-col gap-y-3">
+    <form action={formAction} className="flex flex-col gap-y-4">
       <label>
-        <span className="text-content-emphasis mb-2 block text-sm font-medium leading-none">
+        <span className="mb-2 block text-sm font-semibold leading-none text-neutral-900">
           Email
         </span>
         <input
@@ -77,14 +78,12 @@ function PasswordEmailSignIn({ action }: { action: EmailSignInAction }) {
           autoFocus
           required
           defaultValue={state.email ?? ""}
-          className={cn(
-            "block w-full min-w-0 appearance-none rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm placeholder-neutral-400 shadow-sm focus:border-black focus:outline-none focus:ring-black",
-          )}
+          className={cn(inputClassName)}
         />
       </label>
 
       <label>
-        <span className="text-content-emphasis mb-2 block text-sm font-medium leading-none">
+        <span className="mb-2 block text-sm font-semibold leading-none text-neutral-900">
           Password
         </span>
         <input
@@ -93,14 +92,15 @@ function PasswordEmailSignIn({ action }: { action: EmailSignInAction }) {
           type="password"
           autoComplete="current-password"
           required
-          className={cn(
-            "block w-full min-w-0 appearance-none rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm placeholder-neutral-400 shadow-sm focus:border-black focus:outline-none focus:ring-black",
-          )}
+          className={cn(inputClassName)}
         />
       </label>
 
       {state.error ? (
-        <p role="alert" className="text-sm font-medium text-red-600">
+        <p
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700"
+        >
           {state.error}
         </p>
       ) : null}
@@ -108,9 +108,9 @@ function PasswordEmailSignIn({ action }: { action: EmailSignInAction }) {
       <button
         type="submit"
         disabled={pending}
-        className="inline-flex w-full shrink-0 items-center justify-center rounded-lg border border-neutral-900 bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
+        className={buttonClassName}
       >
-        {pending ? "Logging in..." : "Log in"}
+        {pending ? "Checking credentials..." : "Sign in"}
       </button>
     </form>
   );

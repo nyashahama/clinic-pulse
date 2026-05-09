@@ -6,7 +6,7 @@ import { GoogleButton } from "./google-button";
 
 export function LoginForm({ loginAction }: { loginAction?: EmailSignInAction }) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       <EmailSignIn action={loginAction} />
       <AuthMethodsSeparator />
       <GoogleButton />
