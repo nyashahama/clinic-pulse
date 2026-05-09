@@ -199,7 +199,10 @@ export function buildDistrictCommandCenter(
 ): DistrictCommandCenter {
   const queue = input.clinics
     .map(toQueueItem)
-    .sort((left, right) => right.score - left.score || compareClinicNameAsc(left, right));
+    .sort(
+      (left, right) =>
+        right.score - left.score || compareClinicNameAsc(left, right) || compareClinicIdAsc(left, right),
+    );
 
   const derivedOfflineQueueCount = input.clinics.filter((clinic) => clinic.isInOfflineQueue).length;
   const derivedActiveAlertCount = input.clinics.filter((clinic) => clinic.hasActiveAlert).length;
@@ -259,6 +262,15 @@ function compareClinicNameAsc(
   if (leftName > rightName) return 1;
   if (left.clinicName < right.clinicName) return -1;
   if (left.clinicName > right.clinicName) return 1;
+  return 0;
+}
+
+function compareClinicIdAsc(
+  left: DistrictSeverityQueueItem,
+  right: DistrictSeverityQueueItem,
+): number {
+  if (left.clinicId < right.clinicId) return -1;
+  if (left.clinicId > right.clinicId) return 1;
   return 0;
 }
 

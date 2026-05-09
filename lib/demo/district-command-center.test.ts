@@ -108,6 +108,19 @@ describe("buildDistrictCommandCenter", () => {
     expect(commandCenter.queue[0]?.clinicId).toBe("clinic-failing");
   });
 
+  it("falls back to the top severity item when the requested clinic is missing", () => {
+    const commandCenter = buildDistrictCommandCenter({
+      session: null,
+      clinics: [operationalClinic, failingClinic],
+      activeAlertCount: 1,
+      offlineQueueCount: 1,
+      lastSyncAt: null,
+      selectedClinicId: "clinic-missing",
+    });
+
+    expect(commandCenter.selectedItem?.clinicId).toBe("clinic-failing");
+  });
+
   it("orders tied severity items by clinic name without locale-dependent sorting", () => {
     const alphaClinic: DistrictCommandClinicInput = {
       ...operationalClinic,
