@@ -85,6 +85,29 @@ describe("buildDistrictCommandCenter", () => {
     expect(commandCenter.handover.items[0]).toContain("Ndlovu Clinic");
   });
 
+  it("selects the requested clinic while preserving severity queue order", () => {
+    const commandCenter = buildDistrictCommandCenter({
+      session: {
+        userId: 1,
+        email: "operator@example.com",
+        name: "Amina Dlamini",
+        displayName: "Amina Dlamini",
+        role: "district_admin",
+        organisationName: "Umkhanyakude District Health",
+        district: "Umkhanyakude",
+        organisationId: 7,
+      },
+      clinics: [operationalClinic, failingClinic],
+      activeAlertCount: 1,
+      offlineQueueCount: 1,
+      lastSyncAt: "2026-05-09T06:10:00.000Z",
+      selectedClinicId: "clinic-operational",
+    });
+
+    expect(commandCenter.selectedItem?.clinicId).toBe("clinic-operational");
+    expect(commandCenter.queue[0]?.clinicId).toBe("clinic-failing");
+  });
+
   it("returns a calm empty-state command surface when no clinics are loaded", () => {
     const commandCenter = buildDistrictCommandCenter({
       session: null,
