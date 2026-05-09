@@ -110,7 +110,7 @@ function PasswordEmailSignIn({ action }: { action: EmailSignInAction }) {
         disabled={pending}
         className={buttonClassName}
       >
-        {pending ? "Checking credentials..." : "Sign in"}
+        {pending ? "Logging in..." : "Log in"}
       </button>
     </form>
   );
