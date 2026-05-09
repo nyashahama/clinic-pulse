@@ -7,6 +7,7 @@ import {
   getDashboardScope,
   getDashboardWorkspace,
 } from "@/components/demo/dashboard-nav-config"
+import { ClinicPulseMark } from "@/components/brand/clinicpulse-logo"
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
 import {
@@ -20,7 +21,6 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import type { ClientAuthSession } from "@/lib/auth/api"
-import { Building2Icon } from "lucide-react"
 
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   session: ClientAuthSession
@@ -40,9 +40,7 @@ export function AppSidebar({ session, ...props }: AppSidebarProps) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" render={<Link href={workspace.primaryAction.url} />}>
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                <Building2Icon className="size-4" />
-              </div>
+              <ClinicPulseMark className="size-8 rounded-lg shadow-none [&_svg]:!size-[82%]" />
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">ClinicPulse</span>
                 <span className="truncate text-xs">{scope}</span>

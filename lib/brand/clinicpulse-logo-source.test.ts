@@ -11,6 +11,16 @@ const logoComponentPath = path.join(
 );
 const faviconPath = path.join(process.cwd(), "app", "icon.svg");
 const appleIconPath = path.join(process.cwd(), "app", "apple-icon.tsx");
+const sidebarPath = path.join(process.cwd(), "components", "app-sidebar.tsx");
+const authLayoutPath = path.join(process.cwd(), "app", "(auth)", "layout.tsx");
+const loginPagePath = path.join(process.cwd(), "app", "(auth)", "login", "page.tsx");
+const registerPagePath = path.join(
+  process.cwd(),
+  "app",
+  "(auth)",
+  "register",
+  "page.tsx",
+);
 
 describe("ClinicPulse premium logo component", () => {
   it("exposes the Obsidian Signal shared mark and lockup", () => {
@@ -36,5 +46,22 @@ describe("ClinicPulse premium metadata icons", () => {
       expect(source).toContain("M43.5 12.5");
       expect(source).not.toContain("M32 8.5 49 14.8");
     }
+  });
+});
+
+describe("ClinicPulse premium brand surfaces", () => {
+  it("reuses the shared mark across sidebar and auth brand treatments", () => {
+    const sidebarSource = readFileSync(sidebarPath, "utf8");
+    const authLayoutSource = readFileSync(authLayoutPath, "utf8");
+    const loginSource = readFileSync(loginPagePath, "utf8");
+    const registerSource = readFileSync(registerPagePath, "utf8");
+
+    expect(sidebarSource).toContain("ClinicPulseMark");
+    expect(sidebarSource).not.toContain("Building2Icon");
+    expect(authLayoutSource).toContain("ClinicPulseLogo");
+    expect(loginSource).toContain("ClinicPulseMark");
+    expect(registerSource).toContain("ClinicPulseMark");
+    expect(loginSource).not.toMatch(/>\s*CP\s*</);
+    expect(registerSource).not.toMatch(/>\s*CP\s*</);
   });
 });

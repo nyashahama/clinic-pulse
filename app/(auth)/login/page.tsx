@@ -1,3 +1,4 @@
+import { ClinicPulseMark } from "@/components/brand/clinicpulse-logo";
 import { LoginForm } from "@/components/auth/login-form";
 import type { EmailSignInActionState } from "@/components/auth/email-sign-in";
 import { ClinicPulseAuthApiError, login } from "@/lib/auth/api";
@@ -72,9 +73,7 @@ export default function LoginPage() {
       <main className="relative flex w-full flex-col items-center justify-center">
         <section className="w-full max-w-[26rem] rounded-[2rem] border border-white/70 bg-white/78 p-5 shadow-2xl shadow-slate-900/10 backdrop-blur-xl sm:p-7">
           <div className="text-center">
-            <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl bg-[#0D7A6B] text-lg font-bold text-white shadow-lg shadow-[#0D7A6B]/20">
-              CP
-            </div>
+            <ClinicPulseMark className="mx-auto mb-4 size-12 rounded-2xl shadow-lg shadow-emerald-950/20" />
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#0D7A6B]">
               Secure workspace
             </p>

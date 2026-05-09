@@ -1,3 +1,4 @@
+import { ClinicPulseMark } from "@/components/brand/clinicpulse-logo";
 import { SignupForm, type SignupActionState } from "@/components/auth/signup-form";
 import Link from "next/link";
 
@@ -56,9 +57,7 @@ export default function RegisterPage() {
       <main className="relative flex w-full flex-col items-center justify-center">
         <section className="w-full max-w-[30rem] rounded-[2rem] border border-white/70 bg-white/78 p-5 shadow-2xl shadow-slate-900/10 backdrop-blur-xl sm:p-7">
           <div className="text-center">
-            <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl bg-neutral-950 text-lg font-bold text-white shadow-lg shadow-slate-900/20">
-              CP
-            </div>
+            <ClinicPulseMark className="mx-auto mb-4 size-12 rounded-2xl shadow-lg shadow-emerald-950/20" />
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#0D7A6B]">
               Invite-only access
             </p>

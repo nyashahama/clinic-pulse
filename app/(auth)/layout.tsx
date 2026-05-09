@@ -1,3 +1,4 @@
+import { ClinicPulseLogo } from "@/components/brand/clinicpulse-logo";
 import Link from "next/link";
 
 const signalItems = [
@@ -74,9 +75,10 @@ export default function AuthLayout({
         </div>
 
         <Link href="/" className="absolute left-1/2 top-5 z-10 -translate-x-1/2">
-          <span className="font-display text-lg font-semibold tracking-[-0.02em] text-neutral-950">
-            ClinicPulse
-          </span>
+          <ClinicPulseLogo
+            iconClassName="size-8 rounded-xl shadow-md shadow-emerald-950/15"
+            wordmarkClassName="font-display text-lg font-semibold tracking-[-0.02em] text-neutral-950"
+          />
         </Link>
 
         {children}
