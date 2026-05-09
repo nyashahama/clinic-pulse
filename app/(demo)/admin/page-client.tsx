@@ -1,27 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  AlertCircle,
   ArrowLeft,
   CalendarClock,
+  FileCheck2,
   RefreshCcw,
-  UserPlus,
-  X,
+  ShieldCheck,
+  UsersRound,
 } from "lucide-react";
 
-import { DemoLeadForm } from "@/components/demo/demo-lead-form";
-import { DemoLeadTable } from "@/components/demo/demo-lead-table";
 import { ExportPreview } from "@/components/demo/export-preview";
 import { APIPreview } from "@/components/demo/api-preview";
 import { RoadmapModules } from "@/components/demo/roadmap-modules";
-import { MetricTile } from "@/components/demo/metric-tile";
 import { PartnerReadinessPanel } from "@/components/demo/partner-readiness-panel";
 import { PilotReadinessPanel } from "@/components/demo/pilot-readiness-panel";
+import { ReferencePanel } from "@/components/demo/reference-dashboard";
+import { ReferenceSectionCards } from "@/components/demo/reference-section-cards";
 import { SectionHeader } from "@/components/demo/section-header";
 import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import type { ClientAuthSession } from "@/lib/auth/api";
 import type {
   PartnerReadinessApiResponse,
   SyncSummaryApiResponse,
@@ -29,10 +37,10 @@ import type {
 import { adminWorkspaceSections } from "@/lib/demo/admin-layout";
 import { useDemoStore } from "@/lib/demo/demo-store";
 import { getClinicRows } from "@/lib/demo/selectors";
-import type { DemoLeadFormInput } from "@/components/demo/demo-lead-form";
 import type { DemoLead } from "@/lib/demo/types";
 import type { DemoState } from "@/lib/demo/types";
 import {
+  buildPartnerReadinessModel,
   createOneTimePartnerApiKeySecret,
   createOneTimePartnerWebhookSecret,
   type OneTimePartnerApiKeySecret,
@@ -108,6 +116,7 @@ function buildExportPayload(state: DemoState, generatedAt: string) {
 }
 
 type AdminPageProps = {
+  session: ClientAuthSession;
   syncSummary: SyncSummaryApiResponse | null;
   partnerReadiness: PartnerReadinessApiResponse;
 };
@@ -127,6 +136,7 @@ function getPartnerActionErrorMessage(error: unknown) {
 }
 
 export default function AdminPage({
+  session,
   syncSummary,
   partnerReadiness,
 }: AdminPageProps) {
@@ -135,8 +145,6 @@ export default function AdminPage({
   const {
     state,
     resetDemo,
-    addDemoLead,
-    updateLeadStatus,
   } = useDemoStore();
 
   const clinics = useMemo(() => getClinicRows(state), [state]);
@@ -147,7 +155,6 @@ export default function AdminPage({
   );
 
   const leadStatusCount = useMemo(() => buildLeadStatusCounts(state.leads), [state.leads]);
-  const alertCount = state.alerts.length;
   const queuedReports = state.offlineQueue.length;
   const activeAlertCount = state.alerts.filter((alert) => alert.status === "open").length;
   const adminInteractionAt = useMemo(() => getLatestAdminInteractionAt(state), [state]);
@@ -156,7 +163,6 @@ export default function AdminPage({
     () => buildExportPayload(state, exportGeneratedAt),
     [state, exportGeneratedAt],
   );
-  const [manualLeadOpen, setManualLeadOpen] = useState(false);
   const [partnerActionPending, setPartnerActionPending] =
     useState<PartnerReadinessAction | null>(null);
   const [partnerActionError, setPartnerActionError] = useState<string | null>(null);
@@ -166,20 +172,55 @@ export default function AdminPage({
     useState<OneTimePartnerWebhookSecret | null>(null);
   const partnerActionPendingRef = useRef<PartnerReadinessAction | null>(null);
 
-  const leadSorted = useMemo(
-    () => [...state.leads].sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
-    [state.leads],
-  );
   const partnerActionInFlight = partnerActionPending !== null;
-
-  const handleLeadSubmit = (lead: DemoLeadFormInput) => {
-    addDemoLead({
-      ...lead,
-      createdAt: new Date().toISOString(),
-      status: "new",
-    });
-    setManualLeadOpen(false);
-  };
+  const partnerReadinessModel = useMemo(
+    () => buildPartnerReadinessModel(partnerReadiness),
+    [partnerReadiness],
+  );
+  const isSystemAdmin = session.role === "system_admin";
+  const reportCompleteness = Math.max(0, 100 - queuedReports * 8);
+  const staleClinicCount = clinics.filter((clinic) => clinic.freshness === "stale").length;
+  const operationsPriority =
+    activeAlertCount > 0
+      ? "Assign owners to open escalations before readiness review."
+      : staleClinicCount > 0
+        ? "Confirm stale clinic status before the next district review."
+        : "Readiness evidence is clear enough for review.";
+  const reviewFocusItems = isSystemAdmin
+    ? [
+        {
+          label: "Tenant health",
+          title: "Platform jobs and ingestion remain the first review lane.",
+          value: queuedReports > 0 ? `${queuedReports} pending` : "Ready",
+        },
+        {
+          label: "Access review",
+          title: `${leadStatusCount.new} stakeholder or operator records need follow-up context.`,
+          value: `${state.auditEvents.length} events`,
+        },
+        {
+          label: "Security evidence",
+          title: "Partner credentials, exports, and webhook checks are grouped below.",
+          value: String(partnerReadiness.integrationChecks.length),
+        },
+      ]
+    : [
+        {
+          label: "District readiness",
+          title: `${clinics.length - staleClinicCount} of ${clinics.length} clinics have usable freshness.`,
+          value: `${reportCompleteness}%`,
+        },
+        {
+          label: "Access hygiene",
+          title: `${leadStatusCount.contacted + leadStatusCount.scheduled} stakeholder records are in follow-up.`,
+          value: `${leadStatusCount.new} new`,
+        },
+        {
+          label: "Escalation quality",
+          title: activeAlertCount > 0 ? "Open alerts need owner assignment." : "No open alerts need owner assignment.",
+          value: `${activeAlertCount} open`,
+        },
+      ];
 
   const runPartnerAction = async <Result,>(
     action: PartnerReadinessAction,
@@ -254,108 +295,181 @@ export default function AdminPage({
     void runPartnerAction("test-webhook", () => testPartnerWebhookAction(subscriptionId));
   };
 
-  useEffect(() => {
-    if (!manualLeadOpen) {
-      return;
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setManualLeadOpen(false);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [manualLeadOpen]);
-
   return (
     <div className="grid gap-4 pb-4">
+      <ReferenceSectionCards
+        cards={[
+          {
+            title: isSystemAdmin ? "Tenants in view" : "Clinics governed",
+            value: isSystemAdmin ? "12" : String(clinics.length),
+            badge: "Live scope",
+            trend: "up",
+            footer: isSystemAdmin
+              ? "Platform console is scoped"
+              : "Organisation workspace is scoped",
+            detail: isSystemAdmin
+              ? "Demo tenant estate represented in this platform console."
+              : "Clinic records included in this admin surface.",
+          },
+          {
+            title: isSystemAdmin ? "Audit events" : "Open alerts",
+            value: isSystemAdmin ? String(state.auditEvents.length) : String(activeAlertCount),
+            badge: activeAlertCount > 0 ? "Review" : "Clear",
+            trend: activeAlertCount > 0 ? "down" : "neutral",
+            footer: operationsPriority,
+            detail: isSystemAdmin
+              ? "Operational actions available for access review."
+              : "Escalations visible to district and organisation users.",
+          },
+          {
+            title: isSystemAdmin ? "Ingestion queue" : "Reporting coverage",
+            value: isSystemAdmin ? String(queuedReports) : `${reportCompleteness}%`,
+            badge: queuedReports > 0 ? "Pending" : "Ready",
+            trend: queuedReports > 0 ? "down" : "neutral",
+            footer: "Field reports are part of readiness",
+            detail: isSystemAdmin
+              ? "Offline updates waiting to merge into platform state."
+              : "Queued local reports are counted before review confidence is shown.",
+          },
+          {
+            title: "Readiness evidence",
+            value: `${partnerReadiness.integrationChecks.length} checks`,
+            badge: partnerReadinessModel.severity === "clear" ? "Ready" : "Attention",
+            trend: partnerReadinessModel.severity === "clear" ? "neutral" : "down",
+            footer: "Partner proof stays in the admin path",
+            detail: "API keys, exports, webhooks, and org evidence are reviewed together.",
+          },
+        ]}
+      />
+
       <div className="grid gap-4">
-        <div className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
-          <SectionHeader
-            eyebrow="Founder operations"
-            title="Admin control deck"
-            description="Use this surface to capture leads, review operating evidence, and prepare a premium demo handoff."
-          />
-          <p className="mt-2 text-sm leading-6 text-content-subtle">
-            Use walkthrough controls and export surfaces to show how a founder-led demo ends with a
-            clean, shareable artifact.
+        <ReferencePanel
+          actions={
+            <div className="flex flex-wrap gap-2">
+              <a className={buttonVariants({ size: "sm" })} href="#readiness">
+                <ShieldCheck className="size-3.5" />
+                Review readiness
+              </a>
+              <a
+                className={buttonVariants({ size: "sm", variant: "outline" })}
+                href="#partner-evidence"
+              >
+                Partner evidence
+              </a>
+              <Link
+                className={buttonVariants({ size: "sm", variant: "outline" })}
+                href="/field"
+              >
+                Field workflow
+              </Link>
+            </div>
+          }
+          description={
+            isSystemAdmin
+              ? "Review ingestion, security evidence, partner readiness, and tenant activity without leaving the platform console."
+              : "Review reporting quality, access hygiene, partner readiness, and district escalation quality from one operations surface."
+          }
+          eyebrow={isSystemAdmin ? "Platform command" : "Organisation command"}
+          title={isSystemAdmin ? "Platform operations deck" : "Operations admin deck"}
+        >
+          <p className="text-sm text-muted-foreground">
+            {operationsPriority} This workspace keeps review work tied to
+            clinics, users, partners, and readiness evidence.
           </p>
+        </ReferencePanel>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button size="sm" onClick={resetDemo}>
-              <RefreshCcw className="size-3.5" />
-              Reset walkthrough data
-            </Button>
-            <Link
-              href="/book-demo"
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              Open external booking flow
-            </Link>
-            <Link
-              href="/field"
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              <AlertCircle className="size-3.5" />
-              Field reporting
-            </Link>
-          </div>
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+          <ReferencePanel
+            title={isSystemAdmin ? "Platform review lanes" : "Organisation review lanes"}
+            description={
+              isSystemAdmin
+                ? "The platform console starts with reliability, access, and integration evidence."
+                : "The operations deck starts with district readiness, access hygiene, and escalation quality."
+            }
+          >
+            <div className="grid gap-3">
+              {reviewFocusItems.map((item) => (
+                <div
+                  key={item.label}
+                  className="grid gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
+                      {item.label}
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-gray-700">{item.title}</p>
+                  </div>
+                  <p className="text-2xl font-semibold tracking-[-0.03em] text-gray-950">
+                    {item.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </ReferencePanel>
+
+          <ReferencePanel
+            title={isSystemAdmin ? "Control-plane actions" : "Governance actions"}
+            description={
+              isSystemAdmin
+                ? "Keep tenant operations auditable before enabling more platform modules."
+                : "Keep the organisation ready by reviewing stale clinics, open alerts, and partner evidence."
+            }
+          >
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl border border-gray-100 bg-white p-4">
+                <UsersRound className="size-5 text-gray-500" />
+                <p className="mt-3 text-sm font-semibold text-gray-950">
+                  {isSystemAdmin ? "Tenant access" : "Role coverage"}
+                </p>
+                <p className="mt-1 text-sm leading-6 text-gray-500">
+                  {leadStatusCount.new} records need context before the next access review.
+                </p>
+              </div>
+              <div className="rounded-xl border border-gray-100 bg-white p-4">
+                <FileCheck2 className="size-5 text-gray-500" />
+                <p className="mt-3 text-sm font-semibold text-gray-950">
+                  Data quality
+                </p>
+                <p className="mt-1 text-sm leading-6 text-gray-500">
+                  {staleClinicCount} stale clinics and {queuedReports} queued reports affect confidence.
+                </p>
+              </div>
+              <div className="rounded-xl border border-gray-100 bg-white p-4">
+                <ShieldCheck className="size-5 text-gray-500" />
+                <p className="mt-3 text-sm font-semibold text-gray-950">
+                  Partner proof
+                </p>
+                <p className="mt-1 text-sm leading-6 text-gray-500">
+                  Keys, exports, and webhooks are reviewed in the readiness section.
+                </p>
+              </div>
+            </div>
+          </ReferencePanel>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-3">
-          <MetricTile
-            label="Leads"
-            count={state.leads.length}
-            description="Booked founder demos and inbound lead volume."
-            trend={{
-              value: `${leadStatusCount.new} new`,
-              direction: leadStatusCount.new > 0 ? "up" : "flat",
-              context: "Fresh prospect pipeline from booking page.",
+        <div id="readiness">
+          {syncSummary ? <PilotReadinessPanel summary={syncSummary} /> : null}
+        </div>
+        <div id="partner-evidence">
+          <PartnerReadinessPanel
+            readiness={partnerReadiness}
+            onCreateDemoKey={handleCreateDemoKey}
+            onCreateWebhook={handleCreatePartnerWebhook}
+            onGenerateExport={handleGeneratePartnerExport}
+            onTestWebhook={handleTestPartnerWebhook}
+            pendingActions={{
+              createDemoKey: partnerActionInFlight,
+              createWebhook: partnerActionInFlight,
+              generateExport: partnerActionInFlight,
+              testWebhook: partnerActionInFlight,
             }}
-          />
-          <MetricTile
-            label="Open alerts"
-            count={activeAlertCount}
-            description="Operational escalations visible to district users."
-            trend={{
-              value: `${alertCount} total`,
-              direction: activeAlertCount > 0 ? "down" : "up",
-              context: "Higher means faster decision support is needed.",
-            }}
-          />
-          <MetricTile
-            label="Queued reports"
-            count={queuedReports}
-            description="Offline submissions waiting for sync simulation."
-            trend={{
-              value: `Export payload built`,
-              direction: queuedReports > 0 ? "down" : "flat",
-              context: "Local-state-only for demo reliability.",
-            }}
+            actionError={partnerActionError}
+            oneTimeApiKeySecret={oneTimeApiKeySecret}
+            oneTimeWebhookSecret={oneTimeWebhookSecret}
+            onClearOneTimeApiKeySecret={() => setOneTimeApiKeySecret(null)}
+            onClearOneTimeWebhookSecret={() => setOneTimeWebhookSecret(null)}
           />
         </div>
-
-        {syncSummary ? <PilotReadinessPanel summary={syncSummary} /> : null}
-        <PartnerReadinessPanel
-          readiness={partnerReadiness}
-          onCreateDemoKey={handleCreateDemoKey}
-          onCreateWebhook={handleCreatePartnerWebhook}
-          onGenerateExport={handleGeneratePartnerExport}
-          onTestWebhook={handleTestPartnerWebhook}
-          pendingActions={{
-            createDemoKey: partnerActionInFlight,
-            createWebhook: partnerActionInFlight,
-            generateExport: partnerActionInFlight,
-            testWebhook: partnerActionInFlight,
-          }}
-          actionError={partnerActionError}
-          oneTimeApiKeySecret={oneTimeApiKeySecret}
-          oneTimeWebhookSecret={oneTimeWebhookSecret}
-          onClearOneTimeApiKeySecret={() => setOneTimeApiKeySecret(null)}
-          onClearOneTimeWebhookSecret={() => setOneTimeWebhookSecret(null)}
-        />
       </div>
 
       {selectedClinic ? (
@@ -390,29 +504,60 @@ export default function AdminPage({
           data-admin-section={adminWorkspaceSections[0]}
         >
           <SectionHeader
-            eyebrow="Founder pipeline"
-            title="Lead management"
-            description="Track booking leads from the public demo flow and move each prospect through follow-up."
-            actions={
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => setManualLeadOpen(true)}
-              >
-                <UserPlus className="size-3.5" />
-                Add lead manually
-              </Button>
+            eyebrow={isSystemAdmin ? "Tenant evidence" : "Operations evidence"}
+            title={isSystemAdmin ? "Access and tenant activity" : "Stakeholder follow-up"}
+            description={
+              isSystemAdmin
+                ? "Review activity that proves the platform can support auditable tenant operations."
+                : "Track operational stakeholders alongside access, district readiness, and data quality."
             }
           />
         </section>
 
-        <DemoLeadTable
-          leads={leadSorted}
-          onLeadStatusChange={(leadId, status) => {
-            updateLeadStatus(leadId, status);
-          }}
-        />
+        <ReferencePanel
+          title={isSystemAdmin ? "Tenant activity queue" : "Stakeholder activity queue"}
+          description="Existing local records are presented as operational follow-up for rollout and access review."
+        >
+          <div className="overflow-x-auto">
+            <Table className="min-w-[56rem]">
+              <TableHeader>
+                <TableRow className="text-xs uppercase tracking-[0.08em]">
+                  {["Name", "Organisation", "Role", "Focus", "Status", "Updated"].map((heading) => (
+                    <TableHead key={heading} className="font-medium">
+                      {heading}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {state.leads.map((lead) => (
+                  <TableRow key={lead.id} className="align-top">
+                    <TableCell className="font-medium text-gray-950">
+                      {lead.name}
+                    </TableCell>
+                    <TableCell className="text-gray-600">
+                      {lead.organization}
+                    </TableCell>
+                    <TableCell className="text-gray-600">
+                      {lead.role}
+                    </TableCell>
+                    <TableCell className="capitalize text-gray-600">
+                      {lead.interest.replaceAll("_", " ")}
+                    </TableCell>
+                    <TableCell>
+                      <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold capitalize text-gray-700">
+                        {lead.status}
+                      </span>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-gray-500">
+                      {formatDate(lead.createdAt)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </ReferencePanel>
 
         <div data-admin-section={adminWorkspaceSections[1]}>
           <ExportPreview
@@ -436,22 +581,28 @@ export default function AdminPage({
           data-admin-section={adminWorkspaceSections[4]}
         >
           <SectionHeader
-            eyebrow="Ops snapshot"
-            title="Quick notes"
-            description="Short list of talking points before the founder pitch starts."
+            eyebrow="Demo controls"
+            title="Reset and runbook"
+            description="Controls stay out of the primary admin workflow so operators focus on readiness first."
+            actions={
+              <Button size="sm" variant="outline" onClick={resetDemo}>
+                <RefreshCcw className="size-3.5" />
+                Reset walkthrough data
+              </Button>
+            }
           />
           <ul className="mt-4 space-y-2 text-sm text-content-default">
             <li className="rounded-lg border border-border-subtle bg-bg-subtle px-3 py-2">
-              <span className="font-medium text-content-emphasis">Demo flow:</span>{" "}
-              Start at <span className="font-mono">/demo</span>, then open finder and field flows.
+              <span className="font-medium text-content-emphasis">Workspace flow:</span>{" "}
+              Start at the role home, then open command, finder, and field modules as needed.
             </li>
             <li className="rounded-lg border border-border-subtle bg-bg-subtle px-3 py-2">
               <span className="font-medium text-content-emphasis">Escalation path:</span>{" "}
               Use alert list and status actions to show reroute confidence.
             </li>
             <li className="rounded-lg border border-border-subtle bg-bg-subtle px-3 py-2">
-              <span className="font-medium text-content-emphasis">Lead capture:</span>{" "}
-              Bookings in <span className="font-mono">/book-demo</span> are persisted in local storage.
+              <span className="font-medium text-content-emphasis">Access hygiene:</span>{" "}
+              Review users, stale accounts, and partner credentials before rollout.
             </li>
             <li className="rounded-lg border border-border-subtle bg-bg-subtle px-3 py-2">
               <span className="font-medium text-content-emphasis">Admin proof:</span>{" "}
@@ -464,35 +615,6 @@ export default function AdminPage({
           </div>
         </section>
       </div>
-
-      {manualLeadOpen ? (
-        <div
-          className="fixed inset-0 z-50 grid place-items-start overflow-y-auto bg-neutral-950/35 px-3 py-6 backdrop-blur-[1px] sm:place-items-center sm:px-4"
-          role="presentation"
-          onClick={() => setManualLeadOpen(false)}
-        >
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-label="Add lead manually"
-            className="relative w-full max-w-xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <Button
-              type="button"
-              variant="outline"
-              size="icon-sm"
-              aria-label="Close manual lead entry"
-              className="absolute right-3 top-3 z-10 bg-bg-default"
-              onClick={() => setManualLeadOpen(false)}
-            >
-              <X className="size-4" />
-            </Button>
-
-            <DemoLeadForm onSubmit={handleLeadSubmit} submitLabel="Add lead to pipeline" />
-          </section>
-        </div>
-      ) : null}
     </div>
   );
 }

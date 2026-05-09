@@ -16,6 +16,7 @@ import { VerificationHandover } from "@/components/demo/command-center/verificat
 import { DemoControls } from "@/components/demo/demo-controls";
 import { IncidentReplayPanel } from "@/components/demo/incident-replay-panel";
 import { PilotReadinessPanel } from "@/components/demo/pilot-readiness-panel";
+import { ReferenceSectionCards } from "@/components/demo/reference-section-cards";
 import { ReportStream } from "@/components/demo/report-stream";
 import { StatusSummary } from "@/components/demo/status-summary";
 import { buttonVariants } from "@/components/ui/button";
@@ -468,6 +469,43 @@ export default function DistrictConsolePage({ session, syncSummary }: DistrictCo
 
   return (
     <div className="grid gap-5 pb-6">
+      <ReferenceSectionCards
+        cards={[
+          {
+            title: "Severity queue",
+            value: String(commandCenter.queue.length),
+            badge: commandCenter.queue.length > 0 ? "Action" : "Stable",
+            trend: commandCenter.queue.length > 0 ? "down" : "neutral",
+            footer: "Clinics ranked by action urgency",
+            detail: "District users start with the queue before maps and reports.",
+          },
+          {
+            title: "Open alerts",
+            value: String(activeAlerts.length),
+            badge: activeAlerts.length > 0 ? "Review" : "Clear",
+            trend: activeAlerts.length > 0 ? "down" : "neutral",
+            footer: "Signals requiring district attention",
+            detail: "Alerts stay connected to clinic detail and intervention handoff.",
+          },
+          {
+            title: "Offline reports",
+            value: String(state.offlineQueue.length),
+            badge: state.offlineQueue.length > 0 ? "Sync" : "Ready",
+            trend: state.offlineQueue.length > 0 ? "down" : "neutral",
+            footer: "Field updates waiting to merge",
+            detail: "Offline queue pressure is visible before readiness evidence.",
+          },
+          {
+            title: "Clinics in scope",
+            value: String(clinicRows.length),
+            badge: "District",
+            trend: "up",
+            footer: "Command view is scoped to assigned facilities",
+            detail: "Map, queue, and table stay aligned to the same clinic set.",
+          },
+        ]}
+      />
+
       <DistrictCommandBrief brief={commandCenter.brief} />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
