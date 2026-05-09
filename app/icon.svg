@@ -1,7 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#0D7A6B"/>
-  <path d="M32 8.5 49 14.8v13.7c0 11.4-6.7 21-17 26.2C21.7 49.5 15 39.9 15 28.5V14.8L32 8.5Z" fill="#fff" opacity=".16"/>
-  <path d="M32 8.5 49 14.8v13.7c0 11.4-6.7 21-17 26.2C21.7 49.5 15 39.9 15 28.5V14.8L32 8.5Z" fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round"/>
-  <path d="M32 19v17M23.5 27.5h17" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
-  <path d="M18.5 41h8l2.6-5.5 5 10 2.8-4.5h8.6" fill="none" stroke="#BDF7D2" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <defs>
+    <linearGradient id="clinicpulse-obsidian-bg" x1="10" y1="8" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#063C34"/>
+      <stop offset=".58" stop-color="#06251F"/>
+      <stop offset="1" stop-color="#0B5F53"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="15" fill="url(#clinicpulse-obsidian-bg)"/>
+  <path d="M43.5 12.5C35.8 10.4 27.6 11.7 21.8 16.2C15.8 20.9 13.1 28.4 14.8 35.2C16.7 44.8 25.6 51.2 35.6 49.5C39.2 48.9 42.2 47.4 44.4 45.5" fill="none" stroke="#F8FFFB" stroke-width="5.4" stroke-linecap="round"/>
+  <path d="M32.8 18.8H39C45.1 18.8 49.2 22.7 49.2 28.1C49.2 33.6 45.1 37.4 39 37.4H31.6" fill="none" stroke="#F8FFFB" stroke-width="5.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M17.5 38.8H25.4L28.8 31.6L35.2 45.5L38.8 38.8H48.4" fill="none" stroke="#7AF2C5" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M44 14.6V24.6M39 19.6H49" fill="none" stroke="#CFFBE7" stroke-width="3.8" stroke-linecap="round"/>
 </svg>
