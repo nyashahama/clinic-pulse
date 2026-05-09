@@ -27,6 +27,11 @@ export type AuthMembership = {
   userId: number;
   role: AuthRole;
   district?: string;
+  organisation?: {
+    id: number;
+    name: string;
+    district?: string | null;
+  };
   createdAt: string;
 };
 
@@ -42,9 +47,13 @@ export type AuthSessionRecord = {
 };
 
 export type ClientAuthSession = {
-  displayName: string;
+  userId: number;
   email: string;
+  name: string;
   role: AuthRole;
+  organisationName?: string;
+  district?: string;
+  organisationId?: number;
 };
 
 export type AuthLoginResponse = {

@@ -253,10 +253,16 @@ export function toAuthSession(response: AuthMeResponse | Omit<AuthMeResponse, "s
 }
 
 export function toClientAuthSession(session: AuthSession): ClientAuthSession {
+  const activeMembership = session.activeMembership;
+
   return {
-    displayName: session.user.displayName,
+    userId: session.user.id,
     email: session.user.email,
-    role: session.role,
+    name: session.user.displayName,
+    role: activeMembership.role,
+    organisationName: activeMembership.organisation?.name,
+    district: activeMembership.organisation?.district ?? activeMembership.district ?? undefined,
+    organisationId: activeMembership.organisation?.id ?? activeMembership.organisationId,
   };
 }
 
