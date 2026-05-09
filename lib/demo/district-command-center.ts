@@ -199,7 +199,10 @@ export function buildDistrictCommandCenter(
 ): DistrictCommandCenter {
   const queue = input.clinics
     .map(toQueueItem)
-    .sort((left, right) => right.score - left.score || left.clinicName.localeCompare(right.clinicName));
+    .sort((left, right) => right.score - left.score || compareClinicNameAsc(left, right));
+
+  const derivedOfflineQueueCount = input.clinics.filter((clinic) => clinic.isInOfflineQueue).length;
+  const derivedActiveAlertCount = input.clinics.filter((clinic) => clinic.hasActiveAlert).length;
 
   const selectedItem =
     queue.find((item) => item.clinicId === input.selectedClinicId) ?? queue[0] ?? null;
@@ -220,8 +223,8 @@ export function buildDistrictCommandCenter(
     analytics: {
       statusMix,
       freshnessRiskCount: queue.filter((item) => item.freshness !== "fresh").length,
-      offlineQueueCount: input.offlineQueueCount,
-      activeAlertCount: input.activeAlertCount,
+      offlineQueueCount: derivedOfflineQueueCount,
+      activeAlertCount: derivedActiveAlertCount,
       topReasonCodes: buildTopReasonCodes(queue),
     },
     handover: buildHandover(queue, selectedItem),
@@ -236,13 +239,27 @@ function toQueueItem(clinic: DistrictCommandClinicInput): DistrictSeverityQueueI
     id: `severity-${clinic.id}`,
     clinicId: clinic.id,
     clinicName: clinic.name,
-    districtLabel: clinic.district ?? "Unassigned district",
+    districtLabel: clinic.district?.trim() || "Unassigned district",
     status: clinic.status,
     freshness: clinic.freshness,
-    services: clinic.services,
+    services: [...clinic.services],
     updatedAt: clinic.updatedAt,
     availableAlternatives: Math.max(0, clinic.alternativeCount),
   };
+}
+
+function compareClinicNameAsc(
+  left: DistrictSeverityQueueItem,
+  right: DistrictSeverityQueueItem,
+): number {
+  const leftName = left.clinicName.trim().toLowerCase();
+  const rightName = right.clinicName.trim().toLowerCase();
+
+  if (leftName < rightName) return -1;
+  if (leftName > rightName) return 1;
+  if (left.clinicName < right.clinicName) return -1;
+  if (left.clinicName > right.clinicName) return 1;
+  return 0;
 }
 
 function severityFromScore(score: number): DistrictSeverityLabel {
@@ -357,6 +374,7 @@ function buildBrief(
 
   const criticalCount = queue.filter((item) => item.severityLabel === "critical").length;
   const watchCount = queue.filter((item) => item.severityLabel === "watch").length;
+  const activeAlertCount = queue.filter((item) => item.reasonCodes.includes("active_alert")).length;
   const riskLabel =
     criticalCount > 0
       ? `${criticalCount} critical clinic${criticalCount === 1 ? "" : "s"}`
@@ -372,7 +390,7 @@ function buildBrief(
     immediateFocus: selectedItem
       ? `${selectedItem.clinicName}: ${selectedItem.recommendedAction}`
       : "No clinic selected.",
-    posture: criticalCount > 0 ? "critical" : watchCount > 0 ? "watch" : "stable",
+    posture: criticalCount > 0 ? "critical" : watchCount > 0 ? "watch" : activeAlertCount > 0 ? "active" : "stable",
     lastSyncLabel,
   };
 }

@@ -108,6 +108,60 @@ describe("buildDistrictCommandCenter", () => {
     expect(commandCenter.queue[0]?.clinicId).toBe("clinic-failing");
   });
 
+  it("orders tied severity items by clinic name without locale-dependent sorting", () => {
+    const alphaClinic: DistrictCommandClinicInput = {
+      ...operationalClinic,
+      id: "clinic-alpha",
+      name: "Alpha Clinic",
+    };
+    const zuluClinic: DistrictCommandClinicInput = {
+      ...operationalClinic,
+      id: "clinic-zulu",
+      name: "Zulu Clinic",
+    };
+
+    const commandCenter = buildDistrictCommandCenter({
+      session: null,
+      clinics: [zuluClinic, alphaClinic],
+      activeAlertCount: 0,
+      offlineQueueCount: 0,
+      lastSyncAt: null,
+      selectedClinicId: null,
+    });
+
+    expect(commandCenter.queue.map((item) => item.clinicName)).toEqual([
+      "Alpha Clinic",
+      "Zulu Clinic",
+    ]);
+  });
+
+  it("derives analytics alert and offline counts from clinic flags", () => {
+    const alertClinic: DistrictCommandClinicInput = {
+      ...operationalClinic,
+      id: "clinic-alert",
+      name: "Alert Clinic",
+      hasActiveAlert: true,
+    };
+    const offlineClinic: DistrictCommandClinicInput = {
+      ...operationalClinic,
+      id: "clinic-offline",
+      name: "Offline Clinic",
+      isInOfflineQueue: true,
+    };
+
+    const commandCenter = buildDistrictCommandCenter({
+      session: null,
+      clinics: [alertClinic, offlineClinic, operationalClinic],
+      activeAlertCount: 99,
+      offlineQueueCount: 88,
+      lastSyncAt: null,
+      selectedClinicId: null,
+    });
+
+    expect(commandCenter.analytics.activeAlertCount).toBe(1);
+    expect(commandCenter.analytics.offlineQueueCount).toBe(1);
+  });
+
   it("returns a calm empty-state command surface when no clinics are loaded", () => {
     const commandCenter = buildDistrictCommandCenter({
       session: null,
