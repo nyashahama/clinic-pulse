@@ -127,6 +127,7 @@ describe("loadAlternativeRecommendations", () => {
 
     expect(source).toBeDefined();
 
+    const onFetchError = vi.fn();
     const fetchImpl = vi.fn<ClinicPulseFetch>().mockRejectedValue(new Error("API unavailable"));
     const recommendations = await loadAlternativeRecommendations({
       sourceClinic: source!,
@@ -137,15 +138,19 @@ describe("loadAlternativeRecommendations", () => {
         fetch: fetchImpl,
       },
       allowLocalFallback: true,
+      onFetchError,
     });
 
     expect(recommendations).toEqual(buildFinderAlternativeFallback(rows, source!));
+    expect(onFetchError).not.toHaveBeenCalled();
   });
 
   it("returns no fallback recommendations in production-style mode after a backend fetch failure", async () => {
     const rows = getRows();
     const source = rows[0];
-    const fetchImpl = vi.fn<ClinicPulseFetch>().mockRejectedValue(new Error("API unavailable"));
+    const fetchError = new Error("API unavailable");
+    const fetchImpl = vi.fn<ClinicPulseFetch>().mockRejectedValue(fetchError);
+    const onFetchError = vi.fn();
 
     await expect(
       loadAlternativeRecommendations({
@@ -157,8 +162,10 @@ describe("loadAlternativeRecommendations", () => {
           fetch: fetchImpl,
         },
         allowLocalFallback: false,
+        onFetchError,
       }),
     ).resolves.toEqual([]);
+    expect(onFetchError).toHaveBeenCalledWith(fetchError);
   });
 
   it("quietly ignores aborted backend recommendation fetches", async () => {
