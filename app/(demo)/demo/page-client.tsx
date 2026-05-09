@@ -428,6 +428,31 @@ export default function DistrictConsolePage({ session, syncSummary }: DistrictCo
     openClinicDetail(rerouteCandidate.id);
   };
 
+  const handleTriggerSelectedCommandReroute = () => {
+    if (replayNonIdle || !commandCenter.selectedItem) {
+      return;
+    }
+
+    const selectedClinic = clinicRows.find(
+      (clinic) => clinic.id === commandCenter.selectedItem?.clinicId,
+    );
+    const primaryService = selectedClinic?.services[0];
+
+    if (
+      !selectedClinic ||
+      !primaryService ||
+      getAlternativeClinics(state, selectedClinic.id, primaryService).length === 0
+    ) {
+      setRerouteClinicId(null);
+      return;
+    }
+
+    setSelectedClinicId(selectedClinic.id);
+    setSelectedCommandClinicId(selectedClinic.id);
+    setRerouteClinicId(selectedClinic.id);
+    openClinicDetail(selectedClinic.id);
+  };
+
   const handleResetWalkthrough = () => {
     cancelIncidentReplay();
     setReplayStatus("idle");
@@ -456,7 +481,7 @@ export default function DistrictConsolePage({ session, syncSummary }: DistrictCo
           intervention={commandCenter.intervention}
           replayDisabled={replayNonIdle}
           onOpenClinic={openClinicDetail}
-          onTriggerReroute={handleTriggerReroute}
+          onTriggerReroute={handleTriggerSelectedCommandReroute}
           onSyncOfflineReports={handleSyncOfflineReports}
           onStartIncidentReplay={startIncidentReplay}
         />
