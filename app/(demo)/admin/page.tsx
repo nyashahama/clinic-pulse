@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 
-import { getSessionCookieHeader } from "@/lib/auth/session";
+import { getSessionCookieHeader, toClientAuthSession } from "@/lib/auth/session";
 import {
   loadPartnerReadiness,
   loadSyncSummaryForRole,
@@ -28,6 +28,7 @@ export default async function AdminPage() {
 
   return (
     <AdminPageClient
+      session={toClientAuthSession(session)}
       syncSummary={syncSummary}
       partnerReadiness={partnerReadiness}
     />

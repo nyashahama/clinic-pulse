@@ -1,8 +1,9 @@
+import { toClientAuthSession } from "@/lib/auth/session";
 import { requireDemoWorkflowAccess } from "../workflow-guard";
 import FieldPageClient from "./page-client";
 
 export default async function FieldPage() {
-  await requireDemoWorkflowAccess("field");
+  const session = await requireDemoWorkflowAccess("field");
 
-  return <FieldPageClient />;
+  return <FieldPageClient session={toClientAuthSession(session)} />;
 }

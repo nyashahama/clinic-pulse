@@ -1,11 +1,20 @@
 import { LoginForm } from "@/components/auth/login-form";
 import type { EmailSignInActionState } from "@/components/auth/email-sign-in";
 import { ClinicPulseAuthApiError, login } from "@/lib/auth/api";
+import { getMembershipHomeHref } from "@/lib/auth/role-home";
 import { applySessionCookieFromHeader } from "@/lib/auth/session";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 const demoAccounts = [
+  {
+    role: "System admin",
+    email: "system-admin@clinicpulse.local",
+  },
+  {
+    role: "Organisation admin",
+    email: "org-admin@clinicpulse.local",
+  },
   {
     role: "District manager",
     email: "district-manager@clinicpulse.local",
@@ -32,9 +41,12 @@ async function loginAction(
     };
   }
 
+  let nextPath = "/demo";
+
   try {
     const result = await login(email, password);
     await applySessionCookieFromHeader(result.setCookie);
+    nextPath = getMembershipHomeHref(result.data.memberships);
   } catch (error) {
     if (
       error instanceof ClinicPulseAuthApiError &&
@@ -49,7 +61,7 @@ async function loginAction(
     throw error;
   }
 
-  redirect("/demo");
+  redirect(nextPath);
 }
 
 export default function LoginPage() {
