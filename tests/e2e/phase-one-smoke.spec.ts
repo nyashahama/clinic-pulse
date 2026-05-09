@@ -97,7 +97,10 @@ test.describe("phase-one demo route checklist", () => {
     await expect(page.getByRole("heading", { name: "Stakeholder activity queue" })).toBeVisible();
 
     await page.goto("/demo");
-    const supportingOperations = page.getByText("Supporting operations");
+    const supportingOperations = page
+      .getByText("Supporting operations", { exact: true })
+      .filter({ visible: true })
+      .first();
     await expect(supportingOperations).toBeVisible();
     await supportingOperations.scrollIntoViewIfNeeded();
     const replayIncident = page.getByRole("button", { name: "Replay incident" });

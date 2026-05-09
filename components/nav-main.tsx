@@ -94,12 +94,28 @@ function NavMainItem({
   searchParams: { toString: () => string }
 }) {
   const [userOpen, setUserOpen] = React.useState(active)
-  const open = resolveNavCollapsibleOpen({ active, open: userOpen })
+  const [closedActiveSignature, setClosedActiveSignature] = React.useState<
+    string | null
+  >(null)
+  const activeSignature = active
+    ? `${pathname}?${searchParams.toString()}`
+    : null
+  const open = resolveNavCollapsibleOpen({
+    active,
+    activeSignature,
+    closedActiveSignature,
+    userOpen,
+  })
 
   return (
     <Collapsible
       open={open}
-      onOpenChange={(nextOpen) => setUserOpen(nextOpen)}
+      onOpenChange={(nextOpen) => {
+        setUserOpen(nextOpen)
+        setClosedActiveSignature(
+          !nextOpen && active ? activeSignature : null,
+        )
+      }}
       render={<SidebarMenuItem />}
     >
       <SidebarMenuButton

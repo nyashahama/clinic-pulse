@@ -1,11 +1,18 @@
 type ResolveNavCollapsibleOpenInput = {
   active: boolean;
-  open: boolean;
+  activeSignature: string | null;
+  closedActiveSignature: string | null;
+  userOpen: boolean;
 };
 
 export function resolveNavCollapsibleOpen({
   active,
-  open,
+  activeSignature,
+  closedActiveSignature,
+  userOpen,
 }: ResolveNavCollapsibleOpenInput) {
-  return active || open;
+  return (
+    userOpen ||
+    (active && activeSignature !== null && activeSignature !== closedActiveSignature)
+  );
 }
