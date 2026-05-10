@@ -105,26 +105,26 @@ export function ClinicMap({
       </div>
 
       <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(16rem,0.7fr)]">
-        <div className="relative min-h-[22rem] overflow-hidden rounded-lg border border-border-subtle bg-[linear-gradient(180deg,#f7faf9_0%,#eef6f4_100%)]">
+        <div className="relative min-h-[22rem] overflow-hidden rounded-lg border border-border-subtle bg-[linear-gradient(180deg,#f7faf9_0%,#eef6f4_100%)] dark:bg-none dark:bg-card">
           <div className="absolute inset-0 opacity-80">
-            <div className="absolute left-[8%] top-[14%] h-px w-[32%] rotate-[16deg] bg-teal-200/80" />
-            <div className="absolute left-[24%] top-[48%] h-px w-[48%] -rotate-[12deg] bg-teal-200/80" />
-            <div className="absolute left-[54%] top-[16%] h-[56%] w-px rotate-[12deg] bg-teal-200/80" />
-            <div className="absolute left-[14%] top-[70%] h-px w-[54%] rotate-[6deg] bg-sky-200/80" />
-            <div className="absolute inset-x-[12%] top-[30%] h-24 rounded-full border border-dashed border-teal-200/80" />
-            <div className="absolute left-[58%] top-[52%] h-20 w-28 rounded-full border border-dashed border-sky-200/70" />
+            <div className="absolute left-[8%] top-[14%] h-px w-[32%] rotate-[16deg] bg-teal-200/80 dark:bg-primary/30" />
+            <div className="absolute left-[24%] top-[48%] h-px w-[48%] -rotate-[12deg] bg-teal-200/80 dark:bg-primary/30" />
+            <div className="absolute left-[54%] top-[16%] h-[56%] w-px rotate-[12deg] bg-teal-200/80 dark:bg-primary/30" />
+            <div className="absolute left-[14%] top-[70%] h-px w-[54%] rotate-[6deg] bg-sky-200/80 dark:bg-sky-500/25" />
+            <div className="absolute inset-x-[12%] top-[30%] h-24 rounded-full border border-dashed border-teal-200/80 dark:border-primary/30" />
+            <div className="absolute left-[58%] top-[52%] h-20 w-28 rounded-full border border-dashed border-sky-200/70 dark:border-sky-500/25" />
           </div>
 
-          <div className="absolute left-[9%] top-[8%] rounded-full bg-white/85 px-3 py-1 text-[11px] font-medium text-content-default shadow-sm">
+          <div className="absolute left-[9%] top-[8%] hidden rounded-full bg-bg-default/85 px-3 py-1 text-[11px] font-medium text-content-default shadow-sm sm:block">
             Ga-Rankuwa corridor
           </div>
-          <div className="absolute left-[58%] top-[10%] rounded-full bg-white/85 px-3 py-1 text-[11px] font-medium text-content-default shadow-sm">
+          <div className="absolute left-[58%] top-[10%] hidden rounded-full bg-bg-default/85 px-3 py-1 text-[11px] font-medium text-content-default shadow-sm sm:block">
             Hammanskraal north
           </div>
-          <div className="absolute left-[15%] top-[74%] rounded-full bg-white/85 px-3 py-1 text-[11px] font-medium text-content-default shadow-sm">
+          <div className="absolute left-[15%] top-[74%] hidden rounded-full bg-bg-default/85 px-3 py-1 text-[11px] font-medium text-content-default shadow-sm sm:block">
             Atteridgeville west
           </div>
-          <div className="absolute left-[55%] top-[68%] rounded-full bg-white/85 px-3 py-1 text-[11px] font-medium text-content-default shadow-sm">
+          <div className="absolute left-[55%] top-[68%] hidden rounded-full bg-bg-default/85 px-3 py-1 text-[11px] font-medium text-content-default shadow-sm sm:block">
             Mamelodi east
           </div>
 
@@ -155,13 +155,13 @@ export function ClinicMap({
                   className={cn(
                     "relative flex size-4 items-center justify-center rounded-full border-2 shadow-sm transition-transform group-hover:scale-110",
                     getStatusPinClass(clinic.status),
-                    isSelected ? "scale-110 ring-4 ring-white" : "",
-                    isReroute ? "ring-4 ring-sky-200" : "",
+                    isSelected ? "scale-110 ring-4 ring-white dark:ring-primary/40" : "",
+                    isReroute ? "ring-4 ring-sky-200 dark:ring-sky-500/40" : "",
                   )}
                 />
                 <span
                   className={cn(
-                    "absolute left-1/2 top-[calc(100%+0.4rem)] hidden min-w-36 -translate-x-1/2 rounded-md border border-border-subtle bg-white px-2.5 py-2 text-[11px] shadow-lg group-hover:block md:block",
+                    "absolute left-1/2 top-[calc(100%+0.4rem)] hidden min-w-36 -translate-x-1/2 rounded-md border border-border-subtle bg-bg-default px-2.5 py-2 text-[11px] shadow-lg group-hover:block md:block",
                     isSelected ? "block" : "hidden md:group-hover:block",
                   )}
                 >
@@ -172,7 +172,7 @@ export function ClinicMap({
             );
           })}
 
-          <div className="absolute bottom-3 left-3 inline-flex items-center gap-2 rounded-md border border-border-subtle bg-white/90 px-3 py-2 text-xs text-content-default shadow-sm">
+          <div className="absolute bottom-3 left-3 inline-flex items-center gap-2 rounded-md border border-border-subtle bg-bg-default/90 px-3 py-2 text-xs text-content-default shadow-sm">
             <MapPinned className="size-3.5 text-primary" />
             District labels and clinic signal are demo-positioned from fixture coordinates.
           </div>
@@ -197,8 +197,8 @@ export function ClinicMap({
               className={cn(
                 "flex items-start justify-between gap-3 rounded-lg border px-3 py-3 text-left transition-colors",
                 clinic.id === selectedClinicId
-                  ? "border-neutral-900 bg-neutral-900 text-white"
-                  : "border-border-subtle bg-white hover:bg-bg-subtle",
+                  ? "border-neutral-900 bg-neutral-900 text-white dark:border-primary/40 dark:bg-primary/10"
+                  : "border-border-subtle bg-bg-default hover:bg-bg-subtle",
               )}
             >
               <div className="min-w-0">
