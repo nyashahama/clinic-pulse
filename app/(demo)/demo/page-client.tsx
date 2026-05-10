@@ -517,7 +517,7 @@ export default function DistrictConsolePage({ session, syncSummary }: DistrictCo
           selectedClinicId={commandCenter.selectedItem?.clinicId ?? null}
           onSelectClinic={selectCommandClinic}
         />
-        <div id="interventions">
+        <div id="interventions" className="min-w-0">
           <InterventionRail
             selectedItem={commandCenter.selectedItem}
             intervention={commandCenter.intervention}
