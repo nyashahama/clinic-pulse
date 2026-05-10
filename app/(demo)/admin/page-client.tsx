@@ -178,6 +178,13 @@ export default function AdminPage({
     [partnerReadiness],
   );
   const isSystemAdmin = session.role === "system_admin";
+  const roleDashboard = isSystemAdmin ? "system_admin" : "org_admin";
+  const summaryAnchor = isSystemAdmin ? "tenant-health" : "reporting-coverage";
+  const reviewLaneAnchor = isSystemAdmin ? "data-ingestion" : "users-roles";
+  const evidenceAnchor = isSystemAdmin ? "security" : "partner-readiness";
+  const exportAnchor = isSystemAdmin ? "audit-evidence" : "exports";
+  const controlsAnchor = isSystemAdmin ? "demo-controls" : "audit-evidence";
+  const partnerReadinessAnchor = isSystemAdmin ? "partner-readiness-panel" : evidenceAnchor;
   const reportCompleteness = Math.max(0, 100 - queuedReports * 8);
   const staleClinicCount = clinics.filter((clinic) => clinic.freshness === "stale").length;
   const operationsPriority =
@@ -296,51 +303,53 @@ export default function AdminPage({
   };
 
   return (
-    <div className="grid gap-4 pb-4">
-      <ReferenceSectionCards
-        cards={[
-          {
-            title: isSystemAdmin ? "Tenants in view" : "Clinics governed",
-            value: isSystemAdmin ? "12" : String(clinics.length),
-            badge: "Live scope",
-            trend: "up",
-            footer: isSystemAdmin
-              ? "Platform console is scoped"
-              : "Organisation workspace is scoped",
-            detail: isSystemAdmin
-              ? "Demo tenant estate represented in this platform console."
-              : "Clinic records included in this admin surface.",
-          },
-          {
-            title: isSystemAdmin ? "Audit events" : "Open alerts",
-            value: isSystemAdmin ? String(state.auditEvents.length) : String(activeAlertCount),
-            badge: activeAlertCount > 0 ? "Review" : "Clear",
-            trend: activeAlertCount > 0 ? "down" : "neutral",
-            footer: operationsPriority,
-            detail: isSystemAdmin
-              ? "Operational actions available for access review."
-              : "Escalations visible to district and organisation users.",
-          },
-          {
-            title: isSystemAdmin ? "Ingestion queue" : "Reporting coverage",
-            value: isSystemAdmin ? String(queuedReports) : `${reportCompleteness}%`,
-            badge: queuedReports > 0 ? "Pending" : "Ready",
-            trend: queuedReports > 0 ? "down" : "neutral",
-            footer: "Field reports are part of readiness",
-            detail: isSystemAdmin
-              ? "Offline updates waiting to merge into platform state."
-              : "Queued local reports are counted before review confidence is shown.",
-          },
-          {
-            title: "Readiness evidence",
-            value: `${partnerReadiness.integrationChecks.length} checks`,
-            badge: partnerReadinessModel.severity === "clear" ? "Ready" : "Attention",
-            trend: partnerReadinessModel.severity === "clear" ? "neutral" : "down",
-            footer: "Partner proof stays in the admin path",
-            detail: "API keys, exports, webhooks, and org evidence are reviewed together.",
-          },
-        ]}
-      />
+    <div className="grid gap-4 pb-4" data-role-dashboard={roleDashboard}>
+      <div id={summaryAnchor}>
+        <ReferenceSectionCards
+          cards={[
+            {
+              title: isSystemAdmin ? "Tenants in view" : "Clinics governed",
+              value: isSystemAdmin ? "12" : String(clinics.length),
+              badge: "Live scope",
+              trend: "up",
+              footer: isSystemAdmin
+                ? "Platform console is scoped"
+                : "Organisation workspace is scoped",
+              detail: isSystemAdmin
+                ? "Demo tenant estate represented in this platform console."
+                : "Clinic records included in this admin surface.",
+            },
+            {
+              title: isSystemAdmin ? "Audit events" : "Open alerts",
+              value: isSystemAdmin ? String(state.auditEvents.length) : String(activeAlertCount),
+              badge: activeAlertCount > 0 ? "Review" : "Clear",
+              trend: activeAlertCount > 0 ? "down" : "neutral",
+              footer: operationsPriority,
+              detail: isSystemAdmin
+                ? "Operational actions available for access review."
+                : "Escalations visible to district and organisation users.",
+            },
+            {
+              title: isSystemAdmin ? "Ingestion queue" : "Reporting coverage",
+              value: isSystemAdmin ? String(queuedReports) : `${reportCompleteness}%`,
+              badge: queuedReports > 0 ? "Pending" : "Ready",
+              trend: queuedReports > 0 ? "down" : "neutral",
+              footer: "Field reports are part of readiness",
+              detail: isSystemAdmin
+                ? "Offline updates waiting to merge into platform state."
+                : "Queued local reports are counted before review confidence is shown.",
+            },
+            {
+              title: "Readiness evidence",
+              value: `${partnerReadiness.integrationChecks.length} checks`,
+              badge: partnerReadinessModel.severity === "clear" ? "Ready" : "Attention",
+              trend: partnerReadinessModel.severity === "clear" ? "neutral" : "down",
+              footer: "Partner proof stays in the admin path",
+              detail: "API keys, exports, webhooks, and org evidence are reviewed together.",
+            },
+          ]}
+        />
+      </div>
 
       <div className="grid gap-4">
         <ReferencePanel
@@ -352,7 +361,7 @@ export default function AdminPage({
               </a>
               <a
                 className={buttonVariants({ size: "sm", variant: "outline" })}
-                href="#partner-evidence"
+                href={`#${partnerReadinessAnchor}`}
               >
                 Partner evidence
               </a>
@@ -379,78 +388,84 @@ export default function AdminPage({
         </ReferencePanel>
 
         <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-          <ReferencePanel
-            title={isSystemAdmin ? "Platform review lanes" : "Organisation review lanes"}
-            description={
-              isSystemAdmin
-                ? "The platform console starts with reliability, access, and integration evidence."
-                : "The operations deck starts with district readiness, access hygiene, and escalation quality."
-            }
-          >
-            <div className="grid gap-3">
-              {reviewFocusItems.map((item) => (
-                <div
-                  key={item.label}
-                  className="grid gap-3 rounded-xl border border-border bg-muted px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
-                >
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                      {item.label}
+          <div id={reviewLaneAnchor}>
+            <ReferencePanel
+              title={isSystemAdmin ? "Platform review lanes" : "Organisation review lanes"}
+              description={
+                isSystemAdmin
+                  ? "The platform console starts with reliability, access, and integration evidence."
+                  : "The operations deck starts with district readiness, access hygiene, and escalation quality."
+              }
+            >
+              <div className="grid gap-3">
+                {reviewFocusItems.map((item) => (
+                  <div
+                    key={item.label}
+                    className="grid gap-3 rounded-xl border border-border bg-muted px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                        {item.label}
+                      </p>
+                      <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                        {item.title}
+                      </p>
+                    </div>
+                    <p className="text-2xl font-semibold tracking-[-0.03em] text-card-foreground">
+                      {item.value}
                     </p>
-                    <p className="mt-1 text-sm leading-6 text-muted-foreground">{item.title}</p>
                   </div>
-                  <p className="text-2xl font-semibold tracking-[-0.03em] text-card-foreground">
-                    {item.value}
+                ))}
+              </div>
+            </ReferencePanel>
+          </div>
+
+          <div id={isSystemAdmin ? evidenceAnchor : "governance-actions"}>
+            <ReferencePanel
+              title={isSystemAdmin ? "Control-plane actions" : "Governance actions"}
+              description={
+                isSystemAdmin
+                  ? "Keep tenant operations auditable before enabling more platform modules."
+                  : "Keep the organisation ready by reviewing stale clinics, open alerts, and partner evidence."
+              }
+            >
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-xl border border-border bg-card p-4">
+                  <UsersRound className="size-5 text-muted-foreground" />
+                  <p className="mt-3 text-sm font-semibold text-card-foreground">
+                    {isSystemAdmin ? "Tenant access" : "Role coverage"}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    {leadStatusCount.new} records need context before the next access review.
                   </p>
                 </div>
-              ))}
-            </div>
-          </ReferencePanel>
-
-          <ReferencePanel
-            title={isSystemAdmin ? "Control-plane actions" : "Governance actions"}
-            description={
-              isSystemAdmin
-                ? "Keep tenant operations auditable before enabling more platform modules."
-                : "Keep the organisation ready by reviewing stale clinics, open alerts, and partner evidence."
-            }
-          >
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-xl border border-border bg-card p-4">
-                <UsersRound className="size-5 text-muted-foreground" />
-                <p className="mt-3 text-sm font-semibold text-card-foreground">
-                  {isSystemAdmin ? "Tenant access" : "Role coverage"}
-                </p>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  {leadStatusCount.new} records need context before the next access review.
-                </p>
+                <div className="rounded-xl border border-border bg-card p-4">
+                  <FileCheck2 className="size-5 text-muted-foreground" />
+                  <p className="mt-3 text-sm font-semibold text-card-foreground">
+                    Data quality
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    {staleClinicCount} stale clinics and {queuedReports} queued reports affect confidence.
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border bg-card p-4">
+                  <ShieldCheck className="size-5 text-muted-foreground" />
+                  <p className="mt-3 text-sm font-semibold text-card-foreground">
+                    Partner proof
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    Keys, exports, and webhooks are reviewed in the readiness section.
+                  </p>
+                </div>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
-                <FileCheck2 className="size-5 text-muted-foreground" />
-                <p className="mt-3 text-sm font-semibold text-card-foreground">
-                  Data quality
-                </p>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  {staleClinicCount} stale clinics and {queuedReports} queued reports affect confidence.
-                </p>
-              </div>
-              <div className="rounded-xl border border-border bg-card p-4">
-                <ShieldCheck className="size-5 text-muted-foreground" />
-                <p className="mt-3 text-sm font-semibold text-card-foreground">
-                  Partner proof
-                </p>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  Keys, exports, and webhooks are reviewed in the readiness section.
-                </p>
-              </div>
-            </div>
-          </ReferencePanel>
+            </ReferencePanel>
+          </div>
         </div>
 
         <div id="readiness">
           {syncSummary ? <PilotReadinessPanel summary={syncSummary} /> : null}
         </div>
-        <div id="partner-evidence">
+        <div id={partnerReadinessAnchor}>
           <PartnerReadinessPanel
             readiness={partnerReadiness}
             onCreateDemoKey={handleCreateDemoKey}
@@ -559,7 +574,7 @@ export default function AdminPage({
           </div>
         </ReferencePanel>
 
-        <div data-admin-section={adminWorkspaceSections[1]}>
+        <div id={exportAnchor} data-admin-section={adminWorkspaceSections[1]}>
           <ExportPreview
             payload={exportPayload}
             onOpen={() => {
@@ -577,6 +592,7 @@ export default function AdminPage({
         </div>
 
         <section
+          id={controlsAnchor}
           className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm"
           data-admin-section={adminWorkspaceSections[4]}
         >
