@@ -198,6 +198,13 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
   const { state } = useDemoStore();
 
   const clinics = useMemo(() => getClinicRows(state), [state]);
+  const recentReports = useMemo(
+    () =>
+      [...state.reports]
+        .sort((left, right) => Date.parse(right.receivedAt) - Date.parse(left.receivedAt))
+        .slice(0, 4),
+    [state.reports],
+  );
   const [selectedClinicId, setSelectedClinicId] = useState<string | null>(
     clinics[0]?.id ?? null,
   );
@@ -467,7 +474,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
   };
 
   return (
-    <div className="grid gap-4 pb-4">
+    <div className="grid gap-4 pb-4" data-role-dashboard={session.role}>
       <ReferenceSectionCards
         cards={[
           {
@@ -531,7 +538,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
         </div>
       </ReferencePanel>
 
-      <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
+      <div id="submit-report" className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
         <FieldClinicList
           clinics={clinics}
           selectedClinicId={selectedId}
@@ -550,7 +557,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
         ) : null}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div id="drafts-sync" className="grid gap-4 lg:grid-cols-2">
         <OfflineQueue
           queue={offlineReports}
           clinics={clinics}
@@ -576,6 +583,52 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
           }
         />
       </div>
+
+      <section
+        id="recent-reports"
+        className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm"
+      >
+        <SectionHeader
+          eyebrow="Latest submissions"
+          title="Recent reports"
+          description="The newest reports already present in the district state."
+        />
+        <div className="mt-3 grid gap-2">
+          {recentReports.length > 0 ? (
+            recentReports.map((report) => {
+              const clinicName =
+                clinics.find((clinic) => clinic.id === report.clinicId)?.name ??
+                "Unknown clinic";
+
+              return (
+                <article
+                  key={report.id}
+                  className="grid gap-2 rounded-lg border border-border-subtle bg-bg-subtle p-3 text-sm sm:grid-cols-[1fr_auto] sm:items-center"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-content-primary">{clinicName}</p>
+                    <p className="text-content-subtle">
+                      {report.reason} - {report.reporterName}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 sm:justify-end">
+                    <span className="rounded-full border border-border-subtle bg-bg-default px-2 py-1 text-xs font-medium text-content-primary">
+                      {report.status.replaceAll("_", " ")}
+                    </span>
+                    <span className="rounded-full border border-border-subtle bg-bg-default px-2 py-1 text-xs text-content-subtle">
+                      {report.offlineCreated ? "Offline" : "Online"}
+                    </span>
+                  </div>
+                </article>
+              );
+            })
+          ) : (
+            <p className="rounded-lg border border-border-subtle bg-bg-subtle p-3 text-sm text-content-subtle">
+              No synced reports yet.
+            </p>
+          )}
+        </div>
+      </section>
 
       <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
         <SectionHeader
