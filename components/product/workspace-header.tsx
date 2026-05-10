@@ -70,7 +70,10 @@ export function WorkspaceHeader({
 
   return (
     <>
-      <header className="sticky top-0 z-50 flex w-full items-center border-b border-border bg-background/95 text-foreground backdrop-blur">
+      <header
+        data-slot="workspace-header"
+        className="sticky top-0 z-50 flex w-full items-center border-b border-border bg-background/95 text-foreground backdrop-blur"
+      >
         <div className="flex h-(--header-height) w-full items-center gap-2 px-3 lg:px-4">
           <Button
             className="h-8 w-8"
@@ -101,7 +104,7 @@ export function WorkspaceHeader({
 
           <SearchForm
             placeholder={workspace.searchPlaceholder}
-            className="min-w-0 flex-1 sm:ml-auto sm:max-w-sm"
+            className="hidden min-w-0 flex-1 sm:ml-auto sm:block sm:max-w-sm"
           />
 
           <Link
@@ -120,9 +123,20 @@ export function WorkspaceHeader({
             size="sm"
             onClick={() => setCommandOpen(true)}
             className="hidden md:inline-flex"
+            aria-label="Open command palette"
           >
             <SearchIcon />
             Command
+          </Button>
+
+          <Button
+            variant="outline"
+            size="icon-sm"
+            onClick={() => setCommandOpen(true)}
+            className="sm:hidden"
+            aria-label="Open command palette"
+          >
+            <SearchIcon />
           </Button>
 
           <ThemeSwitcher />

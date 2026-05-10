@@ -23,6 +23,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { isDashboardNavUrlActive } from "@/lib/product/nav-active-state"
 import { resolveNavCollapsibleOpen } from "@/lib/product/nav-collapsible-state"
@@ -78,6 +79,7 @@ function NavMainItem({
   pathname: string
   searchParams: { toString: () => string }
 }) {
+  const { setOpenMobile } = useSidebar()
   const [userOpen, setUserOpen] = React.useState(active)
   const [closedActiveSignature, setClosedActiveSignature] = React.useState<
     string | null
@@ -106,7 +108,7 @@ function NavMainItem({
       <SidebarMenuButton
         isActive={active}
         tooltip={item.title}
-        render={<Link href={item.url} />}
+        render={<Link href={item.url} onClick={() => setOpenMobile(false)} />}
       >
         {item.icon}
         <span>{item.title}</span>
@@ -135,7 +137,12 @@ function NavMainItem({
                       pathname,
                       searchParams,
                     )}
-                    render={<Link href={subItem.url} />}
+                    render={
+                      <Link
+                        href={subItem.url}
+                        onClick={() => setOpenMobile(false)}
+                      />
+                    }
                   >
                     <span>{subItem.title}</span>
                   </SidebarMenuSubButton>
