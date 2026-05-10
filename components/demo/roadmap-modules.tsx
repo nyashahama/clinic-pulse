@@ -63,11 +63,11 @@ const statusTone: Record<RoadmapEntry["status"], { label: string; icon: typeof C
 function toneClass(status: RoadmapEntry["status"]) {
   switch (status) {
     case "done":
-      return "border-emerald-200 bg-emerald-50 text-emerald-900";
+      return "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-100";
     case "running":
-      return "border-amber-200 bg-amber-50 text-amber-900";
+      return "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100";
     case "planned":
-      return "border-slate-200 bg-slate-100 text-slate-700";
+      return "border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-200";
     default:
       return "";
   }
@@ -76,11 +76,11 @@ function toneClass(status: RoadmapEntry["status"]) {
 function iconClass(status: RoadmapEntry["status"]) {
   switch (status) {
     case "done":
-      return "text-emerald-700";
+      return "text-emerald-700 dark:text-emerald-300";
     case "running":
-      return "text-amber-700";
+      return "text-amber-700 dark:text-amber-300";
     case "planned":
-      return "text-slate-700";
+      return "text-slate-700 dark:text-slate-300";
     default:
       return "";
   }

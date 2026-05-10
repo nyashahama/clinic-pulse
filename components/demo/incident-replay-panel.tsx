@@ -136,10 +136,10 @@ export function IncidentReplayPanel({
               )}
             >
               <div className="flex items-center gap-3">
-                <span className="flex size-9 items-center justify-center rounded-full border border-current/20 bg-white/70">
+                <span className="flex size-9 items-center justify-center rounded-full border border-current/20 bg-white/70 dark:bg-black/25">
                   <StepStateIcon state={stepState} />
                 </span>
-                <span className="rounded-md border border-current/15 bg-white/70 px-2 py-1 font-mono text-[11px] font-semibold">
+                <span className="rounded-md border border-current/15 bg-white/70 px-2 py-1 font-mono text-[11px] font-semibold dark:bg-black/25">
                   {String(index + 1).padStart(2, "0")}
                 </span>
               </div>
@@ -147,7 +147,7 @@ export function IncidentReplayPanel({
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-sm font-semibold text-content-emphasis">{step.title}</p>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-current/15 bg-white/70 px-2 py-1 text-[11px] font-medium">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-current/15 bg-white/70 px-2 py-1 text-[11px] font-medium dark:bg-black/25">
                     <StepStateLabel state={stepState} />
                   </span>
                 </div>

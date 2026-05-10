@@ -16,15 +16,15 @@ export function RoleSwitcher() {
   const { state, setRole } = useDemoStore();
 
   return (
-    <label className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2">
-      <span className="hidden text-xs font-medium text-neutral-500 sm:inline">
+    <label className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 dark:border-border dark:bg-card">
+      <span className="hidden text-xs font-medium text-neutral-500 dark:text-muted-foreground sm:inline">
         Role
       </span>
       <select
         aria-label="Switch demo role"
         value={state.role}
         onChange={(event) => setRole(event.target.value as DemoRole)}
-        className="min-w-0 bg-transparent text-sm font-medium text-neutral-900 outline-none"
+        className="min-w-0 bg-transparent text-sm font-medium text-neutral-900 outline-none dark:text-foreground"
       >
         {ROLE_OPTIONS.map((role) => (
           <option key={role.value} value={role.value}>
