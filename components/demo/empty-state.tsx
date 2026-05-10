@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-
 import {
   BellOff,
   ClipboardList,
@@ -9,7 +8,7 @@ import {
   SignalZero,
 } from "lucide-react";
 
-import { cn } from "@/lib/utils";
+import { SurfaceState } from "@/components/product/surface-state";
 
 export type DemoSurface =
   | "clinic-table"
@@ -65,24 +64,16 @@ export type EmptyStateProps = {
 
 export function EmptyState({ surface, action, className }: EmptyStateProps) {
   const copy = emptyStateCopy[surface];
-  const Icon = copy.icon;
 
   return (
-    <div
-      className={cn(
-        "flex min-h-56 flex-col items-center justify-center rounded-lg border border-dashed border-border-default bg-bg-muted px-6 py-10 text-center",
-        className,
-      )}
-    >
-      <div className="flex size-12 items-center justify-center rounded-full border border-border-subtle bg-bg-default text-content-subtle shadow-sm">
-        <Icon aria-hidden="true" className="size-5" />
-      </div>
-      <div className="mt-4 max-w-sm space-y-1">
-        <h3 className="text-sm font-semibold text-content-emphasis">{copy.title}</h3>
-        <p className="text-sm leading-6 text-content-default">{copy.description}</p>
-      </div>
-      {action ? <div className="mt-5 flex justify-center">{action}</div> : null}
-    </div>
+    <SurfaceState
+      variant="empty"
+      title={copy.title}
+      description={copy.description}
+      icon={copy.icon}
+      action={action}
+      className={className}
+    />
   );
 }
 
