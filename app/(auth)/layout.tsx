@@ -30,7 +30,7 @@ export default function AuthLayout({
   return (
     <div className="relative grid min-h-[100dvh] min-h-screen grid-cols-1 min-[900px]:grid-cols-[minmax(0,1fr)_440px] lg:grid-cols-[minmax(0,1fr)_595px]">
       <div className="relative">
-        <div className="absolute inset-0 isolate overflow-hidden bg-[#eef3f2]">
+        <div className="absolute inset-0 isolate overflow-hidden bg-[#eef3f2] dark:bg-background">
           <div
             className="absolute inset-y-0 left-1/2 w-[1200px] -translate-x-1/2"
             style={{
@@ -40,7 +40,7 @@ export default function AuthLayout({
             }}
           >
             <svg
-              className="pointer-events-none absolute inset-0 text-[#d4dee1]"
+              className="pointer-events-none absolute inset-0 text-[#d4dee1] dark:text-border"
               width="100%"
               height="100%"
             >
@@ -77,42 +77,42 @@ export default function AuthLayout({
         <Link href="/" className="absolute left-1/2 top-5 z-10 -translate-x-1/2">
           <ClinicPulseLogo
             iconClassName="size-8 rounded-xl shadow-md shadow-emerald-950/15"
-            wordmarkClassName="font-display text-lg font-semibold tracking-[-0.02em] text-neutral-950"
+            wordmarkClassName="font-display text-lg font-semibold tracking-[-0.02em] text-neutral-950 dark:text-foreground"
           />
         </Link>
 
         {children}
       </div>
 
-      <aside className="relative hidden h-full flex-col overflow-hidden border-l border-black/5 bg-[#dfe9eb] min-[900px]:flex">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(13,122,107,0.26),transparent_28%),radial-gradient(circle_at_80%_0%,rgba(14,165,233,0.22),transparent_30%),linear-gradient(160deg,#eef6f4_0%,#d9e5e8_48%,#cddadd_100%)]" />
+      <aside className="relative hidden h-full flex-col overflow-hidden border-l border-black/5 bg-[#dfe9eb] dark:border-border dark:bg-sidebar min-[900px]:flex">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(13,122,107,0.26),transparent_28%),radial-gradient(circle_at_80%_0%,rgba(14,165,233,0.22),transparent_30%),linear-gradient(160deg,#eef6f4_0%,#d9e5e8_48%,#cddadd_100%)] dark:bg-[radial-gradient(circle_at_20%_18%,rgba(13,122,107,0.22),transparent_28%),radial-gradient(circle_at_80%_0%,rgba(14,165,233,0.12),transparent_30%),linear-gradient(160deg,#141414_0%,#202020_52%,#151515_100%)]" />
         <div className="absolute -right-32 top-24 size-72 rounded-full bg-white/35 blur-3xl" />
         <div className="absolute -bottom-24 left-16 size-80 rounded-full bg-[#0D7A6B]/15 blur-3xl" />
 
         <div className="relative flex min-h-full flex-col justify-between px-8 py-8 lg:px-12 lg:py-10">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/55 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#0D7A6B] shadow-sm backdrop-blur">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/55 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#0D7A6B] shadow-sm backdrop-blur dark:border-border dark:bg-card/70 dark:text-emerald-300">
               <span className="size-2 rounded-full bg-emerald-500 shadow-[0_0_0_5px_rgba(34,197,94,0.14)]" />
               Live district signal
             </div>
 
-            <h2 className="mt-8 max-w-md font-display text-4xl font-semibold leading-[1.04] tracking-[-0.045em] text-neutral-950 lg:text-5xl">
+            <h2 className="mt-8 max-w-md font-display text-4xl font-semibold leading-[1.04] tracking-[-0.045em] text-neutral-950 dark:text-foreground lg:text-5xl">
               Know which clinics can serve patients right now.
             </h2>
-            <p className="mt-4 max-w-md text-base leading-7 text-neutral-700">
+            <p className="mt-4 max-w-md text-base leading-7 text-neutral-700 dark:text-muted-foreground">
               Secure access for district managers, field reporters, and partner
               teams coordinating live availability across public health sites.
             </p>
           </div>
 
-          <div className="my-10 rounded-[2rem] border border-white/70 bg-white/70 p-4 shadow-2xl shadow-slate-900/10 backdrop-blur-xl">
-            <div className="rounded-[1.5rem] border border-neutral-200/80 bg-[#f8fbfa] p-4">
+          <div className="my-10 rounded-[2rem] border border-white/70 bg-white/70 p-4 shadow-2xl shadow-slate-900/10 backdrop-blur-xl dark:border-border dark:bg-card/70 dark:shadow-black/30">
+            <div className="rounded-[1.5rem] border border-neutral-200/80 bg-[#f8fbfa] p-4 dark:border-border dark:bg-muted">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500 dark:text-muted-foreground">
                     Operations console
                   </p>
-                  <p className="mt-1 font-display text-xl font-semibold tracking-tight text-neutral-950">
+                  <p className="mt-1 font-display text-xl font-semibold tracking-tight text-neutral-950 dark:text-foreground">
                     Gauteng North
                   </p>
                 </div>
@@ -125,14 +125,14 @@ export default function AuthLayout({
                 {signalItems.map((item) => (
                   <div
                     key={item.clinic}
-                    className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm"
+                    className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-border dark:bg-card"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <p className="font-medium text-neutral-950">{item.clinic}</p>
-                        <p className="mt-1 text-sm text-neutral-500">{item.detail}</p>
+                        <p className="font-medium text-neutral-950 dark:text-card-foreground">{item.clinic}</p>
+                        <p className="mt-1 text-sm text-neutral-500 dark:text-muted-foreground">{item.detail}</p>
                       </div>
-                      <div className="flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-semibold text-neutral-700">
+                      <div className="flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-semibold text-neutral-700 dark:border-border dark:bg-muted dark:text-muted-foreground">
                         <span className={`size-2 rounded-full ${item.tone}`} />
                         {item.status}
                       </div>
@@ -151,12 +151,12 @@ export default function AuthLayout({
             ].map(([value, label]) => (
               <div
                 key={label}
-                className="rounded-2xl border border-white/60 bg-white/45 p-4 backdrop-blur"
+                className="rounded-2xl border border-white/60 bg-white/45 p-4 backdrop-blur dark:border-border dark:bg-card/65"
               >
-                <p className="font-display text-2xl font-semibold tracking-tight text-neutral-950">
+                <p className="font-display text-2xl font-semibold tracking-tight text-neutral-950 dark:text-foreground">
                   {value}
                 </p>
-                <p className="mt-1 text-xs font-medium uppercase tracking-[0.12em] text-neutral-500">
+                <p className="mt-1 text-xs font-medium uppercase tracking-[0.12em] text-neutral-500 dark:text-muted-foreground">
                   {label}
                 </p>
               </div>
