@@ -156,20 +156,20 @@ export function CommandPalette({
       role="dialog"
       aria-modal="true"
       aria-label="ClinicPulse command palette"
-      className="fixed inset-0 z-50 flex items-start justify-center bg-neutral-950/45 p-4 pt-[10vh] backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-neutral-950/60 p-4 pt-[10vh] backdrop-blur-sm"
       onClick={closePalette}
     >
       <h2 id="command-palette-title" className="sr-only">
         ClinicPulse command palette
       </h2>
       <div
-        className="w-full max-w-2xl overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-2xl"
+        className="w-full max-w-2xl overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl"
         role="document"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-center gap-3 border-b border-neutral-200 px-4 py-3">
+        <div className="flex items-center gap-3 border-b border-border px-4 py-3">
           <span className="sr-only">Search</span>
-          <Search className="size-4 text-neutral-500" />
+          <Search className="size-4 text-muted-foreground" />
           <input
             role="searchbox"
             aria-labelledby="command-palette-title"
@@ -178,7 +178,7 @@ export function CommandPalette({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search clinics or run a command"
-            className="h-8 flex-1 bg-transparent text-sm text-neutral-900 outline-none placeholder:text-neutral-400"
+            className="h-8 flex-1 bg-transparent text-sm text-popover-foreground outline-none placeholder:text-muted-foreground"
           />
           <Button
             variant="ghost"
@@ -190,9 +190,9 @@ export function CommandPalette({
           </Button>
         </div>
 
-        <div className="grid gap-0 border-b border-neutral-200 md:grid-cols-[1.1fr,0.9fr]">
-          <section className="border-b border-neutral-200 p-3 md:border-b-0 md:border-r">
-            <p id="command-palette-help" className="mb-2 px-2 text-xs font-medium tracking-[0.02em] text-neutral-500 uppercase">
+        <div className="grid gap-0 border-b border-border md:grid-cols-[1.1fr,0.9fr]">
+          <section className="border-b border-border p-3 md:border-b-0 md:border-r">
+            <p id="command-palette-help" className="mb-2 px-2 text-xs font-medium tracking-[0.02em] text-muted-foreground uppercase">
               Search clinic
             </p>
             <div role="list" className="space-y-1">
@@ -205,24 +205,24 @@ export function CommandPalette({
                       router.push(`/finder?query=${encodeURIComponent(clinic.name)}`);
                       closePalette();
                     }}
-                    className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left hover:bg-neutral-100"
+                    className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left hover:bg-muted"
                   >
                   <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium text-neutral-900">
+                    <span className="block truncate text-sm font-medium text-popover-foreground">
                       {clinic.name}
                     </span>
-                    <span className="block truncate text-xs text-neutral-500">
+                    <span className="block truncate text-xs text-muted-foreground">
                       {clinic.facilityCode} · {clinic.status.replaceAll("_", " ")}
                     </span>
                   </span>
-                  <Search className="size-4 shrink-0 text-neutral-400" />
+                  <Search className="size-4 shrink-0 text-muted-foreground" />
                 </button>
               ))}
             </div>
           </section>
 
           <section className="p-3">
-            <p className="mb-2 px-2 text-xs font-medium tracking-[0.02em] text-neutral-500 uppercase">
+            <p className="mb-2 px-2 text-xs font-medium tracking-[0.02em] text-muted-foreground uppercase">
               Actions
             </p>
             <div role="list" className="space-y-1">
@@ -239,16 +239,16 @@ export function CommandPalette({
                       command.run();
                       closePalette();
                     }}
-                    className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-neutral-100"
+                    className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-muted"
                   >
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
                       <Icon className="size-4" />
                     </span>
                     <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium text-neutral-900">
+                      <span className="block truncate text-sm font-medium text-popover-foreground">
                         {command.label}
                       </span>
-                      <span className="block truncate text-xs text-neutral-500">
+                      <span className="block truncate text-xs text-muted-foreground">
                         {command.hint}
                       </span>
                     </span>
@@ -259,9 +259,9 @@ export function CommandPalette({
           </section>
         </div>
 
-        <div className="flex items-center justify-between gap-3 px-4 py-3 text-xs text-neutral-500">
+        <div className="flex items-center justify-between gap-3 px-4 py-3 text-xs text-muted-foreground">
           <span>Quick actions for the founder-led demo flow.</span>
-          <span className="font-mono text-[11px] text-neutral-700">Esc</span>
+          <span className="font-mono text-[11px] text-muted-foreground">Esc</span>
         </div>
       </div>
     </div>
