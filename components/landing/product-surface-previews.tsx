@@ -48,7 +48,7 @@ export function ProductSurfacePreview({
 function PreviewRowContent({ row }: { row: PreviewRow }) {
   return (
     <div className="flex min-w-0 flex-col items-start gap-1 lg:flex-row lg:items-center lg:justify-between lg:gap-3">
-      <span className="min-w-0 break-words text-neutral-500">{row.label}</span>
+      <span className="min-w-0 break-words text-neutral-500 dark:text-muted-foreground">{row.label}</span>
       <StatusPill tone={toneMap[row.tone]}>{row.value}</StatusPill>
     </div>
   );
@@ -58,11 +58,11 @@ function FieldReportPreview() {
   return (
     <div
       data-motion-layer="true"
-      className="rounded-xl border border-neutral-200 bg-neutral-50 p-3"
+      className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 dark:border-border dark:bg-muted"
     >
-      <div className="mx-auto max-w-[15rem] rounded-2xl border border-neutral-300 bg-white p-2 shadow-sm">
-        <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
-          <div className="flex items-center gap-2 text-xs font-semibold text-neutral-950">
+      <div className="mx-auto max-w-[15rem] rounded-2xl border border-neutral-300 bg-white p-2 shadow-sm dark:border-border dark:bg-card">
+        <div className="flex items-center justify-between border-b border-neutral-100 pb-2 dark:border-border">
+          <div className="flex items-center gap-2 text-xs font-semibold text-neutral-950 dark:text-card-foreground">
             <Smartphone className="size-3.5 text-primary" />
             Field report
           </div>
@@ -89,11 +89,11 @@ function DistrictConsolePreview() {
   return (
     <div
       data-motion-layer="true"
-      className="rounded-xl border border-neutral-200 bg-neutral-50 p-3"
+      className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 dark:border-border dark:bg-muted"
     >
-      <div className="rounded-lg border border-neutral-200 bg-white p-3">
-        <div className="flex items-center justify-between gap-3 border-b border-neutral-100 pb-2">
-          <div className="flex items-center gap-2 text-xs font-semibold text-neutral-950">
+      <div className="rounded-lg border border-neutral-200 bg-white p-3 dark:border-border dark:bg-card">
+        <div className="flex items-center justify-between gap-3 border-b border-neutral-100 pb-2 dark:border-border">
+          <div className="flex items-center gap-2 text-xs font-semibold text-neutral-950 dark:text-card-foreground">
             <Radio className="size-3.5 text-primary" />
             District console
           </div>
@@ -132,10 +132,10 @@ function PatientReroutePreview() {
   return (
     <div
       data-motion-layer="true"
-      className="rounded-xl border border-neutral-200 bg-neutral-50 p-3"
+      className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 dark:border-border dark:bg-muted"
     >
-      <div className="rounded-lg border border-neutral-200 bg-white p-3">
-        <div className="flex items-center gap-2 rounded-lg border border-neutral-200 px-2.5 py-2 text-xs text-neutral-500">
+      <div className="rounded-lg border border-neutral-200 bg-white p-3 dark:border-border dark:bg-card">
+        <div className="flex items-center gap-2 rounded-lg border border-neutral-200 px-2.5 py-2 text-xs text-neutral-500 dark:border-border dark:text-muted-foreground">
           <Search className="size-3.5" />
           Mamelodi ARV pickup
         </div>
@@ -179,11 +179,11 @@ function AuditLedgerPreview() {
   return (
     <div
       data-motion-layer="true"
-      className="rounded-xl border border-neutral-200 bg-neutral-50 p-3"
+      className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 dark:border-border dark:bg-muted"
     >
-      <div className="rounded-lg border border-neutral-200 bg-white p-3">
-        <div className="flex min-w-0 items-center justify-between gap-3 border-b border-neutral-100 pb-2">
-          <div className="flex min-w-0 items-center gap-2 text-xs font-semibold text-neutral-950">
+      <div className="rounded-lg border border-neutral-200 bg-white p-3 dark:border-border dark:bg-card">
+        <div className="flex min-w-0 items-center justify-between gap-3 border-b border-neutral-100 pb-2 dark:border-border">
+          <div className="flex min-w-0 items-center gap-2 text-xs font-semibold text-neutral-950 dark:text-card-foreground">
             <Database className="size-3.5 shrink-0 text-primary" />
             <span className="min-w-0 break-words">Audit ledger</span>
           </div>
