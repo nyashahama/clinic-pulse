@@ -16,17 +16,17 @@ export function BrowserFrame({
   return (
     <div
       className={cn(
-        "min-w-0 max-w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl",
+        "min-w-0 max-w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-border dark:bg-card",
         className,
       )}
     >
-      <div className="flex h-12 min-w-0 items-center gap-3 border-b border-neutral-200 bg-neutral-50 px-4">
+      <div className="flex h-12 min-w-0 items-center gap-3 border-b border-neutral-200 bg-neutral-50 px-4 dark:border-border dark:bg-muted">
         <div className="flex shrink-0 items-center gap-1.5">
           <span className="size-3 rounded-full bg-red-400" />
           <span className="size-3 rounded-full bg-amber-400" />
           <span className="size-3 rounded-full bg-emerald-400" />
         </div>
-        <div className="min-w-0 flex-1 truncate rounded-md border border-neutral-200 bg-white px-3 py-1 font-mono text-xs text-neutral-500">
+        <div className="min-w-0 flex-1 truncate rounded-md border border-neutral-200 bg-white px-3 py-1 font-mono text-xs text-neutral-500 dark:border-border dark:bg-card dark:text-muted-foreground">
           {title}
         </div>
       </div>
@@ -36,17 +36,17 @@ export function BrowserFrame({
 }
 
 const toneClasses = {
-  critical: "border-red-200 bg-red-50 text-red-800",
-  warning: "border-amber-200 bg-amber-50 text-amber-800",
-  healthy: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  neutral: "border-neutral-200 bg-neutral-50 text-neutral-700",
+  critical: "border-red-200 bg-red-50 text-red-800 dark:border-red-900/60 dark:bg-red-950/35 dark:text-red-200",
+  warning: "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-200",
+  healthy: "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/35 dark:text-emerald-200",
+  neutral: "border-neutral-200 bg-neutral-50 text-neutral-700 dark:border-border dark:bg-muted dark:text-muted-foreground",
 } as const;
 
 const activeRowToneClasses = {
-  critical: "border-red-200 bg-red-50/70",
-  warning: "border-amber-200 bg-amber-50/70",
-  healthy: "border-emerald-200 bg-emerald-50/70",
-  neutral: "border-neutral-300 bg-neutral-50",
+  critical: "border-red-200 bg-red-50/70 dark:border-red-900/60 dark:bg-red-950/30",
+  warning: "border-amber-200 bg-amber-50/70 dark:border-amber-900/60 dark:bg-amber-950/30",
+  healthy: "border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/60 dark:bg-emerald-950/30",
+  neutral: "border-neutral-300 bg-neutral-50 dark:border-border dark:bg-muted",
 } satisfies Record<keyof typeof toneClasses, string>;
 
 export function StatusPill({
@@ -78,12 +78,12 @@ export function MetricTile({
   value: string;
 }) {
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-2 sm:p-3">
-      <p className="text-[9px] font-semibold uppercase leading-4 tracking-[0.12em] text-neutral-400 sm:text-[11px]">
+    <div className="rounded-lg border border-neutral-200 bg-white p-2 dark:border-border dark:bg-card sm:p-3">
+      <p className="text-[9px] font-semibold uppercase leading-4 tracking-[0.12em] text-neutral-400 dark:text-muted-foreground sm:text-[11px]">
         {label}
       </p>
-      <p className="mt-1 text-lg font-semibold text-neutral-950 sm:text-xl">{value}</p>
-      <p className="mt-1 hidden text-xs text-neutral-500 sm:block">{detail}</p>
+      <p className="mt-1 text-lg font-semibold text-neutral-950 dark:text-card-foreground sm:text-xl">{value}</p>
+      <p className="mt-1 hidden text-xs text-neutral-500 dark:text-muted-foreground sm:block">{detail}</p>
     </div>
   );
 }
@@ -103,7 +103,7 @@ export function ProductRow({
     <div
       className={cn(
         "rounded-lg border px-3 py-2 text-xs transition",
-        active ? activeRowToneClasses[activeTone] : "border-neutral-200 bg-white",
+        active ? activeRowToneClasses[activeTone] : "border-neutral-200 bg-white dark:border-border dark:bg-card",
         className,
       )}
     >
