@@ -12,7 +12,7 @@ export function SupportingOperations({ children }: SupportingOperationsProps) {
       eyebrow="Supporting operations"
       title="Map, reports, replay, controls, and raw clinic detail"
       description="Secondary tools stay available without competing with the command queue."
-      className="bg-slate-50/80"
+      className="bg-muted/80"
     >
       <div className="grid gap-4">{children}</div>
     </CommandCard>
