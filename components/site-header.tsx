@@ -9,6 +9,7 @@ import {
 } from "@/components/demo/dashboard-nav-config"
 import { LiveIndicator } from "@/components/demo/live-indicator"
 import { SearchForm } from "@/components/search-form"
+import { ThemeSwitcher } from "@/components/theme-switcher"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -68,7 +69,7 @@ export function SiteHeader({ authSession, logoutAction }: SiteHeaderProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-50 flex w-full items-center border-b bg-background/95 backdrop-blur">
+      <header className="sticky top-0 z-50 flex w-full items-center border-b border-border bg-background/95 text-foreground backdrop-blur">
         <div className="flex h-(--header-height) w-full items-center gap-2 px-3 lg:px-4">
           <Button
             className="h-8 w-8"
@@ -122,6 +123,8 @@ export function SiteHeader({ authSession, logoutAction }: SiteHeaderProps) {
             <SearchIcon />
             Command
           </Button>
+
+          <ThemeSwitcher />
 
           <div className="hidden xl:block">
             <LiveIndicator />
