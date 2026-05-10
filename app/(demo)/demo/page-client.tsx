@@ -468,7 +468,7 @@ export default function DistrictConsolePage({ session, syncSummary }: DistrictCo
   };
 
   return (
-    <div className="grid min-w-0 gap-5 pb-6">
+    <div className="grid min-w-0 gap-5 pb-6" data-role-dashboard={session.role}>
       <ReferenceSectionCards
         cards={[
           {
@@ -508,25 +508,34 @@ export default function DistrictConsolePage({ session, syncSummary }: DistrictCo
 
       <DistrictCommandBrief brief={commandCenter.brief} />
 
-      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+      <div
+        id="severity-queue"
+        className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]"
+      >
         <SeverityQueue
           items={commandCenter.queue}
           selectedClinicId={commandCenter.selectedItem?.clinicId ?? null}
           onSelectClinic={selectCommandClinic}
         />
-        <InterventionRail
-          selectedItem={commandCenter.selectedItem}
-          intervention={commandCenter.intervention}
-          replayDisabled={replayNonIdle}
-          onOpenClinic={openClinicDetail}
-          onTriggerReroute={handleTriggerSelectedCommandReroute}
-          onSyncOfflineReports={handleSyncOfflineReports}
-          onStartIncidentReplay={startIncidentReplay}
-        />
+        <div id="interventions">
+          <InterventionRail
+            selectedItem={commandCenter.selectedItem}
+            intervention={commandCenter.intervention}
+            replayDisabled={replayNonIdle}
+            onOpenClinic={openClinicDetail}
+            onTriggerReroute={handleTriggerSelectedCommandReroute}
+            onSyncOfflineReports={handleSyncOfflineReports}
+            onStartIncidentReplay={startIncidentReplay}
+          />
+        </div>
       </div>
 
-      <SignalAnalytics analytics={commandCenter.analytics} />
-      <VerificationHandover handover={commandCenter.handover} />
+      <div id="clinic-network">
+        <SignalAnalytics analytics={commandCenter.analytics} />
+      </div>
+      <div id="verification-handoff">
+        <VerificationHandover handover={commandCenter.handover} />
+      </div>
 
       <SupportingOperations>
         {hasStatusFilter ? (
@@ -611,7 +620,10 @@ export default function DistrictConsolePage({ session, syncSummary }: DistrictCo
           webhookPreview={webhookPreview}
         />
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+        <div
+          id="clinic-evidence"
+          className="grid gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]"
+        >
           <AlertList alerts={activeAlerts} clinics={clinicRows} onSelectClinic={openClinicDetail} />
           <ReportStream
             reports={reportStream}
