@@ -2,7 +2,7 @@ export function GoogleButton() {
   return (
     <button
       type="button"
-      className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-900 shadow-sm transition hover:-translate-y-0.5 hover:border-neutral-300 hover:bg-neutral-50"
+      className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-900 shadow-sm transition hover:-translate-y-0.5 hover:border-neutral-300 hover:bg-neutral-50 dark:border-border dark:bg-card dark:text-card-foreground dark:hover:bg-muted"
     >
       <svg className="size-4" viewBox="0 0 24 24" fill="none">
         <path
