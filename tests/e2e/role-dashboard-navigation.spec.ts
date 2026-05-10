@@ -85,25 +85,35 @@ const roleScenarios: Array<{
 ];
 
 const hiddenStandaloneHrefs = [
-  "/demo/severity-queue",
-  "/demo/clinic-network",
-  "/demo/clinic-evidence",
-  "/demo/interventions",
   "/field/submit-report",
   "/field/drafts-sync",
   "/field/recent-reports",
   "/field/sync-queue",
-  "/admin/access-review",
-  "/admin/audit-evidence",
-  "/admin/data-ingestion",
-  "/admin/demo-controls",
-  "/admin/exports",
-  "/admin/integrations",
-  "/admin/partner-readiness",
+  "/demo/severity-queue",
+  "/demo/clinic-network",
+  "/demo/clinic-evidence",
+  "/demo/interventions",
   "/admin/reporting-coverage",
-  "/admin/security",
-  "/admin/tenant-health",
   "/admin/users-roles",
+  "/admin/access-review",
+  "/admin/partner-readiness",
+  "/admin/audit-evidence",
+  "/admin/exports",
+  "/admin/tenant-health",
+  "/admin/data-ingestion",
+  "/admin/security",
+  "/admin/demo-controls",
+  "/admin/integrations",
+];
+
+const publicDashboardHrefs = [
+  "/",
+  "/book-demo",
+  "/book-demo/thanks",
+  "/finder",
+  "/clinics",
+  "/login",
+  "/register",
 ];
 
 async function signInAs(page: Page, email: string, home: string) {
@@ -129,6 +139,43 @@ async function openDashboardSidebar(page: Page): Promise<Locator> {
   return desktopSidebar;
 }
 
+function normalizeHrefPath(href: string | null) {
+  if (!href) {
+    return "";
+  }
+
+  return new URL(href, "http://clinicpulse.local").pathname;
+}
+
+function routeMatchesBaseOrSubpath(href: string | null, baseRoute: string) {
+  const pathname = normalizeHrefPath(href);
+
+  if (baseRoute === "/") {
+    return pathname === "/";
+  }
+
+  return pathname === baseRoute || pathname.startsWith(`${baseRoute}/`);
+}
+
+async function getSidebarHrefs(sidebar: Locator) {
+  return sidebar.locator("a[href]").evaluateAll((links) =>
+    links
+      .map((link) => link.getAttribute("href"))
+      .filter((href): href is string => Boolean(href)),
+  );
+}
+
+async function expectNoRouteMatches(sidebar: Locator, routes: string[]) {
+  const hrefs = await getSidebarHrefs(sidebar);
+
+  for (const route of routes) {
+    expect(
+      hrefs.filter((href) => routeMatchesBaseOrSubpath(href, route)),
+      `${route} should be absent from sidebar hrefs`,
+    ).toEqual([]);
+  }
+}
+
 test.describe("phase 1 role dashboard navigation", () => {
   for (const scenario of roleScenarios) {
     test(`${scenario.role} lands on the correct home and sees the right sidebar`, async ({
@@ -140,17 +187,11 @@ test.describe("phase 1 role dashboard navigation", () => {
       await expect(page.getByRole("heading", { name: scenario.heading })).toBeVisible();
 
       const sidebar = await openDashboardSidebar(page);
+      const navLinks = sidebar.locator('[data-slot="sidebar-content"] a[href]');
 
-      for (const label of scenario.sidebarLabels) {
-        await expect(sidebar.getByText(label, { exact: true })).toBeVisible();
-      }
-
-      for (const hiddenHref of hiddenStandaloneHrefs) {
-        await expect(sidebar.locator(`a[href="${hiddenHref}"]`)).toHaveCount(0);
-      }
-
-      await expect(sidebar.locator('a[href="/finder"]')).toHaveCount(0);
-      await expect(sidebar.locator('a[href="/book-demo"]')).toHaveCount(0);
+      await expect(navLinks).toHaveText(scenario.sidebarLabels);
+      await expectNoRouteMatches(sidebar, hiddenStandaloneHrefs);
+      await expectNoRouteMatches(sidebar, publicDashboardHrefs);
     });
 
     test(`${scenario.role} exposes role dashboard landmarks`, async ({ page }) => {

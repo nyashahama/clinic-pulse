@@ -43,12 +43,14 @@ export const HIDDEN_DASHBOARD_PRIMARY_NAV_ROUTES = [
   "/field/submit-report",
   "/field/drafts-sync",
   "/field/recent-reports",
+  "/field/sync-queue",
   "/demo/severity-queue",
   "/demo/clinic-network",
   "/demo/clinic-evidence",
   "/demo/interventions",
   "/admin/reporting-coverage",
   "/admin/users-roles",
+  "/admin/access-review",
   "/admin/partner-readiness",
   "/admin/audit-evidence",
   "/admin/exports",
@@ -56,6 +58,7 @@ export const HIDDEN_DASHBOARD_PRIMARY_NAV_ROUTES = [
   "/admin/data-ingestion",
   "/admin/security",
   "/admin/demo-controls",
+  "/admin/integrations",
 ] as const;
 
 export const PUBLIC_DASHBOARD_NAV_EXCLUSIONS = [
