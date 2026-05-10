@@ -303,7 +303,7 @@ export default function AdminPage({
   };
 
   return (
-    <div className="grid gap-4 pb-4" data-role-dashboard={roleDashboard}>
+    <div className="grid min-w-0 gap-4 pb-4" data-role-dashboard={roleDashboard}>
       <div id={summaryAnchor}>
         <ReferenceSectionCards
           cards={[
@@ -533,8 +533,8 @@ export default function AdminPage({
           title={isSystemAdmin ? "Tenant activity queue" : "Stakeholder activity queue"}
           description="Existing local records are presented as operational follow-up for rollout and access review."
         >
-          <div className="overflow-x-auto">
-            <Table className="min-w-[56rem]">
+          <div className="min-w-0 overflow-x-auto">
+            <Table className="min-w-full md:min-w-[56rem]">
               <TableHeader>
                 <TableRow className="text-xs uppercase tracking-[0.08em]">
                   {["Name", "Organisation", "Role", "Focus", "Status", "Updated"].map((heading) => (

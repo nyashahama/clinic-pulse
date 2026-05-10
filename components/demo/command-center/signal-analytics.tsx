@@ -29,7 +29,7 @@ export function SignalAnalytics({ analytics }: SignalAnalyticsProps) {
       title="Why this queue is ranked this way"
       description="Compact signal context for the command queue, focused on the factors changing priority order."
     >
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid min-w-0 gap-3 sm:grid-cols-2 2xl:grid-cols-4">
         <MetricCard label="Critical" value={analytics.statusMix.critical} detail="Clinics requiring immediate command action" />
         <MetricCard label="Watch" value={analytics.statusMix.watch} detail="Clinics with risk signals under observation" />
         <MetricCard label="Freshness" value={analytics.freshnessRiskCount} detail="Clinics with stale, unknown, or unconfirmed reports" />
@@ -76,7 +76,7 @@ type MetricCardProps = {
 
 function MetricCard({ label, value, detail }: MetricCardProps) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
+    <div className="min-w-0 rounded-2xl border border-border bg-card p-4">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
       <p className="mt-2 text-2xl font-semibold tracking-tight text-card-foreground">{value}</p>
       <p className="mt-1 text-sm leading-6 text-muted-foreground">{detail}</p>

@@ -31,7 +31,7 @@ export function AlertList({ alerts, clinics, onSelectClinic }: AlertListProps) {
   const clinicNameById = Object.fromEntries(clinics.map((clinic) => [clinic.id, clinic.name]));
 
   return (
-    <section className="rounded-lg border border-border-subtle bg-bg-default shadow-sm">
+    <section className="min-w-0 rounded-lg border border-border-subtle bg-bg-default shadow-sm">
       <div className="px-4 pt-4">
         <SectionHeader
           eyebrow="Escalations"

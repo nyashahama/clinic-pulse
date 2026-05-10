@@ -40,7 +40,7 @@ export function ClinicTable({
   onSelectClinic,
 }: ClinicTableProps) {
   return (
-    <section className="rounded-lg border border-border-subtle bg-bg-default shadow-sm">
+    <section className="min-w-0 overflow-hidden rounded-lg border border-border-subtle bg-bg-default shadow-sm">
       <div className="px-4 pt-4">
         <SectionHeader
           eyebrow="Clinic operations"
@@ -139,8 +139,8 @@ export function ClinicTable({
         )}
       </div>
 
-      <div className="hidden overflow-x-auto px-4 pb-4 md:block">
-        <table className="min-w-[82rem] border-separate border-spacing-0 text-sm">
+      <div className="hidden min-w-0 overflow-x-auto px-4 pb-4 md:block">
+        <table className="min-w-full border-separate border-spacing-0 text-sm 2xl:min-w-[82rem]">
           <thead>
             <tr className="text-left text-xs uppercase tracking-[0.08em] text-content-subtle">
               {[

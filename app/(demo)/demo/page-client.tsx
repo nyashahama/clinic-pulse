@@ -510,7 +510,7 @@ export default function DistrictConsolePage({ session, syncSummary }: DistrictCo
 
       <div
         id="severity-queue"
-        className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]"
+        className="grid min-w-0 gap-5 2xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]"
       >
         <SeverityQueue
           items={commandCenter.queue}
@@ -561,7 +561,7 @@ export default function DistrictConsolePage({ session, syncSummary }: DistrictCo
           </section>
         ) : null}
 
-        <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <StatusSummary
             counts={statusCounts}
             activeAlertCount={activeAlerts.length}
@@ -622,7 +622,7 @@ export default function DistrictConsolePage({ session, syncSummary }: DistrictCo
 
         <div
           id="clinic-evidence"
-          className="grid gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]"
+          className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]"
         >
           <AlertList alerts={activeAlerts} clinics={clinicRows} onSelectClinic={openClinicDetail} />
           <ReportStream
