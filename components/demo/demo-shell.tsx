@@ -16,9 +16,9 @@ type DemoShellProps = {
 
 export function DemoShell({ children, detail, logoutAction, session }: DemoShellProps) {
   return (
-    <SidebarProvider className="[--header-height:4rem] bg-[#eef3f2] text-neutral-900">
+    <SidebarProvider className="[--header-height:4rem] bg-background text-foreground">
       <AppSidebar session={session} />
-      <SidebarInset className="flex h-svh min-w-0 flex-col overflow-hidden bg-[#eef3f2]">
+      <SidebarInset className="flex h-svh min-w-0 flex-col overflow-hidden bg-background">
         <SiteHeader authSession={session} logoutAction={logoutAction} />
         <div className="flex min-h-0 flex-1">
           <main className="min-w-0 flex-1 overflow-y-auto">
@@ -28,7 +28,7 @@ export function DemoShell({ children, detail, logoutAction, session }: DemoShell
           </main>
 
           {detail ? (
-            <aside className="hidden w-[24rem] shrink-0 overflow-y-auto border-l border-neutral-200 bg-white xl:block">
+            <aside className="hidden w-[24rem] shrink-0 overflow-y-auto border-l border-border bg-card text-card-foreground xl:block">
               <div className="min-h-full px-4 py-4">{detail}</div>
             </aside>
           ) : null}
