@@ -20,7 +20,7 @@ export function IncidentDemoCTA() {
   ] as const;
 
   return (
-    <section className="bg-white px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+    <section className="bg-white px-4 py-16 dark:bg-background sm:px-6 sm:py-20 lg:px-8 lg:py-24">
       <div className="mx-auto max-w-screen-xl overflow-hidden rounded-xl border border-neutral-800 bg-neutral-950 text-white shadow-2xl shadow-neutral-950/25">
         <div className="grid gap-0 lg:grid-cols-[1.04fr_0.96fr]">
           <div className="px-6 py-10 sm:px-10 lg:px-12 lg:py-14">
