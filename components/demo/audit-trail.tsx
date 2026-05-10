@@ -184,7 +184,7 @@ export function AuditTrail({ clinicName, events }: AuditTrailProps) {
                 <span className="font-medium text-content-default">What changed:</span> {formatStatusChange(event)}
               </p>
 
-              <div className="mt-3 flex items-start gap-2 rounded-md border border-border-subtle bg-white p-2">
+              <div className="mt-3 flex items-start gap-2 rounded-md border border-border-subtle bg-bg-default p-2">
                 <Icon className="mt-0.5 size-4 shrink-0 text-content-subtle" />
                 <p className="text-xs leading-5 text-content-subtle">
                   <span className="font-medium text-content-default">{response.title}:</span>{" "}

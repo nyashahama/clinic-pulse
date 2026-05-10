@@ -98,29 +98,29 @@ export function PatientJourneyImpactPanel({
 
       <div className="mt-4 grid gap-3">
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-            <div className="flex items-center gap-2 text-sm font-semibold text-amber-950">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/60 dark:bg-amber-950/35">
+            <div className="flex items-center gap-2 text-sm font-semibold text-amber-950 dark:text-amber-100">
               <AlertTriangle className="size-4" aria-hidden="true" />
               <span>Before</span>
             </div>
-            <p className="mt-2 text-sm font-medium text-amber-950">
+            <p className="mt-2 text-sm font-medium text-amber-950 dark:text-amber-100">
               {impact.beforeOutcome}
             </p>
-            <p className="mt-1 text-xs leading-5 text-amber-900">
+            <p className="mt-1 text-xs leading-5 text-amber-900 dark:text-amber-200">
               Patient would try {impact.sourceClinic.name} for{" "}
               {impact.requestedService || "care"}.
             </p>
           </div>
 
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-            <div className="flex items-center gap-2 text-sm font-semibold text-emerald-950">
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-900/60 dark:bg-emerald-950/35">
+            <div className="flex items-center gap-2 text-sm font-semibold text-emerald-950 dark:text-emerald-100">
               <CheckCircle2 className="size-4" aria-hidden="true" />
               <span>After</span>
             </div>
-            <p className="mt-2 text-sm font-medium text-emerald-950">
+            <p className="mt-2 text-sm font-medium text-emerald-950 dark:text-emerald-100">
               {impact.afterOutcome}
             </p>
-            <p className="mt-1 text-xs leading-5 text-emerald-900">
+            <p className="mt-1 text-xs leading-5 text-emerald-900 dark:text-emerald-200">
               {afterDescription}
             </p>
           </div>

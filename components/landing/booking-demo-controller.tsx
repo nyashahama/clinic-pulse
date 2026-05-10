@@ -202,15 +202,15 @@ function BookingPanel({
   return (
     <section
       id="booking"
-      className="mx-auto w-[340px] min-w-0 max-w-[calc(100vw-32px)] overflow-hidden rounded-xl bg-white text-neutral-950 shadow-2xl ring-1 ring-black/10 sm:w-full sm:max-w-[540px]"
+      className="mx-auto w-[340px] min-w-0 max-w-[calc(100vw-32px)] overflow-hidden rounded-xl bg-white text-neutral-950 shadow-2xl ring-1 ring-black/10 dark:bg-card dark:text-card-foreground dark:ring-border sm:w-full sm:max-w-[540px]"
       aria-label="Book a Clinic Pulse demo"
     >
-      <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-4">
+      <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-4 dark:border-border">
         <h2 className="text-xl font-semibold">Book a demo</h2>
         <button
           type="button"
           onClick={onClose}
-          className="grid size-7 place-items-center rounded-md border border-neutral-300 text-neutral-500 transition hover:text-neutral-950"
+          className="grid size-7 place-items-center rounded-md border border-neutral-300 text-neutral-500 transition hover:text-neutral-950 dark:border-border dark:text-muted-foreground dark:hover:text-foreground"
           aria-label="Close booking"
         >
           <X className="size-4" />
@@ -223,15 +223,15 @@ function BookingPanel({
             <UserRound className="size-5" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-neutral-500">Clinic Pulse team</p>
+            <p className="text-sm font-semibold text-neutral-500 dark:text-muted-foreground">Clinic Pulse team</p>
             <h3 className="mt-3 text-2xl font-semibold tracking-tight">Demo with Clinic Pulse</h3>
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 text-sm font-medium text-neutral-700">
+        <div className="mt-5 grid gap-3 text-sm font-medium text-neutral-700 dark:text-muted-foreground">
           <div className="flex items-center gap-3">
-            <Clock3 className="size-4 text-neutral-500" />
-            <div className="flex rounded-lg border border-neutral-200 p-1">
+            <Clock3 className="size-4 text-neutral-500 dark:text-muted-foreground" />
+            <div className="flex rounded-lg border border-neutral-200 p-1 dark:border-border">
               {[30, 45].map((entry) => (
                 <button
                   key={entry}
@@ -242,6 +242,9 @@ function BookingPanel({
                     duration === entry
                       ? "bg-neutral-200 text-neutral-950"
                       : "text-neutral-600 hover:bg-neutral-100",
+                    duration === entry
+                      ? "dark:bg-muted dark:text-foreground"
+                      : "dark:text-muted-foreground dark:hover:bg-muted",
                   )}
                 >
                   {entry}m
@@ -250,27 +253,27 @@ function BookingPanel({
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Monitor className="size-4 text-neutral-500" />
+            <Monitor className="size-4 text-neutral-500 dark:text-muted-foreground" />
             Google Meet
           </div>
           <div className="flex items-center gap-3">
-            <Globe2 className="size-4 text-neutral-500" />
+            <Globe2 className="size-4 text-neutral-500 dark:text-muted-foreground" />
             Africa/Johannesburg
-            <ChevronDown className="size-4 text-neutral-500" />
+            <ChevronDown className="size-4 text-neutral-500 dark:text-muted-foreground" />
           </div>
         </div>
 
         <div className="mt-9 flex items-center justify-between">
           <h3 className="text-xl font-semibold">
-            May <span className="text-neutral-500">2026</span>
+            May <span className="text-neutral-500 dark:text-muted-foreground">2026</span>
           </h3>
-          <div className="flex items-center gap-3 text-neutral-400">
+          <div className="flex items-center gap-3 text-neutral-400 dark:text-muted-foreground">
             <ChevronLeft className="size-5" />
             <ChevronRight className="size-5" />
           </div>
         </div>
 
-        <div className="mt-4 grid min-w-0 grid-cols-7 border-y border-neutral-200 py-3 text-center text-[11px] font-bold text-neutral-700 sm:text-xs">
+        <div className="mt-4 grid min-w-0 grid-cols-7 border-y border-neutral-200 py-3 text-center text-[11px] font-bold text-neutral-700 dark:border-border dark:text-muted-foreground sm:text-xs">
           {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((day) => (
             <span key={day}>{day}</span>
           ))}
@@ -294,6 +297,8 @@ function BookingPanel({
                     ? "bg-neutral-200 text-neutral-950 hover:bg-neutral-300"
                     : "bg-transparent text-neutral-400",
                   selectedDay === day && "bg-neutral-950 text-white hover:bg-neutral-950",
+                  isAvailable && "dark:bg-muted dark:text-foreground dark:hover:bg-accent",
+                  selectedDay === day && "dark:bg-foreground dark:text-background dark:hover:bg-foreground",
                 )}
               >
                 {day}
@@ -305,9 +310,9 @@ function BookingPanel({
           })}
         </div>
 
-        <div className="mt-6 rounded-xl border border-neutral-200 bg-neutral-50 p-4">
-          <div className="flex items-center gap-2 text-sm font-semibold text-neutral-950">
-            <CalendarDays className="size-4 text-neutral-500" />
+        <div className="mt-6 rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-border dark:bg-muted">
+          <div className="flex items-center gap-2 text-sm font-semibold text-neutral-950 dark:text-foreground">
+            <CalendarDays className="size-4 text-neutral-500 dark:text-muted-foreground" />
             {selectedDateLabel}
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
@@ -321,6 +326,9 @@ function BookingPanel({
                   selectedTime === slot
                     ? "border-neutral-950 bg-neutral-950 text-white"
                     : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-400",
+                  selectedTime === slot
+                    ? "dark:border-primary dark:bg-primary dark:text-primary-foreground"
+                    : "dark:border-border dark:bg-card dark:text-muted-foreground dark:hover:border-primary/60",
                 )}
               >
                 {slot}
@@ -343,12 +351,12 @@ function BookingPanel({
             onChange={(value) => onLeadChange("organization", value)}
           />
           <LeadInput label="Role" value={lead.role} onChange={(value) => onLeadChange("role", value)} />
-          <label className="grid gap-1.5 text-sm font-semibold text-neutral-800">
+          <label className="grid gap-1.5 text-sm font-semibold text-neutral-800 dark:text-foreground">
             Focus
             <select
               value={lead.interest}
               onChange={(event) => onLeadChange("interest", event.target.value)}
-              className="h-11 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-900 outline-none transition focus:border-neutral-950"
+              className="h-11 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-900 outline-none transition focus:border-neutral-950 dark:border-border dark:bg-muted dark:text-foreground dark:focus:border-primary"
             >
               <option value="clinic_operator">Clinic Operator</option>
               <option value="government">Government</option>
@@ -357,21 +365,21 @@ function BookingPanel({
               <option value="other">Other</option>
             </select>
           </label>
-          <label className="grid gap-1.5 text-sm font-semibold text-neutral-800">
+          <label className="grid gap-1.5 text-sm font-semibold text-neutral-800 dark:text-foreground">
             Notes
             <textarea
               value={lead.note}
               onChange={(event) => onLeadChange("note", event.target.value)}
               rows={3}
               placeholder="What should we tailor the walkthrough around?"
-              className="resize-none rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-medium text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-950"
+              className="resize-none rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-medium text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-950 dark:border-border dark:bg-muted dark:text-foreground dark:placeholder:text-muted-foreground dark:focus:border-primary"
             />
           </label>
         </div>
 
         <Button
           type="submit"
-          className="mt-5 h-11 w-full rounded-lg bg-neutral-950 text-white hover:bg-neutral-800"
+          className="mt-5 h-11 w-full rounded-lg bg-neutral-950 text-white hover:bg-neutral-800 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
           disabled={isSubmitDisabled}
         >
           {isSubmitting ? "Scheduling..." : "Confirm demo"}
@@ -391,14 +399,14 @@ type LeadInputProps = {
 
 function LeadInput({ label, onChange, type = "text", value }: LeadInputProps) {
   return (
-    <label className="grid gap-1.5 text-sm font-semibold text-neutral-800">
+    <label className="grid gap-1.5 text-sm font-semibold text-neutral-800 dark:text-foreground">
       {label}
       <input
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         required
-        className="h-11 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-950"
+        className="h-11 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-950 dark:border-border dark:bg-muted dark:text-foreground dark:placeholder:text-muted-foreground dark:focus:border-primary"
       />
     </label>
   );

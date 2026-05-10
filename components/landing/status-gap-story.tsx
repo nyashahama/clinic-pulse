@@ -12,10 +12,10 @@ import {
 import { cn } from "@/lib/utils";
 
 const toneClassNames = {
-  warning: "border-amber-200 bg-amber-50 text-amber-900",
-  neutral: "border-neutral-200 bg-neutral-50 text-neutral-800",
-  critical: "border-red-200 bg-red-50 text-red-900",
-  healthy: "border-emerald-200 bg-emerald-50 text-emerald-900",
+  warning: "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-200",
+  neutral: "border-neutral-200 bg-neutral-50 text-neutral-800 dark:border-border dark:bg-muted dark:text-muted-foreground",
+  critical: "border-red-200 bg-red-50 text-red-900 dark:border-red-900/60 dark:bg-red-950/35 dark:text-red-200",
+  healthy: "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/35 dark:text-emerald-200",
 } satisfies Record<(typeof statusGapTimeline)[number]["tone"], string>;
 
 const dotClassNames = {
@@ -37,7 +37,7 @@ export function StatusGapStory() {
           description={operatingGap.description}
         />
 
-        <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm dark:border-border dark:bg-card">
           <div className="relative aspect-[16/8]">
             <Image
               src={photo.src}
@@ -49,7 +49,7 @@ export function StatusGapStory() {
             />
           </div>
 
-          <div className="border-t border-neutral-200 p-4 sm:p-5">
+          <div className="border-t border-neutral-200 p-4 dark:border-border sm:p-5">
             <div className="grid gap-3" data-motion-layer="true">
               {statusGapTimeline.map((item, index) => (
                 <article

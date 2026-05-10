@@ -85,7 +85,7 @@ export function FieldClinicList({
                   className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] ${
                     selectedClinicId === clinic.id
                       ? "bg-white/15 text-white"
-                      : "bg-white text-content-subtle"
+                      : "bg-bg-default text-content-subtle"
                   }`}
                 >
                   <MapPinned className="size-3.5" />

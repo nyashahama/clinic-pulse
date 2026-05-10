@@ -14,17 +14,17 @@ export function VerificationHandover({ handover }: VerificationHandoverProps) {
       description="Concise shift handover notes so the next operator can verify outcomes without rereading the full queue."
     >
       {handover.items.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+        <p className="rounded-2xl border border-dashed border-border bg-muted p-4 text-sm leading-6 text-muted-foreground">
           No handover items are required right now.
         </p>
       ) : (
         <ol className="space-y-3">
           {handover.items.map((item, index) => (
-            <li key={`${index}-${item}`} className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+            <li key={`${index}-${item}`} className="flex gap-3 rounded-2xl border border-border bg-card p-4">
               <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white">
                 {index + 1}
               </span>
-              <p className="text-sm leading-6 text-slate-700">{item}</p>
+              <p className="text-sm leading-6 text-muted-foreground">{item}</p>
             </li>
           ))}
         </ol>

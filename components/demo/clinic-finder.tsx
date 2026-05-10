@@ -197,10 +197,10 @@ export function ClinicFinder({
                         isUnavailable
                           ? isSelected
                             ? "border-amber-400/40 bg-amber-400/20 text-amber-100"
-                            : "border-amber-200 bg-amber-50 text-amber-800"
+                            : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-200"
                           : isSelected
                             ? "border-emerald-400/40 bg-emerald-400/20 text-emerald-100"
-                            : "border-emerald-200 bg-emerald-50 text-emerald-800"
+                            : "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/35 dark:text-emerald-200"
                       }`}
                     >
                       {isUnavailable ? "Reroute recommended" : "Routing available"}

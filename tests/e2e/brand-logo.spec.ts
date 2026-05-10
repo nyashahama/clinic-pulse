@@ -28,6 +28,21 @@ async function signIn(page: Page) {
   await expect(page).toHaveURL(/\/admin$/);
 }
 
+async function openDashboardSidebar(page: Page) {
+  const viewport = page.viewportSize();
+
+  if (viewport && viewport.width < 768) {
+    await page.getByRole("button", { name: "Toggle dashboard navigation" }).click();
+    const mobileSidebar = page.locator('[data-slot="sidebar"][data-mobile="true"]').first();
+    await expect(mobileSidebar).toBeVisible();
+    return mobileSidebar;
+  }
+
+  const desktopSidebar = page.locator('[data-slot="sidebar-inner"]').first();
+  await expect(desktopSidebar).toBeVisible();
+  return desktopSidebar;
+}
+
 test.describe("ClinicPulse premium brand identity", () => {
   test("renders the shared brand mark on public and auth surfaces", async ({ page }) => {
     const consoleErrors = collectConsoleErrors(page);
@@ -74,7 +89,7 @@ test.describe("ClinicPulse premium brand identity", () => {
 
     await signIn(page);
 
-    const sidebar = page.locator('[data-slot="sidebar-inner"]').first();
+    const sidebar = await openDashboardSidebar(page);
     const sidebarMark = sidebar.locator('[data-brand-mark="clinicpulse"]');
     await expect(sidebarMark).toBeVisible();
     await expect(sidebar.getByText("ClinicPulse").first()).toBeVisible();

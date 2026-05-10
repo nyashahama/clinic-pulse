@@ -34,17 +34,17 @@ export function AuditSealStream({
           <div
             key={`${event.id}-${index}`}
             data-motion-object="true"
-            className="flex min-w-48 shrink-0 items-center gap-2 rounded-lg border border-emerald-200 bg-white/90 px-3 py-2 text-xs text-slate-700 shadow-sm"
+            className="flex min-w-48 shrink-0 items-center gap-2 rounded-lg border border-emerald-200 bg-white/90 px-3 py-2 text-xs text-slate-700 shadow-sm dark:border-emerald-900/50 dark:bg-card/90 dark:text-muted-foreground dark:shadow-black/20"
           >
             <ShieldCheck
-              className="size-4 shrink-0 text-emerald-600"
+              className="size-4 shrink-0 text-emerald-600 dark:text-emerald-300"
               aria-hidden="true"
             />
             <span className="min-w-0">
-              <span className="block font-semibold text-slate-900">
+              <span className="block font-semibold text-slate-900 dark:text-foreground">
                 {event.label}
               </span>
-              <span className="block truncate text-[11px] text-slate-500">
+              <span className="block truncate text-[11px] text-slate-500 dark:text-muted-foreground">
                 {event.detail}
               </span>
             </span>

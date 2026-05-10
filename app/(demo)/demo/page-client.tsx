@@ -468,7 +468,7 @@ export default function DistrictConsolePage({ session, syncSummary }: DistrictCo
   };
 
   return (
-    <div className="grid gap-5 pb-6">
+    <div className="grid min-w-0 gap-5 pb-6">
       <ReferenceSectionCards
         cards={[
           {
@@ -508,7 +508,7 @@ export default function DistrictConsolePage({ session, syncSummary }: DistrictCo
 
       <DistrictCommandBrief brief={commandCenter.brief} />
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
         <SeverityQueue
           items={commandCenter.queue}
           selectedClinicId={commandCenter.selectedItem?.clinicId ?? null}
@@ -530,7 +530,7 @@ export default function DistrictConsolePage({ session, syncSummary }: DistrictCo
 
       <SupportingOperations>
         {hasStatusFilter ? (
-          <section className="rounded-lg border border-amber-200/80 bg-amber-50/70 px-4 py-3 text-sm text-amber-950">
+          <section className="rounded-lg border border-amber-200/80 bg-amber-50/70 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-100">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p>
                 {isReplayFilterBypassed ? (

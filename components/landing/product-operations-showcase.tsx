@@ -46,17 +46,17 @@ function OperationModuleCard({
   return (
     <article
       className={cn(
-        "grid h-full min-w-0 content-start overflow-hidden rounded-xl border border-neutral-200 bg-white p-5 shadow-sm",
+        "grid h-full min-w-0 content-start overflow-hidden rounded-xl border border-neutral-200 bg-white p-5 shadow-sm dark:border-border dark:bg-card",
         variant === "primary" ? "gap-6 lg:p-6" : "gap-5",
       )}
     >
       <div className="min-w-0">
-        <div className="inline-flex max-w-full items-center rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-xs font-semibold text-neutral-700">
+        <div className="inline-flex max-w-full items-center rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-xs font-semibold text-neutral-700 dark:border-border dark:bg-muted dark:text-muted-foreground">
           <span className="min-w-0 break-words">{module.metric}</span>
         </div>
         <h3
           className={cn(
-            "mt-4 font-semibold leading-tight text-neutral-950",
+            "mt-4 font-semibold leading-tight text-neutral-950 dark:text-card-foreground",
             variant === "primary" ? "text-2xl sm:text-3xl" : "text-lg",
           )}
         >
@@ -64,7 +64,7 @@ function OperationModuleCard({
         </h3>
         <p
           className={cn(
-            "mt-3 max-w-2xl text-sm leading-6 text-neutral-600",
+            "mt-3 max-w-2xl text-sm leading-6 text-neutral-600 dark:text-muted-foreground",
             variant === "primary" ? "sm:text-base sm:leading-7" : null,
           )}
         >

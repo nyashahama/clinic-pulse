@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:is(.dark, .dark *));
 
 @theme inline {
   --color-background: var(--background);
@@ -7,8 +8,10 @@
   --font-display: var(--font-satoshi);
   --font-mono: var(--font-geist-mono);
 
-  --color-primary: #0D7A6B;
-  --color-primary-foreground: #ffffff;
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
 
@@ -82,6 +85,10 @@
   --card-foreground: #101828;
   --background: #eef3f2;
   --foreground: #171717;
+  --primary: #0D7A6B;
+  --primary-foreground: #ffffff;
+  --secondary: oklch(0.965 0 0);
+  --secondary-foreground: oklch(0.38 0 0);
 
   --bg-default: 255 255 255;
   --bg-muted: 241 246 245;
@@ -118,6 +125,52 @@
   --sidebar-accent-foreground: #171717;
   --sidebar-border: #e5e5e5;
   --sidebar-ring: #0D7A6B;
+}
+
+.dark {
+  --background: oklch(0.195 0 0);
+  --foreground: oklch(0.94 0 0);
+  --card: oklch(0.225 0 0);
+  --card-foreground: oklch(0.94 0 0);
+  --popover: oklch(0.225 0 0);
+  --popover-foreground: oklch(0.94 0 0);
+  --primary: #0D7A6B;
+  --primary-foreground: #ffffff;
+  --secondary: oklch(0.26 0 0);
+  --secondary-foreground: oklch(0.75 0 0);
+  --muted: oklch(0.165 0 0);
+  --muted-foreground: oklch(0.6 0 0);
+  --accent: oklch(0.26 0 0);
+  --accent-foreground: oklch(0.94 0 0);
+  --destructive: oklch(0.7 0.15 25);
+  --border: oklch(0.27 0 0);
+  --input: oklch(0.27 0 0);
+  --ring: #0D7A6B;
+  --sidebar: oklch(0.175 0 0);
+  --sidebar-foreground: oklch(0.78 0 0);
+  --sidebar-primary: #0D7A6B;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: oklch(0.94 0 0 / 0.06);
+  --sidebar-accent-foreground: oklch(0.94 0 0);
+  --sidebar-border: oklch(0.25 0 0);
+  --sidebar-ring: #0D7A6B;
+
+  --bg-default: 36 36 36;
+  --bg-muted: 28 28 28;
+  --bg-subtle: 42 42 42;
+  --bg-emphasis: 64 64 64;
+  --bg-inverted: 250 250 250;
+
+  --border-emphasis: 115 115 115;
+  --border-default: 64 64 64;
+  --border-muted: 38 38 38;
+  --border-subtle: 48 48 48;
+
+  --content-inverted: 23 23 23;
+  --content-muted: 115 115 115;
+  --content-subtle: 163 163 163;
+  --content-default: 212 212 212;
+  --content-emphasis: 245 245 245;
 }
 
 @keyframes fade-in {

@@ -91,7 +91,7 @@ export function OfflineQueue({
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-medium">{getClinicName(clinics, item.clinicId)}</p>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] text-amber-900">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-200">
                     <WifiOff className="size-3" />
                     {item.syncStatus}
                   </span>

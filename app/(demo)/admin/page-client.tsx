@@ -391,15 +391,15 @@ export default function AdminPage({
               {reviewFocusItems.map((item) => (
                 <div
                   key={item.label}
-                  className="grid gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                  className="grid gap-3 rounded-xl border border-border bg-muted px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
                 >
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                       {item.label}
                     </p>
-                    <p className="mt-1 text-sm leading-6 text-gray-700">{item.title}</p>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">{item.title}</p>
                   </div>
-                  <p className="text-2xl font-semibold tracking-[-0.03em] text-gray-950">
+                  <p className="text-2xl font-semibold tracking-[-0.03em] text-card-foreground">
                     {item.value}
                   </p>
                 </div>
@@ -416,30 +416,30 @@ export default function AdminPage({
             }
           >
             <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-xl border border-gray-100 bg-white p-4">
-                <UsersRound className="size-5 text-gray-500" />
-                <p className="mt-3 text-sm font-semibold text-gray-950">
+              <div className="rounded-xl border border-border bg-card p-4">
+                <UsersRound className="size-5 text-muted-foreground" />
+                <p className="mt-3 text-sm font-semibold text-card-foreground">
                   {isSystemAdmin ? "Tenant access" : "Role coverage"}
                 </p>
-                <p className="mt-1 text-sm leading-6 text-gray-500">
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
                   {leadStatusCount.new} records need context before the next access review.
                 </p>
               </div>
-              <div className="rounded-xl border border-gray-100 bg-white p-4">
-                <FileCheck2 className="size-5 text-gray-500" />
-                <p className="mt-3 text-sm font-semibold text-gray-950">
+              <div className="rounded-xl border border-border bg-card p-4">
+                <FileCheck2 className="size-5 text-muted-foreground" />
+                <p className="mt-3 text-sm font-semibold text-card-foreground">
                   Data quality
                 </p>
-                <p className="mt-1 text-sm leading-6 text-gray-500">
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
                   {staleClinicCount} stale clinics and {queuedReports} queued reports affect confidence.
                 </p>
               </div>
-              <div className="rounded-xl border border-gray-100 bg-white p-4">
-                <ShieldCheck className="size-5 text-gray-500" />
-                <p className="mt-3 text-sm font-semibold text-gray-950">
+              <div className="rounded-xl border border-border bg-card p-4">
+                <ShieldCheck className="size-5 text-muted-foreground" />
+                <p className="mt-3 text-sm font-semibold text-card-foreground">
                   Partner proof
                 </p>
-                <p className="mt-1 text-sm leading-6 text-gray-500">
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
                   Keys, exports, and webhooks are reviewed in the readiness section.
                 </p>
               </div>
@@ -532,24 +532,24 @@ export default function AdminPage({
               <TableBody>
                 {state.leads.map((lead) => (
                   <TableRow key={lead.id} className="align-top">
-                    <TableCell className="font-medium text-gray-950">
+                    <TableCell className="font-medium text-card-foreground">
                       {lead.name}
                     </TableCell>
-                    <TableCell className="text-gray-600">
+                    <TableCell className="text-muted-foreground">
                       {lead.organization}
                     </TableCell>
-                    <TableCell className="text-gray-600">
+                    <TableCell className="text-muted-foreground">
                       {lead.role}
                     </TableCell>
-                    <TableCell className="capitalize text-gray-600">
+                    <TableCell className="capitalize text-muted-foreground">
                       {lead.interest.replaceAll("_", " ")}
                     </TableCell>
                     <TableCell>
-                      <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold capitalize text-gray-700">
+                      <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold capitalize text-muted-foreground">
                         {lead.status}
                       </span>
                     </TableCell>
-                    <TableCell className="font-mono text-xs text-gray-500">
+                    <TableCell className="font-mono text-xs text-muted-foreground">
                       {formatDate(lead.createdAt)}
                     </TableCell>
                   </TableRow>
