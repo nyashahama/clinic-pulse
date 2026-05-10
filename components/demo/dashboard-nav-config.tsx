@@ -3,21 +3,13 @@ import {
   ActivityIcon,
   Building2Icon,
   ClipboardListIcon,
-  CompassIcon,
-  DatabaseZapIcon,
-  FileCheck2Icon,
   GaugeIcon,
-  KeyRoundIcon,
-  MapIcon,
-  RadioTowerIcon,
   RouteIcon,
   ShieldIcon,
-  StethoscopeIcon,
   UsersRoundIcon,
 } from "lucide-react";
 
 import type { AuthRole, ClientAuthSession } from "@/lib/auth/api";
-import { getRoleHomeHref } from "@/lib/auth/role-home";
 
 export type DashboardNavItem = {
   title: string;
@@ -38,6 +30,7 @@ export type DashboardNavGroup = {
 export type DashboardWorkspace = {
   roleLabel: string;
   workspaceLabel: string;
+  homeUrl: string;
   eyebrow: string;
   title: string;
   description: string;
@@ -46,10 +39,40 @@ export type DashboardWorkspace = {
   groups: DashboardNavGroup[];
 };
 
+export const HIDDEN_DASHBOARD_PRIMARY_NAV_ROUTES = [
+  "/field/submit-report",
+  "/field/drafts-sync",
+  "/field/recent-reports",
+  "/demo/severity-queue",
+  "/demo/clinic-network",
+  "/demo/clinic-evidence",
+  "/demo/interventions",
+  "/admin/reporting-coverage",
+  "/admin/users-roles",
+  "/admin/partner-readiness",
+  "/admin/audit-evidence",
+  "/admin/exports",
+  "/admin/tenant-health",
+  "/admin/data-ingestion",
+  "/admin/security",
+  "/admin/demo-controls",
+] as const;
+
+export const PUBLIC_DASHBOARD_NAV_EXCLUSIONS = [
+  "/",
+  "/book-demo",
+  "/book-demo/thanks",
+  "/finder",
+  "/clinics",
+  "/login",
+  "/register",
+] as const;
+
 const ROLE_WORKSPACES: Record<AuthRole, DashboardWorkspace> = {
   district_manager: {
     roleLabel: "District manager",
     workspaceLabel: "Command Center",
+    homeUrl: "/demo",
     eyebrow: "District command",
     title: "Clinic pressure, severity, and interventions",
     description:
@@ -57,7 +80,7 @@ const ROLE_WORKSPACES: Record<AuthRole, DashboardWorkspace> = {
     searchPlaceholder: "Search clinics, services, or field signals",
     primaryAction: {
       title: "Open severity queue",
-      url: "/demo?status=non_functional",
+      url: "/demo#severity-queue",
       icon: <ActivityIcon />,
     },
     groups: [
@@ -66,28 +89,14 @@ const ROLE_WORKSPACES: Record<AuthRole, DashboardWorkspace> = {
         items: [
           {
             title: "Command Center",
-            url: getRoleHomeHref("district_manager"),
+            url: "/demo",
             icon: <Building2Icon />,
             items: [
-              { title: "Severity queue", url: "/demo/severity-queue" },
-              { title: "Clinic network", url: "/demo/clinic-network" },
-              { title: "Interventions", url: "/demo/interventions" },
+              { title: "Severity queue", url: "/demo#severity-queue" },
+              { title: "Clinic network", url: "/demo#clinic-network" },
+              { title: "Clinic evidence", url: "/demo#clinic-evidence" },
+              { title: "Interventions", url: "/demo#interventions" },
             ],
-          },
-          {
-            title: "Clinic Finder",
-            url: "/finder",
-            icon: <CompassIcon />,
-          },
-        ],
-      },
-      {
-        label: "Field signal",
-        items: [
-          {
-            title: "Field Reports",
-            url: "/field",
-            icon: <MapIcon />,
           },
         ],
       },
@@ -96,6 +105,7 @@ const ROLE_WORKSPACES: Record<AuthRole, DashboardWorkspace> = {
   reporter: {
     roleLabel: "Reporter",
     workspaceLabel: "Field Workbench",
+    homeUrl: "/field",
     eyebrow: "Field workflow",
     title: "Assigned visits, drafts, and sync health",
     description:
@@ -103,7 +113,7 @@ const ROLE_WORKSPACES: Record<AuthRole, DashboardWorkspace> = {
     searchPlaceholder: "Search assigned clinics or report history",
     primaryAction: {
       title: "Submit report",
-      url: getRoleHomeHref("reporter"),
+      url: "/field#submit-report",
       icon: <ClipboardListIcon />,
     },
     groups: [
@@ -111,29 +121,14 @@ const ROLE_WORKSPACES: Record<AuthRole, DashboardWorkspace> = {
         label: "Today",
         items: [
           {
-            title: "My Route",
-            url: getRoleHomeHref("reporter"),
+            title: "Field Workbench",
+            url: "/field",
             icon: <RouteIcon />,
             items: [
-              { title: "Submit report", url: "/field/submit-report" },
-              { title: "Drafts and sync", url: "/field/drafts-sync" },
+              { title: "Submit report", url: "/field#submit-report" },
+              { title: "Drafts and sync", url: "/field#drafts-sync" },
+              { title: "Recent reports", url: "/field#recent-reports" },
             ],
-          },
-          {
-            title: "Sync Queue",
-            url: "/field/sync-queue",
-            icon: <RadioTowerIcon />,
-            badge: "Offline-safe",
-          },
-        ],
-      },
-      {
-        label: "Reference",
-        items: [
-          {
-            title: "Clinic Finder",
-            url: "/finder",
-            icon: <CompassIcon />,
           },
         ],
       },
@@ -141,7 +136,8 @@ const ROLE_WORKSPACES: Record<AuthRole, DashboardWorkspace> = {
   },
   org_admin: {
     roleLabel: "Org admin",
-    workspaceLabel: "Operations Admin",
+    workspaceLabel: "Admin Overview",
+    homeUrl: "/admin",
     eyebrow: "Organisation operations",
     title: "Readiness, coverage, users, and governance",
     description:
@@ -149,7 +145,7 @@ const ROLE_WORKSPACES: Record<AuthRole, DashboardWorkspace> = {
     searchPlaceholder: "Search clinics, districts, users, or reports",
     primaryAction: {
       title: "Review users",
-      url: "/admin/users-roles",
+      url: "/admin#users-roles",
       icon: <UsersRoundIcon />,
     },
     groups: [
@@ -157,44 +153,16 @@ const ROLE_WORKSPACES: Record<AuthRole, DashboardWorkspace> = {
         label: "Operations",
         items: [
           {
-            title: "Org Overview",
-            url: getRoleHomeHref("org_admin"),
+            title: "Admin Overview",
+            url: "/admin",
             icon: <GaugeIcon />,
             items: [
-              { title: "Reporting coverage", url: "/admin/reporting-coverage" },
-              { title: "Partner readiness", url: "/admin/partner-readiness" },
-              { title: "Audit evidence", url: "/admin/audit-evidence" },
+              { title: "Reporting coverage", url: "/admin#reporting-coverage" },
+              { title: "Users and roles", url: "/admin#users-roles" },
+              { title: "Partner readiness", url: "/admin#partner-readiness" },
+              { title: "Audit evidence", url: "/admin#audit-evidence" },
+              { title: "Exports", url: "/admin#exports" },
             ],
-          },
-          {
-            title: "District Command",
-            url: "/demo",
-            icon: <Building2Icon />,
-          },
-          {
-            title: "Clinic Finder",
-            url: "/finder",
-            icon: <CompassIcon />,
-          },
-          {
-            title: "Field Workflow",
-            url: "/field",
-            icon: <MapIcon />,
-          },
-        ],
-      },
-      {
-        label: "Administration",
-        items: [
-          {
-            title: "Users & Roles",
-            url: "/admin/users-roles",
-            icon: <UsersRoundIcon />,
-          },
-          {
-            title: "Integrations",
-            url: "/admin/integrations",
-            icon: <KeyRoundIcon />,
           },
         ],
       },
@@ -202,7 +170,8 @@ const ROLE_WORKSPACES: Record<AuthRole, DashboardWorkspace> = {
   },
   system_admin: {
     roleLabel: "System admin",
-    workspaceLabel: "Platform Console",
+    workspaceLabel: "Platform Overview",
+    homeUrl: "/admin",
     eyebrow: "Platform operations",
     title: "Tenants, ingestion, security, and reliability",
     description:
@@ -210,7 +179,7 @@ const ROLE_WORKSPACES: Record<AuthRole, DashboardWorkspace> = {
     searchPlaceholder: "Search tenants, clinics, users, or audit evidence",
     primaryAction: {
       title: "Review platform health",
-      url: "/admin/tenant-health",
+      url: "/admin#tenant-health",
       icon: <ShieldIcon />,
     },
     groups: [
@@ -218,44 +187,16 @@ const ROLE_WORKSPACES: Record<AuthRole, DashboardWorkspace> = {
         label: "Platform",
         items: [
           {
-            title: "Platform Health",
-            url: getRoleHomeHref("system_admin"),
+            title: "Platform Overview",
+            url: "/admin",
             icon: <ShieldIcon />,
             items: [
-              { title: "Tenant health", url: "/admin/tenant-health" },
-              { title: "Access review", url: "/admin/access-review" },
-              { title: "Demo controls", url: "/admin/demo-controls" },
+              { title: "Tenant health", url: "/admin#tenant-health" },
+              { title: "Data ingestion", url: "/admin#data-ingestion" },
+              { title: "Security", url: "/admin#security" },
+              { title: "Demo controls", url: "/admin#demo-controls" },
+              { title: "Audit evidence", url: "/admin#audit-evidence" },
             ],
-          },
-          {
-            title: "Data Ingestion",
-            url: "/admin/data-ingestion",
-            icon: <DatabaseZapIcon />,
-          },
-          {
-            title: "Security",
-            url: "/admin/security",
-            icon: <FileCheck2Icon />,
-          },
-        ],
-      },
-      {
-        label: "Operational modules",
-        items: [
-          {
-            title: "District Command",
-            url: "/demo",
-            icon: <Building2Icon />,
-          },
-          {
-            title: "Field Workflow",
-            url: "/field",
-            icon: <StethoscopeIcon />,
-          },
-          {
-            title: "Clinic Finder",
-            url: "/finder",
-            icon: <CompassIcon />,
           },
         ],
       },

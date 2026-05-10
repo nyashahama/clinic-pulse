@@ -24,28 +24,9 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
+import { isDashboardNavUrlActive } from "@/lib/demo/nav-active-state"
 import { resolveNavCollapsibleOpen } from "@/lib/demo/nav-collapsible-state"
 import { ChevronRightIcon } from "lucide-react"
-
-function getHrefPath(url: string) {
-  return url.split(/[?#]/)[0] || url
-}
-
-function isUrlActive(
-  url: string,
-  pathname: string,
-  searchParams: { toString: () => string },
-) {
-  const hrefPath = getHrefPath(url)
-  const hrefQuery = url.includes("?") ? url.split("?")[1] : ""
-  const pathActive = pathname === hrefPath || pathname.startsWith(`${hrefPath}/`)
-
-  if (!hrefQuery) {
-    return pathActive
-  }
-
-  return pathname === hrefPath && searchParams.toString() === hrefQuery
-}
 
 export function NavMain({ groups }: { groups: DashboardNavGroup[] }) {
   const pathname = usePathname()
@@ -59,9 +40,13 @@ export function NavMain({ groups }: { groups: DashboardNavGroup[] }) {
           <SidebarMenu>
             {group.items.map((item) => {
               const active = Boolean(
-                isUrlActive(item.url, pathname, searchParams) ||
+                isDashboardNavUrlActive(item.url, pathname, searchParams) ||
                   item.items?.some((subItem) =>
-                    isUrlActive(subItem.url, pathname, searchParams),
+                    isDashboardNavUrlActive(
+                      subItem.url,
+                      pathname,
+                      searchParams,
+                    ),
                   ),
               )
 
@@ -145,7 +130,11 @@ function NavMainItem({
               {item.items.map((subItem) => (
                 <SidebarMenuSubItem key={subItem.title}>
                   <SidebarMenuSubButton
-                    isActive={isUrlActive(subItem.url, pathname, searchParams)}
+                    isActive={isDashboardNavUrlActive(
+                      subItem.url,
+                      pathname,
+                      searchParams,
+                    )}
                     render={<Link href={subItem.url} />}
                   >
                     <span>{subItem.title}</span>

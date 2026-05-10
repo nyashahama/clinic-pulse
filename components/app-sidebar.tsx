@@ -39,7 +39,7 @@ export function AppSidebar({ session, ...props }: AppSidebarProps) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" render={<Link href={workspace.primaryAction.url} />}>
+            <SidebarMenuButton size="lg" render={<Link href={workspace.homeUrl} />}>
               <ClinicPulseMark className="size-8 rounded-lg shadow-none [&_svg]:!size-[82%]" />
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">ClinicPulse</span>
