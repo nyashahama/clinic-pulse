@@ -183,7 +183,7 @@ export default function AdminPage({
   const reviewLaneAnchor = isSystemAdmin ? "data-ingestion" : "users-roles";
   const evidenceAnchor = isSystemAdmin ? "security" : "partner-readiness";
   const exportAnchor = isSystemAdmin ? "audit-evidence" : "exports";
-  const controlsAnchor = isSystemAdmin ? "demo-controls" : "audit-evidence";
+  const controlsAnchor = "demo-controls";
   const partnerReadinessAnchor = isSystemAdmin ? "partner-readiness-panel" : evidenceAnchor;
   const reportCompleteness = Math.max(0, 100 - queuedReports * 8);
   const staleClinicCount = clinics.filter((clinic) => clinic.freshness === "stale").length;
@@ -575,12 +575,14 @@ export default function AdminPage({
         </ReferencePanel>
 
         <div id={exportAnchor} data-admin-section={adminWorkspaceSections[1]}>
-          <ExportPreview
-            payload={exportPayload}
-            onOpen={() => {
-              // No-op stub for visual audit in this phase.
-            }}
-          />
+          <div id={isSystemAdmin ? undefined : "audit-evidence"}>
+            <ExportPreview
+              payload={exportPayload}
+              onOpen={() => {
+                // No-op stub for visual audit in this phase.
+              }}
+            />
+          </div>
         </div>
 
         <div data-admin-section={adminWorkspaceSections[2]}>
