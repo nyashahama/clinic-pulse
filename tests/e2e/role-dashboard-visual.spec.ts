@@ -6,6 +6,24 @@ import { expect, test, type Page } from "@playwright/test";
 type SeededRole = "reporter" | "district_manager" | "org_admin" | "system_admin";
 type ThemeName = "light" | "dark";
 
+type ScrollMetrics = {
+  clientHeight: number;
+  maxScrollTop: number;
+};
+
+type HorizontalMetrics = {
+  clientWidth: number;
+  offenders: Array<{
+    className: string;
+    left: number;
+    right: number;
+    scrollWidth: number;
+    tagName: string;
+    text: string;
+  }>;
+  scrollWidth: number;
+};
+
 const password = "ClinicPulseDemo123!";
 const roleScenarios: Array<{
   role: SeededRole;
@@ -52,6 +70,200 @@ async function setTheme(page: Page, theme: ThemeName) {
   }
 }
 
+async function readDashboardScrollMetrics(page: Page, role: SeededRole): Promise<ScrollMetrics> {
+  return page.locator(`[data-role-dashboard="${role}"]`).evaluate((dashboard) => {
+    function findScrollContainer(element: Element) {
+      let current = element.parentElement;
+
+      while (current) {
+        const styles = window.getComputedStyle(current);
+        const canScrollY = ["auto", "scroll", "overlay"].includes(styles.overflowY);
+
+        if (canScrollY && current.scrollHeight > current.clientHeight + 1) {
+          return current;
+        }
+
+        current = current.parentElement;
+      }
+
+      return document.scrollingElement ?? document.documentElement;
+    }
+
+    const scrollContainer = findScrollContainer(dashboard);
+
+    return {
+      clientHeight: scrollContainer.clientHeight,
+      maxScrollTop: Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight),
+    };
+  });
+}
+
+async function readDashboardHorizontalMetrics(page: Page, role: SeededRole): Promise<HorizontalMetrics> {
+  return page.locator(`[data-role-dashboard="${role}"]`).evaluate((dashboard) => {
+    function findScrollContainer(element: Element) {
+      let current = element.parentElement;
+
+      while (current) {
+        const styles = window.getComputedStyle(current);
+        const canScrollY = ["auto", "scroll", "overlay"].includes(styles.overflowY);
+
+        if (canScrollY && current.scrollHeight > current.clientHeight + 1) {
+          return current;
+        }
+
+        current = current.parentElement;
+      }
+
+      return document.scrollingElement ?? document.documentElement;
+    }
+
+    const scrollContainer = findScrollContainer(dashboard);
+    const scrollContainerRect = scrollContainer.getBoundingClientRect();
+    const viewportLeft = scrollContainerRect.left;
+    const viewportRight = scrollContainerRect.right;
+
+    function isClippedByOwnScrollContainer(element: HTMLElement) {
+      let current = element.parentElement;
+
+      while (current && current !== scrollContainer) {
+        const styles = window.getComputedStyle(current);
+        const clipsX = ["auto", "scroll", "hidden", "clip"].includes(styles.overflowX);
+        const rect = current.getBoundingClientRect();
+
+        if (clipsX && rect.left >= viewportLeft - 1 && rect.right <= viewportRight + 1) {
+          return true;
+        }
+
+        current = current.parentElement;
+      }
+
+      return false;
+    }
+
+    const offenders = Array.from(scrollContainer.querySelectorAll<HTMLElement>("*"))
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+
+        return { element, rect };
+      })
+      .filter(({ element, rect }) => {
+        if (rect.width <= 0 || rect.height <= 0) {
+          return false;
+        }
+
+        const extendsPastViewport =
+          rect.left < viewportLeft - 1 || rect.right > viewportRight + 1;
+
+        return extendsPastViewport && !isClippedByOwnScrollContainer(element);
+      })
+      .map((element) => ({
+        className: String(element.element.className),
+        left: Math.round(element.rect.left),
+        right: Math.round(element.rect.right),
+        scrollWidth: element.element.scrollWidth,
+        tagName: element.element.tagName.toLowerCase(),
+        text: element.element.textContent?.trim().replace(/\s+/g, " ").slice(0, 80) ?? "",
+      }))
+      .sort((left, right) => right.right - left.right)
+      .slice(0, 8);
+
+    return {
+      clientWidth: scrollContainer.clientWidth,
+      offenders,
+      scrollWidth: scrollContainer.scrollWidth,
+    };
+  });
+}
+
+async function expectDashboardNotHorizontallyClipped(page: Page, role: SeededRole) {
+  const metrics = await readDashboardHorizontalMetrics(page, role);
+
+  expect(
+    metrics.offenders,
+    `dashboard scroll container should fit its viewport: ${JSON.stringify(metrics)}`
+  ).toEqual([]);
+}
+
+function buildScrollStops(metrics: ScrollMetrics) {
+  if (metrics.maxScrollTop <= 0) {
+    return [0];
+  }
+
+  const step = Math.max(240, metrics.clientHeight - 96);
+  const stops: number[] = [];
+
+  for (let position = 0; position < metrics.maxScrollTop; position += step) {
+    stops.push(Math.round(position));
+  }
+
+  const finalStop = Math.round(metrics.maxScrollTop);
+  if (stops.at(-1) !== finalStop) {
+    stops.push(finalStop);
+  }
+
+  return stops;
+}
+
+async function scrollDashboardTo(page: Page, role: SeededRole, top: number) {
+  await page.locator(`[data-role-dashboard="${role}"]`).evaluate(
+    (dashboard, scrollTop) => {
+      function findScrollContainer(element: Element) {
+        let current = element.parentElement;
+
+        while (current) {
+          const styles = window.getComputedStyle(current);
+          const canScrollY = ["auto", "scroll", "overlay"].includes(styles.overflowY);
+
+          if (canScrollY && current.scrollHeight > current.clientHeight + 1) {
+            return current;
+          }
+
+          current = current.parentElement;
+        }
+
+        return document.scrollingElement ?? document.documentElement;
+      }
+
+      findScrollContainer(dashboard).scrollTo({ top: scrollTop, left: 0 });
+    },
+    top
+  );
+  await page.waitForTimeout(75);
+}
+
+async function captureDashboardReviewScreenshots(
+  page: Page,
+  projectName: string,
+  role: SeededRole,
+  theme: ThemeName
+) {
+  const basePath = `test-results/phase-1-role-ux/${projectName}/${role}-${theme}`;
+  const overviewPath = `${basePath}.png`;
+  const segmentDirectory = basePath;
+  const stops = buildScrollStops(await readDashboardScrollMetrics(page, role));
+
+  mkdirSync(dirname(overviewPath), { recursive: true });
+  mkdirSync(segmentDirectory, { recursive: true });
+
+  for (const [index, scrollTop] of stops.entries()) {
+    await scrollDashboardTo(page, role, scrollTop);
+    const segmentPath = `${segmentDirectory}/segment-${String(index).padStart(2, "0")}.png`;
+    await page.screenshot({
+      path: segmentPath,
+      caret: "initial",
+    });
+
+    if (index === 0) {
+      await page.screenshot({
+        path: overviewPath,
+        caret: "initial",
+      });
+    }
+  }
+
+  await scrollDashboardTo(page, role, 0);
+}
+
 test.describe("phase 1 role dashboard visual review", () => {
   for (const scenario of roleScenarios) {
     for (const theme of ["light", "dark"] as const) {
@@ -62,13 +274,8 @@ test.describe("phase 1 role dashboard visual review", () => {
         await setTheme(page, theme);
         await expect(page.locator(`[data-role-dashboard="${scenario.role}"]`)).toBeVisible();
 
-        const screenshotPath = `test-results/phase-1-role-ux/${testInfo.project.name}/${scenario.role}-${theme}.png`;
-        mkdirSync(dirname(screenshotPath), { recursive: true });
-        await page.screenshot({
-          path: screenshotPath,
-          fullPage: true,
-          caret: "initial",
-        });
+        await captureDashboardReviewScreenshots(page, testInfo.project.name, scenario.role, theme);
+        await expectDashboardNotHorizontallyClipped(page, scenario.role);
 
         expect(consoleErrors).toEqual([]);
       });
