@@ -65,7 +65,7 @@ export function ClinicPulseLogo({
       {showWordmark ? (
         <span
           className={cn(
-            "text-[15px] font-semibold tracking-tight text-neutral-950",
+            "text-[15px] font-semibold tracking-tight text-neutral-950 dark:text-foreground",
             wordmarkClassName,
           )}
         >
