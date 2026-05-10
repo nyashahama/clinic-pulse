@@ -28,7 +28,7 @@ type ReferenceSectionCardsProps = {
 
 export function ReferenceSectionCards({ cards }: ReferenceSectionCardsProps) {
   return (
-    <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid min-w-0 grid-cols-1 gap-4 *:data-[slot=card]:min-w-0 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs dark:*:data-[slot=card]:bg-card md:grid-cols-2 xl:grid-cols-4">
       {cards.map((card) => {
         const TrendIcon =
           card.trend === "down"
@@ -49,9 +49,9 @@ export function ReferenceSectionCards({ cards }: ReferenceSectionCardsProps) {
                   className={cn(
                     "gap-1",
                     card.trend === "down" &&
-                      "border-amber-200 bg-amber-50 text-amber-700",
+                      "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/45 dark:text-amber-200",
                     card.trend === "neutral" &&
-                      "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/45 dark:text-emerald-200"
                   )}
                   variant="outline"
                 >
