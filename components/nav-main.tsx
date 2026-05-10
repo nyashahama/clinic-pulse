@@ -12,7 +12,7 @@ import {
 import type {
   DashboardNavGroup,
   DashboardNavItem,
-} from "@/components/demo/dashboard-nav-config"
+} from "@/lib/product/workspace-config"
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -24,8 +24,8 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
-import { isDashboardNavUrlActive } from "@/lib/demo/nav-active-state"
-import { resolveNavCollapsibleOpen } from "@/lib/demo/nav-collapsible-state"
+import { isDashboardNavUrlActive } from "@/lib/product/nav-active-state"
+import { resolveNavCollapsibleOpen } from "@/lib/product/nav-collapsible-state"
 import { ChevronRightIcon } from "lucide-react"
 
 export function NavMain({ groups }: { groups: DashboardNavGroup[] }) {
