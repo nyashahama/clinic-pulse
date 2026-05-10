@@ -101,7 +101,7 @@ export function DemoControls({
   ];
 
   return (
-    <section className="rounded-lg border border-border-subtle bg-bg-default shadow-sm">
+    <section className="min-w-0 rounded-lg border border-border-subtle bg-bg-default shadow-sm">
       <div className="px-4 pt-4">
         <SectionHeader
           eyebrow="Demo actions"

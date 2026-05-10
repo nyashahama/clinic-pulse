@@ -95,7 +95,7 @@ export function ClinicMap({
     .slice(0, 4);
 
   return (
-    <section className="rounded-lg border border-border-subtle bg-bg-default shadow-sm">
+    <section className="min-w-0 overflow-hidden rounded-lg border border-border-subtle bg-bg-default shadow-sm">
       <div className="px-4 pt-4">
         <SectionHeader
           eyebrow="District overview"
@@ -104,7 +104,7 @@ export function ClinicMap({
         />
       </div>
 
-      <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(16rem,0.7fr)]">
+      <div className="grid min-w-0 gap-4 p-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(16rem,0.7fr)]">
         <div className="relative min-h-[22rem] overflow-hidden rounded-lg border border-border-subtle bg-[linear-gradient(180deg,#f7faf9_0%,#eef6f4_100%)] dark:bg-none dark:bg-card">
           <div className="absolute inset-0 opacity-80">
             <div className="absolute left-[8%] top-[14%] h-px w-[32%] rotate-[16deg] bg-teal-200/80 dark:bg-primary/30" />

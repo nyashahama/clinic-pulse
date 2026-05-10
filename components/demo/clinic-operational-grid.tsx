@@ -37,14 +37,14 @@ export function ClinicOperationalGrid({ clinic }: ClinicOperationalGridProps) {
   const pressureMetrics = buildPressureMetrics(clinic);
 
   return (
-    <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
+    <section className="min-w-0 rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
       <SectionHeader
         eyebrow="Operational state"
         title="Clinic operations"
         description="Live operating pressure, service list, and current reason from the most recent report."
       />
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2 2xl:grid-cols-4">
         {pressureMetrics.map((metric) => {
           const Icon = metric.icon;
 

@@ -3,7 +3,7 @@ import type { AuthMembership, AuthRole } from "@/lib/auth/api";
 const ROLE_HOME_HREFS: Record<AuthRole, string> = {
   system_admin: "/admin",
   org_admin: "/admin",
-  district_manager: "/demo",
+  district_manager: "/district",
   reporter: "/field",
 };
 
@@ -26,5 +26,5 @@ export function selectHighestMembershipRole(memberships: AuthMembership[]) {
 export function getMembershipHomeHref(memberships: AuthMembership[]) {
   const role = selectHighestMembershipRole(memberships);
 
-  return role ? getRoleHomeHref(role) : "/demo";
+  return role ? getRoleHomeHref(role) : "/district";
 }

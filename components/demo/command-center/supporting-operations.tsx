@@ -14,7 +14,7 @@ export function SupportingOperations({ children }: SupportingOperationsProps) {
       description="Secondary tools stay available without competing with the command queue."
       className="bg-muted/80"
     >
-      <div className="grid gap-4">{children}</div>
+      <div className="grid min-w-0 gap-4">{children}</div>
     </CommandCard>
   );
 }

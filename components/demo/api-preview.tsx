@@ -110,8 +110,8 @@ export function APIPreview({ clinicCount, onOpen }: APIPreviewProps) {
                   <p className="text-xs font-semibold uppercase tracking-[0.08em] text-content-subtle">
                     Request
                   </p>
-                  <pre className="overflow-x-auto rounded-lg border border-border-subtle bg-bg-subtle p-2 text-[11px] leading-6">
-                    <span className="font-mono text-content-subtle">
+                  <pre className="min-w-0 max-w-full whitespace-pre-wrap break-words rounded-lg border border-border-subtle bg-bg-subtle p-2 text-[11px] leading-6">
+                    <span className="block min-w-0 font-mono text-content-subtle">
                       {entry.headers.map((header) => `\n${header}`)}
                       {"\n\n"}
                       {entry.body ? `${formatCodeBlock(entry.body)}\n` : "(no body required)\n"}
@@ -122,8 +122,8 @@ export function APIPreview({ clinicCount, onOpen }: APIPreviewProps) {
                   <p className="text-xs font-semibold uppercase tracking-[0.08em] text-content-subtle">
                     Response
                   </p>
-                  <pre className="overflow-x-auto rounded-lg border border-border-subtle bg-bg-subtle p-2 text-[11px] leading-6">
-                    <span className="font-mono text-content-subtle">
+                  <pre className="min-w-0 max-w-full whitespace-pre-wrap break-words rounded-lg border border-border-subtle bg-bg-subtle p-2 text-[11px] leading-6">
+                    <span className="block min-w-0 font-mono text-content-subtle">
                       <CodeXml className="size-4" />
                       {formatCodeBlock(entry.response)}
                     </span>

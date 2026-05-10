@@ -30,7 +30,7 @@ export function StatusSummary({
   lastSyncAt,
 }: StatusSummaryProps) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid min-w-0 gap-3 sm:grid-cols-2 2xl:grid-cols-4">
       <MetricTile
         label="Operational"
         count={counts.operational}
