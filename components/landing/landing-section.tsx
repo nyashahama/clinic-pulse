@@ -25,10 +25,10 @@ export function LandingSection({
   spacing = "default",
 }: LandingSectionProps) {
   return (
-    <section id={id} className={cn("relative bg-white", className)}>
+    <section id={id} className={cn("relative bg-white dark:bg-background", className)}>
       <MaxWidthWrapper
         className={cn(
-          "border-x-neutral-100",
+          "border-x-neutral-100 dark:border-x-border",
           landingSectionSpacingClassNames[spacing],
           contentClassName,
         )}
@@ -68,13 +68,13 @@ export function LandingSectionHeader({
         </p>
       ) : null}
       <h2
-        className="font-display text-3xl leading-[1.08] text-neutral-950 sm:text-4xl lg:text-5xl"
+        className="font-display text-3xl leading-[1.08] text-neutral-950 dark:text-foreground sm:text-4xl lg:text-5xl"
         style={{ textWrap: "balance" }}
       >
         {title}
       </h2>
       {description ? (
-        <p className="text-base leading-7 text-neutral-600 sm:text-lg">{description}</p>
+        <p className="text-base leading-7 text-neutral-600 dark:text-muted-foreground sm:text-lg">{description}</p>
       ) : null}
     </div>
   );
