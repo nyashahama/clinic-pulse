@@ -141,6 +141,7 @@ export function SiteHeader({ authSession, logoutAction }: SiteHeaderProps) {
         key={commandOpen ? "open" : "closed"}
         open={commandOpen}
         onOpenChange={setCommandOpen}
+        districtConsoleHref="/district"
       />
     </>
   )

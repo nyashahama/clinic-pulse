@@ -44,10 +44,10 @@ export const HIDDEN_DASHBOARD_PRIMARY_NAV_ROUTES = [
   "/field/drafts-sync",
   "/field/recent-reports",
   "/field/sync-queue",
-  "/demo/severity-queue",
-  "/demo/clinic-network",
-  "/demo/clinic-evidence",
-  "/demo/interventions",
+  "/district/severity-queue",
+  "/district/clinic-network",
+  "/district/clinic-evidence",
+  "/district/interventions",
   "/admin/reporting-coverage",
   "/admin/users-roles",
   "/admin/access-review",
@@ -75,7 +75,7 @@ const ROLE_WORKSPACES: Record<AuthRole, DashboardWorkspace> = {
   district_manager: {
     roleLabel: "District manager",
     workspaceLabel: "Command Center",
-    homeUrl: "/demo",
+    homeUrl: "/district",
     eyebrow: "District command",
     title: "Clinic pressure, severity, and interventions",
     description:
@@ -83,7 +83,7 @@ const ROLE_WORKSPACES: Record<AuthRole, DashboardWorkspace> = {
     searchPlaceholder: "Search clinics, services, or field signals",
     primaryAction: {
       title: "Open severity queue",
-      url: "/demo#severity-queue",
+      url: "/district#severity-queue",
       icon: <ActivityIcon />,
     },
     groups: [
@@ -92,13 +92,13 @@ const ROLE_WORKSPACES: Record<AuthRole, DashboardWorkspace> = {
         items: [
           {
             title: "Command Center",
-            url: "/demo",
+            url: "/district",
             icon: <Building2Icon />,
             items: [
-              { title: "Severity queue", url: "/demo#severity-queue" },
-              { title: "Clinic network", url: "/demo#clinic-network" },
-              { title: "Clinic evidence", url: "/demo#clinic-evidence" },
-              { title: "Interventions", url: "/demo#interventions" },
+              { title: "Severity queue", url: "/district#severity-queue" },
+              { title: "Clinic network", url: "/district#clinic-network" },
+              { title: "Clinic evidence", url: "/district#clinic-evidence" },
+              { title: "Interventions", url: "/district#interventions" },
             ],
           },
         ],

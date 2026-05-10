@@ -22,11 +22,13 @@ import {
 import { getClinicRows } from "@/lib/demo/selectors";
 
 type CommandPaletteProps = {
+  districtConsoleHref?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
 export function CommandPalette({
+  districtConsoleHref = "/demo",
   open,
   onOpenChange,
 }: CommandPaletteProps) {
@@ -107,7 +109,7 @@ export function CommandPalette({
       label: "Open non-functional clinics",
       hint: "District Console",
       icon: AlertTriangle,
-      run: () => router.push("/demo?status=non_functional"),
+      run: () => router.push(`${districtConsoleHref}?status=non_functional`),
     },
     {
       label: "Trigger stockout",

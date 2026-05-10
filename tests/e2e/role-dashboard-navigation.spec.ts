@@ -23,7 +23,7 @@ const roleScenarios: Array<{
   {
     role: "district_manager",
     email: "district-manager@clinicpulse.local",
-    home: "/demo",
+    home: "/district",
     heading: "Unified severity queue",
     sidebarLabels: [
       "Command Center",
@@ -89,10 +89,10 @@ const hiddenStandaloneHrefs = [
   "/field/drafts-sync",
   "/field/recent-reports",
   "/field/sync-queue",
-  "/demo/severity-queue",
-  "/demo/clinic-network",
-  "/demo/clinic-evidence",
-  "/demo/interventions",
+  "/district/severity-queue",
+  "/district/clinic-network",
+  "/district/clinic-evidence",
+  "/district/interventions",
   "/admin/reporting-coverage",
   "/admin/users-roles",
   "/admin/access-review",

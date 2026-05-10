@@ -42,7 +42,7 @@ async function loginAction(
     };
   }
 
-  let nextPath = "/demo";
+  let nextPath = "/district";
 
   try {
     const result = await login(email, password);

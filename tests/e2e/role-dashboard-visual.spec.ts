@@ -31,7 +31,7 @@ const roleScenarios: Array<{
   home: string;
 }> = [
   { role: "reporter", email: "reporter@clinicpulse.local", home: "/field" },
-  { role: "district_manager", email: "district-manager@clinicpulse.local", home: "/demo" },
+  { role: "district_manager", email: "district-manager@clinicpulse.local", home: "/district" },
   { role: "org_admin", email: "org-admin@clinicpulse.local", home: "/admin" },
   { role: "system_admin", email: "system-admin@clinicpulse.local", home: "/admin" },
 ];

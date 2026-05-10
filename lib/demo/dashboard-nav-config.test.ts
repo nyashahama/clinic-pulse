@@ -9,7 +9,7 @@ import type { AuthRole } from "@/lib/auth/api";
 
 const roleHomes = {
   reporter: "/field",
-  district_manager: "/demo",
+  district_manager: "/district",
   org_admin: "/admin",
   system_admin: "/admin",
 } satisfies Record<AuthRole, string>;
@@ -19,10 +19,10 @@ const expectedHiddenDashboardPrimaryNavRoutes = [
   "/field/drafts-sync",
   "/field/recent-reports",
   "/field/sync-queue",
-  "/demo/severity-queue",
-  "/demo/clinic-network",
-  "/demo/clinic-evidence",
-  "/demo/interventions",
+  "/district/severity-queue",
+  "/district/clinic-network",
+  "/district/clinic-evidence",
+  "/district/interventions",
   "/admin/reporting-coverage",
   "/admin/users-roles",
   "/admin/access-review",
@@ -185,10 +185,10 @@ describe("dashboard role navigation config", () => {
     );
     expect(workspaceUrlsForRole("district_manager")).toEqual(
       expect.arrayContaining([
-        "/demo#severity-queue",
-        "/demo#clinic-network",
-        "/demo#clinic-evidence",
-        "/demo#interventions",
+        "/district#severity-queue",
+        "/district#clinic-network",
+        "/district#clinic-evidence",
+        "/district#interventions",
       ]),
     );
     expect(workspaceUrlsForRole("org_admin")).toEqual(
