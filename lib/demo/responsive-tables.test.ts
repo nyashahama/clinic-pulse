@@ -12,7 +12,7 @@ describe("responsive demo work queues", () => {
 
     expect(source).toContain('aria-label="Clinic mobile work queue"');
     expect(source).toContain('className="grid gap-3 px-4 pb-4 md:hidden"');
-    expect(source).toContain('className="hidden overflow-x-auto px-4 pb-4 md:block"');
+    expect(source).toContain('className="hidden min-w-0 overflow-x-auto px-4 pb-4 md:block"');
     expect(source).toContain("Recommended action");
   });
 
