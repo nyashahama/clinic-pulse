@@ -71,16 +71,16 @@ export default function LoginPage() {
       <div className="grow basis-0" />
 
       <main className="relative flex w-full flex-col items-center justify-center">
-        <section className="w-full max-w-[26rem] rounded-[2rem] border border-white/70 bg-white/78 p-5 shadow-2xl shadow-slate-900/10 backdrop-blur-xl sm:p-7">
+        <section className="w-full max-w-[26rem] rounded-[2rem] border border-white/70 bg-white/78 p-5 shadow-2xl shadow-slate-900/10 backdrop-blur-xl dark:border-border dark:bg-card/90 dark:shadow-black/30 sm:p-7">
           <div className="text-center">
             <ClinicPulseMark className="mx-auto mb-4 size-12 rounded-2xl shadow-lg shadow-emerald-950/20" />
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#0D7A6B]">
               Secure workspace
             </p>
-            <h1 className="mt-3 font-display text-3xl font-semibold tracking-[-0.04em] text-neutral-950">
+            <h1 className="mt-3 font-display text-3xl font-semibold tracking-[-0.04em] text-neutral-950 dark:text-card-foreground">
               Sign in to ClinicPulse
             </h1>
-            <p className="mt-3 text-sm leading-6 text-neutral-600">
+            <p className="mt-3 text-sm leading-6 text-neutral-600 dark:text-muted-foreground">
               Access live clinic status, field reports, rerouting context, and
               audit history for your district.
             </p>
@@ -90,12 +90,12 @@ export default function LoginPage() {
             <LoginForm loginAction={loginAction} />
           </div>
 
-          <div className="mt-6 rounded-2xl border border-[#0D7A6B]/15 bg-[#ecf7f4] p-4">
+          <div className="mt-6 rounded-2xl border border-[#0D7A6B]/15 bg-[#ecf7f4] p-4 dark:border-primary/30 dark:bg-primary/10">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-neutral-950">
+              <p className="text-sm font-semibold text-neutral-950 dark:text-card-foreground">
                 Local demo credentials
               </p>
-              <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[#0D7A6B]">
+              <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[#0D7A6B] dark:bg-card dark:text-emerald-300">
                 Seeded
               </span>
             </div>
@@ -103,27 +103,27 @@ export default function LoginPage() {
               {demoAccounts.map((account) => (
                 <div
                   key={account.email}
-                  className="rounded-xl border border-white/80 bg-white/70 px-3 py-2"
+                  className="rounded-xl border border-white/80 bg-white/70 px-3 py-2 dark:border-border dark:bg-card/75"
                 >
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500 dark:text-muted-foreground">
                     {account.role}
                   </p>
-                  <p className="mt-1 break-all font-mono text-xs text-neutral-800">
+                  <p className="mt-1 break-all font-mono text-xs text-neutral-800 dark:text-card-foreground">
                     {account.email}
                   </p>
                 </div>
               ))}
             </div>
-            <p className="mt-3 font-mono text-xs text-neutral-700">
+            <p className="mt-3 font-mono text-xs text-neutral-700 dark:text-muted-foreground">
               Password: ClinicPulseDemo123!
             </p>
           </div>
 
-          <p className="mt-6 text-center text-sm font-medium text-neutral-500">
+          <p className="mt-6 text-center text-sm font-medium text-neutral-500 dark:text-muted-foreground">
             Don&rsquo;t have an account?&nbsp;
             <Link
               href="/register"
-              className="font-semibold text-[#0D7A6B] transition-colors hover:text-neutral-900"
+              className="font-semibold text-[#0D7A6B] transition-colors hover:text-neutral-900 dark:text-emerald-300 dark:hover:text-foreground"
             >
               Sign up
             </Link>
@@ -132,18 +132,18 @@ export default function LoginPage() {
       </main>
 
       <div className="flex grow basis-0 flex-col justify-end">
-        <p className="max-w-md px-4 py-4 text-center text-xs font-medium leading-5 text-neutral-500 md:px-0">
+        <p className="max-w-md px-4 py-4 text-center text-xs font-medium leading-5 text-neutral-500 dark:text-muted-foreground md:px-0">
           By continuing, you agree to ClinicPulse&rsquo;s{" "}
           <Link
             href="/legal/terms"
-            className="font-semibold text-neutral-600 hover:text-neutral-800"
+            className="font-semibold text-neutral-600 hover:text-neutral-800 dark:text-muted-foreground dark:hover:text-foreground"
           >
             Terms of Service
           </Link>{" "}
           and{" "}
           <Link
             href="/legal/privacy"
-            className="font-semibold text-neutral-600 hover:text-neutral-800"
+            className="font-semibold text-neutral-600 hover:text-neutral-800 dark:text-muted-foreground dark:hover:text-foreground"
           >
             Privacy Policy
           </Link>
