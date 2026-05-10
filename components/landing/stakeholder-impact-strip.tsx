@@ -50,7 +50,7 @@ export function StakeholderImpactStrip() {
             return (
               <article
                 key={item.role}
-                className="relative z-10 min-h-44 overflow-hidden rounded-xl border border-white/10 bg-white p-4 shadow-sm"
+                className="relative z-10 min-h-44 overflow-hidden rounded-xl border border-white/10 bg-white p-4 shadow-sm dark:bg-white/[0.04]"
               >
                 <Image
                   src={photo.src}
@@ -64,7 +64,7 @@ export function StakeholderImpactStrip() {
                   className={
                     isProminent
                       ? "absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/70 to-neutral-950/10"
-                      : "absolute inset-0 bg-white/88 backdrop-blur-[1px]"
+                      : "absolute inset-0 bg-white/88 backdrop-blur-[1px] dark:bg-neutral-950/76"
                   }
                 />
 
@@ -82,7 +82,7 @@ export function StakeholderImpactStrip() {
                     className={
                       isProminent
                         ? "mt-2 text-lg font-semibold leading-6 text-white"
-                        : "mt-2 text-lg font-semibold leading-6 text-neutral-950"
+                        : "mt-2 text-lg font-semibold leading-6 text-neutral-950 dark:text-white"
                     }
                   >
                     {item.role}
@@ -91,7 +91,7 @@ export function StakeholderImpactStrip() {
                     className={
                       isProminent
                         ? "mt-2 text-sm leading-6 text-neutral-100"
-                        : "mt-2 text-sm leading-6 text-neutral-600"
+                        : "mt-2 text-sm leading-6 text-neutral-600 dark:text-white/72"
                     }
                   >
                     {item.outcome}
