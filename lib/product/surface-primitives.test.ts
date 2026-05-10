@@ -6,6 +6,10 @@ import { MetricTile } from "@/components/product/metric-tile";
 import { ProductPanel } from "@/components/product/panel";
 import { ProductResponsiveTable } from "@/components/product/responsive-table";
 import { SurfaceState } from "@/components/product/surface-state";
+import {
+  WorkspaceClinicDetailLoading,
+  WorkspaceDashboardLoading,
+} from "@/components/product/workspace-loading";
 
 describe("product surface primitives", () => {
   it("renders panel title, description, metadata, and content", () => {
@@ -80,5 +84,19 @@ describe("product surface primitives", () => {
     expect(html).toContain("8");
     expect(html).toContain("Active district incidents");
     expect(html).toContain("since morning");
+  });
+
+  it("renders workspace dashboard loading skeletons", () => {
+    const html = renderToStaticMarkup(createElement(WorkspaceDashboardLoading));
+
+    expect(html).toContain("animate-pulse");
+    expect(html).toContain("h-[34rem]");
+  });
+
+  it("renders workspace clinic detail loading skeletons", () => {
+    const html = renderToStaticMarkup(createElement(WorkspaceClinicDetailLoading));
+
+    expect(html).toContain("animate-pulse");
+    expect(html).toContain("h-80");
   });
 });

@@ -1,45 +1,51 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import {
-  AlertTriangle,
-  BriefcaseMedical,
-  Database,
-  RotateCcw,
-  Search,
-  Users,
-  Wifi,
-  X,
-} from "lucide-react";
+import { useCallback, useEffect, type ChangeEvent } from "react";
+import { Search, X, type LucideIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { useDemoStore } from "@/lib/demo/demo-store";
-import {
-  STAFFING_TRIGGER_CLINIC_ID,
-  STOCKOUT_TRIGGER_CLINIC_ID,
-} from "@/lib/demo/clinics";
-import { getClinicRows } from "@/lib/demo/selectors";
 
-type WorkspaceCommandPaletteProps = {
-  districtConsoleHref?: string;
-  open: boolean;
+export type WorkspaceCommandPaletteSearchResult = {
+  id: string;
+  title: string;
+  subtitle: string;
+  icon?: LucideIcon;
+  onSelect: () => void;
+};
+
+export type WorkspaceCommandPaletteAction = {
+  label: string;
+  hint: string;
+  icon: LucideIcon;
+  run: () => void;
+};
+
+export type WorkspaceCommandPaletteProps = {
+  actions: WorkspaceCommandPaletteAction[];
+  footerText?: string;
   onOpenChange: (open: boolean) => void;
+  onQueryChange: (query: string) => void;
+  onSubmitSearch: () => void;
+  open: boolean;
+  query: string;
+  searchLabel?: string;
+  searchPlaceholder?: string;
+  searchResults: WorkspaceCommandPaletteSearchResult[];
 };
 
 export function WorkspaceCommandPalette({
-  districtConsoleHref = "/demo",
-  open,
+  actions,
+  footerText,
   onOpenChange,
+  onQueryChange,
+  onSubmitSearch,
+  open,
+  query,
+  searchLabel = "Search",
+  searchPlaceholder = "Search or run a command",
+  searchResults,
 }: WorkspaceCommandPaletteProps) {
-  const router = useRouter();
-  const { state, resetDemo, syncOfflineReports, triggerStaffingShortage, triggerStockout } =
-    useDemoStore();
-  const clinics = getClinicRows(state);
-  const [query, setQuery] = useState("");
-
   const closePalette = useCallback(() => {
-    setQuery("");
     onOpenChange(false);
   }, [onOpenChange]);
 
@@ -53,105 +59,26 @@ export function WorkspaceCommandPalette({
         closePalette();
       }
 
-      if ((event.key === "Enter" || event.key === "ArrowRight") && event.target instanceof HTMLInputElement) {
-        const nextQuery = query.trim() || clinics[0]?.name || "";
-
-        if (nextQuery) {
-          event.preventDefault();
-          router.push(`/finder?query=${encodeURIComponent(nextQuery)}`);
-          closePalette();
-        }
+      if (
+        (event.key === "Enter" || event.key === "ArrowRight") &&
+        event.target instanceof HTMLInputElement
+      ) {
+        event.preventDefault();
+        onSubmitSearch();
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [closePalette, open, query, clinics, router]);
-
-  const clinicResults = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-
-    if (!normalizedQuery) {
-      return clinics.slice(0, 5);
-    }
-
-    return clinics
-      .filter((clinic) => {
-        const haystack = [
-          clinic.name,
-          clinic.facilityCode,
-          clinic.district,
-          clinic.services.join(" "),
-        ]
-          .join(" ")
-          .toLowerCase();
-
-        return haystack.includes(normalizedQuery);
-      })
-      .slice(0, 5);
-  }, [clinics, query]);
-
-  const commands = [
-    {
-      label: "Search clinic",
-      hint: query.trim() || "Open finder with the current search",
-      icon: Search,
-      run: () => {
-        const nextQuery = query.trim() || clinics[0]?.name || "";
-        router.push(
-          nextQuery
-            ? `/finder?query=${encodeURIComponent(nextQuery)}`
-            : "/finder",
-        );
-      },
-    },
-    {
-      label: "Open non-functional clinics",
-      hint: "District Console",
-      icon: AlertTriangle,
-      run: () => router.push(`${districtConsoleHref}?status=non_functional`),
-    },
-    {
-      label: "Trigger stockout",
-      hint: "Mamelodi East Community Clinic",
-      icon: BriefcaseMedical,
-      run: () => triggerStockout(STOCKOUT_TRIGGER_CLINIC_ID),
-    },
-    {
-      label: "Trigger staffing shortage",
-      hint: "Soshanguve Block F Clinic",
-      icon: Users,
-      run: () => triggerStaffingShortage(STAFFING_TRIGGER_CLINIC_ID),
-    },
-    {
-      label: "Sync offline reports",
-      hint: "Push queued field updates",
-      icon: Wifi,
-      run: () => syncOfflineReports(),
-    },
-    {
-      label: "Open finder",
-      hint: "Public routing surface",
-      icon: Search,
-      run: () => router.push("/finder"),
-    },
-    {
-      label: "Open API preview",
-      hint: "Admin preview panel",
-      icon: Database,
-      run: () => router.push("/admin?panel=api-preview"),
-    },
-    {
-      label: "Reset demo",
-      hint: "Clear local demo changes",
-      icon: RotateCcw,
-      run: () => resetDemo(),
-    },
-  ];
+  }, [closePalette, onSubmitSearch, open]);
 
   if (!open) {
     return null;
   }
+
+  const onInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    onQueryChange(event.target.value);
+  };
 
   return (
     <div
@@ -178,8 +105,8 @@ export function WorkspaceCommandPalette({
             aria-describedby="command-palette-help"
             autoFocus
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search clinics or run a command"
+            onChange={onInputChange}
+            placeholder={searchPlaceholder}
             className="h-8 flex-1 bg-transparent text-sm text-popover-foreground outline-none placeholder:text-muted-foreground"
           />
           <Button
@@ -194,32 +121,39 @@ export function WorkspaceCommandPalette({
 
         <div className="grid gap-0 border-b border-border md:grid-cols-[1.1fr,0.9fr]">
           <section className="border-b border-border p-3 md:border-b-0 md:border-r">
-            <p id="command-palette-help" className="mb-2 px-2 text-xs font-medium tracking-[0.02em] text-muted-foreground uppercase">
-              Search clinic
+            <p
+              id="command-palette-help"
+              className="mb-2 px-2 text-xs font-medium tracking-[0.02em] text-muted-foreground uppercase"
+            >
+              {searchLabel}
             </p>
             <div role="list" className="space-y-1">
-              {clinicResults.map((clinic) => (
-                <button
-                  key={clinic.id}
-                  role="listitem"
-                  type="button"
-                  onClick={() => {
-                    router.push(`/finder?query=${encodeURIComponent(clinic.name)}`);
-                    closePalette();
-                  }}
-                  className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left hover:bg-muted"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium text-popover-foreground">
-                      {clinic.name}
+              {searchResults.map((result) => {
+                const ResultIcon = result.icon ?? Search;
+
+                return (
+                  <button
+                    key={result.id}
+                    role="listitem"
+                    type="button"
+                    onClick={() => {
+                      result.onSelect();
+                      closePalette();
+                    }}
+                    className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left hover:bg-muted"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium text-popover-foreground">
+                        {result.title}
+                      </span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {result.subtitle}
+                      </span>
                     </span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {clinic.facilityCode} · {clinic.status.replaceAll("_", " ")}
-                    </span>
-                  </span>
-                  <Search className="size-4 shrink-0 text-muted-foreground" />
-                </button>
-              ))}
+                    <ResultIcon className="size-4 shrink-0 text-muted-foreground" />
+                  </button>
+                );
+              })}
             </div>
           </section>
 
@@ -228,7 +162,7 @@ export function WorkspaceCommandPalette({
               Actions
             </p>
             <div role="list" className="space-y-1">
-              {commands.map((command) => {
+              {actions.map((command) => {
                 const Icon = command.icon;
 
                 return (
@@ -261,10 +195,12 @@ export function WorkspaceCommandPalette({
           </section>
         </div>
 
-        <div className="flex items-center justify-between gap-3 px-4 py-3 text-xs text-muted-foreground">
-          <span>Quick actions for the founder-led demo flow.</span>
-          <span className="font-mono text-[11px] text-muted-foreground">Esc</span>
-        </div>
+        {footerText ? (
+          <div className="flex items-center justify-between gap-3 px-4 py-3 text-xs text-muted-foreground">
+            <span>{footerText}</span>
+            <span className="font-mono text-[11px] text-muted-foreground">Esc</span>
+          </div>
+        ) : null}
       </div>
     </div>
   );

@@ -1,10 +1,9 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { useEffect, useState } from "react"
 import Link from "next/link"
 
-import { LiveIndicator } from "@/components/demo/live-indicator"
-import { WorkspaceCommandPalette } from "@/components/product/workspace-command-palette"
 import { SearchForm } from "@/components/search-form"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 import {
@@ -25,12 +24,19 @@ import { LogOutIcon, PanelLeftIcon, SearchIcon } from "lucide-react"
 
 type WorkspaceHeaderProps = {
   authSession: ClientAuthSession
+  headerStatusIndicator?: ReactNode
   logoutAction: () => Promise<void>
+  renderCommandPalette?: (props: {
+    open: boolean
+    onOpenChange: (open: boolean) => void
+  }) => ReactNode
 }
 
 export function WorkspaceHeader({
   authSession,
+  headerStatusIndicator,
   logoutAction,
+  renderCommandPalette,
 }: WorkspaceHeaderProps) {
   const { toggleSidebar } = useSidebar()
   const [commandOpen, setCommandOpen] = useState(false)
@@ -118,32 +124,36 @@ export function WorkspaceHeader({
             {workspace.primaryAction.title}
           </Link>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCommandOpen(true)}
-            className="hidden md:inline-flex"
-            aria-label="Open command palette"
-          >
-            <SearchIcon />
-            Command
-          </Button>
+          {renderCommandPalette ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCommandOpen(true)}
+                className="hidden md:inline-flex"
+                aria-label="Open command palette"
+              >
+                <SearchIcon />
+                Command
+              </Button>
 
-          <Button
-            variant="outline"
-            size="icon-sm"
-            onClick={() => setCommandOpen(true)}
-            className="sm:hidden"
-            aria-label="Open command palette"
-          >
-            <SearchIcon />
-          </Button>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={() => setCommandOpen(true)}
+                className="sm:hidden"
+                aria-label="Open command palette"
+              >
+                <SearchIcon />
+              </Button>
+            </>
+          ) : null}
 
           <ThemeSwitcher />
 
-          <div className="hidden xl:block">
-            <LiveIndicator />
-          </div>
+          {headerStatusIndicator ? (
+            <div className="hidden xl:block">{headerStatusIndicator}</div>
+          ) : null}
 
           <form action={logoutAction}>
             <Button variant="outline" size="icon-sm" type="submit" aria-label="Sign out">
@@ -152,12 +162,10 @@ export function WorkspaceHeader({
           </form>
         </div>
       </header>
-      <WorkspaceCommandPalette
-        key={commandOpen ? "open" : "closed"}
-        open={commandOpen}
-        onOpenChange={setCommandOpen}
-        districtConsoleHref="/district"
-      />
+      {renderCommandPalette?.({
+        open: commandOpen,
+        onOpenChange: setCommandOpen,
+      })}
     </>
   )
 }

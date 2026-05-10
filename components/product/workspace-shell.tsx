@@ -10,21 +10,33 @@ import type { ClientAuthSession } from "@/lib/auth/api";
 export type WorkspaceShellProps = {
   children: ReactNode;
   detail?: ReactNode;
+  headerStatusIndicator?: ReactNode;
   logoutAction: () => Promise<void>;
+  renderCommandPalette?: (props: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+  }) => ReactNode;
   session: ClientAuthSession;
 };
 
 export function WorkspaceShell({
   children,
   detail,
+  headerStatusIndicator,
   logoutAction,
+  renderCommandPalette,
   session,
 }: WorkspaceShellProps) {
   return (
     <SidebarProvider className="[--header-height:4rem] bg-background text-foreground">
       <WorkspaceSidebar session={session} />
       <SidebarInset className="flex h-svh min-w-0 flex-col overflow-hidden bg-background">
-        <WorkspaceHeader authSession={session} logoutAction={logoutAction} />
+        <WorkspaceHeader
+          authSession={session}
+          headerStatusIndicator={headerStatusIndicator}
+          logoutAction={logoutAction}
+          renderCommandPalette={renderCommandPalette}
+        />
         <div className="flex min-h-0 flex-1">
           <main className="min-w-0 flex-1 overflow-y-auto">
             <div className="mx-auto flex min-h-full w-full max-w-screen-2xl flex-col px-3 py-4 lg:px-6">

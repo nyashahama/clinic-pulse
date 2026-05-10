@@ -1,8 +1,13 @@
 import { cn } from "@/lib/utils";
 
-import type { DemoSurface } from "@/components/demo/empty-state";
+export type ProductSurfaceSkeletonSurface =
+  | "clinic-table"
+  | "report-stream"
+  | "alert-list"
+  | "finder-results"
+  | "offline-queue";
 
-const surfaceSkeletonRows: Record<DemoSurface, number> = {
+const surfaceSkeletonRows: Record<ProductSurfaceSkeletonSurface, number> = {
   "clinic-table": 6,
   "report-stream": 5,
   "alert-list": 4,
@@ -24,7 +29,7 @@ export function Skeleton({ className }: SkeletonProps) {
 }
 
 export type ProductSurfaceSkeletonProps = {
-  surface: DemoSurface;
+  surface: ProductSurfaceSkeletonSurface;
   className?: string;
 };
 
