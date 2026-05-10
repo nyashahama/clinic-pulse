@@ -1,0 +1,210 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  HIDDEN_DASHBOARD_PRIMARY_NAV_ROUTES,
+  PUBLIC_DASHBOARD_NAV_EXCLUSIONS,
+  getDashboardWorkspace,
+} from "@/components/demo/dashboard-nav-config";
+import type { AuthRole } from "@/lib/auth/api";
+
+const roleHomes = {
+  reporter: "/field",
+  district_manager: "/demo",
+  org_admin: "/admin",
+  system_admin: "/admin",
+} satisfies Record<AuthRole, string>;
+
+const expectedHiddenDashboardPrimaryNavRoutes = [
+  "/field/submit-report",
+  "/field/drafts-sync",
+  "/field/recent-reports",
+  "/demo/severity-queue",
+  "/demo/clinic-network",
+  "/demo/clinic-evidence",
+  "/demo/interventions",
+  "/admin/reporting-coverage",
+  "/admin/users-roles",
+  "/admin/partner-readiness",
+  "/admin/audit-evidence",
+  "/admin/exports",
+  "/admin/tenant-health",
+  "/admin/data-ingestion",
+  "/admin/security",
+  "/admin/demo-controls",
+] as const;
+
+const expectedPublicDashboardNavExclusions = [
+  "/",
+  "/book-demo",
+  "/book-demo/thanks",
+  "/finder",
+  "/clinics",
+  "/login",
+  "/register",
+] as const;
+
+const expectedSidebarLabels = {
+  reporter: ["Field Workbench", "Submit report", "Drafts and sync", "Recent reports"],
+  district_manager: [
+    "Command Center",
+    "Severity queue",
+    "Clinic network",
+    "Clinic evidence",
+    "Interventions",
+  ],
+  org_admin: [
+    "Admin Overview",
+    "Reporting coverage",
+    "Users and roles",
+    "Partner readiness",
+    "Audit evidence",
+    "Exports",
+  ],
+  system_admin: [
+    "Platform Overview",
+    "Tenant health",
+    "Data ingestion",
+    "Security",
+    "Demo controls",
+    "Audit evidence",
+  ],
+} satisfies Record<AuthRole, string[]>;
+
+function normalizeDashboardUrl(url: string) {
+  return url.split(/[?#]/, 1)[0] ?? url;
+}
+
+function routeMatchesBaseOrSubpath(url: string | undefined, baseRoute: string) {
+  if (!url) {
+    return false;
+  }
+
+  const normalizedUrl = normalizeDashboardUrl(url);
+
+  if (baseRoute === "/") {
+    return normalizedUrl === "/";
+  }
+
+  return normalizedUrl === baseRoute || normalizedUrl.startsWith(`${baseRoute}/`);
+}
+
+function sidebarUrlsForRole(role: AuthRole) {
+  const workspace = getDashboardWorkspace(role);
+
+  return workspace.groups.flatMap((group) =>
+    group.items.flatMap((item) => [
+      item.url,
+      ...(item.items?.map((subItem) => subItem.url) ?? []),
+    ]),
+  );
+}
+
+function sidebarLabelsForRole(role: AuthRole) {
+  const workspace = getDashboardWorkspace(role);
+
+  return workspace.groups.flatMap((group) =>
+    group.items.flatMap((item) => [
+      item.title,
+      ...(item.items?.map((subItem) => subItem.title) ?? []),
+    ]),
+  );
+}
+
+function workspaceUrlsForRole(role: AuthRole) {
+  const workspace = getDashboardWorkspace(role);
+
+  return [
+    workspace.homeUrl,
+    workspace.primaryAction.url,
+    ...sidebarUrlsForRole(role),
+  ];
+}
+
+describe("dashboard role navigation config", () => {
+  it("exports the approved hidden primary nav routes", () => {
+    expect(HIDDEN_DASHBOARD_PRIMARY_NAV_ROUTES).toEqual(expectedHiddenDashboardPrimaryNavRoutes);
+  });
+
+  it("exports the approved public sidebar exclusions", () => {
+    expect(PUBLIC_DASHBOARD_NAV_EXCLUSIONS).toEqual(expectedPublicDashboardNavExclusions);
+  });
+
+  it.each(Object.entries(roleHomes) as Array<[AuthRole, string]>)(
+    "keeps %s on the approved Phase 1 home",
+    (role, homeUrl) => {
+      expect(getDashboardWorkspace(role).homeUrl).toBe(homeUrl);
+    },
+  );
+
+  it.each(Object.entries(expectedSidebarLabels) as Array<[AuthRole, string[]]>)(
+    "exposes only the approved %s sidebar labels",
+    (role, labels) => {
+      expect(sidebarLabelsForRole(role)).toEqual(labels);
+    },
+  );
+
+  it.each(Object.keys(roleHomes) as AuthRole[])(
+    "hides unfinished standalone routes from %s primary navigation",
+    (role) => {
+      const urls = workspaceUrlsForRole(role);
+
+      for (const hiddenRoute of expectedHiddenDashboardPrimaryNavRoutes) {
+        expect(urls.some((url) => routeMatchesBaseOrSubpath(url, hiddenRoute))).toBe(false);
+      }
+    },
+  );
+
+  it.each(Object.keys(roleHomes) as AuthRole[])(
+    "keeps public routes out of the authenticated %s workspace navigation",
+    (role) => {
+      const urls = workspaceUrlsForRole(role);
+
+      for (const publicRoute of expectedPublicDashboardNavExclusions) {
+        expect(urls.some((url) => routeMatchesBaseOrSubpath(url, publicRoute))).toBe(false);
+      }
+    },
+  );
+
+  it("keeps partner readiness under organisation admin only", () => {
+    expect(sidebarLabelsForRole("org_admin")).toContain("Partner readiness");
+    expect(sidebarLabelsForRole("system_admin")).not.toContain("Partner readiness");
+    expect(sidebarLabelsForRole("district_manager")).not.toContain("Partner readiness");
+    expect(sidebarLabelsForRole("reporter")).not.toContain("Partner readiness");
+  });
+
+  it("uses in-page anchors for concepts whose standalone routes are hidden", () => {
+    expect(workspaceUrlsForRole("reporter")).toEqual(
+      expect.arrayContaining([
+        "/field#submit-report",
+        "/field#drafts-sync",
+        "/field#recent-reports",
+      ]),
+    );
+    expect(workspaceUrlsForRole("district_manager")).toEqual(
+      expect.arrayContaining([
+        "/demo#severity-queue",
+        "/demo#clinic-network",
+        "/demo#clinic-evidence",
+        "/demo#interventions",
+      ]),
+    );
+    expect(workspaceUrlsForRole("org_admin")).toEqual(
+      expect.arrayContaining([
+        "/admin#reporting-coverage",
+        "/admin#users-roles",
+        "/admin#partner-readiness",
+        "/admin#audit-evidence",
+        "/admin#exports",
+      ]),
+    );
+    expect(workspaceUrlsForRole("system_admin")).toEqual(
+      expect.arrayContaining([
+        "/admin#tenant-health",
+        "/admin#data-ingestion",
+        "/admin#security",
+        "/admin#demo-controls",
+        "/admin#audit-evidence",
+      ]),
+    );
+  });
+});
