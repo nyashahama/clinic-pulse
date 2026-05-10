@@ -72,8 +72,8 @@ export function AlertList({ alerts, clinics, onSelectClinic }: AlertListProps) {
                   className={cn(
                     "inline-flex items-center gap-1 rounded-full px-2 py-1",
                     alert.status === "open"
-                      ? "bg-rose-50 text-rose-700"
-                      : "bg-slate-100 text-slate-600",
+                      ? "bg-rose-50 text-rose-700 dark:bg-rose-950/35 dark:text-rose-200"
+                      : "bg-slate-100 text-slate-600 dark:bg-slate-900/60 dark:text-slate-200",
                   )}
                 >
                   <BellRing className="size-3.5" />
