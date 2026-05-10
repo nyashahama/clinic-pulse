@@ -123,7 +123,11 @@ type RecommendationResult = {
   recommendations: RerouteRecommendation[];
 };
 
-export default function ClinicDetailPage() {
+type ClinicDetailPageProps = {
+  consoleHref?: string;
+};
+
+export default function ClinicDetailPage({ consoleHref = "/demo" }: ClinicDetailPageProps) {
   const router = useRouter();
   const { state } = useDemoStore();
   const params = useParams<{ clinicId?: string | string[] }>();
@@ -223,7 +227,7 @@ export default function ClinicDetailPage() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => router.push("/demo")}
+          onClick={() => router.push(consoleHref)}
           className="inline-flex"
         >
           <ArrowLeft className="size-4" />
@@ -251,6 +255,7 @@ export default function ClinicDetailPage() {
           <div className="grid gap-4">
             <ClinicProfileHeader
               clinic={displayClinicRow}
+              consoleHref={consoleHref}
               onFindAlternative={() =>
                 router.push(
                   `/finder?query=${encodeURIComponent(displayClinicRow.name)}&service=${encodeURIComponent(

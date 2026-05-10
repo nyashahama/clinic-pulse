@@ -62,6 +62,7 @@ function formatStatusTransition(from: string, to: string) {
 }
 
 type DistrictConsolePageProps = {
+  consoleHref?: string;
   session: ClientAuthSession;
   syncSummary: SyncSummaryApiResponse | null;
 };
@@ -82,7 +83,11 @@ function statusRiskRank(status: DistrictCommandClinicInput["status"]) {
   return 0;
 }
 
-export default function DistrictConsolePage({ session, syncSummary }: DistrictConsolePageProps) {
+export default function DistrictConsolePage({
+  consoleHref = "/demo",
+  session,
+  syncSummary,
+}: DistrictConsolePageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const {
@@ -131,7 +136,7 @@ export default function DistrictConsolePage({ session, syncSummary }: DistrictCo
   const isReplayFilterBypassed = hasStatusFilter && replayStatus !== "idle";
 
   const openClinicDetail = (clinicId: string) => {
-    router.push(`/demo/clinics/${encodeURIComponent(clinicId)}`);
+    router.push(`${consoleHref}/clinics/${encodeURIComponent(clinicId)}`);
   };
 
   const selectCommandClinic = (clinicId: string) => {
@@ -554,7 +559,7 @@ export default function DistrictConsolePage({ session, syncSummary }: DistrictCo
                   </>
                 )}
               </p>
-              <Link href="/demo" className={buttonVariants({ size: "sm", variant: "outline" })}>
+              <Link href={consoleHref} className={buttonVariants({ size: "sm", variant: "outline" })}>
                 Clear status filter
               </Link>
             </div>

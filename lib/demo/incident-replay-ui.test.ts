@@ -52,7 +52,7 @@ describe("incident replay controls and page wiring source boundary", () => {
     expect(pageSource).toContain("IncidentReplayPanel");
     expect(pageSource).toContain("startIncidentReplay");
     expect(pageSource).toContain("useRouter");
-    expect(pageSource).toContain("router.push(`/demo/clinics/${encodeURIComponent(clinicId)}`)");
+    expect(pageSource).toContain("router.push(`${consoleHref}/clinics/${encodeURIComponent(clinicId)}`)");
     expect(pageSource).toContain("const replayNonIdle = replayStatus !== \"idle\"");
     expect(pageSource).toContain("resetDemo();");
     expect(pageSource).toContain("window.setTimeout(() => {");

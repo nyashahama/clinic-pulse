@@ -8,7 +8,7 @@ import {
   type ProtectedWorkflow,
 } from "@/lib/auth/session";
 
-export async function requireDemoWorkflowAccess(workflow: ProtectedWorkflow) {
+export async function requireDashboardWorkflowAccess(workflow: ProtectedWorkflow) {
   try {
     return await requireCurrentWorkflowRole(workflow);
   } catch (error) {
@@ -23,3 +23,5 @@ export async function requireDemoWorkflowAccess(workflow: ProtectedWorkflow) {
     throw error;
   }
 }
+
+export const requireDemoWorkflowAccess = requireDashboardWorkflowAccess;

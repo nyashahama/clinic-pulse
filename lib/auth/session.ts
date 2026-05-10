@@ -68,7 +68,11 @@ export const ADMIN_WORKFLOW_ROLES = [
 const WORKFLOW_ROLE_REQUIREMENTS = {
   field: {
     roles: FIELD_WORKFLOW_ROLES,
-    insufficientRoleRedirectPath: "/demo",
+    insufficientRoleRedirectPath: "/district",
+  },
+  district: {
+    roles: DEMO_WORKFLOW_ROLES,
+    insufficientRoleRedirectPath: "/field",
   },
   demo: {
     roles: DEMO_WORKFLOW_ROLES,
@@ -76,7 +80,7 @@ const WORKFLOW_ROLE_REQUIREMENTS = {
   },
   admin: {
     roles: ADMIN_WORKFLOW_ROLES,
-    insufficientRoleRedirectPath: "/demo",
+    insufficientRoleRedirectPath: "/district",
   },
 } as const satisfies Record<
   string,

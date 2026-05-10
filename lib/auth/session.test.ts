@@ -249,7 +249,7 @@ describe("auth workflow role guards", () => {
     expect(requireWorkflowRole(session, "field")).toBe(session);
   });
 
-  it("allows district manager access to the field and demo workflows", () => {
+  it("allows district manager access to the field, district, and demo workflows", () => {
     const session = authSession("district_manager");
 
     expect(DEMO_WORKFLOW_ROLES).toEqual([
@@ -258,6 +258,7 @@ describe("auth workflow role guards", () => {
       "system_admin",
     ]);
     expect(requireWorkflowRole(session, "field")).toBe(session);
+    expect(requireWorkflowRole(session, "district")).toBe(session);
     expect(requireWorkflowRole(session, "demo")).toBe(session);
   });
 
@@ -275,7 +276,9 @@ describe("auth workflow role guards", () => {
   });
 
   it("uses stable fallback destinations for insufficient workflow roles", () => {
+    expect(getWorkflowInsufficientRoleRedirectPath("field")).toBe("/district");
+    expect(getWorkflowInsufficientRoleRedirectPath("district")).toBe("/field");
     expect(getWorkflowInsufficientRoleRedirectPath("demo")).toBe("/field");
-    expect(getWorkflowInsufficientRoleRedirectPath("admin")).toBe("/demo");
+    expect(getWorkflowInsufficientRoleRedirectPath("admin")).toBe("/district");
   });
 });
