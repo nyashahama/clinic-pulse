@@ -39,20 +39,20 @@ export function InterventionRail({
       description="Keep the selected clinic, next move, and proof step visible while the district queue changes."
     >
       <div className="space-y-4">
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Active priority</p>
+        <div className="rounded-2xl border border-border bg-muted p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Active priority</p>
           {selectedItem ? (
             <div className="mt-2 space-y-2">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-lg font-semibold tracking-tight text-slate-950">{selectedItem.clinicName}</h3>
+                <h3 className="text-lg font-semibold tracking-tight text-card-foreground">{selectedItem.clinicName}</h3>
                 <span className="rounded-full bg-slate-950 px-2.5 py-1 text-xs font-bold uppercase tracking-[0.14em] text-white">
                   {selectedItem.severityLabel} {selectedItem.score}
                 </span>
               </div>
-              <p className="text-sm leading-6 text-slate-600">{selectedItem.patientImpact}</p>
+              <p className="text-sm leading-6 text-muted-foreground">{selectedItem.patientImpact}</p>
             </div>
           ) : (
-            <p className="mt-2 text-sm leading-6 text-slate-600">
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
               No active priority is selected. Choose a clinic from the severity queue to arm intervention actions.
             </p>
           )}
@@ -65,12 +65,12 @@ export function InterventionRail({
         </div>
 
         {intervention.secondaryActions.length > 0 && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Supporting actions</p>
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Supporting actions</p>
             <ul className="mt-3 space-y-3">
               {intervention.secondaryActions.map((action) => (
-                <li key={action.label} className="text-sm leading-6 text-slate-600">
-                  <span className="font-semibold text-slate-950">{action.label}:</span> {action.description}
+                <li key={action.label} className="text-sm leading-6 text-muted-foreground">
+                  <span className="font-semibold text-card-foreground">{action.label}:</span> {action.description}
                 </li>
               ))}
             </ul>
@@ -78,13 +78,13 @@ export function InterventionRail({
         )}
 
         {replayDisabled && (
-          <p id="intervention-replay-disabled" className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-900">
+          <p id="intervention-replay-disabled" className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-200">
             Replay-sensitive actions are paused until the demo replay state is ready.
           </p>
         )}
 
         {!selectedItem && (
-          <p id="intervention-no-selection-disabled" className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm leading-6 text-slate-600">
+          <p id="intervention-no-selection-disabled" className="rounded-2xl border border-border bg-muted p-3 text-sm leading-6 text-muted-foreground">
             Select a clinic from the severity queue before triggering a reroute or running an incident replay.
           </p>
         )}
@@ -138,10 +138,10 @@ type ActionSummaryProps = {
 
 function ActionSummary({ label, value, detail }: ActionSummaryProps) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
-      <p className="mt-2 text-sm font-semibold leading-6 text-slate-950">{value}</p>
-      {detail && <p className="mt-1 text-sm leading-6 text-slate-600">{detail}</p>}
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+      <p className="mt-2 text-sm font-semibold leading-6 text-card-foreground">{value}</p>
+      {detail && <p className="mt-1 text-sm leading-6 text-muted-foreground">{detail}</p>}
     </div>
   );
 }
