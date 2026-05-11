@@ -13,7 +13,7 @@ const orgAdminAccount = {
   email: "org-admin@clinicpulse.local",
   password,
 };
-const successMessage = "Report submitted and waiting for district review.";
+const successMessage = "Waiting for district review.";
 
 type PendingReport = {
   id: number;
@@ -96,7 +96,9 @@ test("hands an online field report from reporter to district review and admin ev
     await page.getByRole("button", { name: "Submit report" }).click();
     reportMayNeedCleanup = true;
 
-    await expect(page.getByRole("status").filter({ hasText: successMessage })).toBeVisible();
+    await expect(
+      page.getByTestId("field-report-receipt").filter({ hasText: successMessage }),
+    ).toBeVisible();
 
     await signInAs(page, districtManagerAccount, "/district");
     await page.goto("/district");
@@ -137,6 +139,23 @@ test("hands an online field report from reporter to district review and admin ev
         ),
       }),
     ).toBeVisible();
+
+    await signInAs(page, reporterAccount, "/field");
+    await page
+      .getByPlaceholder("Add context, barriers, and what changed today.")
+      .fill(testNotes);
+    await page.getByRole("button", { name: "Submit report" }).click();
+    await expect(
+      page.getByTestId("field-report-receipt").filter({ hasText: "Already in review" }),
+    ).toBeVisible();
+
+    await signInAs(page, districtManagerAccount, "/district");
+    await expect
+      .poll(async () => {
+        const duplicatePendingReport = await findPendingReportByNotes(page, testNotes);
+        return duplicatePendingReport?.reviewState ?? "not-pending";
+      })
+      .toBe("not-pending");
   } catch (error) {
     primaryError = error;
     throw error;

@@ -3999,6 +3999,10 @@ func (f fakeStore) GetPendingReportByPayload(context.Context, store.CreateReport
 	return f.pendingPayloadReport, nil
 }
 
+func (f fakeStore) GetRecentReportByPayload(context.Context, store.CreateReportInput, time.Time) (store.Report, error) {
+	return store.Report{}, pgx.ErrNoRows
+}
+
 func (f fakeStore) CreateReportSyncAttempt(_ context.Context, input store.CreateReportSyncAttemptInput) (store.ReportSyncAttempt, error) {
 	if f.syncAttemptInput != nil {
 		*f.syncAttemptInput = input

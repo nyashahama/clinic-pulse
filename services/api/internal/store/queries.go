@@ -158,6 +158,42 @@ WHERE review_state = 'pending'
 ORDER BY received_at DESC, id DESC
 LIMIT 1`
 
+	getRecentReportByPayloadSQL = `
+SELECT
+    id,
+    external_id,
+    clinic_id,
+    reporter_name,
+    source,
+    offline_created,
+    submitted_at,
+    received_at,
+    status,
+    reason,
+    staff_pressure,
+    stock_pressure,
+    queue_pressure,
+    notes,
+    review_state,
+    confidence_score::double precision,
+    submitted_by_user_id,
+    reviewed_by_user_id,
+    reviewed_at,
+    review_notes
+FROM reports
+WHERE received_at >= $10
+    AND clinic_id = $1
+    AND source = $2
+    AND status = $3
+    AND reason IS NOT DISTINCT FROM $4::text
+    AND staff_pressure IS NOT DISTINCT FROM $5::text
+    AND stock_pressure IS NOT DISTINCT FROM $6::text
+    AND queue_pressure IS NOT DISTINCT FROM $7::text
+    AND notes IS NOT DISTINCT FROM $8::text
+    AND submitted_by_user_id IS NOT DISTINCT FROM $9::bigint
+ORDER BY received_at DESC, id DESC
+LIMIT 1`
+
 	listClinicReportsSQL = `
 SELECT
     id,
@@ -1056,6 +1092,22 @@ func (s Store) GetPendingReportByPayload(ctx context.Context, input CreateReport
 		normalized.QueuePressure,
 		normalized.Notes,
 		normalized.SubmittedByUserID,
+	))
+}
+
+func (s Store) GetRecentReportByPayload(ctx context.Context, input CreateReportInput, windowStart time.Time) (Report, error) {
+	normalized := normalizePendingCreateReportInput(input)
+	return scanReport(s.pool.QueryRow(ctx, getRecentReportByPayloadSQL,
+		normalized.ClinicID,
+		normalized.Source,
+		normalized.Status,
+		normalized.Reason,
+		normalized.StaffPressure,
+		normalized.StockPressure,
+		normalized.QueuePressure,
+		normalized.Notes,
+		normalized.SubmittedByUserID,
+		windowStart,
 	))
 }
 

@@ -24,6 +24,7 @@ func TestStorePublicAPICompiles(t *testing.T) {
 	var _ func(Store, context.Context, CreateReportInput) (Report, CurrentStatus, AuditEvent, error) = Store.CreateReportTx
 	var _ func(Store, context.Context, CreateReportInput) (Report, error) = Store.CreatePendingReportTx
 	var _ func(Store, context.Context, CreateReportInput) (Report, error) = Store.GetPendingReportByPayload
+	var _ func(Store, context.Context, CreateReportInput, time.Time) (Report, error) = Store.GetRecentReportByPayload
 	var _ func(Store, context.Context, ReportReviewScope) ([]Report, error) = Store.ListPendingReports
 	var _ func(Store, context.Context, ReviewReportInput) (Report, *CurrentStatus, error) = Store.ReviewReportTx
 	var _ func(Store, context.Context, string) (User, error) = Store.GetUserByEmail
@@ -40,6 +41,7 @@ func TestOfflineSyncStoreMethodSignatures(t *testing.T) {
 
 	var _ func(Store, context.Context, string) (Report, error) = Store.GetReportByExternalID
 	var _ func(Store, context.Context, CreateReportInput) (Report, error) = Store.GetPendingReportByPayload
+	var _ func(Store, context.Context, CreateReportInput, time.Time) (Report, error) = Store.GetRecentReportByPayload
 	var _ func(Store, context.Context, CreateReportSyncAttemptInput) (ReportSyncAttempt, error) = Store.CreateReportSyncAttempt
 	var _ func(Store, context.Context, time.Time) (SyncSummary, error) = Store.GetSyncSummarySince
 	var _ func(Store, context.Context, time.Time, ReportReviewScope) (SyncSummary, error) = Store.GetSyncSummarySinceForReviewScope
@@ -59,6 +61,20 @@ func TestSyncSummarySinceScopesPendingOfflineReportsToWindow(t *testing.T) {
 	pendingOfflineCTE := syncSummarySinceSQL[start:end]
 	if !strings.Contains(pendingOfflineCTE, "AND received_at >= $1") {
 		t.Fatal("expected pending_offline CTE to filter reports by the summary window")
+	}
+}
+
+func TestRecentReportByPayloadSQLUsesDuplicateWindowWithoutReviewStateFilter(t *testing.T) {
+	t.Parallel()
+
+	if !strings.Contains(getRecentReportByPayloadSQL, "WHERE received_at >= $10") {
+		t.Fatal("expected recent duplicate lookup to constrain the report window")
+	}
+	if strings.Contains(getRecentReportByPayloadSQL, "review_state = 'pending'") {
+		t.Fatal("expected recent duplicate lookup to include reviewed reports")
+	}
+	if !strings.Contains(getRecentReportByPayloadSQL, "submitted_by_user_id IS NOT DISTINCT FROM $9::bigint") {
+		t.Fatal("expected recent duplicate lookup to scope duplicates to the same reporter")
 	}
 }
 

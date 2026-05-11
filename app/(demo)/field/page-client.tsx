@@ -14,6 +14,10 @@ import { FieldClinicList } from "@/components/demo/field-clinic-list";
 import { OfflineQueue } from "@/components/demo/offline-queue";
 import { ReferencePanel } from "@/components/demo/reference-dashboard";
 import { ReferenceSectionCards } from "@/components/demo/reference-section-cards";
+import {
+  FieldReportToast,
+  type FieldReportFeedback,
+} from "@/components/demo/report-feedback";
 import { ReportForm } from "@/components/demo/report-form";
 import { SyncStatus } from "@/components/demo/sync-status";
 import { SectionHeader } from "@/components/demo/section-header";
@@ -49,7 +53,7 @@ const OFFLINE_SAVED_MESSAGE =
 const OFFLINE_DUPLICATE_MESSAGE =
   "A matching report is already in the device queue.";
 const ONLINE_DUPLICATE_MESSAGE =
-  "A matching report is already waiting for district review.";
+  "A matching report was submitted recently or is already waiting for district review.";
 
 function subscribeToOnlineStatus(onStoreChange: () => void) {
   if (typeof window === "undefined") {
@@ -221,8 +225,8 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
   const [submitting, setSubmitting] = useState(false);
   const submitInFlight = useRef(false);
   const syncInFlight = useRef(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
+  const [submitFeedback, setSubmitFeedback] = useState<FieldReportFeedback | null>(null);
+  const [toastFeedback, setToastFeedback] = useState<FieldReportFeedback | null>(null);
   const [syncing, setSyncing] = useState(false);
 
   const loadOfflineReports = useCallback(async () => {
@@ -238,6 +242,23 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
 
   const selectedName = selectedClinic?.name ?? "Select a clinic";
   const selectedId = selectedClinic?.id ?? "";
+
+  const showSubmitFeedback = useCallback((feedback: FieldReportFeedback) => {
+    setSubmitFeedback(feedback);
+    setToastFeedback(feedback);
+  }, []);
+
+  useEffect(() => {
+    if (!toastFeedback) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setToastFeedback(null);
+    }, 4200);
+
+    return () => window.clearTimeout(timeout);
+  }, [toastFeedback]);
 
   const saveOfflineReport = useCallback(
     async (report: OnlineFieldReportInput) => {
@@ -424,8 +445,8 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
 
     submitInFlight.current = true;
     setSubmitting(true);
-    setSubmitError(null);
-    setSubmitSuccess(null);
+    setSubmitFeedback(null);
+    setToastFeedback(null);
 
     if (!selectedId) {
       submitInFlight.current = false;
@@ -443,9 +464,19 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
             submitReport: createFieldReport,
           });
           if (result.created) {
-            setSubmitSuccess("Report submitted and waiting for district review.");
+            showSubmitFeedback({
+              tone: "success",
+              title: "Report sent to review",
+              message: "Waiting for district review.",
+              detail: selectedName,
+            });
           } else {
-            setSubmitError(ONLINE_DUPLICATE_MESSAGE);
+            showSubmitFeedback({
+              tone: "warning",
+              title: "Already in review",
+              message: ONLINE_DUPLICATE_MESSAGE,
+              detail: selectedName,
+            });
           }
         } catch (error) {
           if (!isReachabilityFailure(error)) {
@@ -453,7 +484,12 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
           }
 
           const saved = await saveOfflineReport(report);
-          setSubmitError(saved.duplicate ? OFFLINE_DUPLICATE_MESSAGE : OFFLINE_SAVED_MESSAGE);
+          showSubmitFeedback({
+            tone: saved.duplicate ? "warning" : "info",
+            title: saved.duplicate ? "Already queued" : "Saved to device",
+            message: saved.duplicate ? OFFLINE_DUPLICATE_MESSAGE : OFFLINE_SAVED_MESSAGE,
+            detail: selectedName,
+          });
         }
 
         return true;
@@ -461,15 +497,31 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
 
       const saved = await saveOfflineReport(report);
       if (saved.duplicate) {
-        setSubmitError(OFFLINE_DUPLICATE_MESSAGE);
+        showSubmitFeedback({
+          tone: "warning",
+          title: "Already queued",
+          message: OFFLINE_DUPLICATE_MESSAGE,
+          detail: selectedName,
+        });
+      } else {
+        showSubmitFeedback({
+          tone: "info",
+          title: "Saved to device",
+          message: OFFLINE_SAVED_MESSAGE,
+          detail: selectedName,
+        });
       }
       return true;
     } catch (error) {
-      setSubmitError(
-        error instanceof Error
-          ? error.message
-          : "Online report submission failed. Try again when the API is reachable.",
-      );
+      showSubmitFeedback({
+        tone: "error",
+        title: "Submission failed",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Online report submission failed. Try again when the API is reachable.",
+        detail: selectedName,
+      });
       return false;
     } finally {
       submitInFlight.current = false;
@@ -484,6 +536,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
 
   return (
     <div className="grid gap-4 pb-4" data-role-dashboard={session.role}>
+      <FieldReportToast feedback={toastFeedback} />
       <ReferenceSectionCards
         cards={[
           {
@@ -558,21 +611,8 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
           clinicName={selectedName}
           onSubmit={handleSubmit}
           submitting={submitting}
+          feedback={submitFeedback}
         />
-        {submitError ? (
-          <p className="xl:col-start-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {submitError}
-          </p>
-        ) : null}
-        {submitSuccess ? (
-          <p
-            role="status"
-            aria-live="polite"
-            className="xl:col-start-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
-          >
-            {submitSuccess}
-          </p>
-        ) : null}
       </div>
 
       <div id="drafts-sync" className="grid gap-4 lg:grid-cols-2">

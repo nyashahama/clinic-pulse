@@ -11,10 +11,14 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const maxSubmittedAtFutureSkew = 5 * time.Minute
+const (
+	maxSubmittedAtFutureSkew = 5 * time.Minute
+	reportDuplicateWindow    = 30 * time.Minute
+)
 
 type ReportCreator interface {
 	GetPendingReportByPayload(ctx context.Context, input store.CreateReportInput) (store.Report, error)
+	GetRecentReportByPayload(ctx context.Context, input store.CreateReportInput, windowStart time.Time) (store.Report, error)
 	CreatePendingReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, error)
 }
 
@@ -129,6 +133,14 @@ func createReportAt(ctx context.Context, creator ReportCreator, input ReportInpu
 	storeInput := input.toStoreInput()
 	storeInput.ReviewState = "pending"
 	existing, err := creator.GetPendingReportByPayload(ctx, storeInput)
+	if err == nil {
+		return CreateReportResult{Report: existing, Created: false}, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return CreateReportResult{}, err
+	}
+
+	existing, err = creator.GetRecentReportByPayload(ctx, storeInput, validationTime.Add(-reportDuplicateWindow))
 	if err == nil {
 		return CreateReportResult{Report: existing, Created: false}, nil
 	}

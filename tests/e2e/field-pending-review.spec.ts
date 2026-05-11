@@ -8,7 +8,7 @@ const operationsAccount = {
   email: "district-manager@clinicpulse.local",
   password: "ClinicPulseDemo123!",
 };
-const successMessage = "Report submitted and waiting for district review.";
+const successMessage = "Waiting for district review.";
 
 async function signInAsReporter(page: Page) {
   await page.goto("/login");
@@ -66,7 +66,9 @@ test("shows pending review feedback after an online field report submission", as
       .fill(testNotes);
     await page.getByRole("button", { name: "Submit report" }).click();
 
-    await expect(page.getByRole("status").filter({ hasText: successMessage })).toBeVisible();
+    await expect(
+      page.getByTestId("field-report-receipt").filter({ hasText: successMessage }),
+    ).toBeVisible();
     await expect(
       page.getByText(
         "The newest reports submitted into the operational record. Pending reports wait for district review before changing current status.",
