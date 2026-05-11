@@ -22,6 +22,13 @@ type PendingReport = {
   reviewState: "pending" | "accepted" | "rejected";
 };
 
+type ReportSignal = {
+  status: "operational" | "degraded" | "non_functional" | "unknown";
+  staff: "normal" | "strained" | "critical" | "unknown";
+  stock: "normal" | "low" | "stockout" | "unknown";
+  queue: "low" | "moderate" | "high" | "unknown";
+};
+
 async function signInAs(page: Page, account: { email: string; password: string }, home: string) {
   await page.context().clearCookies();
   await page.goto("/login");
@@ -44,8 +51,33 @@ async function findPendingReportByNotes(page: Page, notes: string) {
   return (await fetchPendingReports(page)).find((report) => report.notes === notes);
 }
 
-async function chooseStaffPressure(page: Page, value: "normal" | "strained" | "critical" | "unknown") {
-  await page.locator(`label:has(input[name="staff-pressure"][value="${value}"])`).click();
+async function chooseReportOption(page: Page, name: string, value: string) {
+  await page.locator(`label:has(input[name="${name}"][value="${value}"])`).click();
+}
+
+async function chooseReportSignal(page: Page, signal: ReportSignal) {
+  await chooseReportOption(page, "clinic-status", signal.status);
+  await chooseReportOption(page, "staff-pressure", signal.staff);
+  await chooseReportOption(page, "stock-pressure", signal.stock);
+  await chooseReportOption(page, "queue-pressure", signal.queue);
+}
+
+function reportSignalForProject(projectName: string): ReportSignal {
+  if (projectName.includes("mobile")) {
+    return {
+      status: "non_functional",
+      staff: "critical",
+      stock: "stockout",
+      queue: "high",
+    };
+  }
+
+  return {
+    status: "degraded",
+    staff: "strained",
+    stock: "low",
+    queue: "moderate",
+  };
 }
 
 async function rejectPendingReportsByNotes(page: Page, notes: string) {
@@ -89,13 +121,14 @@ test("hands an online field report from reporter to district review and admin ev
 }, testInfo) => {
   const testNotes = `Phase 3 handoff Playwright ${Date.now()}`;
   const duplicateNotes = `${testNotes} with changed note text`;
+  const reportSignal = reportSignalForProject(testInfo.project.name);
   let reportMayNeedCleanup = false;
   let primaryError: unknown;
 
   try {
     await signInAs(page, reporterAccount, "/field");
 
-    await chooseStaffPressure(page, "strained");
+    await chooseReportSignal(page, reportSignal);
     await page
       .getByPlaceholder("Add context, barriers, and what changed today.")
       .fill(testNotes);
@@ -147,7 +180,7 @@ test("hands an online field report from reporter to district review and admin ev
     ).toBeVisible();
 
     await signInAs(page, reporterAccount, "/field");
-    await chooseStaffPressure(page, "strained");
+    await chooseReportSignal(page, reportSignal);
     await page
       .getByPlaceholder("Add context, barriers, and what changed today.")
       .fill(duplicateNotes);
