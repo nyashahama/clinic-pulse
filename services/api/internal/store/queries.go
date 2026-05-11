@@ -153,8 +153,7 @@ WHERE review_state = 'pending'
     AND staff_pressure IS NOT DISTINCT FROM $5::text
     AND stock_pressure IS NOT DISTINCT FROM $6::text
     AND queue_pressure IS NOT DISTINCT FROM $7::text
-    AND notes IS NOT DISTINCT FROM $8::text
-    AND submitted_by_user_id IS NOT DISTINCT FROM $9::bigint
+    AND submitted_by_user_id IS NOT DISTINCT FROM $8::bigint
 ORDER BY received_at DESC, id DESC
 LIMIT 1`
 
@@ -181,7 +180,7 @@ SELECT
     reviewed_at,
     review_notes
 FROM reports
-WHERE received_at >= $10
+WHERE received_at >= $9
     AND clinic_id = $1
     AND source = $2
     AND status = $3
@@ -189,8 +188,7 @@ WHERE received_at >= $10
     AND staff_pressure IS NOT DISTINCT FROM $5::text
     AND stock_pressure IS NOT DISTINCT FROM $6::text
     AND queue_pressure IS NOT DISTINCT FROM $7::text
-    AND notes IS NOT DISTINCT FROM $8::text
-    AND submitted_by_user_id IS NOT DISTINCT FROM $9::bigint
+    AND submitted_by_user_id IS NOT DISTINCT FROM $8::bigint
 ORDER BY received_at DESC, id DESC
 LIMIT 1`
 
@@ -1090,7 +1088,6 @@ func (s Store) GetPendingReportByPayload(ctx context.Context, input CreateReport
 		normalized.StaffPressure,
 		normalized.StockPressure,
 		normalized.QueuePressure,
-		normalized.Notes,
 		normalized.SubmittedByUserID,
 	))
 }
@@ -1105,7 +1102,6 @@ func (s Store) GetRecentReportByPayload(ctx context.Context, input CreateReportI
 		normalized.StaffPressure,
 		normalized.StockPressure,
 		normalized.QueuePressure,
-		normalized.Notes,
 		normalized.SubmittedByUserID,
 		windowStart,
 	))

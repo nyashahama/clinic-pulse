@@ -44,6 +44,10 @@ async function findPendingReportByNotes(page: Page, notes: string) {
   return (await fetchPendingReports(page)).find((report) => report.notes === notes);
 }
 
+async function chooseStaffPressure(page: Page, value: "normal" | "strained" | "critical" | "unknown") {
+  await page.locator(`label:has(input[name="staff-pressure"][value="${value}"])`).click();
+}
+
 async function rejectPendingReportsByNotes(page: Page, notes: string) {
   const loginResponse = await page.request.post("/api/clinicpulse/v1/auth/login", {
     data: districtManagerAccount,
@@ -84,12 +88,14 @@ test("hands an online field report from reporter to district review and admin ev
   page,
 }, testInfo) => {
   const testNotes = `Phase 3 handoff Playwright ${Date.now()}`;
+  const duplicateNotes = `${testNotes} with changed note text`;
   let reportMayNeedCleanup = false;
   let primaryError: unknown;
 
   try {
     await signInAs(page, reporterAccount, "/field");
 
+    await chooseStaffPressure(page, "strained");
     await page
       .getByPlaceholder("Add context, barriers, and what changed today.")
       .fill(testNotes);
@@ -141,9 +147,10 @@ test("hands an online field report from reporter to district review and admin ev
     ).toBeVisible();
 
     await signInAs(page, reporterAccount, "/field");
+    await chooseStaffPressure(page, "strained");
     await page
       .getByPlaceholder("Add context, barriers, and what changed today.")
-      .fill(testNotes);
+      .fill(duplicateNotes);
     await page.getByRole("button", { name: "Submit report" }).click();
     await expect(
       page.getByTestId("field-report-receipt").filter({ hasText: "Already in review" }),
@@ -152,7 +159,7 @@ test("hands an online field report from reporter to district review and admin ev
     await signInAs(page, districtManagerAccount, "/district");
     await expect
       .poll(async () => {
-        const duplicatePendingReport = await findPendingReportByNotes(page, testNotes);
+        const duplicatePendingReport = await findPendingReportByNotes(page, duplicateNotes);
         return duplicatePendingReport?.reviewState ?? "not-pending";
       })
       .toBe("not-pending");
@@ -163,6 +170,7 @@ test("hands an online field report from reporter to district review and admin ev
     if (reportMayNeedCleanup) {
       try {
         await rejectPendingReportsByNotes(page, testNotes);
+        await rejectPendingReportsByNotes(page, duplicateNotes);
       } catch (cleanupError) {
         if (primaryError) {
           testInfo.annotations.push({
