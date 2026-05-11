@@ -206,7 +206,7 @@ export default async function Page() {
         <StatusBadge tone={securityPosture.tone}>Security posture evidence</StatusBadge>
         <span className="text-sm text-muted-foreground">
           This module reviews credential and access evidence only; credential rotation remains in
-          backed partner readiness workflows.
+          backend partner readiness workflows.
         </span>
       </AdminFilterBar>
       <AdminEvidenceTable
