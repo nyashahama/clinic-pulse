@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 
-import { DemoShell } from "@/components/demo/demo-shell";
+import { DemoWorkspaceShell } from "@/components/demo/demo-workspace-shell";
 import { AUTH_ROLES, logout } from "@/lib/auth/api";
 import {
   applySessionCookieFromHeader,
@@ -59,9 +59,9 @@ export default async function DemoLayout({ children }: { children: ReactNode }) 
 
   return (
     <DemoStoreProvider initialState={initialState}>
-      <DemoShell session={toClientAuthSession(session)} logoutAction={logoutAction}>
+      <DemoWorkspaceShell session={toClientAuthSession(session)} logoutAction={logoutAction}>
         {children}
-      </DemoShell>
+      </DemoWorkspaceShell>
     </DemoStoreProvider>
   );
 }

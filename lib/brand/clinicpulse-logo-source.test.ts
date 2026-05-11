@@ -11,7 +11,12 @@ const logoComponentPath = path.join(
 );
 const faviconPath = path.join(process.cwd(), "app", "icon.svg");
 const appleIconPath = path.join(process.cwd(), "app", "apple-icon.tsx");
-const sidebarPath = path.join(process.cwd(), "components", "app-sidebar.tsx");
+const sidebarPath = path.join(
+  process.cwd(),
+  "components",
+  "product",
+  "workspace-sidebar.tsx",
+);
 const authLayoutPath = path.join(process.cwd(), "app", "(auth)", "layout.tsx");
 const loginPagePath = path.join(process.cwd(), "app", "(auth)", "login", "page.tsx");
 const registerPagePath = path.join(

@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/demo/skeleton";
+import { Skeleton } from "@/components/product/surface-skeleton";
 
 export default function FinderLoading() {
   return (
