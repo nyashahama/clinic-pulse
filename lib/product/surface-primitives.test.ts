@@ -1,10 +1,17 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { MetricTile } from "@/components/product/metric-tile";
 import { ProductPanel } from "@/components/product/panel";
-import { ReportReviewQueueView } from "@/components/product/report-review-queue";
+import {
+  ReportReviewQueueView,
+  ReportReviewQueueErrorAlert,
+  composeReportReviewCallbacks,
+  getVisibleReportReviewItems,
+  pruneReviewedReportIds,
+  runReportReviewQueueAction,
+} from "@/components/product/report-review-queue";
 import { ReportReviewSummary } from "@/components/product/report-review-summary";
 import { ProductResponsiveTable } from "@/components/product/responsive-table";
 import { SurfaceState } from "@/components/product/surface-state";
@@ -137,25 +144,7 @@ describe("product surface primitives", () => {
   });
 
   it("renders report review queue item actions", () => {
-    const review: PendingReportReview = {
-      reportId: 42,
-      clinicId: "clinic-42",
-      clinicName: "Mamelodi East Clinic",
-      facilityCode: "FAC-0042",
-      district: "Tshwane",
-      reporterName: "Nurse Dlamini",
-      source: "mobile_app",
-      offlineCreated: true,
-      submittedAt: "2026-05-10T08:15:00.000Z",
-      receivedAt: "2026-05-10T08:30:00.000Z",
-      status: "non_functional",
-      reason: "Power outage closed the triage room.",
-      staffPressure: "critical",
-      stockPressure: "stockout",
-      queuePressure: "high",
-      notes: "Generator failed during morning intake.",
-      reviewState: "pending",
-    };
+    const review = createPendingReportReview();
 
     const html = renderToStaticMarkup(
       createElement(ReportReviewQueueView, {
@@ -172,4 +161,106 @@ describe("product surface primitives", () => {
     expect(html).toContain('data-testid="reject-report-review"');
     expect(html).toContain("Reject");
   });
+
+  it("sends report review action payload and calls success callback", async () => {
+    const onReview = vi.fn(async () => undefined);
+    const onReviewed = vi.fn();
+
+    await runReportReviewQueueAction({
+      reportId: 42,
+      decision: "accepted",
+      onReview,
+      onReviewed,
+    });
+
+    expect(onReview).toHaveBeenCalledWith({
+      reportId: 42,
+      decision: "accepted",
+    });
+    expect(onReviewed).toHaveBeenCalledOnce();
+  });
+
+  it("hides successfully reviewed reports from the visible queue", () => {
+    const reviewed = createPendingReportReview({ reportId: 42 });
+    const pending = createPendingReportReview({
+      reportId: 43,
+      clinicName: "Atteridgeville Clinic",
+    });
+
+    expect(
+      getVisibleReportReviewItems([reviewed, pending], new Set([reviewed.reportId])),
+    ).toEqual([pending]);
+  });
+
+  it("prunes reviewed reports that are no longer in incoming items", () => {
+    const remaining = createPendingReportReview({ reportId: 43 });
+
+    expect(
+      Array.from(pruneReviewedReportIds(new Set([42, 43]), [remaining])),
+    ).toEqual([43]);
+  });
+
+  it("composes caller and router refresh review callbacks", () => {
+    const onReviewed = vi.fn();
+    const refresh = vi.fn();
+
+    composeReportReviewCallbacks(onReviewed, refresh)();
+
+    expect(onReviewed).toHaveBeenCalledOnce();
+    expect(refresh).toHaveBeenCalledOnce();
+  });
+
+  it("returns error feedback when report review action fails", async () => {
+    const onReview = vi.fn(async () => {
+      throw new Error("Review service unavailable");
+    });
+    const onReviewed = vi.fn();
+
+    const result = await runReportReviewQueueAction({
+      reportId: 42,
+      decision: "rejected",
+      onReview,
+      onReviewed,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      errorMessage: "Review service unavailable",
+    });
+    expect(onReviewed).not.toHaveBeenCalled();
+
+    const html = renderToStaticMarkup(
+      createElement(ReportReviewQueueErrorAlert, {
+        message: result.errorMessage,
+      }),
+    );
+
+    expect(html).toContain('role="alert"');
+    expect(html).toContain("Review service unavailable");
+  });
 });
+
+function createPendingReportReview(
+  overrides: Partial<PendingReportReview> = {},
+): PendingReportReview {
+  return {
+    reportId: 42,
+    clinicId: "clinic-42",
+    clinicName: "Mamelodi East Clinic",
+    facilityCode: "FAC-0042",
+    district: "Tshwane",
+    reporterName: "Nurse Dlamini",
+    source: "mobile_app",
+    offlineCreated: true,
+    submittedAt: "2026-05-10T08:15:00.000Z",
+    receivedAt: "2026-05-10T08:30:00.000Z",
+    status: "non_functional",
+    reason: "Power outage closed the triage room.",
+    staffPressure: "critical",
+    stockPressure: "stockout",
+    queuePressure: "high",
+    notes: "Generator failed during morning intake.",
+    reviewState: "pending",
+    ...overrides,
+  };
+}

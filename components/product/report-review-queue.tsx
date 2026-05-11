@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Check, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -28,6 +28,81 @@ type ReportReviewQueueProps = {
 const defaultTitle = "Report review queue";
 const defaultDescription = "Review pending field reports before they update clinic status.";
 
+type ReportReviewQueueActionResult =
+  | { ok: true }
+  | { ok: false; errorMessage: string };
+
+type ReviewedReportState = {
+  items: PendingReportReview[];
+  reportIds: ReadonlySet<number>;
+};
+
+export function getVisibleReportReviewItems(
+  items: PendingReportReview[],
+  reviewedReportIds: ReadonlySet<number>,
+): PendingReportReview[] {
+  return items.filter((item) => !reviewedReportIds.has(item.reportId));
+}
+
+export function pruneReviewedReportIds(
+  reviewedReportIds: ReadonlySet<number>,
+  items: PendingReportReview[],
+): ReadonlySet<number> {
+  const itemIds = new Set(items.map((item) => item.reportId));
+  const next = new Set<number>();
+
+  reviewedReportIds.forEach((reportId) => {
+    if (itemIds.has(reportId)) {
+      next.add(reportId);
+    }
+  });
+
+  return next;
+}
+
+export async function runReportReviewQueueAction({
+  reportId,
+  decision,
+  onReview,
+  onReviewed,
+}: ReportReviewQueueActionInput & {
+  onReview: (input: ReportReviewQueueActionInput) => Promise<unknown>;
+  onReviewed?: () => void;
+}): Promise<ReportReviewQueueActionResult> {
+  try {
+    await onReview({ reportId, decision });
+    onReviewed?.();
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      errorMessage:
+        error instanceof Error ? error.message : "Unable to review report.",
+    };
+  }
+}
+
+export function composeReportReviewCallbacks(
+  onReviewed: (() => void) | undefined,
+  refresh: () => void,
+): () => void {
+  return () => {
+    onReviewed?.();
+    refresh();
+  };
+}
+
+export function ReportReviewQueueErrorAlert({ message }: { message: string }) {
+  return (
+    <p
+      role="alert"
+      className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-100"
+    >
+      {message}
+    </p>
+  );
+}
+
 export function ReportReviewQueueView({
   items,
   onReview,
@@ -38,20 +113,53 @@ export function ReportReviewQueueView({
   const [pendingReportIds, setPendingReportIds] = useState<ReadonlySet<number>>(
     () => new Set(),
   );
+  const [reviewedReportState, setReviewedReportState] =
+    useState<ReviewedReportState>(() => ({
+      items,
+      reportIds: new Set(),
+    }));
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  let reviewedReportIds = reviewedReportState.reportIds;
+
+  if (reviewedReportState.items !== items) {
+    reviewedReportIds = pruneReviewedReportIds(reviewedReportState.reportIds, items);
+    setReviewedReportState({ items, reportIds: reviewedReportIds });
+  }
+
+  const visibleItems = useMemo(
+    () => getVisibleReportReviewItems(items, reviewedReportIds),
+    [items, reviewedReportIds],
+  );
 
   async function handleReview(reportId: number, decision: ReportReviewDecision) {
+    if (pendingReportIds.has(reportId) || reviewedReportIds.has(reportId)) {
+      return;
+    }
+
     setErrorMessage(null);
     setPendingReportIds((current) => new Set(current).add(reportId));
 
-    try {
-      await onReview({ reportId, decision });
-      onReviewed?.();
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Unable to review report.",
-      );
-    } finally {
+    const result = await runReportReviewQueueAction({
+      reportId,
+      decision,
+      onReview,
+      onReviewed,
+    });
+
+    if (result.ok) {
+      setReviewedReportState((current) => {
+        const baseReportIds =
+          current.items === items
+            ? current.reportIds
+            : pruneReviewedReportIds(current.reportIds, items);
+
+        return {
+          items,
+          reportIds: new Set(baseReportIds).add(reportId),
+        };
+      });
+    } else {
+      setErrorMessage(result.errorMessage);
       setPendingReportIds((current) => {
         const next = new Set(current);
         next.delete(reportId);
@@ -68,15 +176,10 @@ export function ReportReviewQueueView({
     >
       <div data-testid="report-review-queue" className="space-y-3">
         {errorMessage ? (
-          <p
-            role="alert"
-            className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-100"
-          >
-            {errorMessage}
-          </p>
+          <ReportReviewQueueErrorAlert message={errorMessage} />
         ) : null}
 
-        {items.length === 0 ? (
+        {visibleItems.length === 0 ? (
           <SurfaceState
             variant="empty"
             title="No pending reports"
@@ -85,8 +188,10 @@ export function ReportReviewQueueView({
           />
         ) : (
           <div className="space-y-3">
-            {items.map((item) => {
-              const isPending = pendingReportIds.has(item.reportId);
+            {visibleItems.map((item) => {
+              const isActionDisabled =
+                pendingReportIds.has(item.reportId) ||
+                reviewedReportIds.has(item.reportId);
 
               return (
                 <article
@@ -153,7 +258,7 @@ export function ReportReviewQueueView({
                     <div className="flex shrink-0 gap-2">
                       <Button
                         data-testid="accept-report-review"
-                        disabled={isPending}
+                        disabled={isActionDisabled}
                         onClick={() => void handleReview(item.reportId, "accepted")}
                         size="sm"
                       >
@@ -162,7 +267,7 @@ export function ReportReviewQueueView({
                       </Button>
                       <Button
                         data-testid="reject-report-review"
-                        disabled={isPending}
+                        disabled={isActionDisabled}
                         onClick={() => void handleReview(item.reportId, "rejected")}
                         size="sm"
                         variant="destructive"
@@ -185,5 +290,12 @@ export function ReportReviewQueueView({
 export function ReportReviewQueue(props: ReportReviewQueueProps) {
   const router = useRouter();
 
-  return <ReportReviewQueueView {...props} onReviewed={() => router.refresh()} />;
+  return (
+    <ReportReviewQueueView
+      {...props}
+      onReviewed={composeReportReviewCallbacks(props.onReviewed, () =>
+        router.refresh(),
+      )}
+    />
+  );
 }
