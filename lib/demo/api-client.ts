@@ -17,6 +17,8 @@ import type {
   OfflineSyncApiResponse,
   PublicClinicDetailApiResponse,
   ReportApiResponse,
+  ReviewReportApiInput,
+  ReviewReportApiResponse,
   StalenessReconciliationApiResponse,
   SyncSummaryApiResponse,
   AuditEventApiResponse,
@@ -218,6 +220,25 @@ export function createReport(input: CreateReportApiInput, options?: ClinicPulseA
     body: JSON.stringify(input),
     method: "POST",
   });
+}
+
+export function fetchPendingReports(options?: ClinicPulseApiClientOptions) {
+  return requestClinicPulseApi<ReportApiResponse[]>(["v1", "reports", "pending"], options);
+}
+
+export function reviewReport(
+  reportId: number | string,
+  input: ReviewReportApiInput,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<ReviewReportApiResponse>(
+    ["v1", "reports", String(reportId), "review"],
+    options,
+    {
+      body: JSON.stringify(input),
+      method: "POST",
+    },
+  );
 }
 
 export function syncOfflineReportsApi(

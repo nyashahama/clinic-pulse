@@ -64,6 +64,8 @@ export type PublicClinicDetailApiResponse = Omit<ClinicDetailApiResponse, "curre
   currentStatus?: ApiNullable<PublicCurrentStatusApiResponse>;
 };
 
+export type ReportReviewState = "pending" | "accepted" | "rejected";
+
 export type ReportApiResponse = {
   id: number;
   externalId?: ApiNullable<string>;
@@ -79,7 +81,7 @@ export type ReportApiResponse = {
   stockPressure?: ApiNullable<StockPressure | string>;
   queuePressure?: ApiNullable<QueuePressure | string>;
   notes?: ApiNullable<string>;
-  reviewState: string;
+  reviewState: ReportReviewState | string;
   confidenceScore?: ApiNullable<number>;
 };
 
@@ -122,6 +124,16 @@ export type CreateReportApiResponse = {
   report: ReportApiResponse;
   currentStatus?: CurrentStatusApiResponse;
   auditEvent?: AuditEventApiResponse;
+};
+
+export type ReviewReportApiInput = {
+  decision: "accepted" | "rejected";
+  notes?: string;
+};
+
+export type ReviewReportApiResponse = {
+  report: ReportApiResponse;
+  currentStatus?: CurrentStatusApiResponse;
 };
 
 export type OfflineSyncApiRequest = {

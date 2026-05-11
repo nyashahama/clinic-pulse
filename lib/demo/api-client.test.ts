@@ -14,10 +14,12 @@ import {
   fetchClinicStatus,
   fetchClinics,
   fetchOperationalClinics,
+  fetchPendingReports,
   fetchPartnerReadiness,
   fetchSyncSummary,
   requestClinicPulseApi,
   reconcileStatusStaleness,
+  reviewReport,
   revokePartnerApiKey,
   syncOfflineReportsApi,
   testPartnerWebhook,
@@ -115,6 +117,45 @@ describe("ClinicPulse API client", () => {
       method: "POST",
     });
     expect(new Headers(init?.headers).get("content-type")).toBe("application/json");
+  });
+
+  it("fetches pending reports from the review queue endpoint", async () => {
+    const fetchImpl = mockFetch([{ id: 42, clinicId: "clinic-1", reviewState: "pending" }]);
+
+    const reports = await fetchPendingReports({
+      baseUrl: "https://api.example.test",
+      fetch: fetchImpl,
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://api.example.test/v1/reports/pending");
+    expect(reports[0]?.id).toBe(42);
+  });
+
+  it("posts report review decisions to the report review endpoint", async () => {
+    const fetchImpl = mockFetch({
+      report: { id: 42, clinicId: "clinic-1", reviewState: "accepted" },
+      currentStatus: {
+        clinicId: "clinic-1",
+        status: "degraded",
+        freshness: "fresh",
+        updatedAt: "2026-05-11T00:00:00.000Z",
+      },
+    });
+
+    const result = await reviewReport(
+      42,
+      { decision: "accepted", notes: "District verified" },
+      { baseUrl: "https://api.example.test", fetch: fetchImpl },
+    );
+
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://api.example.test/v1/reports/42/review");
+    expect(fetchImpl.mock.calls[0]?.[1]).toMatchObject({ method: "POST" });
+    expect(JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body))).toEqual({
+      decision: "accepted",
+      notes: "District verified",
+    });
+    expect(result.report.reviewState).toBe("accepted");
   });
 
   it("posts offline sync batches to the reports sync endpoint", async () => {
