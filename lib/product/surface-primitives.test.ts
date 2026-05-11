@@ -12,6 +12,7 @@ import {
   getVisibleReportReviewItems,
   markReportReviewSucceeded,
   pruneReviewedReportIds,
+  reconcileReviewedReportStateForItems,
   runReportReviewQueueAction,
 } from "@/components/product/report-review-queue";
 import { ReportReviewSummary } from "@/components/product/report-review-summary";
@@ -199,6 +200,23 @@ describe("product surface primitives", () => {
     });
   });
 
+  it("passes empty report review notes through action payload", async () => {
+    const onReview = vi.fn(async () => undefined);
+
+    await runReportReviewQueueAction({
+      reportId: 42,
+      decision: "rejected",
+      notes: "",
+      onReview,
+    });
+
+    expect(onReview).toHaveBeenCalledWith({
+      reportId: 42,
+      decision: "rejected",
+      notes: "",
+    });
+  });
+
   it("hides successfully reviewed reports from the visible queue", () => {
     const reviewed = createPendingReportReview({ reportId: 42 });
     const pending = createPendingReportReview({
@@ -247,6 +265,20 @@ describe("product surface primitives", () => {
     expect(
       Array.from(deriveReviewedReportIdsForItems(refreshedReviewedReportIds, [])),
     ).toEqual([]);
+  });
+
+  it("prunes stored reviewed reports after disappearance so reappearing reports are visible", () => {
+    const report = createPendingReportReview({ reportId: 42 });
+    const reviewedReportIds = markReportReviewSucceeded(new Set(), report.reportId);
+    const refreshedState = reconcileReviewedReportStateForItems(
+      { items: [report], reportIds: reviewedReportIds },
+      [],
+    );
+
+    expect(Array.from(refreshedState.reportIds)).toEqual([]);
+    expect(getVisibleReportReviewItems([report], refreshedState.reportIds)).toEqual([
+      report,
+    ]);
   });
 
   it("composes caller and router refresh review callbacks", () => {

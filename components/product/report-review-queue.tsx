@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useReducer, useState } from "react";
 import { Check, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -32,10 +32,18 @@ type ReportReviewQueueActionResult =
   | { ok: true }
   | { ok: false; errorMessage: string };
 
-type ReviewedReportState = {
+export type ReviewedReportState = {
   items: PendingReportReview[];
   reportIds: ReadonlySet<number>;
 };
+
+type ReviewedReportStateAction =
+  | { type: "itemsRefreshed"; items: PendingReportReview[] }
+  | {
+      type: "reviewSucceeded";
+      items: PendingReportReview[];
+      reportId: number;
+    };
 
 export function getVisibleReportReviewItems(
   items: PendingReportReview[],
@@ -74,6 +82,58 @@ export function deriveReviewedReportIdsForItems(
   return pruneReviewedReportIds(reviewedReportIds, items);
 }
 
+function areReportIdSetsEqual(
+  first: ReadonlySet<number>,
+  second: ReadonlySet<number>,
+): boolean {
+  if (first.size !== second.size) {
+    return false;
+  }
+
+  for (const reportId of first) {
+    if (!second.has(reportId)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+export function reconcileReviewedReportStateForItems(
+  current: ReviewedReportState,
+  items: PendingReportReview[],
+): ReviewedReportState {
+  const reportIds = pruneReviewedReportIds(current.reportIds, items);
+
+  if (current.items === items && areReportIdSetsEqual(current.reportIds, reportIds)) {
+    return current;
+  }
+
+  return {
+    items,
+    reportIds,
+  };
+}
+
+function reviewedReportStateReducer(
+  current: ReviewedReportState,
+  action: ReviewedReportStateAction,
+): ReviewedReportState {
+  if (action.type === "itemsRefreshed") {
+    return reconcileReviewedReportStateForItems(current, action.items);
+  }
+
+  const currentReportIds = deriveReviewedReportIdsForItems(
+    current.reportIds,
+    action.items,
+  );
+
+  return {
+    items: action.items,
+    reportIds: markReportReviewSucceeded(currentReportIds, action.reportId),
+  };
+}
+
 export async function runReportReviewQueueAction({
   reportId,
   decision,
@@ -85,7 +145,11 @@ export async function runReportReviewQueueAction({
   onReviewed?: () => void;
 }): Promise<ReportReviewQueueActionResult> {
   try {
-    await onReview({ reportId, decision, ...(notes ? { notes } : {}) });
+    await onReview({
+      reportId,
+      decision,
+      ...(notes !== undefined ? { notes } : {}),
+    });
     onReviewed?.();
     return { ok: true };
   } catch (error) {
@@ -128,16 +192,17 @@ export function ReportReviewQueueView({
   const [pendingReportIds, setPendingReportIds] = useState<ReadonlySet<number>>(
     () => new Set(),
   );
-  const [reviewedReportState, setReviewedReportState] =
-    useState<ReviewedReportState>(() => ({
+  const [reviewedReportState, dispatchReviewedReportState] =
+    useReducer(reviewedReportStateReducer, undefined, () => ({
       items,
       reportIds: new Set(),
     }));
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const reviewedReportIds = useMemo(
-    () => deriveReviewedReportIdsForItems(reviewedReportState.reportIds, items),
-    [items, reviewedReportState],
-  );
+  const reviewedReportIds = reviewedReportState.reportIds;
+
+  useEffect(() => {
+    dispatchReviewedReportState({ type: "itemsRefreshed", items });
+  }, [items]);
 
   const visibleItems = useMemo(
     () => getVisibleReportReviewItems(items, reviewedReportIds),
@@ -160,15 +225,10 @@ export function ReportReviewQueueView({
     });
 
     if (result.ok) {
-      setReviewedReportState((current) => {
-        const currentReportIds = deriveReviewedReportIdsForItems(
-          current.reportIds,
-          items,
-        );
-        return {
-          items,
-          reportIds: markReportReviewSucceeded(currentReportIds, reportId),
-        };
+      dispatchReviewedReportState({
+        type: "reviewSucceeded",
+        items,
+        reportId,
       });
       setPendingReportIds((current) => {
         const next = new Set(current);
