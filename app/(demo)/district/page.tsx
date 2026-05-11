@@ -31,6 +31,7 @@ export default async function DistrictWorkspacePage() {
       consoleHref="/district"
       session={toClientAuthSession(workflowSession)}
       pendingReports={pendingReports}
+      showReportReview={true}
       syncSummary={syncSummary}
     />
   );

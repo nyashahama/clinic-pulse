@@ -75,6 +75,7 @@ type DistrictConsolePageProps = {
   consoleHref?: string;
   pendingReports?: ReportApiResponse[];
   session: ClientAuthSession;
+  showReportReview?: boolean;
   syncSummary: SyncSummaryApiResponse | null;
 };
 
@@ -98,6 +99,7 @@ export default function DistrictConsolePage({
   consoleHref = "/demo",
   pendingReports,
   session,
+  showReportReview = false,
   syncSummary,
 }: DistrictConsolePageProps) {
   const router = useRouter();
@@ -114,12 +116,13 @@ export default function DistrictConsolePage({
 
   const clinicRows = useMemo(() => getClinicRows(state), [state]);
   const pendingReportReviews = useMemo(
-    () => buildPendingReportReviews(pendingReports ?? [], clinicRows),
-    [clinicRows, pendingReports],
+    () => (showReportReview ? buildPendingReportReviews(pendingReports ?? [], clinicRows) : []),
+    [clinicRows, pendingReports, showReportReview],
   );
   const pendingReportSummary = useMemo(
-    () => summarizePendingReportReviews(pendingReportReviews),
-    [pendingReportReviews],
+    () =>
+      showReportReview ? summarizePendingReportReviews(pendingReportReviews) : null,
+    [pendingReportReviews, showReportReview],
   );
   const statusFilter = normalizeStatusFilter(searchParams.get("status"));
   const filteredClinicRows = useMemo(
@@ -561,16 +564,18 @@ export default function DistrictConsolePage({
       <div id="verification-handoff">
         <VerificationHandover handover={commandCenter.handover} />
       </div>
-      <div
-        id="report-review"
-        className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]"
-      >
-        <ReportReviewSummary summary={pendingReportSummary} />
-        <ReportReviewQueue
-          items={pendingReportReviews}
-          onReview={reviewPendingReportAction}
-        />
-      </div>
+      {showReportReview && pendingReportSummary ? (
+        <div
+          id="report-review"
+          className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]"
+        >
+          <ReportReviewSummary summary={pendingReportSummary} />
+          <ReportReviewQueue
+            items={pendingReportReviews}
+            onReview={reviewPendingReportAction}
+          />
+        </div>
+      ) : null}
 
       <SupportingOperations>
         {hasStatusFilter ? (

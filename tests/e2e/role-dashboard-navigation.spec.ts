@@ -203,4 +203,13 @@ test.describe("phase 1 role dashboard navigation", () => {
       }
     });
   }
+
+  test("demo showcase does not expose report review", async ({ page }) => {
+    await signInAs(page, "district-manager@clinicpulse.local", "/district");
+
+    await page.goto("/demo");
+
+    await expect(page.locator('[data-role-dashboard="district_manager"]')).toBeVisible();
+    await expect(page.locator("#report-review")).toHaveCount(0);
+  });
 });
