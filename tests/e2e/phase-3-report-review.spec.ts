@@ -72,10 +72,20 @@ async function rejectPendingReportsByNotes(page: Page, notes: string) {
   }
 }
 
+function formatCleanupError(error: unknown) {
+  if (error instanceof Error) {
+    return error.stack ?? error.message;
+  }
+
+  return String(error);
+}
+
 test("hands an online field report from reporter to district review and admin evidence context", async ({
   page,
-}) => {
+}, testInfo) => {
   const testNotes = `Phase 3 handoff Playwright ${Date.now()}`;
+  let reportMayNeedCleanup = false;
+  let primaryError: unknown;
 
   try {
     await signInAs(page, reporterAccount, "/field");
@@ -84,6 +94,7 @@ test("hands an online field report from reporter to district review and admin ev
       .getByPlaceholder("Add context, barriers, and what changed today.")
       .fill(testNotes);
     await page.getByRole("button", { name: "Submit report" }).click();
+    reportMayNeedCleanup = true;
 
     await expect(page.getByRole("status").filter({ hasText: successMessage })).toBeVisible();
 
@@ -111,6 +122,7 @@ test("hands an online field report from reporter to district review and admin ev
         return remainingReport?.reviewState ?? "reviewed";
       })
       .toBe("reviewed");
+    const pendingReviewCountAfterAcceptance = (await fetchPendingReports(page)).length;
 
     await signInAs(page, orgAdminAccount, "/admin");
     await page.goto("/admin");
@@ -118,10 +130,30 @@ test("hands an online field report from reporter to district review and admin ev
     const adminReviewPressure = page.locator("#admin-review-pressure");
     await expect(adminReviewPressure).toBeVisible();
     await expect(adminReviewPressure).toContainText("Governance review pressure");
-    await expect(adminReviewPressure).toContainText(
-      "Pending field reports waiting for organisation backstop review before governance evidence is complete.",
-    );
+    await expect(
+      adminReviewPressure.locator("div").filter({
+        hasText: new RegExp(
+          `^Pending\\s*${pendingReviewCountAfterAcceptance}\\s*Awaiting decision$`,
+        ),
+      }),
+    ).toBeVisible();
+  } catch (error) {
+    primaryError = error;
+    throw error;
   } finally {
-    await rejectPendingReportsByNotes(page, testNotes);
+    if (reportMayNeedCleanup) {
+      try {
+        await rejectPendingReportsByNotes(page, testNotes);
+      } catch (cleanupError) {
+        if (primaryError) {
+          testInfo.annotations.push({
+            type: "cleanup-error",
+            description: formatCleanupError(cleanupError),
+          });
+        } else {
+          throw cleanupError;
+        }
+      }
+    }
   }
 });
