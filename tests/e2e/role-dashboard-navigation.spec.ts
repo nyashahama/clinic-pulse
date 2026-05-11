@@ -211,7 +211,9 @@ test.describe("phase 1 role dashboard navigation", () => {
 
     await page.goto("/demo");
 
-    await expect(page.locator('[data-role-dashboard="district_manager"]')).toBeVisible();
+    await expect(
+      page.locator('[data-role-dashboard="district_manager"]').filter({ visible: true }),
+    ).toBeVisible();
     await expect(page.locator("#report-review")).toHaveCount(0);
   });
 });
