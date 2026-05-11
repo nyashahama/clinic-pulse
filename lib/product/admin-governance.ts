@@ -1,7 +1,9 @@
+import type { AuthRole } from "@/lib/auth/api";
+
 export type GovernanceTone = "clear" | "attention" | "blocked";
 
 export type AccessRiskInput = {
-  role: string;
+  role: AuthRole;
   disabled: boolean;
   district?: string | null;
   lastSeenAt?: string | null;
@@ -107,7 +109,7 @@ export function summarizeSecurityPosture(
 }
 
 function resolveAccessRiskLabel(
-  role: string,
+  role: AuthRole,
   reasons: string[],
 ): AccessRiskSummary["label"] {
   if (role === "system_admin") {
