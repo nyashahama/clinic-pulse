@@ -23,15 +23,7 @@ const expectedHiddenDashboardPrimaryNavRoutes = [
   "/district/clinic-network",
   "/district/clinic-evidence",
   "/district/interventions",
-  "/admin/reporting-coverage",
-  "/admin/users-roles",
-  "/admin/access-review",
-  "/admin/partner-readiness",
-  "/admin/audit-evidence",
   "/admin/exports",
-  "/admin/tenant-health",
-  "/admin/data-ingestion",
-  "/admin/security",
   "/admin/demo-controls",
   "/admin/integrations",
 ] as const;
@@ -59,6 +51,7 @@ const expectedSidebarLabels = {
     "Admin Overview",
     "Reporting coverage",
     "Users and roles",
+    "Access review",
     "Partner readiness",
     "Audit evidence",
     "Exports",
@@ -175,7 +168,7 @@ describe("dashboard role navigation config", () => {
     expect(sidebarLabelsForRole("reporter")).not.toContain("Partner readiness");
   });
 
-  it("uses in-page anchors for concepts whose standalone routes are hidden", () => {
+  it("links productized admin modules to their standalone pages", () => {
     expect(workspaceUrlsForRole("reporter")).toEqual(
       expect.arrayContaining([
         "/field#submit-report",
@@ -193,20 +186,21 @@ describe("dashboard role navigation config", () => {
     );
     expect(workspaceUrlsForRole("org_admin")).toEqual(
       expect.arrayContaining([
-        "/admin#reporting-coverage",
-        "/admin#users-roles",
-        "/admin#partner-readiness",
-        "/admin#audit-evidence",
+        "/admin/reporting-coverage",
+        "/admin/users-roles",
+        "/admin/access-review",
+        "/admin/partner-readiness",
+        "/admin/audit-evidence",
         "/admin#exports",
       ]),
     );
     expect(workspaceUrlsForRole("system_admin")).toEqual(
       expect.arrayContaining([
-        "/admin#tenant-health",
-        "/admin#data-ingestion",
-        "/admin#security",
+        "/admin/tenant-health",
+        "/admin/data-ingestion",
+        "/admin/security",
         "/admin#demo-controls",
-        "/admin#audit-evidence",
+        "/admin/audit-evidence",
       ]),
     );
   });
