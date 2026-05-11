@@ -195,7 +195,7 @@ export function ReportReviewQueueView({
   const [reviewedReportState, dispatchReviewedReportState] =
     useReducer(reviewedReportStateReducer, undefined, () => ({
       items,
-      reportIds: new Set(),
+      reportIds: new Set<number>(),
     }));
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const reviewedReportIds = reviewedReportState.reportIds;
