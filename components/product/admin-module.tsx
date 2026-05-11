@@ -11,9 +11,9 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
-type AdminTone = "clear" | "attention" | "blocked" | "info";
+export type AdminTone = "clear" | "attention" | "blocked" | "info";
 
-type AdminAction = {
+export type AdminAction = {
   label: ReactNode;
   buttonProps?: Omit<ComponentProps<typeof Button>, "children">;
 };
@@ -108,18 +108,18 @@ export function AdminMetricStrip({
           <div
             key={index}
             className={cn(
-              "rounded-lg border px-4 py-3 shadow-sm",
+              "min-w-0 rounded-lg border px-4 py-3 shadow-sm",
               metricToneClassName[tone],
             )}
           >
-            <p className="text-xs font-medium text-current/75">
+            <p className="break-words text-xs font-medium text-current/75">
               {metric.label}
             </p>
-            <p className="mt-1 text-2xl font-semibold leading-none">
+            <p className="mt-1 break-words text-2xl font-semibold leading-tight">
               {metric.value}
             </p>
             {metric.detail ? (
-              <p className="mt-2 text-xs leading-4 text-current/75">
+              <p className="mt-2 break-words text-xs leading-4 text-current/75">
                 {metric.detail}
               </p>
             ) : null}
@@ -232,6 +232,7 @@ export function AdminEmptyState({
 }: AdminEmptyStateProps) {
   return (
     <div
+      data-admin-module
       className={cn(
         "flex min-h-40 flex-col items-center justify-center gap-2 px-4 py-8 text-center",
         className,

@@ -150,5 +150,10 @@ it("exports the shared admin module primitives", () => {
   const source = readFileSync("components/product/admin-module.tsx", "utf8");
   expect(source).toContain("export function AdminModuleHeader");
   expect(source).toContain("export function AdminMetricStrip");
+  expect(source).toContain("export function AdminFilterBar");
   expect(source).toContain("export function AdminEvidenceTable");
+  expect(source).toContain("export function AdminEmptyState");
+  expect(source).toContain("export type AdminTone");
+  expect(source).toContain("export type AdminAction");
+  expect(source).toContain("break-words");
 });
