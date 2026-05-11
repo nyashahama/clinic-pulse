@@ -63,3 +63,11 @@ Decision: document `v0.1.0-alpha` now, but create the tag only after verificatio
 Reasoning: a release tag should mean the repo is ready to hand to reviewers.
 
 Tradeoff: the visible release marker waits until screenshots, demo/video decisions, and tests are in acceptable shape.
+
+## 9. Keep The Authenticated Role Model Focused Before Phase 3
+
+Decision: keep the authenticated product centered on reporter, district manager, organisation admin, and system admin before Phase 3. Clinic coordinator, partner/API user, public user, and founder/admin remain future personas, public routes, admin sub-surfaces, or demo-only responsibilities until a real workflow requires promotion.
+
+Reasoning: the next product proof is the operational handoff loop: reporter submits a clinic signal, district manager acts on it, admin reviews evidence, and public or partner surfaces consume trusted availability. Adding every future persona now would create more dashboards, permissions, and placeholder states before the core workflow is real.
+
+Tradeoff: the product may look narrower in the short term, but Phase 3 stays focused on proving a real vertical slice instead of expanding navigation around unfinished roles. The detailed role treatment is documented in [Product Role Model Decision](./product-role-model-decision.md).
