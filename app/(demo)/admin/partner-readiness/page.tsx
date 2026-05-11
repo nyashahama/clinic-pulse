@@ -1,19 +1,21 @@
-import { ModulePlaceholderPage } from "@/components/demo/module-placeholder-page";
+import { AdminModuleHeader } from "@/components/product/admin-module";
 import { requireDemoWorkflowAccess } from "../../workflow-guard";
+import { loadAdminPartnerReadiness } from "../admin-loaders";
+import { PartnerReadinessPageClient } from "./page-client";
 
 export default async function Page() {
   await requireDemoWorkflowAccess("admin");
 
+  const partnerReadiness = await loadAdminPartnerReadiness();
+
   return (
-    <ModulePlaceholderPage
-      description="Partner handoff workspace for API keys, exports, webhooks, and integration check evidence."
-      eyebrow="Organisation operations"
-      nextSteps={[
-    "Move partner readiness actions into this dedicated module.",
-    "Add API key and webhook lifecycle tables.",
-    "Show export history and integration status checks together.",
-      ]}
-      title="Partner readiness"
-    />
+    <div className="space-y-4">
+      <AdminModuleHeader
+        eyebrow="Organisation operations"
+        title="Partner readiness"
+        description="Partner handoff workspace for API keys, exports, webhooks, and integration check evidence."
+      />
+      <PartnerReadinessPageClient readiness={partnerReadiness} />
+    </div>
   );
 }

@@ -40,6 +40,10 @@ export async function loadAdminAuditEvents() {
   return fetchAdminAuditEvents(await getAdminLoaderOptions());
 }
 
+export async function loadAdminPartnerReadiness() {
+  return fetchPartnerReadiness(await getAdminLoaderOptions());
+}
+
 export async function loadAdminGovernanceData() {
   const options = await getAdminLoaderOptions();
   const [users, auditEvents, partnerReadiness, syncSummary] = await Promise.all([

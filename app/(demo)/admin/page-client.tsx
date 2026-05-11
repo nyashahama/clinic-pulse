@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   CalendarClock,
@@ -15,7 +15,6 @@ import {
 import { ExportPreview } from "@/components/demo/export-preview";
 import { APIPreview } from "@/components/demo/api-preview";
 import { RoadmapModules } from "@/components/demo/roadmap-modules";
-import { PartnerReadinessPanel } from "@/components/demo/partner-readiness-panel";
 import { PilotReadinessPanel } from "@/components/demo/pilot-readiness-panel";
 import { ReferencePanel } from "@/components/demo/reference-dashboard";
 import { ReferenceSectionCards } from "@/components/demo/reference-section-cards";
@@ -42,24 +41,12 @@ import { useDemoStore } from "@/lib/demo/demo-store";
 import { getClinicRows } from "@/lib/demo/selectors";
 import type { DemoLead } from "@/lib/demo/types";
 import type { DemoState } from "@/lib/demo/types";
-import {
-  buildPartnerReadinessModel,
-  createOneTimePartnerApiKeySecret,
-  createOneTimePartnerWebhookSecret,
-  type OneTimePartnerApiKeySecret,
-  type OneTimePartnerWebhookSecret,
-} from "@/lib/demo/partner-readiness";
+import { buildPartnerReadinessModel } from "@/lib/demo/partner-readiness";
 import {
   buildPendingReportReviews,
   summarizePendingReportReviews,
 } from "@/lib/product/report-review";
 import { reviewPendingReportAction } from "../report-review-actions";
-import {
-  createPartnerApiKeyAction,
-  createPartnerExportAction,
-  createPartnerWebhookAction,
-  testPartnerWebhookAction,
-} from "./actions";
 
 type LeadStatusCount = Record<DemoLead["status"], number>;
 
@@ -130,27 +117,12 @@ type AdminPageProps = {
   pendingReports: ReportApiResponse[];
 };
 
-type PartnerReadinessAction =
-  | "create-key"
-  | "create-webhook"
-  | "generate-export"
-  | "test-webhook";
-
-function getPartnerActionErrorMessage(error: unknown) {
-  if (error instanceof Error && error.message.trim()) {
-    return error.message;
-  }
-
-  return "Partner readiness action failed.";
-}
-
 export default function AdminPage({
   session,
   syncSummary,
   partnerReadiness,
   pendingReports,
 }: AdminPageProps) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const {
     state,
@@ -181,16 +153,6 @@ export default function AdminPage({
     () => buildExportPayload(state, exportGeneratedAt),
     [state, exportGeneratedAt],
   );
-  const [partnerActionPending, setPartnerActionPending] =
-    useState<PartnerReadinessAction | null>(null);
-  const [partnerActionError, setPartnerActionError] = useState<string | null>(null);
-  const [oneTimeApiKeySecret, setOneTimeApiKeySecret] =
-    useState<OneTimePartnerApiKeySecret | null>(null);
-  const [oneTimeWebhookSecret, setOneTimeWebhookSecret] =
-    useState<OneTimePartnerWebhookSecret | null>(null);
-  const partnerActionPendingRef = useRef<PartnerReadinessAction | null>(null);
-
-  const partnerActionInFlight = partnerActionPending !== null;
   const partnerReadinessModel = useMemo(
     () => buildPartnerReadinessModel(partnerReadiness),
     [partnerReadiness],
@@ -202,7 +164,6 @@ export default function AdminPage({
   const evidenceAnchor = isSystemAdmin ? "security" : "partner-readiness";
   const exportAnchor = isSystemAdmin ? "audit-evidence" : "exports";
   const controlsAnchor = "demo-controls";
-  const partnerReadinessAnchor = isSystemAdmin ? "partner-readiness-panel" : evidenceAnchor;
   const reportCompleteness = Math.max(0, 100 - queuedReports * 8);
   const pendingReviewCount = pendingReportSummary.pending;
   const totalReportPressureCount = queuedReports + pendingReviewCount;
@@ -264,79 +225,6 @@ export default function AdminPage({
           value: `${activeAlertCount} open`,
         },
       ];
-
-  const runPartnerAction = async <Result,>(
-    action: PartnerReadinessAction,
-    mutate: () => Promise<Result>,
-    onSuccess?: (result: Result) => void,
-  ) => {
-    if (partnerActionPendingRef.current) {
-      return;
-    }
-
-    partnerActionPendingRef.current = action;
-    setPartnerActionPending(action);
-    setPartnerActionError(null);
-
-    try {
-      const result = await mutate();
-      onSuccess?.(result);
-      router.refresh();
-    } catch (error) {
-      setPartnerActionError(getPartnerActionErrorMessage(error));
-    } finally {
-      partnerActionPendingRef.current = null;
-      setPartnerActionPending(null);
-    }
-  };
-
-  const handleCreateDemoKey = () => {
-    if (partnerActionPendingRef.current) {
-      return;
-    }
-    setOneTimeApiKeySecret(null);
-    void runPartnerAction(
-      "create-key",
-      () =>
-        createPartnerApiKeyAction({
-          name: "Demo partner integration",
-          environment: "demo",
-          scopes: ["clinics:read", "status:read", "alternatives:read", "exports:read"],
-          allowedDistricts: [state.district],
-        }),
-      (result) => setOneTimeApiKeySecret(createOneTimePartnerApiKeySecret(result)),
-    );
-  };
-
-  const handleCreatePartnerWebhook = () => {
-    if (partnerActionPendingRef.current) {
-      return;
-    }
-    setOneTimeWebhookSecret(null);
-    void runPartnerAction(
-      "create-webhook",
-      () =>
-        createPartnerWebhookAction({
-          name: "Demo partner webhook",
-          targetUrl: "https://partner.example.test/webhooks/clinicpulse",
-          eventTypes: ["clinic.status_changed"],
-        }),
-      (result) => setOneTimeWebhookSecret(createOneTimePartnerWebhookSecret(result)),
-    );
-  };
-
-  const handleGeneratePartnerExport = () => {
-    void runPartnerAction("generate-export", () =>
-      createPartnerExportAction({
-        format: "json",
-        scope: { district: state.district },
-      }),
-    );
-  };
-
-  const handleTestPartnerWebhook = (subscriptionId: number) => {
-    void runPartnerAction("test-webhook", () => testPartnerWebhookAction(subscriptionId));
-  };
 
   return (
     <div className="grid min-w-0 gap-4 pb-4" data-role-dashboard={roleDashboard}>
@@ -404,7 +292,7 @@ export default function AdminPage({
               </a>
               <a
                 className={buttonVariants({ size: "sm", variant: "outline" })}
-                href={`#${partnerReadinessAnchor}`}
+                href="/admin/partner-readiness"
               >
                 Partner evidence
               </a>
@@ -532,25 +420,41 @@ export default function AdminPage({
         <div id="readiness">
           {syncSummary ? <PilotReadinessPanel summary={syncSummary} /> : null}
         </div>
-        <div id={partnerReadinessAnchor}>
-          <PartnerReadinessPanel
-            readiness={partnerReadiness}
-            onCreateDemoKey={handleCreateDemoKey}
-            onCreateWebhook={handleCreatePartnerWebhook}
-            onGenerateExport={handleGeneratePartnerExport}
-            onTestWebhook={handleTestPartnerWebhook}
-            pendingActions={{
-              createDemoKey: partnerActionInFlight,
-              createWebhook: partnerActionInFlight,
-              generateExport: partnerActionInFlight,
-              testWebhook: partnerActionInFlight,
-            }}
-            actionError={partnerActionError}
-            oneTimeApiKeySecret={oneTimeApiKeySecret}
-            oneTimeWebhookSecret={oneTimeWebhookSecret}
-            onClearOneTimeApiKeySecret={() => setOneTimeApiKeySecret(null)}
-            onClearOneTimeWebhookSecret={() => setOneTimeWebhookSecret(null)}
-          />
+        <div id="partner-readiness">
+          {isSystemAdmin ? <span id="partner-readiness-panel" className="sr-only" /> : null}
+          <ReferencePanel
+            actions={
+              <Link
+                className={buttonVariants({ size: "sm", variant: "outline" })}
+                href="/admin/partner-readiness"
+              >
+                Open partner readiness
+              </Link>
+            }
+            title="Partner readiness"
+            description="API key, export package, webhook preview, and integration check evidence now live in the dedicated partner readiness module."
+          >
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {partnerReadinessModel.metrics.map((metric) => (
+                <div
+                  key={metric.label}
+                  className="min-w-0 rounded-lg border border-border bg-muted px-4 py-3"
+                >
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                    {metric.label}
+                  </p>
+                  <p className="mt-1 break-words text-2xl font-semibold leading-tight text-card-foreground">
+                    {metric.value}
+                  </p>
+                  {metric.detail ? (
+                    <p className="mt-1 break-words text-xs text-muted-foreground">
+                      {metric.detail}
+                    </p>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </ReferencePanel>
         </div>
       </div>
 

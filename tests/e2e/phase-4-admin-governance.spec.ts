@@ -23,3 +23,18 @@ test("organisation admin sees real governance modules", async ({ page }) => {
     await expect(page.locator("[data-admin-module]").first()).toBeVisible();
   }
 });
+
+test("organisation admin sees productized partner readiness module", async ({ page }) => {
+  await signIn(page, "org-admin@clinicpulse.local");
+  await page.goto("/admin/partner-readiness");
+
+  await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
+  await expect(page.locator('[data-admin-module="partner-readiness"]')).toBeVisible();
+  await expect(page.getByText("API key state")).toBeVisible();
+  await expect(page.getByText("Export package state")).toBeVisible();
+  await expect(page.getByText("Webhook preview state")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Integration checks", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create key" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Generate export" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Create webhook|Test webhook/ })).toBeVisible();
+});
