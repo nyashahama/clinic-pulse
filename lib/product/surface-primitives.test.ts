@@ -9,6 +9,7 @@ import {
   ReportReviewQueueErrorAlert,
   composeReportReviewCallbacks,
   getVisibleReportReviewItems,
+  markReportReviewSucceeded,
   pruneReviewedReportIds,
   runReportReviewQueueAction,
 } from "@/components/product/report-review-queue";
@@ -190,6 +191,16 @@ describe("product surface primitives", () => {
     expect(
       getVisibleReportReviewItems([reviewed, pending], new Set([reviewed.reportId])),
     ).toEqual([pending]);
+  });
+
+  it("computes reviewed state after success so duplicate submissions stay hidden", () => {
+    const reviewed = createPendingReportReview({ reportId: 42 });
+    const pending = createPendingReportReview({ reportId: 43 });
+    const reviewedReportIds = markReportReviewSucceeded(new Set(), reviewed.reportId);
+
+    expect(getVisibleReportReviewItems([reviewed, pending], reviewedReportIds)).toEqual([
+      pending,
+    ]);
   });
 
   it("prunes reviewed reports that are no longer in incoming items", () => {

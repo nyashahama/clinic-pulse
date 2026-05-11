@@ -60,6 +60,13 @@ export function pruneReviewedReportIds(
   return next;
 }
 
+export function markReportReviewSucceeded(
+  reviewedReportIds: ReadonlySet<number>,
+  reportId: number,
+): ReadonlySet<number> {
+  return new Set(reviewedReportIds).add(reportId);
+}
+
 export async function runReportReviewQueueAction({
   reportId,
   decision,
@@ -119,12 +126,13 @@ export function ReportReviewQueueView({
       reportIds: new Set(),
     }));
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  let reviewedReportIds = reviewedReportState.reportIds;
-
-  if (reviewedReportState.items !== items) {
-    reviewedReportIds = pruneReviewedReportIds(reviewedReportState.reportIds, items);
-    setReviewedReportState({ items, reportIds: reviewedReportIds });
-  }
+  const reviewedReportIds = useMemo(
+    () =>
+      reviewedReportState.items === items
+        ? reviewedReportState.reportIds
+        : new Set<number>(),
+    [items, reviewedReportState],
+  );
 
   const visibleItems = useMemo(
     () => getVisibleReportReviewItems(items, reviewedReportIds),
@@ -148,15 +156,16 @@ export function ReportReviewQueueView({
 
     if (result.ok) {
       setReviewedReportState((current) => {
-        const baseReportIds =
-          current.items === items
-            ? current.reportIds
-            : pruneReviewedReportIds(current.reportIds, items);
-
+        const currentReportIds = current.items === items ? current.reportIds : new Set();
         return {
           items,
-          reportIds: new Set(baseReportIds).add(reportId),
+          reportIds: markReportReviewSucceeded(currentReportIds, reportId),
         };
+      });
+      setPendingReportIds((current) => {
+        const next = new Set(current);
+        next.delete(reportId);
+        return next;
       });
     } else {
       setErrorMessage(result.errorMessage);
