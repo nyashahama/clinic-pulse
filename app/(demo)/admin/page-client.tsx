@@ -205,6 +205,7 @@ export default function AdminPage({
   const partnerReadinessAnchor = isSystemAdmin ? "partner-readiness-panel" : evidenceAnchor;
   const reportCompleteness = Math.max(0, 100 - queuedReports * 8);
   const pendingReviewCount = pendingReportSummary.pending;
+  const totalReportPressureCount = queuedReports + pendingReviewCount;
   const reviewPressureTitle = isSystemAdmin
     ? "Ingestion review pressure"
     : "Governance review pressure";
@@ -366,13 +367,20 @@ export default function AdminPage({
             },
             {
               title: isSystemAdmin ? "Ingestion queue" : "Reporting coverage",
-              value: isSystemAdmin ? String(queuedReports) : `${reportCompleteness}%`,
-              badge: queuedReports > 0 ? "Pending" : "Ready",
-              trend: queuedReports > 0 ? "down" : "neutral",
-              footer: "Field reports are part of readiness",
+              value: isSystemAdmin
+                ? String(totalReportPressureCount)
+                : pendingReviewCount > 0
+                  ? `${pendingReviewCount} reviews`
+                  : `${reportCompleteness}%`,
+              badge: totalReportPressureCount > 0 ? "Pending" : "Ready",
+              trend: totalReportPressureCount > 0 ? "down" : "neutral",
+              footer:
+                pendingReviewCount > 0
+                  ? "Backstop review is blocking readiness"
+                  : "Local field reports are part of readiness",
               detail: isSystemAdmin
-                ? "Offline updates waiting to merge into platform state."
-                : "Queued local reports are counted before review confidence is shown.",
+                ? "Offline updates and pending field report reviews affect ingestion confidence."
+                : "Local queued reports and pending governance reviews are counted before confidence is shown.",
             },
             {
               title: "Readiness evidence",
