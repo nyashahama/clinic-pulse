@@ -35,7 +35,7 @@ describe("summarizeReportingCoverage", () => {
       }),
     ).toEqual({
       tone: "attention",
-      readinessPercent: 50,
+      readinessPercent: 13,
       blockers: ["3 pending reviews", "2 stale clinics", "1 validation failure"],
     });
   });
