@@ -2,6 +2,7 @@ import { connection } from "next/server";
 
 import { getSessionCookieHeader, toClientAuthSession } from "@/lib/auth/session";
 import {
+  loadPendingReportsForRole,
   loadPartnerReadiness,
   loadSyncSummaryForRole,
 } from "@/lib/demo/server-hydration";
@@ -21,9 +22,10 @@ export default async function AdminPage() {
         }
       : undefined,
   };
-  const [syncSummary, partnerReadiness] = await Promise.all([
+  const [syncSummary, partnerReadiness, pendingReports] = await Promise.all([
     loadSyncSummaryForRole(session.role, apiOptions),
     loadPartnerReadiness(apiOptions),
+    loadPendingReportsForRole(session.role, apiOptions),
   ]);
 
   return (
@@ -31,6 +33,7 @@ export default async function AdminPage() {
       session={toClientAuthSession(session)}
       syncSummary={syncSummary}
       partnerReadiness={partnerReadiness}
+      pendingReports={pendingReports}
     />
   );
 }

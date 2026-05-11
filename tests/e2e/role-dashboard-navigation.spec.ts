@@ -57,6 +57,7 @@ const roleScenarios: Array<{
     landmarks: [
       "reporting-coverage",
       "users-roles",
+      "admin-review-pressure",
       "partner-readiness",
       "audit-evidence",
       "exports",
@@ -78,6 +79,7 @@ const roleScenarios: Array<{
     landmarks: [
       "tenant-health",
       "data-ingestion",
+      "admin-review-pressure",
       "security",
       "demo-controls",
       "audit-evidence",

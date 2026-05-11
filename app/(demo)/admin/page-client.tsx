@@ -20,6 +20,8 @@ import { PilotReadinessPanel } from "@/components/demo/pilot-readiness-panel";
 import { ReferencePanel } from "@/components/demo/reference-dashboard";
 import { ReferenceSectionCards } from "@/components/demo/reference-section-cards";
 import { SectionHeader } from "@/components/demo/section-header";
+import { ReportReviewQueue } from "@/components/product/report-review-queue";
+import { ReportReviewSummary } from "@/components/product/report-review-summary";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Table,
@@ -32,6 +34,7 @@ import {
 import type { ClientAuthSession } from "@/lib/auth/api";
 import type {
   PartnerReadinessApiResponse,
+  ReportApiResponse,
   SyncSummaryApiResponse,
 } from "@/lib/demo/api-types";
 import { adminWorkspaceSections } from "@/lib/demo/admin-layout";
@@ -46,6 +49,11 @@ import {
   type OneTimePartnerApiKeySecret,
   type OneTimePartnerWebhookSecret,
 } from "@/lib/demo/partner-readiness";
+import {
+  buildPendingReportReviews,
+  summarizePendingReportReviews,
+} from "@/lib/product/report-review";
+import { reviewPendingReportAction } from "../report-review-actions";
 import {
   createPartnerApiKeyAction,
   createPartnerExportAction,
@@ -119,6 +127,7 @@ type AdminPageProps = {
   session: ClientAuthSession;
   syncSummary: SyncSummaryApiResponse | null;
   partnerReadiness: PartnerReadinessApiResponse;
+  pendingReports: ReportApiResponse[];
 };
 
 type PartnerReadinessAction =
@@ -139,6 +148,7 @@ export default function AdminPage({
   session,
   syncSummary,
   partnerReadiness,
+  pendingReports,
 }: AdminPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -148,6 +158,14 @@ export default function AdminPage({
   } = useDemoStore();
 
   const clinics = useMemo(() => getClinicRows(state), [state]);
+  const pendingReportReviews = useMemo(
+    () => buildPendingReportReviews(pendingReports, clinics),
+    [clinics, pendingReports],
+  );
+  const pendingReportSummary = useMemo(
+    () => summarizePendingReportReviews(pendingReportReviews),
+    [pendingReportReviews],
+  );
   const selectedClinicId = searchParams.get("clinicId");
   const selectedClinic = useMemo(
     () => clinics.find((clinic) => clinic.id === selectedClinicId),
@@ -186,9 +204,18 @@ export default function AdminPage({
   const controlsAnchor = "demo-controls";
   const partnerReadinessAnchor = isSystemAdmin ? "partner-readiness-panel" : evidenceAnchor;
   const reportCompleteness = Math.max(0, 100 - queuedReports * 8);
+  const pendingReviewCount = pendingReportSummary.pending;
+  const reviewPressureTitle = isSystemAdmin
+    ? "Ingestion review pressure"
+    : "Governance review pressure";
+  const reviewPressureDescription = isSystemAdmin
+    ? "Pending field reports waiting for platform backstop review before ingestion changes clinic status."
+    : "Pending field reports waiting for organisation backstop review before governance evidence is complete.";
   const staleClinicCount = clinics.filter((clinic) => clinic.freshness === "stale").length;
   const operationsPriority =
-    activeAlertCount > 0
+    pendingReviewCount > 0
+      ? `${pendingReviewCount} field reports need admin review before readiness is complete.`
+      : activeAlertCount > 0
       ? "Assign owners to open escalations before readiness review."
       : staleClinicCount > 0
         ? "Confirm stale clinic status before the next district review."
@@ -197,8 +224,13 @@ export default function AdminPage({
     ? [
         {
           label: "Tenant health",
-          title: "Platform jobs and ingestion remain the first review lane.",
-          value: queuedReports > 0 ? `${queuedReports} pending` : "Ready",
+          title:
+            pendingReviewCount > 0
+              ? `${pendingReviewCount} field reports need ingestion review.`
+              : "Platform jobs and ingestion remain the first review lane.",
+          value: queuedReports + pendingReviewCount > 0
+            ? `${queuedReports + pendingReviewCount} pending`
+            : "Ready",
         },
         {
           label: "Access review",
@@ -214,7 +246,10 @@ export default function AdminPage({
     : [
         {
           label: "District readiness",
-          title: `${clinics.length - staleClinicCount} of ${clinics.length} clinics have usable freshness.`,
+          title:
+            pendingReviewCount > 0
+              ? `${pendingReviewCount} field reports need governance review.`
+              : `${clinics.length - staleClinicCount} of ${clinics.length} clinics have usable freshness.`,
           value: `${reportCompleteness}%`,
         },
         {
@@ -393,8 +428,8 @@ export default function AdminPage({
               title={isSystemAdmin ? "Platform review lanes" : "Organisation review lanes"}
               description={
                 isSystemAdmin
-                  ? "The platform console starts with reliability, access, and integration evidence."
-                  : "The operations deck starts with district readiness, access hygiene, and escalation quality."
+                  ? "The platform console starts with reliability, ingestion review, access, and integration evidence."
+                  : "The operations deck starts with governance review pressure, access hygiene, and escalation quality."
               }
             >
               <div className="grid gap-3">
@@ -445,7 +480,8 @@ export default function AdminPage({
                     Data quality
                   </p>
                   <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    {staleClinicCount} stale clinics and {queuedReports} queued reports affect confidence.
+                    {staleClinicCount} stale clinics, {queuedReports} queued local reports, and{" "}
+                    {pendingReviewCount} pending reviews affect confidence.
                   </p>
                 </div>
                 <div className="rounded-xl border border-border bg-card p-4">
@@ -460,6 +496,29 @@ export default function AdminPage({
               </div>
             </ReferencePanel>
           </div>
+        </div>
+
+        <div
+          id="admin-review-pressure"
+          className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]"
+        >
+          <ReportReviewSummary
+            summary={pendingReportSummary}
+            title={reviewPressureTitle}
+            description={reviewPressureDescription}
+          />
+          {pendingReportReviews.length > 0 ? (
+            <ReportReviewQueue
+              items={pendingReportReviews}
+              onReview={reviewPendingReportAction}
+              title={isSystemAdmin ? "Ingestion backstop queue" : "Governance backstop queue"}
+              description={
+                isSystemAdmin
+                  ? "Accept or reject field evidence before platform ingestion updates operational state."
+                  : "Accept or reject field evidence before organisation readiness moves forward."
+              }
+            />
+          ) : null}
         </div>
 
         <div id="readiness">
