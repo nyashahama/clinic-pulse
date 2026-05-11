@@ -25,6 +25,17 @@ import {
   toneForAttention,
 } from "../governance-formatters";
 
+type WebhookSecurityEvidenceRow = {
+  id: string;
+  type: string;
+  name: string;
+  state: string;
+  target: string;
+  evidence: string;
+  createdAt: string;
+  tone: AdminTone;
+};
+
 function isExpired(apiKey: PartnerApiKeyApiResponse, now = new Date()) {
   if (!apiKey.expiresAt) {
     return false;
@@ -34,16 +45,16 @@ function isExpired(apiKey: PartnerApiKeyApiResponse, now = new Date()) {
   return !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= now.getTime();
 }
 
-function apiKeyState(apiKey: PartnerApiKeyApiResponse) {
+function apiKeyState(apiKey: PartnerApiKeyApiResponse, now: Date) {
   if (apiKey.revokedAt) {
     return { label: "Revoked", tone: "blocked" as AdminTone };
   }
 
-  if (isExpired(apiKey)) {
+  if (isExpired(apiKey, now)) {
     return { label: "Expired", tone: "attention" as AdminTone };
   }
 
-  if (isPartnerApiKeyActive(apiKey)) {
+  if (isPartnerApiKeyActive(apiKey, now)) {
     return { label: "Active", tone: "clear" as AdminTone };
   }
 
@@ -100,10 +111,13 @@ export default async function Page() {
   await requireDemoWorkflowAccess("admin");
 
   const { auditEvents, partnerReadiness, users } = await loadAdminGovernanceData();
+  const now = new Date();
   const apiKeys = partnerReadiness.apiKeys;
-  const activeApiKeys = apiKeys.filter((apiKey) => isPartnerApiKeyActive(apiKey)).length;
+  const activeApiKeys = apiKeys.filter((apiKey) => isPartnerApiKeyActive(apiKey, now)).length;
   const revokedApiKeys = apiKeys.filter((apiKey) => Boolean(apiKey.revokedAt)).length;
-  const expiredApiKeys = apiKeys.filter((apiKey) => !apiKey.revokedAt && isExpired(apiKey)).length;
+  const expiredApiKeys = apiKeys.filter(
+    (apiKey) => !apiKey.revokedAt && isExpired(apiKey, now),
+  ).length;
   const failingWebhookEvents = partnerReadiness.webhookEvents.filter(webhookEventHasFailure);
   const failingWebhookSubscriptions = partnerReadiness.webhookSubscriptions.filter(
     webhookSubscriptionHasFailure,
@@ -111,46 +125,41 @@ export default async function Page() {
   const privilegedUserRows = privilegedUsers(users);
   const securityPosture = summarizeSecurityPosture({
     activeApiKeys,
-    revokedApiKeys: revokedApiKeys + expiredApiKeys,
+    revokedApiKeys,
     privilegedUsers: privilegedUserRows.length,
     failedWebhookEvents: failingWebhookEvents.length + failingWebhookSubscriptions.length,
   });
   const accessAuditEvents = auditEvents.filter((event) =>
     includesAny(event.eventType, ["access", "auth", "role", "user", "api", "webhook"]),
   );
-  const webhookRows = [
-    ...partnerReadiness.webhookSubscriptions.map((subscription) => ({
-      id: `subscription-${subscription.id}`,
-      type: "Subscription",
-      name: subscription.name,
-      state: subscription.lastTestStatus ?? subscription.status,
-      target: subscription.targetUrl,
-      evidence: subscription.lastError
-        ? subscription.lastError
-        : compactRecord(subscription.lastTestMetadata),
-      createdAt: subscription.updatedAt,
-      tone: webhookSubscriptionHasFailure(subscription) ? "attention" : "info",
-    })),
-    ...partnerReadiness.webhookEvents.map((event) => ({
-      id: `event-${event.id}`,
-      type: "Event",
-      name: event.eventType,
-      state: event.status,
-      target: `Subscription ${event.subscriptionId}`,
-      evidence: event.lastError ?? compactRecord(event.metadata),
-      createdAt: event.deliveredAt ?? event.createdAt,
-      tone: webhookEventHasFailure(event) ? "attention" : "clear",
-    })),
-  ] satisfies Array<{
-    id: string;
-    type: string;
-    name: string;
-    state: string;
-    target: string;
-    evidence: string;
-    createdAt: string;
-    tone: AdminTone;
-  }>;
+  const webhookRows: WebhookSecurityEvidenceRow[] = [
+    ...partnerReadiness.webhookSubscriptions.map(
+      (subscription): WebhookSecurityEvidenceRow => ({
+        id: `subscription-${subscription.id}`,
+        type: "Subscription",
+        name: subscription.name,
+        state: subscription.lastTestStatus ?? subscription.status,
+        target: subscription.targetUrl,
+        evidence: subscription.lastError
+          ? subscription.lastError
+          : compactRecord(subscription.lastTestMetadata),
+        createdAt: subscription.updatedAt,
+        tone: webhookSubscriptionHasFailure(subscription) ? "attention" : "info",
+      }),
+    ),
+    ...partnerReadiness.webhookEvents.map(
+      (event): WebhookSecurityEvidenceRow => ({
+        id: `event-${event.id}`,
+        type: "Event",
+        name: event.eventType,
+        state: event.status,
+        target: `Subscription ${event.subscriptionId}`,
+        evidence: event.lastError ?? compactRecord(event.metadata),
+        createdAt: event.deliveredAt ?? event.createdAt,
+        tone: webhookEventHasFailure(event) ? "attention" : "clear",
+      }),
+    ),
+  ];
 
   return (
     <div className="space-y-4" data-admin-module="security">
@@ -225,7 +234,7 @@ export default async function Page() {
             key: "state",
             header: "State",
             render: (row) => {
-              const state = apiKeyState(row);
+              const state = apiKeyState(row, now);
               return <StatusBadge tone={state.tone}>{state.label}</StatusBadge>;
             },
           },

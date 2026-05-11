@@ -5,8 +5,10 @@ import {
   AdminModuleHeader,
 } from "@/components/product/admin-module";
 import {
+  fetchAdminUsers,
   fetchOperationalClinics,
   fetchPendingReports,
+  fetchPartnerReadiness,
   fetchSyncSummary,
 } from "@/lib/demo/api-client";
 import { buildPartnerReadinessModel } from "@/lib/demo/partner-readiness";
@@ -15,7 +17,7 @@ import {
   summarizeReportingCoverage,
 } from "@/lib/product/admin-governance";
 import { requireDemoWorkflowAccess } from "../../workflow-guard";
-import { getAdminLoaderOptions, loadAdminPartnerReadiness, loadAdminUsers } from "../admin-loaders";
+import { getAdminLoaderOptions } from "../admin-loaders";
 import {
   formatCount,
   formatLabel,
@@ -36,8 +38,8 @@ export default async function Page() {
       fetchOperationalClinics(options),
       fetchPendingReports(options),
       fetchSyncSummary(options),
-      loadAdminUsers(),
-      loadAdminPartnerReadiness(),
+      fetchAdminUsers(options),
+      fetchPartnerReadiness(options),
     ]);
   const districts = distinctValues(clinics.map((clinic) => clinic.clinic.district));
   const organisations = distinctValues(
