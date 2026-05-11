@@ -3,7 +3,6 @@ import {
   AdminFilterBar,
   AdminMetricStrip,
   AdminModuleHeader,
-  type AdminTone,
 } from "@/components/product/admin-module";
 import {
   fetchOperationalClinics,
@@ -18,23 +17,20 @@ import {
   formatCount,
   formatDateTime,
   formatLabel,
+  getReportingCoverageTone,
   StatusBadge,
   toneForAttention,
 } from "../governance-formatters";
 
-function coverageTone(clinic: ClinicDetailApiResponse): AdminTone {
-  const status = clinic.currentStatus?.status?.toString().toLowerCase();
-  const freshness = clinic.currentStatus?.freshness?.toString().toLowerCase();
-
-  if (!clinic.currentStatus || status === "unknown" || freshness === "stale") {
+function coverageTone(clinic: ClinicDetailApiResponse) {
+  if (!clinic.currentStatus) {
     return "attention";
   }
 
-  if (status === "needs_confirmation" || freshness === "needs_confirmation") {
-    return "attention";
-  }
-
-  return "clear";
+  return getReportingCoverageTone({
+    status: clinic.currentStatus.status,
+    freshness: clinic.currentStatus.freshness,
+  });
 }
 
 function coverageNote(clinic: ClinicDetailApiResponse) {
