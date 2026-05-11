@@ -38,6 +38,7 @@ const roleScenarios: Array<{
       "clinic-evidence",
       "interventions",
       "verification-handoff",
+      "report-review",
     ],
   },
   {
