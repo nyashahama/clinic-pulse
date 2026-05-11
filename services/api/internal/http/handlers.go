@@ -50,6 +50,8 @@ type ClinicStore interface {
 	ListClinicReports(ctx context.Context, clinicID string) ([]store.Report, error)
 	ListPendingReports(ctx context.Context, scope store.ReportReviewScope) ([]store.Report, error)
 	ListClinicAuditEvents(ctx context.Context, clinicID string) ([]store.AuditEvent, error)
+	ListAdminUserAccess(ctx context.Context, organisationID *int64) ([]store.AdminUserAccessRow, error)
+	ListAdminAuditEvents(ctx context.Context, organisationID *int64, limit int) ([]store.AdminAuditEventRow, error)
 	CreateReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, store.CurrentStatus, store.AuditEvent, error)
 	CreatePendingReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, error)
 	GetPendingReportByPayload(ctx context.Context, input store.CreateReportInput) (store.Report, error)
@@ -492,6 +494,51 @@ func (h Handler) ListAdminPartnerAPIKeys(w nethttp.ResponseWriter, r *nethttp.Re
 	}
 
 	RespondJSON(w, nethttp.StatusOK, apiKeys)
+}
+
+func (h Handler) ListAdminUsers(w nethttp.ResponseWriter, r *nethttp.Request) {
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	users, err := h.store.ListAdminUserAccess(r.Context(), adminReadOrganisationScope(principal))
+	if err != nil {
+		respondStoreError(w, err, "failed to list admin users")
+		return
+	}
+	if users == nil {
+		users = []store.AdminUserAccessRow{}
+	}
+
+	RespondJSON(w, nethttp.StatusOK, users)
+}
+
+func (h Handler) ListAdminAuditEvents(w nethttp.ResponseWriter, r *nethttp.Request) {
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	events, err := h.store.ListAdminAuditEvents(r.Context(), adminReadOrganisationScope(principal), 100)
+	if err != nil {
+		respondStoreError(w, err, "failed to list admin audit events")
+		return
+	}
+	if events == nil {
+		events = []store.AdminAuditEventRow{}
+	}
+
+	RespondJSON(w, nethttp.StatusOK, events)
+}
+
+func adminReadOrganisationScope(principal Principal) *int64 {
+	if principal.Role == "system_admin" {
+		return nil
+	}
+	return principal.OrganisationID
 }
 
 func (h Handler) RevokeAdminPartnerAPIKey(w nethttp.ResponseWriter, r *nethttp.Request) {

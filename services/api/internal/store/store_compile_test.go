@@ -20,6 +20,8 @@ func TestStorePublicAPICompiles(t *testing.T) {
 	var _ func(Store, context.Context, string) (CurrentStatus, error) = Store.GetCurrentStatus
 	var _ func(Store, context.Context, string) ([]Report, error) = Store.ListClinicReports
 	var _ func(Store, context.Context, string) ([]AuditEvent, error) = Store.ListClinicAuditEvents
+	var _ func(Store, context.Context, *int64) ([]AdminUserAccessRow, error) = Store.ListAdminUserAccess
+	var _ func(Store, context.Context, *int64, int) ([]AdminAuditEventRow, error) = Store.ListAdminAuditEvents
 	var _ func(Store, context.Context, CreateAuditEventInput) (AuditEvent, error) = Store.CreateAuditEvent
 	var _ func(Store, context.Context, CreateReportInput) (Report, CurrentStatus, AuditEvent, error) = Store.CreateReportTx
 	var _ func(Store, context.Context, CreateReportInput) (Report, error) = Store.CreatePendingReportTx
@@ -34,6 +36,28 @@ func TestStorePublicAPICompiles(t *testing.T) {
 	var _ func(Store, context.Context, string) error = Store.RevokeSession
 	var _ func(Store, context.Context, int64) ([]OrganisationMembership, error) = Store.ListMembershipsForUser
 	var _ func(Store) = Store.Close
+}
+
+func TestListAdminUserAccessSQLIncludesSessionSignalAndOrganisationScope(t *testing.T) {
+	t.Parallel()
+
+	if !strings.Contains(listAdminUserAccessSQL, "max(sessions.last_seen_at)") {
+		t.Fatal("expected admin user access SQL to include latest active session signal")
+	}
+	if !strings.Contains(listAdminUserAccessSQL, "WHERE $1::bigint IS NULL OR organisation_memberships.organisation_id = $1") {
+		t.Fatal("expected admin user access SQL to scope by organisation id when present")
+	}
+}
+
+func TestListAdminAuditEventsSQLOrdersRecentEventsAndLimits(t *testing.T) {
+	t.Parallel()
+
+	if !strings.Contains(listAdminAuditEventsSQL, "ORDER BY created_at DESC, id DESC") {
+		t.Fatal("expected admin audit event SQL to order newest events first")
+	}
+	if !strings.Contains(listAdminAuditEventsSQL, "LIMIT $2") {
+		t.Fatal("expected admin audit event SQL to use caller-provided limit parameter")
+	}
 }
 
 func TestOfflineSyncStoreMethodSignatures(t *testing.T) {

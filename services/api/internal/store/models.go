@@ -260,6 +260,20 @@ type AuditEvent struct {
 	Metadata       map[string]any `json:"metadata,omitempty"`
 }
 
+type AdminUserAccessRow struct {
+	UserID         int64      `json:"userId"`
+	Email          string     `json:"email"`
+	DisplayName    string     `json:"displayName"`
+	DisabledAt     *time.Time `json:"disabledAt,omitempty"`
+	CreatedAt      time.Time  `json:"createdAt"`
+	Role           string     `json:"role"`
+	OrganisationID *int64     `json:"organisationId,omitempty"`
+	District       *string    `json:"district,omitempty"`
+	LastSeenAt     *time.Time `json:"lastSeenAt,omitempty"`
+}
+
+type AdminAuditEventRow = AuditEvent
+
 type User struct {
 	ID           int64      `json:"id"`
 	Email        string     `json:"email"`
