@@ -37,7 +37,7 @@ export function AdminModuleHeader({
     <section
       data-admin-module
       className={cn(
-        "rounded-lg border bg-card px-4 py-4 text-card-foreground shadow-sm sm:px-5",
+        "rounded-lg border border-border-subtle bg-bg-default px-4 py-4 text-content-default shadow-sm sm:px-5",
         className,
       )}
     >
@@ -140,7 +140,7 @@ export function AdminFilterBar({ children, className }: AdminFilterBarProps) {
     <div
       data-admin-module
       className={cn(
-        "flex flex-col gap-2 rounded-lg border bg-card p-3 text-card-foreground shadow-sm sm:flex-row sm:flex-wrap sm:items-center",
+        "flex flex-col gap-2 rounded-lg border border-border-subtle bg-bg-default p-3 text-content-default shadow-sm sm:flex-row sm:flex-wrap sm:items-center",
         className,
       )}
     >
@@ -178,26 +178,38 @@ export function AdminEvidenceTable<Row>({
       data-admin-module
       aria-label={label}
       className={cn(
-        "overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm",
+        "overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm",
         className,
       )}
     >
       {rows.length ? (
         <Table>
-          <TableHeader>
-            <TableRow>
+          <TableHeader className="bg-bg-muted/60">
+            <TableRow className="border-border-subtle bg-bg-muted/60 hover:bg-bg-muted/60">
               {columns.map((column) => (
-                <TableHead key={column.key} className={column.className}>
+                <TableHead
+                  key={column.key}
+                  className={cn(
+                    "h-11 px-3 text-xs font-semibold uppercase tracking-normal text-content-subtle",
+                    column.className,
+                  )}
+                >
                   {column.header}
                 </TableHead>
               ))}
             </TableRow>
           </TableHeader>
-          <TableBody>
+          <TableBody className="divide-y divide-border-subtle [&_tr]:border-0">
             {rows.map((row, rowIndex) => (
-              <TableRow key={getRowKey(row, rowIndex)}>
+              <TableRow
+                key={getRowKey(row, rowIndex)}
+                className="hover:bg-bg-muted/60"
+              >
                 {columns.map((column) => (
-                  <TableCell key={column.key} className={column.className}>
+                  <TableCell
+                    key={column.key}
+                    className={cn("px-3 py-3 text-content-default", column.className)}
+                  >
                     {column.render(row)}
                   </TableCell>
                 ))}
