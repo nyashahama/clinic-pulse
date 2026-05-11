@@ -1,4 +1,6 @@
 import type {
+  AdminAuditEventApiResponse,
+  AdminUserAccessApiResponse,
   AlternativeApiResponse,
   ApiErrorResponse,
   CreatePartnerApiKeyApiInput,
@@ -270,6 +272,17 @@ export function reconcileStatusStaleness(options?: ClinicPulseApiClientOptions) 
 export function fetchPartnerReadiness(options?: ClinicPulseApiClientOptions) {
   return requestClinicPulseApi<PartnerReadinessApiResponse>(
     ["v1", "admin", "partner-readiness"],
+    options,
+  );
+}
+
+export function fetchAdminUsers(options?: ClinicPulseApiClientOptions) {
+  return requestClinicPulseApi<AdminUserAccessApiResponse[]>(["v1", "admin", "users"], options);
+}
+
+export function fetchAdminAuditEvents(options?: ClinicPulseApiClientOptions) {
+  return requestClinicPulseApi<AdminAuditEventApiResponse[]>(
+    ["v1", "admin", "audit-events"],
     options,
   );
 }

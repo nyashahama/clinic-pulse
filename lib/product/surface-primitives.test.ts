@@ -19,6 +19,11 @@ import { ReportReviewSummary } from "@/components/product/report-review-summary"
 import { ProductResponsiveTable } from "@/components/product/responsive-table";
 import { SurfaceState } from "@/components/product/surface-state";
 import {
+  AdminEvidenceTable,
+  AdminFilterBar,
+  AdminModuleHeader,
+} from "@/components/product/admin-module";
+import {
   WorkspaceClinicDetailLoading,
   WorkspaceDashboardLoading,
 } from "@/components/product/workspace-loading";
@@ -81,6 +86,54 @@ describe("product surface primitives", () => {
 
     expect(html).toContain('aria-label="Clinic operating table"');
     expect(html).toContain("Mamelodi East");
+  });
+
+  it("renders admin evidence tables with subtle product borders", () => {
+    const html = renderToStaticMarkup(
+      createElement(AdminEvidenceTable, {
+        label: "Ingestion signal evidence",
+        rows: [{ id: "offline", signal: "Offline queue", value: "0" }],
+        getRowKey: (row: { id: string }) => row.id,
+        columns: [
+          {
+            key: "signal",
+            header: "Signal",
+            render: (row: { signal: string }) => row.signal,
+          },
+          {
+            key: "value",
+            header: "Count",
+            render: (row: { value: string }) => row.value,
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain("border-border-subtle");
+    expect(html).toContain("bg-bg-default");
+    expect(html).toContain("bg-bg-muted/60");
+    expect(html).toContain("divide-border-subtle");
+    expect(html).not.toContain('class="overflow-hidden rounded-lg border bg-card');
+  });
+
+  it("renders admin module chrome with subtle product borders", () => {
+    const html = renderToStaticMarkup(
+      createElement(
+        "div",
+        null,
+        createElement(AdminModuleHeader, {
+          eyebrow: "Platform operations",
+          title: "Ingestion pressure",
+          description: "Read-only review of sync freshness.",
+        }),
+        createElement(AdminFilterBar, null, createElement("span", null, "Read only evidence")),
+      ),
+    );
+
+    expect(html).toContain("border-border-subtle");
+    expect(html).toContain("bg-bg-default");
+    expect(html).not.toContain('class="rounded-lg border bg-card');
+    expect(html).not.toContain('class="flex flex-col gap-2 rounded-lg border bg-card');
   });
 
   it("renders metric tile content and trend context", () => {

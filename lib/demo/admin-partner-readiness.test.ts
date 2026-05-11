@@ -4,6 +4,22 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const adminClient = path.join(process.cwd(), "app", "(demo)", "admin", "page-client.tsx");
+const partnerReadinessPage = path.join(
+  process.cwd(),
+  "app",
+  "(demo)",
+  "admin",
+  "partner-readiness",
+  "page.tsx",
+);
+const partnerReadinessClient = path.join(
+  process.cwd(),
+  "app",
+  "(demo)",
+  "admin",
+  "partner-readiness",
+  "page-client.tsx",
+);
 const partnerPanel = path.join(
   process.cwd(),
   "components",
@@ -11,20 +27,49 @@ const partnerPanel = path.join(
   "partner-readiness-panel.tsx",
 );
 
-describe("admin partner readiness workflow", () => {
-  it("wires webhook creation into the admin partner readiness panel", () => {
-    const adminClientSource = readFileSync(adminClient, "utf8");
-    const panelSource = readFileSync(partnerPanel, "utf8");
+function readSource(filePath: string) {
+  try {
+    return readFileSync(filePath, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return "";
+    }
+    throw error;
+  }
+}
 
-    expect(adminClientSource).toContain("createPartnerWebhookAction");
-    expect(adminClientSource).toContain("handleCreatePartnerWebhook");
-    expect(adminClientSource).toContain("onCreateWebhook={handleCreatePartnerWebhook}");
+describe("admin partner readiness workflow", () => {
+  it("wires full partner actions in the dedicated partner readiness client", () => {
+    const partnerReadinessClientSource = readSource(partnerReadinessClient);
+    const partnerReadinessPageSource = readSource(partnerReadinessPage);
+    const panelSource = readSource(partnerPanel);
+
+    expect(partnerReadinessPageSource).toContain('requireDemoWorkflowAccess("admin")');
+    expect(partnerReadinessPageSource).toContain("loadAdminPartnerReadiness");
+    expect(partnerReadinessPageSource).toContain("PartnerReadinessPageClient");
+    expect(partnerReadinessClientSource).toContain("createPartnerApiKeyAction");
+    expect(partnerReadinessClientSource).toContain("createPartnerExportAction");
+    expect(partnerReadinessClientSource).toContain("createPartnerWebhookAction");
+    expect(partnerReadinessClientSource).toContain("testPartnerWebhookAction");
+    expect(partnerReadinessClientSource).toContain("onCreateWebhook={handleCreatePartnerWebhook}");
     expect(panelSource).toContain("onCreateWebhook");
     expect(panelSource).toContain("Create webhook");
   });
 
+  it("keeps the admin overview compact and links to the dedicated partner readiness route", () => {
+    const adminClientSource = readSource(adminClient);
+
+    expect(adminClientSource).toContain('id="partner-readiness"');
+    expect(adminClientSource).toContain('href="/admin/partner-readiness"');
+    expect(adminClientSource).not.toContain("<PartnerReadinessPanel");
+    expect(adminClientSource).not.toContain("createPartnerApiKeyAction");
+    expect(adminClientSource).not.toContain("createPartnerExportAction");
+    expect(adminClientSource).not.toContain("createPartnerWebhookAction");
+    expect(adminClientSource).not.toContain("testPartnerWebhookAction");
+  });
+
   it("keeps wall-clock timestamps out of the admin render path", () => {
-    const adminClientSource = readFileSync(adminClient, "utf8");
+    const adminClientSource = readSource(adminClient);
 
     expect(adminClientSource).toContain("buildExportPayload(state, exportGeneratedAt)");
     expect(adminClientSource).not.toContain("generatedAt: new Date().toISOString()");
@@ -32,7 +77,7 @@ describe("admin partner readiness workflow", () => {
   });
 
   it("keeps scaffold wording out of the admin proof copy", () => {
-    const adminClientSource = readFileSync(adminClient, "utf8");
+    const adminClientSource = readSource(adminClient);
     const scaffoldPhrases = [
       ["mock", "first"].join("-"),
       ["solo", "founder", "pacing"].join(" "),

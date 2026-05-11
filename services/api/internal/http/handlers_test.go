@@ -1059,6 +1059,208 @@ func TestAdminPartnerReadinessReturnsSnapshot(t *testing.T) {
 	}
 }
 
+func TestAdminUsersAndAuditEventsRequireAdminRole(t *testing.T) {
+	tests := []struct {
+		name string
+		role string
+		path string
+	}{
+		{
+			name: "reporter users",
+			role: "reporter",
+			path: "/v1/admin/users",
+		},
+		{
+			name: "district manager users",
+			role: "district_manager",
+			path: "/v1/admin/users",
+		},
+		{
+			name: "reporter audit events",
+			role: "reporter",
+			path: "/v1/admin/audit-events",
+		},
+		{
+			name: "district manager audit events",
+			role: "district_manager",
+			path: "/v1/admin/audit-events",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := apihttp.NewRouter(authenticatedStore(t, tt.role, fakeStore{}))
+			req := newAuthenticatedRequest(t, http.MethodGet, tt.path, nil)
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusForbidden {
+				t.Fatalf("expected status %d, got %d with body %s", http.StatusForbidden, rec.Code, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestAdminUsersReturnsMembershipRows(t *testing.T) {
+	orgID := int64(77)
+	now := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+		adminUsers: []store.AdminUserAccessRow{{
+			UserID:         10,
+			Email:          "reporter@example.test",
+			DisplayName:    "Reporter User",
+			CreatedAt:      now,
+			Role:           "reporter",
+			OrganisationID: &orgID,
+		}},
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/users", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"email":"reporter@example.test"`) {
+		t.Fatalf("expected response to include admin user row, got %s", rec.Body.String())
+	}
+}
+
+func TestAdminUsersScopesOrganisationAdmins(t *testing.T) {
+	orgID := int64(77)
+	var gotOrgID *int64
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+		listAdminUsersOrgID: &gotOrgID,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/users", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if gotOrgID == nil || *gotOrgID != orgID {
+		t.Fatalf("expected admin users list scoped to org %d, got %#v", orgID, gotOrgID)
+	}
+}
+
+func TestAdminUsersUsesGlobalScopeForSystemAdmins(t *testing.T) {
+	orgID := int64(77)
+	sentinelOrgID := int64(-1)
+	gotOrgID := &sentinelOrgID
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "system_admin", orgID, fakeStore{
+		listAdminUsersOrgID: &gotOrgID,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/users", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if gotOrgID != nil {
+		t.Fatalf("expected system admin users list to use global scope, got %#v", gotOrgID)
+	}
+}
+
+func TestAdminAuditEventsReturnsRecentEvents(t *testing.T) {
+	now := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "system_admin", 77, fakeStore{
+		adminAuditEvents: []store.AdminAuditEventRow{{
+			ID:        20,
+			EventType: "report.reviewed",
+			Summary:   "Report accepted",
+			CreatedAt: now,
+			Metadata:  map[string]any{},
+		}},
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/audit-events", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"eventType":"report.reviewed"`) {
+		t.Fatalf("expected response to include admin audit event, got %s", rec.Body.String())
+	}
+}
+
+func TestAdminAuditEventsUsesLimit(t *testing.T) {
+	gotLimit := 0
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "system_admin", 77, fakeStore{
+		listAdminAuditEventsLimit: &gotLimit,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/audit-events", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if gotLimit != 100 {
+		t.Fatalf("expected admin audit events limit 100, got %d", gotLimit)
+	}
+}
+
+func TestAdminAuditEventsScopesOrganisationAdmins(t *testing.T) {
+	orgID := int64(77)
+	var gotOrgID *int64
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+		listAdminAuditEventsOrgID: &gotOrgID,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/audit-events", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if gotOrgID == nil || *gotOrgID != orgID {
+		t.Fatalf("expected admin audit events scoped to org %d, got %#v", orgID, gotOrgID)
+	}
+}
+
+func TestAdminAuditEventsUsesGlobalScopeForSystemAdmins(t *testing.T) {
+	orgID := int64(77)
+	sentinelOrgID := int64(-1)
+	gotOrgID := &sentinelOrgID
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "system_admin", orgID, fakeStore{
+		listAdminAuditEventsOrgID: &gotOrgID,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/audit-events", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if gotOrgID != nil {
+		t.Fatalf("expected system admin audit events to use global scope, got %#v", gotOrgID)
+	}
+}
+
+func TestAdminAuditEventsStoreErrorsUseInternalError(t *testing.T) {
+	storeErr := errors.New("database password leaked")
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "system_admin", 77, fakeStore{
+		adminAuditEventsErr: storeErr,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/audit-events", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assertInternalError(t, rec, storeErr)
+}
+
 func TestAdminPartnerReadinessRecomputesChecksBeforeReturningSnapshot(t *testing.T) {
 	orgID := int64(77)
 	now := time.Date(2026, 5, 4, 9, 0, 0, 0, time.UTC)
@@ -3808,6 +4010,8 @@ type fakeStore struct {
 	reports                               []store.Report
 	pendingReports                        []store.Report
 	auditEvents                           []store.AuditEvent
+	adminUsers                            []store.AdminUserAccessRow
+	adminAuditEvents                      []store.AdminAuditEventRow
 	currentStatuses                       []store.CurrentStatus
 	createReport                          store.Report
 	createStatus                          store.CurrentStatus
@@ -3847,6 +4051,9 @@ type fakeStore struct {
 	listPartnerAPIKeysOrgID               *int64
 	listPartnerWebhookSubscriptionsOrgID  *int64
 	listPartnerWebhookEventsOrgID         *int64
+	listAdminUsersOrgID                   **int64
+	listAdminAuditEventsOrgID             **int64
+	listAdminAuditEventsLimit             *int
 	partnerReadinessOrgID                 *int64
 	getPartnerExportRunOrgID              *int64
 	getPartnerExportRunID                 *int64
@@ -3878,6 +4085,8 @@ type fakeStore struct {
 	reportsErr                            error
 	pendingReportsErr                     error
 	auditEventsErr                        error
+	adminUsersErr                         error
+	adminAuditEventsErr                   error
 	currentStatusesErr                    error
 	createErr                             error
 	updateFreshnessErr                    error
@@ -3942,6 +4151,23 @@ func (f fakeStore) ListPendingReports(_ context.Context, scope store.ReportRevie
 
 func (f fakeStore) ListClinicAuditEvents(context.Context, string) ([]store.AuditEvent, error) {
 	return f.auditEvents, f.auditEventsErr
+}
+
+func (f fakeStore) ListAdminUserAccess(_ context.Context, organisationID *int64) ([]store.AdminUserAccessRow, error) {
+	if f.listAdminUsersOrgID != nil {
+		*f.listAdminUsersOrgID = organisationID
+	}
+	return f.adminUsers, f.adminUsersErr
+}
+
+func (f fakeStore) ListAdminAuditEvents(_ context.Context, organisationID *int64, limit int) ([]store.AdminAuditEventRow, error) {
+	if f.listAdminAuditEventsOrgID != nil {
+		*f.listAdminAuditEventsOrgID = organisationID
+	}
+	if f.listAdminAuditEventsLimit != nil {
+		*f.listAdminAuditEventsLimit = limit
+	}
+	return f.adminAuditEvents, f.adminAuditEventsErr
 }
 
 func (f fakeStore) ListCurrentStatuses(context.Context) ([]store.CurrentStatus, error) {

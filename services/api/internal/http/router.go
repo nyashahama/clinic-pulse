@@ -58,6 +58,8 @@ func NewRouter(store ClinicStore, options ...RouterOption) nethttp.Handler {
 	router.With(partnerAuth, RequirePartnerScope("exports:read")).Get("/v1/partner/export/latest", handler.GetPartnerLatestExport)
 	router.With(partnerAuth, RequirePartnerScope("status:read")).Get("/v1/partner/integration-status", handler.GetPartnerIntegrationStatus)
 	router.With(requireAuth, orgAdminOrSystemAdmin).Get("/v1/admin/partner-readiness", handler.GetAdminPartnerReadiness)
+	router.With(requireAuth, orgAdminOrSystemAdmin).Get("/v1/admin/users", handler.ListAdminUsers)
+	router.With(requireAuth, orgAdminOrSystemAdmin).Get("/v1/admin/audit-events", handler.ListAdminAuditEvents)
 	router.With(requireAuth, orgAdminOrSystemAdmin).Post("/v1/admin/api-keys", handler.CreateAdminPartnerAPIKey)
 	router.With(requireAuth, orgAdminOrSystemAdmin).Get("/v1/admin/api-keys", handler.ListAdminPartnerAPIKeys)
 	router.With(requireAuth, orgAdminOrSystemAdmin).Post("/v1/admin/api-keys/{keyId}/revoke", handler.RevokeAdminPartnerAPIKey)

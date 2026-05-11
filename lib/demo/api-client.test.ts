@@ -7,6 +7,8 @@ import {
   createPartnerApiKey,
   createPartnerExport,
   createPartnerWebhook,
+  fetchAdminAuditEvents,
+  fetchAdminUsers,
   fetchAlternatives,
   fetchClinic,
   fetchClinicAuditEvents,
@@ -272,6 +274,20 @@ describe("ClinicPulse API client", () => {
       "https://api.example.test/v1/admin/partner-readiness",
     );
     expect(fetchImpl.mock.calls[0][1]).toMatchObject({ method: "GET" });
+  });
+
+  it("fetches admin users", async () => {
+    const fetchImpl = mockFetch([]);
+    await fetchAdminUsers({ baseUrl: "https://api.example.test", fetch: fetchImpl });
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://api.example.test/v1/admin/users");
+  });
+
+  it("fetches admin audit events", async () => {
+    const fetchImpl = mockFetch([]);
+    await fetchAdminAuditEvents({ baseUrl: "https://api.example.test", fetch: fetchImpl });
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe(
+      "https://api.example.test/v1/admin/audit-events",
+    );
   });
 
   it("posts webhook tests and partner export generation to admin endpoints", async () => {

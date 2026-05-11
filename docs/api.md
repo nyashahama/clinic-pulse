@@ -57,6 +57,8 @@ Admin routes require a session with `org_admin` or `system_admin`.
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/v1/admin/partner-readiness` | Returns partner readiness summary |
+| `GET` | `/v1/admin/users` | Lists users, memberships, role scope, disabled state, and latest active session signal |
+| `GET` | `/v1/admin/audit-events` | Lists recent admin-visible audit events |
 | `POST` | `/v1/admin/api-keys` | Creates a partner API key and returns the one-time secret |
 | `GET` | `/v1/admin/api-keys` | Lists partner API keys |
 | `POST` | `/v1/admin/api-keys/{keyId}/revoke` | Revokes a partner API key |
