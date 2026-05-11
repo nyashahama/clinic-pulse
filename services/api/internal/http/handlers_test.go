@@ -1059,15 +1059,46 @@ func TestAdminPartnerReadinessReturnsSnapshot(t *testing.T) {
 	}
 }
 
-func TestAdminUsersRequiresAdminRole(t *testing.T) {
-	router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{}))
-	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/users", nil)
-	rec := httptest.NewRecorder()
+func TestAdminUsersAndAuditEventsRequireAdminRole(t *testing.T) {
+	tests := []struct {
+		name string
+		role string
+		path string
+	}{
+		{
+			name: "reporter users",
+			role: "reporter",
+			path: "/v1/admin/users",
+		},
+		{
+			name: "district manager users",
+			role: "district_manager",
+			path: "/v1/admin/users",
+		},
+		{
+			name: "reporter audit events",
+			role: "reporter",
+			path: "/v1/admin/audit-events",
+		},
+		{
+			name: "district manager audit events",
+			role: "district_manager",
+			path: "/v1/admin/audit-events",
+		},
+	}
 
-	router.ServeHTTP(rec, req)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := apihttp.NewRouter(authenticatedStore(t, tt.role, fakeStore{}))
+			req := newAuthenticatedRequest(t, http.MethodGet, tt.path, nil)
+			rec := httptest.NewRecorder()
 
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("expected status %d, got %d with body %s", http.StatusForbidden, rec.Code, rec.Body.String())
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusForbidden {
+				t.Fatalf("expected status %d, got %d with body %s", http.StatusForbidden, rec.Code, rec.Body.String())
+			}
+		})
 	}
 }
 
@@ -1175,6 +1206,45 @@ func TestAdminAuditEventsUsesLimit(t *testing.T) {
 	}
 	if gotLimit != 100 {
 		t.Fatalf("expected admin audit events limit 100, got %d", gotLimit)
+	}
+}
+
+func TestAdminAuditEventsScopesOrganisationAdmins(t *testing.T) {
+	orgID := int64(77)
+	var gotOrgID *int64
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+		listAdminAuditEventsOrgID: &gotOrgID,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/audit-events", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if gotOrgID == nil || *gotOrgID != orgID {
+		t.Fatalf("expected admin audit events scoped to org %d, got %#v", orgID, gotOrgID)
+	}
+}
+
+func TestAdminAuditEventsUsesGlobalScopeForSystemAdmins(t *testing.T) {
+	orgID := int64(77)
+	sentinelOrgID := int64(-1)
+	gotOrgID := &sentinelOrgID
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "system_admin", orgID, fakeStore{
+		listAdminAuditEventsOrgID: &gotOrgID,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/audit-events", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if gotOrgID != nil {
+		t.Fatalf("expected system admin audit events to use global scope, got %#v", gotOrgID)
 	}
 }
 
