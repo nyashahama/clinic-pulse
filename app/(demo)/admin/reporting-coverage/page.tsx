@@ -58,6 +58,7 @@ export default async function Page() {
   const coverage = summarizeReportingCoverage({
     clinicCount: clinics.length,
     staleClinicCount: syncSummary.staleClinics,
+    needsConfirmationClinicCount: syncSummary.needsConfirmationClinics,
     pendingReviewCount: pendingReports.length,
     queuedOfflineCount: syncSummary.pendingOfflineReports,
     validationFailureCount: syncSummary.validationFailures,

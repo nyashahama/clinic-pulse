@@ -114,6 +114,23 @@ describe("summarizeReportingCoverage", () => {
       blockers: [],
     });
   });
+
+  it("treats needs-confirmation clinics as coverage blockers", () => {
+    expect(
+      summarizeReportingCoverage({
+        clinicCount: 8,
+        staleClinicCount: 0,
+        pendingReviewCount: 0,
+        queuedOfflineCount: 0,
+        validationFailureCount: 0,
+        needsConfirmationClinicCount: 2,
+      }),
+    ).toEqual({
+      tone: "attention",
+      readinessPercent: 75,
+      blockers: ["2 needs-confirmation clinics"],
+    });
+  });
 });
 
 describe("summarizeSecurityPosture", () => {

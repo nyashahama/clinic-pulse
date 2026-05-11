@@ -18,6 +18,7 @@ type AccessRiskSummary = {
 export type ReportingCoverageInput = {
   clinicCount: number;
   staleClinicCount: number;
+  needsConfirmationClinicCount?: number;
   pendingReviewCount: number;
   queuedOfflineCount: number;
   validationFailureCount: number;
@@ -73,10 +74,12 @@ export function summarizeReportingCoverage(
   const blockers = [
     formatBlocker(input.pendingReviewCount, "pending review"),
     formatBlocker(input.staleClinicCount, "stale clinic"),
+    formatBlocker(input.needsConfirmationClinicCount ?? 0, "needs-confirmation clinic"),
     formatBlocker(input.validationFailureCount, "validation failure"),
   ].filter((blocker): blocker is string => Boolean(blocker));
   const pressure =
     input.staleClinicCount +
+    (input.needsConfirmationClinicCount ?? 0) +
     input.pendingReviewCount +
     input.queuedOfflineCount +
     input.validationFailureCount;
