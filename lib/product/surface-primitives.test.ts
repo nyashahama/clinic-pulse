@@ -157,6 +157,7 @@ describe("product surface primitives", () => {
     );
 
     expect(html).toContain('data-testid="report-review-item"');
+    expect(html).toContain('data-report-id="42"');
     expect(html).toContain("Mamelodi East Clinic");
     expect(html).toContain("Power outage closed the triage room.");
     expect(html).toContain('data-testid="accept-report-review"');

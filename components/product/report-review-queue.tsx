@@ -274,6 +274,7 @@ export function ReportReviewQueueView({
                 <article
                   key={item.reportId}
                   data-testid="report-review-item"
+                  data-report-id={item.reportId}
                   className="rounded-lg border border-border-subtle bg-bg-default p-4"
                 >
                   <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
