@@ -48,6 +48,8 @@ const OFFLINE_SAVED_MESSAGE =
   "Report saved offline. It will retry when connectivity returns.";
 const OFFLINE_DUPLICATE_MESSAGE =
   "A matching report is already in the device queue.";
+const ONLINE_DUPLICATE_MESSAGE =
+  "A matching report is already waiting for district review.";
 
 function subscribeToOnlineStatus(onStoreChange: () => void) {
   if (typeof window === "undefined") {
@@ -434,13 +436,17 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
     try {
       if (isOnline) {
         try {
-          await submitOnlineFieldReport({
+          const result = await submitOnlineFieldReport({
             clinicId: selectedId,
             refresh: () => router.refresh(),
             report,
             submitReport: createFieldReport,
           });
-          setSubmitSuccess("Report submitted and waiting for district review.");
+          if (result.created) {
+            setSubmitSuccess("Report submitted and waiting for district review.");
+          } else {
+            setSubmitError(ONLINE_DUPLICATE_MESSAGE);
+          }
         } catch (error) {
           if (!isReachabilityFailure(error)) {
             throw error;
@@ -494,7 +500,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
             badge: waitingOfflineReportCount > 0 ? "Queued" : "Clear",
             trend: waitingOfflineReportCount > 0 ? "down" : "neutral",
             footer: "Reports still held on this device",
-            detail: "The field view starts with local queue pressure before submission.",
+            detail: "The field view starts with local queue pressure before review.",
           },
           {
             title: "Connection",
@@ -502,7 +508,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
             badge: isOnline ? "Live" : "Offline",
             trend: isOnline ? "neutral" : "down",
             footer: "Submission mode controls queue behavior",
-            detail: "Online reports submit now; offline reports wait for sync.",
+            detail: "Online reports enter review; offline reports wait for sync.",
           },
           {
             title: "Selected clinic",
@@ -532,7 +538,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
         <SectionHeader
           eyebrow="Device state"
           title="Connection and submission controls"
-          description="Submit a clinic update from offline or online mode. Queued items merge into district state when back online."
+          description="Submit a clinic update from offline or online mode. Queued items sync and enter district review when back online."
         />
         <div className="mt-3 flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
           <p className="text-content-subtle">
@@ -559,7 +565,11 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
           </p>
         ) : null}
         {submitSuccess ? (
-          <p className="xl:col-start-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+          <p
+            role="status"
+            aria-live="polite"
+            className="xl:col-start-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
+          >
             {submitSuccess}
           </p>
         ) : null}

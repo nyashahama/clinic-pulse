@@ -29,6 +29,11 @@ type ReportInput struct {
 	Actor           *AuditActor
 }
 
+type CreateReportResult struct {
+	Report  store.Report
+	Created bool
+}
+
 type ReviewReportInput struct {
 	ReportID       int64
 	ReviewerUserID int64
@@ -112,29 +117,33 @@ func ValidateCreateReportInputAt(input ReportInput, validationTime time.Time) er
 	return nil
 }
 
-func CreateReport(ctx context.Context, creator ReportCreator, input ReportInput) (store.Report, error) {
+func CreateReport(ctx context.Context, creator ReportCreator, input ReportInput) (CreateReportResult, error) {
 	return createReportAt(ctx, creator, input, time.Now().UTC())
 }
 
-func createReportAt(ctx context.Context, creator ReportCreator, input ReportInput, validationTime time.Time) (store.Report, error) {
+func createReportAt(ctx context.Context, creator ReportCreator, input ReportInput, validationTime time.Time) (CreateReportResult, error) {
 	if err := ValidateCreateReportInputAt(input, validationTime); err != nil {
-		return store.Report{}, err
+		return CreateReportResult{}, err
 	}
 
 	storeInput := input.toStoreInput()
 	storeInput.ReviewState = "pending"
 	existing, err := creator.GetPendingReportByPayload(ctx, storeInput)
 	if err == nil {
-		return existing, nil
+		return CreateReportResult{Report: existing, Created: false}, nil
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
-		return store.Report{}, err
+		return CreateReportResult{}, err
 	}
 
 	if input.Actor != nil {
 		storeInput.AuditEvent = ptr(ReportSubmissionAudit(storeInput, *input.Actor))
 	}
-	return creator.CreatePendingReportTx(ctx, storeInput)
+	report, err := creator.CreatePendingReportTx(ctx, storeInput)
+	if err != nil {
+		return CreateReportResult{}, err
+	}
+	return CreateReportResult{Report: report, Created: true}, nil
 }
 
 func ReviewReport(ctx context.Context, reviewer ReportReviewer, input ReviewReportInput) (store.Report, *store.CurrentStatus, error) {

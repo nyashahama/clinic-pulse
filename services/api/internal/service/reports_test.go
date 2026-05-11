@@ -284,7 +284,7 @@ func TestCreateReportCallsCreatorForValidInput(t *testing.T) {
 	creator := &fakeReportCreator{report: report}
 	input := validReportInput()
 
-	gotReport, err := CreateReport(context.Background(), creator, input)
+	gotResult, err := CreateReport(context.Background(), creator, input)
 
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
@@ -298,8 +298,11 @@ func TestCreateReportCallsCreatorForValidInput(t *testing.T) {
 	if creator.input.ReviewState != "pending" {
 		t.Fatalf("expected pending review state, got %q", creator.input.ReviewState)
 	}
-	if gotReport.ID != report.ID {
-		t.Fatalf("unexpected create result: %#v", gotReport)
+	if gotResult.Report.ID != report.ID {
+		t.Fatalf("unexpected create result: %#v", gotResult.Report)
+	}
+	if !gotResult.Created {
+		t.Fatalf("expected new report result to expose created=true, got %#v", gotResult)
 	}
 }
 
@@ -308,13 +311,16 @@ func TestCreateReportReturnsExistingPendingSemanticDuplicate(t *testing.T) {
 	creator := &fakeReportCreator{semanticDuplicate: existing}
 	input := validReportInput()
 
-	gotReport, err := CreateReport(context.Background(), creator, input)
+	gotResult, err := CreateReport(context.Background(), creator, input)
 
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
-	if gotReport.ID != existing.ID {
-		t.Fatalf("expected existing pending duplicate report, got %#v", gotReport)
+	if gotResult.Report.ID != existing.ID {
+		t.Fatalf("expected existing pending duplicate report, got %#v", gotResult.Report)
+	}
+	if gotResult.Created {
+		t.Fatalf("expected duplicate result to expose created=false, got %#v", gotResult)
 	}
 	if creator.called {
 		t.Fatal("expected semantic duplicate not to create another pending report")

@@ -24,7 +24,12 @@ vi.mock("@/lib/auth/session", async (importOriginal) => {
 });
 
 vi.mock("@/lib/demo/api-client", () => ({
-  createReport: vi.fn().mockResolvedValue({ report: {}, currentStatus: {}, auditEvent: {} }),
+  createReport: vi.fn().mockResolvedValue({
+    created: true,
+    report: {},
+    currentStatus: {},
+    auditEvent: {},
+  }),
   syncOfflineReportsApi: vi.fn().mockResolvedValue({
     results: [],
     summary: { created: 0, duplicate: 0, conflict: 0, failed: 0 },
@@ -121,7 +126,7 @@ function authSession({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  createReportMock.mockResolvedValue({ report: {} as never });
+  createReportMock.mockResolvedValue({ created: true, report: {} as never });
   syncOfflineReportsApiMock.mockResolvedValue({
     results: [],
     summary: { created: 0, duplicate: 0, conflict: 0, failed: 0 },
@@ -147,7 +152,7 @@ describe("field report submission", () => {
       },
     });
 
-    expect(result).toEqual({ ok: true, reporterName: "Nomsa Dlamini" });
+    expect(result).toEqual({ created: true, ok: true, reporterName: "Nomsa Dlamini" });
     expect(createReportMock).toHaveBeenCalledTimes(1);
 
     const [input, options] = createReportMock.mock.calls[0];
@@ -162,6 +167,21 @@ describe("field report submission", () => {
     expect(new Headers(options?.init?.headers).get("cookie")).toBe(
       "clinicpulse_session=session-token",
     );
+  });
+
+  it("exposes duplicate online report responses to the field UI action", async () => {
+    createReportMock.mockResolvedValue({ created: false, report: {} as never });
+
+    const result = await createFieldReport({
+      clinicId: "clinic-mamelodi-east",
+      report,
+    });
+
+    expect(result).toEqual({
+      created: false,
+      ok: true,
+      reporterName: "Authenticated Reporter",
+    });
   });
 
   it("uses the current session email when the display name is blank", async () => {
@@ -262,6 +282,7 @@ describe("field report submission", () => {
 
   it("submits online field reports and refreshes without updating visible state", async () => {
     const submitReport = vi.fn().mockResolvedValue({
+      created: true,
       ok: true,
       reporterName: "Authenticated Reporter",
     });
@@ -274,7 +295,11 @@ describe("field report submission", () => {
       submitReport,
     });
 
-    expect(result).toEqual({ ok: true, reporterName: "Authenticated Reporter" });
+    expect(result).toEqual({
+      created: true,
+      ok: true,
+      reporterName: "Authenticated Reporter",
+    });
     expect(submitReport).toHaveBeenCalledWith({
       clinicId: "clinic-mamelodi-east",
       report,

@@ -4,6 +4,11 @@ const reporterAccount = {
   email: "reporter@clinicpulse.local",
   password: "ClinicPulseDemo123!",
 };
+const operationsAccount = {
+  email: "district-manager@clinicpulse.local",
+  password: "ClinicPulseDemo123!",
+};
+const successMessage = "Report submitted and waiting for district review.";
 
 async function signInAsReporter(page: Page) {
   await page.goto("/login");
@@ -13,27 +18,66 @@ async function signInAsReporter(page: Page) {
   await expect(page).toHaveURL(/\/field$/);
 }
 
+async function rejectPendingReportByNotes(page: Page, notes: string) {
+  const loginResponse = await page.request.post("/api/clinicpulse/v1/auth/login", {
+    data: operationsAccount,
+  });
+  if (!loginResponse.ok()) {
+    throw new Error(`Cleanup login failed with ${loginResponse.status()}`);
+  }
+
+  const pendingResponse = await page.request.get("/api/clinicpulse/v1/reports/pending");
+  if (!pendingResponse.ok()) {
+    throw new Error(`Cleanup pending report lookup failed with ${pendingResponse.status()}`);
+  }
+
+  const pendingReports = (await pendingResponse.json()) as Array<{
+    id: number;
+    notes?: string | null;
+  }>;
+  const matchingReports = pendingReports.filter((report) => report.notes === notes);
+
+  for (const report of matchingReports) {
+    const reviewResponse = await page.request.post(
+      `/api/clinicpulse/v1/reports/${report.id}/review`,
+      {
+        data: {
+          decision: "rejected",
+          notes: "Cleaned up by field pending review E2E test.",
+        },
+      },
+    );
+    if (!reviewResponse.ok()) {
+      throw new Error(`Cleanup review failed with ${reviewResponse.status()}`);
+    }
+  }
+}
+
 test("shows pending review feedback after an online field report submission", async ({
   page,
 }) => {
-  await signInAsReporter(page);
+  const testNotes = `Playwright pending review check ${Date.now()}`;
 
-  await page
-    .getByPlaceholder("Add context, barriers, and what changed today.")
-    .fill(`Playwright pending review check ${Date.now()}`);
-  await page.getByRole("button", { name: "Submit report" }).click();
+  try {
+    await signInAsReporter(page);
 
-  await expect(
-    page.getByText("Report submitted and waiting for district review."),
-  ).toBeVisible();
-  await expect(
-    page.getByText(
-      "The newest reports submitted into the operational record. Pending reports wait for district review before changing current status.",
-    ),
-  ).toBeVisible();
-  await expect(
-    page.getByText(
-      "Online submissions go straight to district state; offline submissions land in queue.",
-    ),
-  ).toHaveCount(0);
+    await page
+      .getByPlaceholder("Add context, barriers, and what changed today.")
+      .fill(testNotes);
+    await page.getByRole("button", { name: "Submit report" }).click();
+
+    await expect(page.getByRole("status").filter({ hasText: successMessage })).toBeVisible();
+    await expect(
+      page.getByText(
+        "The newest reports submitted into the operational record. Pending reports wait for district review before changing current status.",
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        "Online submissions go straight to district state; offline submissions land in queue.",
+      ),
+    ).toHaveCount(0);
+  } finally {
+    await rejectPendingReportByNotes(page, testNotes);
+  }
 });

@@ -122,6 +122,7 @@ export type CreateReportApiInput = {
 
 export type CreateReportApiResponse = {
   report: ReportApiResponse;
+  created: boolean;
   currentStatus?: CurrentStatusApiResponse;
   auditEvent?: AuditEventApiResponse;
 };
