@@ -7,7 +7,7 @@ export type AccessRiskInput = {
   lastSeenAt?: string | null;
 };
 
-export type AccessRiskSummary = {
+type AccessRiskSummary = {
   tone: GovernanceTone;
   label: "Clear" | "Privileged" | "Review";
   reasons: string[];
@@ -21,7 +21,7 @@ export type ReportingCoverageInput = {
   validationFailureCount: number;
 };
 
-export type ReportingCoverageSummary = {
+type ReportingCoverageSummary = {
   tone: GovernanceTone;
   readinessPercent: number;
   blockers: string[];
@@ -34,7 +34,7 @@ export type SecurityPostureInput = {
   failedWebhookEvents: number;
 };
 
-export type SecurityPostureSummary = {
+type SecurityPostureSummary = {
   tone: GovernanceTone;
   summary: string;
 };
