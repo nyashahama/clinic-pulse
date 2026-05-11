@@ -4,12 +4,15 @@ import { describe, expect, it } from "vitest";
 
 import { MetricTile } from "@/components/product/metric-tile";
 import { ProductPanel } from "@/components/product/panel";
+import { ReportReviewQueueView } from "@/components/product/report-review-queue";
+import { ReportReviewSummary } from "@/components/product/report-review-summary";
 import { ProductResponsiveTable } from "@/components/product/responsive-table";
 import { SurfaceState } from "@/components/product/surface-state";
 import {
   WorkspaceClinicDetailLoading,
   WorkspaceDashboardLoading,
 } from "@/components/product/workspace-loading";
+import type { PendingReportReview } from "@/lib/product/report-review";
 
 describe("product surface primitives", () => {
   it("renders panel title, description, metadata, and content", () => {
@@ -98,5 +101,75 @@ describe("product surface primitives", () => {
 
     expect(html).toContain("animate-pulse");
     expect(html).toContain("h-80");
+  });
+
+  it("renders report review summary pressure counts", () => {
+    const html = renderToStaticMarkup(
+      createElement(ReportReviewSummary, {
+        summary: {
+          pending: 12,
+          offline: 4,
+          criticalSignals: 3,
+          oldestReceivedAt: "2026-05-10T08:30:00.000Z",
+        },
+      }),
+    );
+
+    expect(html).toContain("Report review pressure");
+    expect(html).toContain("Pending");
+    expect(html).toContain("12");
+    expect(html).toContain("Offline");
+    expect(html).toContain("4");
+    expect(html).toContain("Critical");
+    expect(html).toContain("3");
+  });
+
+  it("renders report review queue empty state", () => {
+    const html = renderToStaticMarkup(
+      createElement(ReportReviewQueueView, {
+        items: [],
+        onReview: async () => undefined,
+      }),
+    );
+
+    expect(html).toContain('data-testid="report-review-queue"');
+    expect(html).toContain("No pending reports");
+  });
+
+  it("renders report review queue item actions", () => {
+    const review: PendingReportReview = {
+      reportId: 42,
+      clinicId: "clinic-42",
+      clinicName: "Mamelodi East Clinic",
+      facilityCode: "FAC-0042",
+      district: "Tshwane",
+      reporterName: "Nurse Dlamini",
+      source: "mobile_app",
+      offlineCreated: true,
+      submittedAt: "2026-05-10T08:15:00.000Z",
+      receivedAt: "2026-05-10T08:30:00.000Z",
+      status: "non_functional",
+      reason: "Power outage closed the triage room.",
+      staffPressure: "critical",
+      stockPressure: "stockout",
+      queuePressure: "high",
+      notes: "Generator failed during morning intake.",
+      reviewState: "pending",
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(ReportReviewQueueView, {
+        items: [review],
+        onReview: async () => undefined,
+      }),
+    );
+
+    expect(html).toContain('data-testid="report-review-item"');
+    expect(html).toContain("Mamelodi East Clinic");
+    expect(html).toContain("Power outage closed the triage room.");
+    expect(html).toContain('data-testid="accept-report-review"');
+    expect(html).toContain("Accept");
+    expect(html).toContain('data-testid="reject-report-review"');
+    expect(html).toContain("Reject");
   });
 });
