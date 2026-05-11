@@ -7,6 +7,7 @@ import type {
   StockPressure,
 } from "@/lib/demo/types";
 import type { OfflineSyncApiResult } from "@/lib/demo/offline-sync-types";
+import type { AuthRole } from "@/lib/auth/api";
 
 export type ApiNullable<T> = T | null | undefined;
 
@@ -93,6 +94,27 @@ export type AuditEventApiResponse = {
   eventType: AuditEvent["eventType"] | string;
   summary: string;
   createdAt: string;
+};
+
+export type AdminUserAccessApiResponse = {
+  userId: number;
+  email: string;
+  displayName: string;
+  disabledAt?: ApiNullable<string>;
+  createdAt: string;
+  role: AuthRole | string;
+  organisationId?: ApiNullable<number>;
+  district?: ApiNullable<string>;
+  lastSeenAt?: ApiNullable<string>;
+};
+
+export type AdminAuditEventApiResponse = AuditEventApiResponse & {
+  actorUserId?: ApiNullable<number>;
+  actorRole?: ApiNullable<AuthRole | string>;
+  organisationId?: ApiNullable<number>;
+  entityType?: ApiNullable<string>;
+  entityId?: ApiNullable<string>;
+  metadata?: ApiNullable<Record<string, unknown>>;
 };
 
 export type AlternativeApiResponse = {
