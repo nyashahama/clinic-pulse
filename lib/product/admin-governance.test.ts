@@ -83,7 +83,12 @@ describe("summarizeReportingCoverage", () => {
     ).toEqual({
       tone: "attention",
       readinessPercent: 13,
-      blockers: ["3 pending reviews", "2 stale clinics", "1 validation failure"],
+      blockers: [
+        "3 pending reviews",
+        "2 stale clinics",
+        "1 queued offline report",
+        "1 validation failure",
+      ],
     });
   });
 
@@ -112,6 +117,22 @@ describe("summarizeReportingCoverage", () => {
       tone: "clear",
       readinessPercent: 100,
       blockers: [],
+    });
+  });
+
+  it("treats queued offline reports as coverage blockers", () => {
+    expect(
+      summarizeReportingCoverage({
+        clinicCount: 8,
+        staleClinicCount: 0,
+        pendingReviewCount: 0,
+        queuedOfflineCount: 2,
+        validationFailureCount: 0,
+      }),
+    ).toEqual({
+      tone: "attention",
+      readinessPercent: 75,
+      blockers: ["2 queued offline reports"],
     });
   });
 

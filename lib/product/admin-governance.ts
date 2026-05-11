@@ -75,6 +75,7 @@ export function summarizeReportingCoverage(
     formatBlocker(input.pendingReviewCount, "pending review"),
     formatBlocker(input.staleClinicCount, "stale clinic"),
     formatBlocker(input.needsConfirmationClinicCount ?? 0, "needs-confirmation clinic"),
+    formatBlocker(input.queuedOfflineCount, "queued offline report"),
     formatBlocker(input.validationFailureCount, "validation failure"),
   ].filter((blocker): blocker is string => Boolean(blocker));
   const pressure =

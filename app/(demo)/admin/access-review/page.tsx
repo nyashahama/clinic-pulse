@@ -42,6 +42,15 @@ function getReviewReasons(user: AdminUserAccessApiResponse) {
   }).reasons;
 }
 
+function getUserAccessRowKey(user: AdminUserAccessApiResponse) {
+  return [
+    user.userId,
+    user.role,
+    user.organisationId ?? "platform",
+    user.district ?? "all-districts",
+  ].join(":");
+}
+
 export default async function Page() {
   await requireDemoWorkflowAccess("admin");
 
@@ -99,7 +108,7 @@ export default async function Page() {
       <AdminEvidenceTable
         label="Access review queue"
         rows={reviewRows}
-        getRowKey={(row) => String(row.userId)}
+        getRowKey={getUserAccessRowKey}
         emptyState={
           <AdminEmptyState
             title="No access risks in the current operating evidence"

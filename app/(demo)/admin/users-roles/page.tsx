@@ -46,6 +46,15 @@ function getRisk(user: AdminUserAccessApiResponse) {
   });
 }
 
+function getUserAccessRowKey(user: AdminUserAccessApiResponse) {
+  return [
+    user.userId,
+    user.role,
+    user.organisationId ?? "platform",
+    user.district ?? "all-districts",
+  ].join(":");
+}
+
 export default async function Page() {
   await requireDemoWorkflowAccess("admin");
 
@@ -95,7 +104,7 @@ export default async function Page() {
       <AdminEvidenceTable
         label="User role review"
         rows={rows}
-        getRowKey={(row) => String(row.userId)}
+        getRowKey={getUserAccessRowKey}
         columns={[
           {
             key: "user",

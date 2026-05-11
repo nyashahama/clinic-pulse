@@ -107,6 +107,15 @@ function privilegedUsers(users: AdminUserAccessApiResponse[]) {
   return users.filter((user) => ["org_admin", "system_admin"].includes(user.role));
 }
 
+function getUserAccessRowKey(user: AdminUserAccessApiResponse) {
+  return [
+    user.userId,
+    user.role,
+    user.organisationId ?? "platform",
+    user.district ?? "all-districts",
+  ].join(":");
+}
+
 export default async function Page() {
   await requireDemoWorkflowAccess("admin");
 
@@ -305,7 +314,7 @@ export default async function Page() {
       <AdminEvidenceTable
         label="Privileged access evidence"
         rows={privilegedUserRows}
-        getRowKey={(row) => String(row.userId)}
+        getRowKey={getUserAccessRowKey}
         emptyState={
           <AdminEmptyState
             title="No privileged access evidence"
