@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -142,4 +144,11 @@ describe("summarizeSecurityPosture", () => {
       summary: "2 active API keys and 1 revoked keys are recorded.",
     });
   });
+});
+
+it("exports the shared admin module primitives", () => {
+  const source = readFileSync("components/product/admin-module.tsx", "utf8");
+  expect(source).toContain("export function AdminModuleHeader");
+  expect(source).toContain("export function AdminMetricStrip");
+  expect(source).toContain("export function AdminEvidenceTable");
 });
