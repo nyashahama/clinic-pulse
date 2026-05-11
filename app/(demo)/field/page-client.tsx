@@ -220,6 +220,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
   const submitInFlight = useRef(false);
   const syncInFlight = useRef(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
 
   const loadOfflineReports = useCallback(async () => {
@@ -422,6 +423,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
     submitInFlight.current = true;
     setSubmitting(true);
     setSubmitError(null);
+    setSubmitSuccess(null);
 
     if (!selectedId) {
       submitInFlight.current = false;
@@ -438,6 +440,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
             report,
             submitReport: createFieldReport,
           });
+          setSubmitSuccess("Report submitted and waiting for district review.");
         } catch (error) {
           if (!isReachabilityFailure(error)) {
             throw error;
@@ -555,6 +558,11 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
             {submitError}
           </p>
         ) : null}
+        {submitSuccess ? (
+          <p className="xl:col-start-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            {submitSuccess}
+          </p>
+        ) : null}
       </div>
 
       <div id="drafts-sync" className="grid gap-4 lg:grid-cols-2">
@@ -591,7 +599,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
         <SectionHeader
           eyebrow="Latest submissions"
           title="Recent reports"
-          description="The newest reports already present in the district state."
+          description="The newest reports submitted into the operational record. Pending reports wait for district review before changing current status."
         />
         <div className="mt-3 grid gap-2">
           {recentReports.length > 0 ? (
@@ -634,7 +642,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
         <SectionHeader
           eyebrow="Field to district"
           title="What happens next"
-          description="Online submissions go straight to district state; offline submissions land in queue."
+          description="Online submissions enter district review. Offline submissions land in queue until synced."
         />
         <div className="mt-3 grid gap-2 text-sm">
           <p className="text-content-subtle">
@@ -644,10 +652,10 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
             2) Complete status, staffing, stock, queue, and notes.
           </p>
           <p className="text-content-subtle">
-            3) In offline mode, report stays queued and is sent to district when you press sync.
+            3) Online reports wait for district review before changing current status.
           </p>
           <p className="text-content-subtle">
-            4) District managers see synced reports in their command center after the queue clears.
+            4) Offline reports stay queued until synced, then enter the same district review flow.
           </p>
         </div>
       </section>
