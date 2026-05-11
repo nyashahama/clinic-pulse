@@ -67,9 +67,17 @@ export function markReportReviewSucceeded(
   return new Set(reviewedReportIds).add(reportId);
 }
 
+export function deriveReviewedReportIdsForItems(
+  reviewedReportIds: ReadonlySet<number>,
+  items: PendingReportReview[],
+): ReadonlySet<number> {
+  return pruneReviewedReportIds(reviewedReportIds, items);
+}
+
 export async function runReportReviewQueueAction({
   reportId,
   decision,
+  notes,
   onReview,
   onReviewed,
 }: ReportReviewQueueActionInput & {
@@ -77,7 +85,7 @@ export async function runReportReviewQueueAction({
   onReviewed?: () => void;
 }): Promise<ReportReviewQueueActionResult> {
   try {
-    await onReview({ reportId, decision });
+    await onReview({ reportId, decision, ...(notes ? { notes } : {}) });
     onReviewed?.();
     return { ok: true };
   } catch (error) {
@@ -127,10 +135,7 @@ export function ReportReviewQueueView({
     }));
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const reviewedReportIds = useMemo(
-    () =>
-      reviewedReportState.items === items
-        ? reviewedReportState.reportIds
-        : new Set<number>(),
+    () => deriveReviewedReportIdsForItems(reviewedReportState.reportIds, items),
     [items, reviewedReportState],
   );
 
@@ -156,7 +161,10 @@ export function ReportReviewQueueView({
 
     if (result.ok) {
       setReviewedReportState((current) => {
-        const currentReportIds = current.items === items ? current.reportIds : new Set();
+        const currentReportIds = deriveReviewedReportIdsForItems(
+          current.reportIds,
+          items,
+        );
         return {
           items,
           reportIds: markReportReviewSucceeded(currentReportIds, reportId),

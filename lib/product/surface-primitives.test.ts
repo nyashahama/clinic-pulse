@@ -8,6 +8,7 @@ import {
   ReportReviewQueueView,
   ReportReviewQueueErrorAlert,
   composeReportReviewCallbacks,
+  deriveReviewedReportIdsForItems,
   getVisibleReportReviewItems,
   markReportReviewSucceeded,
   pruneReviewedReportIds,
@@ -181,6 +182,23 @@ describe("product surface primitives", () => {
     expect(onReviewed).toHaveBeenCalledOnce();
   });
 
+  it("passes report review notes through action payload", async () => {
+    const onReview = vi.fn(async () => undefined);
+
+    await runReportReviewQueueAction({
+      reportId: 42,
+      decision: "rejected",
+      notes: "Duplicate submission from morning sync.",
+      onReview,
+    });
+
+    expect(onReview).toHaveBeenCalledWith({
+      reportId: 42,
+      decision: "rejected",
+      notes: "Duplicate submission from morning sync.",
+    });
+  });
+
   it("hides successfully reviewed reports from the visible queue", () => {
     const reviewed = createPendingReportReview({ reportId: 42 });
     const pending = createPendingReportReview({
@@ -209,6 +227,26 @@ describe("product surface primitives", () => {
     expect(
       Array.from(pruneReviewedReportIds(new Set([42, 43]), [remaining])),
     ).toEqual([43]);
+  });
+
+  it("keeps reviewed reports hidden across refreshed arrays until they disappear", () => {
+    const reviewed = createPendingReportReview({ reportId: 42 });
+    const refreshedReviewed = createPendingReportReview({
+      reportId: 42,
+      reason: "Updated copy after refresh.",
+    });
+    const reviewedReportIds = markReportReviewSucceeded(new Set(), reviewed.reportId);
+    const refreshedReviewedReportIds = deriveReviewedReportIdsForItems(
+      reviewedReportIds,
+      [refreshedReviewed],
+    );
+
+    expect(
+      getVisibleReportReviewItems([refreshedReviewed], refreshedReviewedReportIds),
+    ).toEqual([]);
+    expect(
+      Array.from(deriveReviewedReportIdsForItems(refreshedReviewedReportIds, [])),
+    ).toEqual([]);
   });
 
   it("composes caller and router refresh review callbacks", () => {
