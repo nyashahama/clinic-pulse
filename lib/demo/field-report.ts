@@ -19,6 +19,7 @@ export type OnlineFieldReportActionInput = {
 
 export type OnlineFieldReportResult = {
   ok: true;
+  created: boolean;
   reporterName?: string;
 };
 

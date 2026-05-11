@@ -53,6 +53,7 @@ type ClinicStore interface {
 	CreateReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, store.CurrentStatus, store.AuditEvent, error)
 	CreatePendingReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, error)
 	GetPendingReportByPayload(ctx context.Context, input store.CreateReportInput) (store.Report, error)
+	GetRecentReportByPayload(ctx context.Context, input store.CreateReportInput, windowStart time.Time) (store.Report, error)
 	ReviewReportTx(ctx context.Context, input store.ReviewReportInput) (store.Report, *store.CurrentStatus, error)
 	GetReportByExternalID(ctx context.Context, externalID string) (store.Report, error)
 	CreateReportSyncAttempt(ctx context.Context, input store.CreateReportSyncAttemptInput) (store.ReportSyncAttempt, error)
@@ -907,7 +908,7 @@ func (h Handler) CreateReport(w nethttp.ResponseWriter, r *nethttp.Request) {
 			input.StoreInput.ReporterName = derivedReporterName(principal)
 		}
 	}
-	report, err := service.CreateReport(r.Context(), h.store, input)
+	result, err := service.CreateReport(r.Context(), h.store, input)
 	if err != nil {
 		var validationErr service.ValidationError
 		if errors.As(err, &validationErr) {
@@ -919,7 +920,8 @@ func (h Handler) CreateReport(w nethttp.ResponseWriter, r *nethttp.Request) {
 	}
 
 	RespondJSON(w, nethttp.StatusCreated, createReportResponse{
-		Report: report,
+		Report:  result.Report,
+		Created: result.Created,
 	})
 }
 
@@ -1621,6 +1623,7 @@ func (p createReportRequest) toReportInput() service.ReportInput {
 
 type createReportResponse struct {
 	Report        store.Report         `json:"report"`
+	Created       bool                 `json:"created"`
 	CurrentStatus *store.CurrentStatus `json:"currentStatus,omitempty"`
 	AuditEvent    *store.AuditEvent    `json:"auditEvent,omitempty"`
 }

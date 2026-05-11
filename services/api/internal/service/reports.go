@@ -11,10 +11,14 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const maxSubmittedAtFutureSkew = 5 * time.Minute
+const (
+	maxSubmittedAtFutureSkew = 5 * time.Minute
+	reportDuplicateWindow    = 30 * time.Minute
+)
 
 type ReportCreator interface {
 	GetPendingReportByPayload(ctx context.Context, input store.CreateReportInput) (store.Report, error)
+	GetRecentReportByPayload(ctx context.Context, input store.CreateReportInput, windowStart time.Time) (store.Report, error)
 	CreatePendingReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, error)
 }
 
@@ -27,6 +31,11 @@ type ReportInput struct {
 	Confidence      *int
 	ConfidenceScore *float64
 	Actor           *AuditActor
+}
+
+type CreateReportResult struct {
+	Report  store.Report
+	Created bool
 }
 
 type ReviewReportInput struct {
@@ -112,29 +121,41 @@ func ValidateCreateReportInputAt(input ReportInput, validationTime time.Time) er
 	return nil
 }
 
-func CreateReport(ctx context.Context, creator ReportCreator, input ReportInput) (store.Report, error) {
+func CreateReport(ctx context.Context, creator ReportCreator, input ReportInput) (CreateReportResult, error) {
 	return createReportAt(ctx, creator, input, time.Now().UTC())
 }
 
-func createReportAt(ctx context.Context, creator ReportCreator, input ReportInput, validationTime time.Time) (store.Report, error) {
+func createReportAt(ctx context.Context, creator ReportCreator, input ReportInput, validationTime time.Time) (CreateReportResult, error) {
 	if err := ValidateCreateReportInputAt(input, validationTime); err != nil {
-		return store.Report{}, err
+		return CreateReportResult{}, err
 	}
 
 	storeInput := input.toStoreInput()
 	storeInput.ReviewState = "pending"
 	existing, err := creator.GetPendingReportByPayload(ctx, storeInput)
 	if err == nil {
-		return existing, nil
+		return CreateReportResult{Report: existing, Created: false}, nil
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
-		return store.Report{}, err
+		return CreateReportResult{}, err
+	}
+
+	existing, err = creator.GetRecentReportByPayload(ctx, storeInput, validationTime.Add(-reportDuplicateWindow))
+	if err == nil {
+		return CreateReportResult{Report: existing, Created: false}, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return CreateReportResult{}, err
 	}
 
 	if input.Actor != nil {
 		storeInput.AuditEvent = ptr(ReportSubmissionAudit(storeInput, *input.Actor))
 	}
-	return creator.CreatePendingReportTx(ctx, storeInput)
+	report, err := creator.CreatePendingReportTx(ctx, storeInput)
+	if err != nil {
+		return CreateReportResult{}, err
+	}
+	return CreateReportResult{Report: report, Created: true}, nil
 }
 
 func ReviewReport(ctx context.Context, reviewer ReportReviewer, input ReviewReportInput) (store.Report, *store.CurrentStatus, error) {

@@ -21,6 +21,8 @@ export default async function DistrictConsolePage() {
   return (
     <DistrictConsolePageClient
       session={toClientAuthSession(workflowSession)}
+      pendingReports={[]}
+      showReportReview={false}
       syncSummary={syncSummary}
     />
   );

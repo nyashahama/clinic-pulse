@@ -19,9 +19,14 @@ import { PilotReadinessPanel } from "@/components/demo/pilot-readiness-panel";
 import { ReferenceSectionCards } from "@/components/demo/reference-section-cards";
 import { ReportStream } from "@/components/demo/report-stream";
 import { StatusSummary } from "@/components/demo/status-summary";
+import { ReportReviewQueue } from "@/components/product/report-review-queue";
+import { ReportReviewSummary } from "@/components/product/report-review-summary";
 import { buttonVariants } from "@/components/ui/button";
 import type { ClientAuthSession } from "@/lib/auth/api";
-import type { SyncSummaryApiResponse } from "@/lib/demo/api-types";
+import type {
+  ReportApiResponse,
+  SyncSummaryApiResponse,
+} from "@/lib/demo/api-types";
 import {
   buildDistrictCommandCenter,
   type DistrictCommandClinicInput,
@@ -45,6 +50,11 @@ import {
   getRecentReportStream,
   getStatusCounts,
 } from "@/lib/demo/selectors";
+import {
+  buildPendingReportReviews,
+  summarizePendingReportReviews,
+} from "@/lib/product/report-review";
+import { reviewPendingReportAction } from "../report-review-actions";
 
 const VALID_STATUSES = ["operational", "degraded", "non_functional", "unknown"] as const;
 
@@ -63,7 +73,9 @@ function formatStatusTransition(from: string, to: string) {
 
 type DistrictConsolePageProps = {
   consoleHref?: string;
+  pendingReports?: ReportApiResponse[];
   session: ClientAuthSession;
+  showReportReview?: boolean;
   syncSummary: SyncSummaryApiResponse | null;
 };
 
@@ -85,7 +97,9 @@ function statusRiskRank(status: DistrictCommandClinicInput["status"]) {
 
 export default function DistrictConsolePage({
   consoleHref = "/demo",
+  pendingReports,
   session,
+  showReportReview = false,
   syncSummary,
 }: DistrictConsolePageProps) {
   const router = useRouter();
@@ -101,6 +115,15 @@ export default function DistrictConsolePage({
   } = useDemoStore();
 
   const clinicRows = useMemo(() => getClinicRows(state), [state]);
+  const pendingReportReviews = useMemo(
+    () => (showReportReview ? buildPendingReportReviews(pendingReports ?? [], clinicRows) : []),
+    [clinicRows, pendingReports, showReportReview],
+  );
+  const pendingReportSummary = useMemo(
+    () =>
+      showReportReview ? summarizePendingReportReviews(pendingReportReviews) : null,
+    [pendingReportReviews, showReportReview],
+  );
   const statusFilter = normalizeStatusFilter(searchParams.get("status"));
   const filteredClinicRows = useMemo(
     () =>
@@ -541,6 +564,18 @@ export default function DistrictConsolePage({
       <div id="verification-handoff">
         <VerificationHandover handover={commandCenter.handover} />
       </div>
+      {showReportReview && pendingReportSummary ? (
+        <div
+          id="report-review"
+          className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]"
+        >
+          <ReportReviewSummary summary={pendingReportSummary} />
+          <ReportReviewQueue
+            items={pendingReportReviews}
+            onReview={reviewPendingReportAction}
+          />
+        </div>
+      ) : null}
 
       <SupportingOperations>
         {hasStatusFilter ? (

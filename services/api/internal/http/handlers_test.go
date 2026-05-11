@@ -2103,12 +2103,16 @@ func TestCreateReportReturnsCreatedPendingReportWithoutStatusOrAuditEvent(t *tes
 
 	var got struct {
 		Report        store.Report         `json:"report"`
+		Created       bool                 `json:"created"`
 		CurrentStatus *store.CurrentStatus `json:"currentStatus,omitempty"`
 		AuditEvent    *store.AuditEvent    `json:"auditEvent,omitempty"`
 	}
 	decodeJSON(t, rec, &got)
 	if got.Report.ID != 100 || got.Report.ReviewState != "pending" || got.CurrentStatus != nil || got.AuditEvent != nil {
 		t.Fatalf("unexpected create report response: %#v", got)
+	}
+	if !got.Created {
+		t.Fatalf("expected created=true in create report response, got %#v", got)
 	}
 	if strings.Contains(rec.Body.String(), "currentStatus") || strings.Contains(rec.Body.String(), "auditEvent") {
 		t.Fatalf("expected create response not to claim status or audit event, got %s", rec.Body.String())
@@ -2130,6 +2134,37 @@ func TestCreateReportReturnsCreatedPendingReportWithoutStatusOrAuditEvent(t *tes
 	}
 	if createInput.ConfidenceScore == nil || *createInput.ConfidenceScore != 0.86 {
 		t.Fatalf("expected confidence score 0.86, got %v", createInput.ConfidenceScore)
+	}
+}
+
+func TestCreateReportExposesExistingPendingDuplicate(t *testing.T) {
+	router := newAuthenticatedTestRouter(t, fakeStore{
+		pendingPayloadReport: store.Report{
+			ID:          202,
+			ClinicID:    "clinic-1",
+			Status:      "degraded",
+			ReviewState: "pending",
+		},
+	})
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports", strings.NewReader(validReportJSON()))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusCreated, rec.Code, rec.Body.String())
+	}
+
+	var got struct {
+		Report  store.Report `json:"report"`
+		Created bool         `json:"created"`
+	}
+	decodeJSON(t, rec, &got)
+	if got.Report.ID != 202 {
+		t.Fatalf("expected existing pending report in response, got %#v", got.Report)
+	}
+	if got.Created {
+		t.Fatalf("expected duplicate response to expose created=false, got %#v", got)
 	}
 }
 
@@ -3962,6 +3997,10 @@ func (f fakeStore) GetPendingReportByPayload(context.Context, store.CreateReport
 		return store.Report{}, pgx.ErrNoRows
 	}
 	return f.pendingPayloadReport, nil
+}
+
+func (f fakeStore) GetRecentReportByPayload(context.Context, store.CreateReportInput, time.Time) (store.Report, error) {
+	return store.Report{}, pgx.ErrNoRows
 }
 
 func (f fakeStore) CreateReportSyncAttempt(_ context.Context, input store.CreateReportSyncAttemptInput) (store.ReportSyncAttempt, error) {

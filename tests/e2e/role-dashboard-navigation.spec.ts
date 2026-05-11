@@ -38,6 +38,7 @@ const roleScenarios: Array<{
       "clinic-evidence",
       "interventions",
       "verification-handoff",
+      "report-review",
     ],
   },
   {
@@ -56,6 +57,7 @@ const roleScenarios: Array<{
     landmarks: [
       "reporting-coverage",
       "users-roles",
+      "admin-review-pressure",
       "partner-readiness",
       "audit-evidence",
       "exports",
@@ -77,6 +79,7 @@ const roleScenarios: Array<{
     landmarks: [
       "tenant-health",
       "data-ingestion",
+      "admin-review-pressure",
       "security",
       "demo-controls",
       "audit-evidence",
@@ -202,4 +205,15 @@ test.describe("phase 1 role dashboard navigation", () => {
       }
     });
   }
+
+  test("demo showcase does not expose report review", async ({ page }) => {
+    await signInAs(page, "district-manager@clinicpulse.local", "/district");
+
+    await page.goto("/demo");
+
+    await expect(
+      page.locator('[data-role-dashboard="district_manager"]').filter({ visible: true }),
+    ).toBeVisible();
+    await expect(page.locator("#report-review")).toHaveCount(0);
+  });
 });

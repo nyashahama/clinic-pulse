@@ -284,7 +284,7 @@ func TestCreateReportCallsCreatorForValidInput(t *testing.T) {
 	creator := &fakeReportCreator{report: report}
 	input := validReportInput()
 
-	gotReport, err := CreateReport(context.Background(), creator, input)
+	gotResult, err := CreateReport(context.Background(), creator, input)
 
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
@@ -298,8 +298,11 @@ func TestCreateReportCallsCreatorForValidInput(t *testing.T) {
 	if creator.input.ReviewState != "pending" {
 		t.Fatalf("expected pending review state, got %q", creator.input.ReviewState)
 	}
-	if gotReport.ID != report.ID {
-		t.Fatalf("unexpected create result: %#v", gotReport)
+	if gotResult.Report.ID != report.ID {
+		t.Fatalf("unexpected create result: %#v", gotResult.Report)
+	}
+	if !gotResult.Created {
+		t.Fatalf("expected new report result to expose created=true, got %#v", gotResult)
 	}
 }
 
@@ -308,16 +311,49 @@ func TestCreateReportReturnsExistingPendingSemanticDuplicate(t *testing.T) {
 	creator := &fakeReportCreator{semanticDuplicate: existing}
 	input := validReportInput()
 
-	gotReport, err := CreateReport(context.Background(), creator, input)
+	gotResult, err := CreateReport(context.Background(), creator, input)
 
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
-	if gotReport.ID != existing.ID {
-		t.Fatalf("expected existing pending duplicate report, got %#v", gotReport)
+	if gotResult.Report.ID != existing.ID {
+		t.Fatalf("expected existing pending duplicate report, got %#v", gotResult.Report)
+	}
+	if gotResult.Created {
+		t.Fatalf("expected duplicate result to expose created=false, got %#v", gotResult)
 	}
 	if creator.called {
 		t.Fatal("expected semantic duplicate not to create another pending report")
+	}
+}
+
+func TestCreateReportReturnsRecentSemanticDuplicateAfterReview(t *testing.T) {
+	validationTime := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
+	existing := store.Report{
+		ID:          303,
+		ClinicID:    "clinic-1",
+		ReviewState: "accepted",
+		ReceivedAt:  validationTime.Add(-5 * time.Minute),
+	}
+	creator := &fakeReportCreator{recentSemanticDuplicate: existing}
+	input := validReportInput()
+
+	gotResult, err := createReportAt(context.Background(), creator, input, validationTime)
+
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if gotResult.Report.ID != existing.ID {
+		t.Fatalf("expected recent duplicate report, got %#v", gotResult.Report)
+	}
+	if gotResult.Created {
+		t.Fatalf("expected recent duplicate result to expose created=false, got %#v", gotResult)
+	}
+	if creator.recentDuplicateWindowStart != validationTime.Add(-30*time.Minute) {
+		t.Fatalf("expected 30 minute duplicate window, got %s", creator.recentDuplicateWindowStart)
+	}
+	if creator.called {
+		t.Fatal("expected recent semantic duplicate not to create another pending report")
 	}
 }
 
@@ -492,11 +528,13 @@ func containsField(fields []string, want string) bool {
 }
 
 type fakeReportCreator struct {
-	called            bool
-	input             store.CreateReportInput
-	report            store.Report
-	semanticDuplicate store.Report
-	err               error
+	called                     bool
+	input                      store.CreateReportInput
+	report                     store.Report
+	semanticDuplicate          store.Report
+	recentSemanticDuplicate    store.Report
+	recentDuplicateWindowStart time.Time
+	err                        error
 }
 
 func (f *fakeReportCreator) CreatePendingReportTx(_ context.Context, input store.CreateReportInput) (store.Report, error) {
@@ -510,6 +548,14 @@ func (f *fakeReportCreator) GetPendingReportByPayload(_ context.Context, _ store
 		return store.Report{}, pgx.ErrNoRows
 	}
 	return f.semanticDuplicate, nil
+}
+
+func (f *fakeReportCreator) GetRecentReportByPayload(_ context.Context, _ store.CreateReportInput, windowStart time.Time) (store.Report, error) {
+	f.recentDuplicateWindowStart = windowStart
+	if f.recentSemanticDuplicate.ID == 0 {
+		return store.Report{}, pgx.ErrNoRows
+	}
+	return f.recentSemanticDuplicate, nil
 }
 
 type fakeReportReviewer struct {

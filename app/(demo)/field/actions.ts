@@ -28,7 +28,7 @@ export async function createFieldReport(
   const reportInput = mapOnlineFieldReportToCreateReportInput(input);
   reportInput.reporterName = reporterName;
 
-  await createReport(reportInput, {
+  const response = await createReport(reportInput, {
     init: {
       headers: {
         cookie: cookieHeader,
@@ -36,7 +36,7 @@ export async function createFieldReport(
     },
   });
 
-  return { ok: true, reporterName };
+  return { created: response.created, ok: true, reporterName };
 }
 
 export async function syncQueuedFieldReports(

@@ -4,6 +4,10 @@ import type { FormEvent } from "react";
 import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+  FieldReportReceipt,
+  type FieldReportFeedback,
+} from "@/components/demo/report-feedback";
 import { SectionHeader } from "@/components/demo/section-header";
 import type {
   ClinicStatus,
@@ -18,6 +22,7 @@ type FieldReportFormProps = {
   clinicName: string;
   submitting: boolean;
   onSubmit: (input: OnlineFieldReportInput) => boolean | Promise<boolean> | void;
+  feedback?: FieldReportFeedback | null;
 };
 
 const STATUS_OPTIONS: Array<{ value: ClinicStatus; label: string }> = [
@@ -83,7 +88,13 @@ function SegmentedOptions({ options, value, name, onChange }: SegmentedOptionPro
   );
 }
 
-export function ReportForm({ clinicId, clinicName, onSubmit, submitting }: FieldReportFormProps) {
+export function ReportForm({
+  clinicId,
+  clinicName,
+  onSubmit,
+  submitting,
+  feedback = null,
+}: FieldReportFormProps) {
   const submitInFlight = useRef(false);
   const [status, setStatus] = useState<ClinicStatus>("operational");
   const [staff, setStaff] = useState<StaffPressure>("normal");
@@ -188,6 +199,7 @@ export function ReportForm({ clinicId, clinicName, onSubmit, submitting }: Field
         <Button type="submit" disabled={submitDisabled} className="w-full">
           {submitting ? "Submitting…" : "Submit report"}
         </Button>
+        <FieldReportReceipt feedback={feedback} />
       </form>
     </section>
   );
