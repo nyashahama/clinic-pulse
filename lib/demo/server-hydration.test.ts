@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { loadDemoHydrationForRole } from "@/lib/demo/server-hydration";
+import {
+  loadDemoHydrationForRole,
+  loadPendingReportsForRole,
+} from "@/lib/demo/server-hydration";
 import type { ClinicPulseFetch } from "@/lib/demo/api-client";
 import type {
   AuditEventApiResponse,
@@ -77,6 +80,32 @@ function jsonResponse(body: unknown) {
 }
 
 describe("server demo hydration", () => {
+  it("does not load pending reports for reporters", async () => {
+    await expect(loadPendingReportsForRole("reporter")).resolves.toEqual([]);
+  });
+
+  it("loads pending reports for district and admin roles", async () => {
+    const fetch = vi.fn(async (input: RequestInfo | URL) => {
+      expect(String(input)).toContain("/v1/reports/pending");
+      return new Response(
+        JSON.stringify([{ id: 42, clinicId: "clinic-1", reviewState: "pending" }]),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      );
+    });
+
+    for (const role of ["district_manager", "org_admin", "system_admin"] as const) {
+      await expect(
+        loadPendingReportsForRole(role, {
+          baseUrl: "https://api.example.test",
+          fetch,
+        }),
+      ).resolves.toEqual([expect.objectContaining({ id: 42 })]);
+    }
+  });
+
   it("loads protected operational hydration with the caller session cookie for district roles", async () => {
     const fetchImpl = vi.fn<ClinicPulseFetch>().mockImplementation((input) => {
       const path = new URL(input).pathname;

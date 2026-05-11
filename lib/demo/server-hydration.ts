@@ -5,6 +5,7 @@ import {
   fetchClinics,
   fetchOperationalClinics,
   fetchPartnerReadiness,
+  fetchPendingReports,
   fetchSyncSummary,
   type ClinicPulseApiClientOptions,
 } from "@/lib/demo/api-client";
@@ -14,6 +15,7 @@ import {
 } from "@/lib/demo/api-mappers";
 import type {
   PartnerReadinessApiResponse,
+  ReportApiResponse,
   SyncSummaryApiResponse,
 } from "@/lib/demo/api-types";
 import { allowsSeededDemoFallback } from "@/lib/demo/demo-hydration";
@@ -105,6 +107,20 @@ export function loadSyncSummaryForRole(
   }
 
   return loadOperationalSyncSummary(options);
+}
+
+export async function loadPendingReportsForRole(
+  role: AuthRole,
+  options?: ClinicPulseApiClientOptions,
+): Promise<ReportApiResponse[]> {
+  if (role === "reporter") {
+    return [];
+  }
+
+  return withSeededFallback(
+    () => fetchPendingReports(options),
+    () => [],
+  );
 }
 
 export async function loadPartnerReadiness(
