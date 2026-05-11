@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type TestInfo } from "@playwright/test";
 
 const password = "ClinicPulseDemo123!";
 
@@ -10,10 +10,19 @@ async function signInAsDistrictManager(page: Page) {
   await expect(page).toHaveURL(/\/district$/);
 }
 
+function skipUnlessMobileProject(testInfo: TestInfo) {
+  test.skip(
+    testInfo.project.name !== "mobile-chrome",
+    "Mobile shell behavior is covered by the mobile-chrome project.",
+  );
+}
+
 test.describe("product shell responsive behavior", () => {
   test("mobile header keeps shell actions reachable without horizontal overflow", async ({
     page,
-  }) => {
+  }, testInfo) => {
+    skipUnlessMobileProject(testInfo);
+
     await signInAsDistrictManager(page);
 
     await expect(page.getByRole("button", { name: "Open command palette" })).toBeVisible();
@@ -29,7 +38,9 @@ test.describe("product shell responsive behavior", () => {
 
   test("mobile sidebar closes after navigating to a workspace anchor", async ({
     page,
-  }) => {
+  }, testInfo) => {
+    skipUnlessMobileProject(testInfo);
+
     await signInAsDistrictManager(page);
 
     await page.getByRole("button", { name: "Toggle dashboard navigation" }).click();
