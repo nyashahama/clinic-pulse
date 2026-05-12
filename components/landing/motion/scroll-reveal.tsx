@@ -1,9 +1,11 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { motion, type HTMLMotionProps } from "motion/react";
 import { cn } from "@/lib/utils";
+
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
 type ControlledMotionProps =
   | "initial"
@@ -21,26 +23,37 @@ type ScrollRevealProps = {
   ControlledMotionProps | "children" | "className"
 >;
 
+function subscribeToReducedMotionPreference(onStoreChange: () => void) {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  const mediaQuery = window.matchMedia(REDUCED_MOTION_QUERY);
+  mediaQuery.addEventListener("change", onStoreChange);
+
+  return () => {
+    mediaQuery.removeEventListener("change", onStoreChange);
+  };
+}
+
+function getReducedMotionPreference() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return window.matchMedia(REDUCED_MOTION_QUERY).matches;
+}
+
+function getServerReducedMotionPreference() {
+  return false;
+}
+
 function useHydratedReducedMotion() {
-  const [shouldReduceMotion, setShouldReduceMotion] = useState(false);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-
-    setShouldReduceMotion(mediaQuery.matches);
-
-    const updatePreference = () => {
-      setShouldReduceMotion(mediaQuery.matches);
-    };
-
-    mediaQuery.addEventListener("change", updatePreference);
-
-    return () => {
-      mediaQuery.removeEventListener("change", updatePreference);
-    };
-  }, []);
-
-  return shouldReduceMotion;
+  return useSyncExternalStore(
+    subscribeToReducedMotionPreference,
+    getReducedMotionPreference,
+    getServerReducedMotionPreference,
+  );
 }
 
 export function ScrollReveal({
