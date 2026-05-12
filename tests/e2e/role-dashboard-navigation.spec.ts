@@ -52,6 +52,7 @@ const roleScenarios: Array<{
       "Users and roles",
       "Access review",
       "Partner readiness",
+      "Integrations",
       "Audit evidence",
       "Exports",
     ],
@@ -74,6 +75,7 @@ const roleScenarios: Array<{
       "Tenant health",
       "Data ingestion",
       "Security",
+      "Integrations",
       "Demo controls",
       "Audit evidence",
     ],
@@ -99,7 +101,6 @@ const hiddenStandaloneHrefs = [
   "/district/interventions",
   "/admin/exports",
   "/admin/demo-controls",
-  "/admin/integrations",
 ];
 
 const publicDashboardHrefs = [

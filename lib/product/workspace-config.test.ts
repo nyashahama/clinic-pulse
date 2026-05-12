@@ -25,7 +25,6 @@ const expectedHiddenDashboardPrimaryNavRoutes = [
   "/district/interventions",
   "/admin/exports",
   "/admin/demo-controls",
-  "/admin/integrations",
 ] as const;
 
 const expectedPublicDashboardNavExclusions = [
@@ -53,6 +52,7 @@ const expectedSidebarLabels = {
     "Users and roles",
     "Access review",
     "Partner readiness",
+    "Integrations",
     "Audit evidence",
     "Exports",
   ],
@@ -61,6 +61,7 @@ const expectedSidebarLabels = {
     "Tenant health",
     "Data ingestion",
     "Security",
+    "Integrations",
     "Demo controls",
     "Audit evidence",
   ],
@@ -190,6 +191,7 @@ describe("product workspace navigation config", () => {
         "/admin/users-roles",
         "/admin/access-review",
         "/admin/partner-readiness",
+        "/admin/integrations",
         "/admin/audit-evidence",
         "/admin#exports",
       ]),
@@ -199,6 +201,7 @@ describe("product workspace navigation config", () => {
         "/admin/tenant-health",
         "/admin/data-ingestion",
         "/admin/security",
+        "/admin/integrations",
         "/admin#demo-controls",
         "/admin/audit-evidence",
       ]),

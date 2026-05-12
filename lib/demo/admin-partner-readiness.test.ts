@@ -20,6 +20,14 @@ const partnerReadinessClient = path.join(
   "partner-readiness",
   "page-client.tsx",
 );
+const integrationsPage = path.join(
+  process.cwd(),
+  "app",
+  "(demo)",
+  "admin",
+  "integrations",
+  "page.tsx",
+);
 const partnerPanel = path.join(
   process.cwd(),
   "components",
@@ -66,6 +74,17 @@ describe("admin partner readiness workflow", () => {
     expect(adminClientSource).not.toContain("createPartnerExportAction");
     expect(adminClientSource).not.toContain("createPartnerWebhookAction");
     expect(adminClientSource).not.toContain("testPartnerWebhookAction");
+  });
+
+  it("productizes the integrations route as a partner handoff module", () => {
+    const integrationsPageSource = readSource(integrationsPage);
+
+    expect(integrationsPageSource).toContain('requireDemoWorkflowAccess("admin")');
+    expect(integrationsPageSource).toContain("loadAdminPartnerReadiness");
+    expect(integrationsPageSource).toContain('data-admin-module="integrations"');
+    expect(integrationsPageSource).toContain("Partner API contract");
+    expect(integrationsPageSource).toContain("Credential scope coverage");
+    expect(integrationsPageSource).not.toContain("ModulePlaceholderPage");
   });
 
   it("keeps wall-clock timestamps out of the admin render path", () => {

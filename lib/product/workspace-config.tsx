@@ -50,7 +50,6 @@ export const HIDDEN_DASHBOARD_PRIMARY_NAV_ROUTES = [
   "/district/interventions",
   "/admin/exports",
   "/admin/demo-controls",
-  "/admin/integrations",
 ] as const;
 
 export const PUBLIC_DASHBOARD_NAV_EXCLUSIONS = [
@@ -156,6 +155,7 @@ const ROLE_WORKSPACES: Record<AuthRole, DashboardWorkspace> = {
               { title: "Users and roles", url: "/admin/users-roles" },
               { title: "Access review", url: "/admin/access-review" },
               { title: "Partner readiness", url: "/admin/partner-readiness" },
+              { title: "Integrations", url: "/admin/integrations" },
               { title: "Audit evidence", url: "/admin/audit-evidence" },
               { title: "Exports", url: "/admin#exports" },
             ],
@@ -190,6 +190,7 @@ const ROLE_WORKSPACES: Record<AuthRole, DashboardWorkspace> = {
               { title: "Tenant health", url: "/admin/tenant-health" },
               { title: "Data ingestion", url: "/admin/data-ingestion" },
               { title: "Security", url: "/admin/security" },
+              { title: "Integrations", url: "/admin/integrations" },
               { title: "Demo controls", url: "/admin#demo-controls" },
               { title: "Audit evidence", url: "/admin/audit-evidence" },
             ],
