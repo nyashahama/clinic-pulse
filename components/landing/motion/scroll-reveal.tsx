@@ -1,13 +1,8 @@
 "use client";
 
-import type { ComponentPropsWithoutRef, CSSProperties, ReactNode } from "react";
-import {
-  isMotionValue,
-  isValidMotionProp,
-  motion,
-  useReducedMotion,
-  type HTMLMotionProps,
-} from "motion/react";
+import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
+import { motion, type HTMLMotionProps } from "motion/react";
 import { cn } from "@/lib/utils";
 
 type ControlledMotionProps =
@@ -26,83 +21,26 @@ type ScrollRevealProps = {
   ControlledMotionProps | "children" | "className"
 >;
 
-type ScrollRevealPassthroughProps = Omit<
-  ScrollRevealProps,
-  "children" | "className" | "delay"
->;
+function useHydratedReducedMotion() {
+  const [shouldReduceMotion, setShouldReduceMotion] = useState(false);
 
-const motionStyleOnlyKeys = new Set([
-  "x",
-  "y",
-  "z",
-  "translateX",
-  "translateY",
-  "translateZ",
-  "scale",
-  "scaleX",
-  "scaleY",
-  "scaleZ",
-  "perspective",
-  "transformPerspective",
-  "rotate",
-  "rotateX",
-  "rotateY",
-  "rotateZ",
-  "skew",
-  "skewX",
-  "skewY",
-  "originX",
-  "originY",
-  "originZ",
-  "pathLength",
-  "pathOffset",
-  "pathSpacing",
-]);
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-function sanitizeStyle(style: unknown): CSSProperties | undefined {
-  if (!style || typeof style !== "object") {
-    return undefined;
-  }
+    setShouldReduceMotion(mediaQuery.matches);
 
-  const domStyle: Record<string, unknown> = {};
+    const updatePreference = () => {
+      setShouldReduceMotion(mediaQuery.matches);
+    };
 
-  for (const [key, value] of Object.entries(style)) {
-    if (motionStyleOnlyKeys.has(key) || isMotionValue(value)) {
-      continue;
-    }
+    mediaQuery.addEventListener("change", updatePreference);
 
-    domStyle[key] = value;
-  }
+    return () => {
+      mediaQuery.removeEventListener("change", updatePreference);
+    };
+  }, []);
 
-  if (Object.keys(domStyle).length === 0) {
-    return undefined;
-  }
-
-  return domStyle as CSSProperties;
-}
-
-function getDomProps(
-  props: ScrollRevealPassthroughProps,
-): ComponentPropsWithoutRef<"div"> {
-  const domProps: Record<string, unknown> = {};
-
-  for (const [key, value] of Object.entries(props)) {
-    if (key === "style") {
-      const style = sanitizeStyle(value);
-
-      if (style) {
-        domProps.style = style;
-      }
-
-      continue;
-    }
-
-    if (!isValidMotionProp(key)) {
-      domProps[key] = value;
-    }
-  }
-
-  return domProps as ComponentPropsWithoutRef<"div">;
+  return shouldReduceMotion;
 }
 
 export function ScrollReveal({
@@ -111,22 +49,22 @@ export function ScrollReveal({
   delay = 0,
   ...props
 }: ScrollRevealProps) {
-  const shouldReduceMotion = useReducedMotion();
-
-  if (shouldReduceMotion) {
-    return (
-      <div className={className} {...getDomProps(props)}>
-        {children}
-      </div>
-    );
-  }
+  const shouldReduceMotion = useHydratedReducedMotion();
+  const visible = { opacity: 1, y: 0, filter: "blur(0px)" };
+  const hidden = shouldReduceMotion
+    ? visible
+    : { opacity: 0, y: 18, filter: "blur(6px)" };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 18, filter: "blur(6px)" }}
-      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-      whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-      transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
+      initial={hidden}
+      animate={visible}
+      whileInView={visible}
+      transition={{
+        duration: shouldReduceMotion ? 0 : 0.5,
+        delay: shouldReduceMotion ? 0 : delay,
+        ease: [0.16, 1, 0.3, 1],
+      }}
       viewport={{ once: true, margin: "-12% 0px" }}
       className={cn("will-change-transform", className)}
       {...props}
