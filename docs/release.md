@@ -17,9 +17,12 @@ Release tag status: Pending final verification and user approval.
 ## Verification Commands
 
 ```bash
-npm run lint
+npm ci
 make verify
 make test-e2e
+npm audit --audit-level=moderate
+cd services/api && govulncheck ./...
+git status --short
 ```
 
 ## Tag Commands

@@ -53,4 +53,5 @@ docs/*
 !docs/production-readiness-execution-plan.md
 !docs/phase-0-release-gate-stabilization-spec.md
 !docs/phase-0-release-gate-stabilization-implementation-plan.md
+!docs/phase-0-release-gate-stabilization-closeout.md
 reference-projects/

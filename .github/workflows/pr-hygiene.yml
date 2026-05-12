@@ -29,11 +29,11 @@ jobs:
       - name: Keep local docs out of tracked changes
         shell: bash
         run: |
-          allowed_showcase_docs='^docs/(api|architecture|database-schema|demo-video|engineering-decisions|portfolio-case-study|release|screenshots)\.md$'
-          disallowed_docs="$(git diff --name-only origin/main...HEAD | grep -E '^docs/' | grep -Ev "$allowed_showcase_docs" || true)"
+          allowed_tracked_docs='^docs/(api|architecture|database-schema|demo-video|engineering-decisions|portfolio-case-study|release|screenshots|production-readiness-execution-plan|phase-0-release-gate-stabilization-(spec|implementation-plan|closeout))\.md$'
+          disallowed_docs="$(git diff --name-only origin/main...HEAD | grep -E '^docs/' | grep -Ev "$allowed_tracked_docs" || true)"
 
           if [ -n "$disallowed_docs" ]; then
-            echo "docs/ is local-only except for the tracked showcase docs. Do not force-add local docs into public commits."
+            echo "docs/ is local-only except for the intentionally tracked docs. Do not force-add local docs into public commits."
             echo "$disallowed_docs"
             exit 1
           fi

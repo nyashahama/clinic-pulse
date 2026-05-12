@@ -2,13 +2,13 @@
 
 Date: 2026-05-12
 Status: Active roadmap
-Current phase: Phase 0 - Release Gate Stabilization
+Current phase: Phase 1 - Production Runtime And Deployment
 
 ## Purpose
 
 This document is the persistent production-readiness map for ClinicPulse. Keep it updated after every phase so the next phase is always obvious.
 
-ClinicPulse is currently a production-shaped alpha. It has the core product loop, real API/database foundations, auth, roles, audit evidence, and admin governance surfaces, but it still needs release-gate stability, security hardening, deployability, observability, and pilot governance before it can be treated as production software.
+ClinicPulse is currently a production-shaped alpha. It has the core product loop, real API/database foundations, auth, roles, audit evidence, admin governance surfaces, and a stable Phase 0 release gate, but it still needs security hardening, deployability, observability, and pilot governance before it can be treated as production software.
 
 ## Phase Status Key
 
@@ -37,7 +37,7 @@ Phase 0 makes these commands reliable and enforceable. Later phases may add stri
 
 | Phase | Status | Target Outcome | Estimated Effort |
 | --- | --- | --- | --- |
-| Phase 0 - Release Gate Stabilization | Planned | Clean dependency/security scans, stable E2E, and blocking CI gates | 1-2 days |
+| Phase 0 - Release Gate Stabilization | Complete | Clean dependency/security scans, stable E2E, and blocking CI gates | 1-2 days |
 | Phase 1 - Production Runtime And Deployment | Not started | Repeatable staging deployment with production runtime controls | 3-5 days |
 | Phase 2 - Security And Auth Hardening | Not started | Production-safe auth, sessions, secrets, rate limits, and account lifecycle | 1 week |
 | Phase 3 - Pilot Data And Product Integrity | Not started | Real data provenance, completed pilot workflows, and legal/safety surfaces | 1-2 weeks |
@@ -48,6 +48,7 @@ Phase 0 makes these commands reliable and enforceable. Later phases may add stri
 
 Spec: `docs/phase-0-release-gate-stabilization-spec.md`
 Plan: `docs/phase-0-release-gate-stabilization-implementation-plan.md`
+Closeout: `docs/phase-0-release-gate-stabilization-closeout.md`
 
 Goal:
 
