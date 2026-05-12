@@ -43,6 +43,7 @@ export function ClinicProfileHeader({
           fill
           className="object-cover"
           sizes="(min-width: 1280px) 56rem, 100vw"
+          priority
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/25 to-transparent" />
         <div className="absolute left-3 top-3 flex flex-wrap gap-2">

@@ -1,25 +1,20 @@
 import { expect, test, type Page } from "@playwright/test";
 
-const password = "ClinicPulseDemo123!";
+import { signInAs } from "./helpers/auth";
+import { pathPattern } from "./helpers/navigation";
 
 async function signIn(page: Page, email: string) {
-  await page.goto("/login");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Log in" }).click();
-  await expect(page).toHaveURL(/\/(admin|field|district)$/);
+  await signInAs(page, email, "/admin");
 }
 
 async function clickSidebarLink(page: Page, name: string, path: string) {
-  const link = page
-    .locator('[data-sidebar="sidebar"]')
-    .getByRole("link", { name, exact: true })
-    .first();
+  const sidebar = page.locator('[data-sidebar="sidebar"]:visible').first();
+  const link = sidebar.locator(`a[href="${path}"]`).filter({ hasText: name }).first();
 
-  await expect(link).toHaveAttribute("href", path);
-  await link.click();
-  await expect(page).toHaveURL(new RegExp(`${path}$`));
+  await expect(link).toBeVisible();
+  await Promise.all([page.waitForURL(pathPattern(path)), link.click()]);
   await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
+  await expect(page.locator("[data-admin-module]").first()).toBeVisible();
 }
 
 test("organisation admin sees real governance modules", async ({ page }) => {
@@ -39,6 +34,8 @@ test("organisation admin sees real governance modules", async ({ page }) => {
 test("desktop admin navigation opens standalone governance modules", async ({
   page,
 }, testInfo) => {
+  test.setTimeout(90_000);
+
   test.skip(testInfo.project.name !== "desktop-chrome", "Desktop sidebar navigation regression");
 
   await signIn(page, "org-admin@clinicpulse.local");

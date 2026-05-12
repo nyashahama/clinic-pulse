@@ -12,7 +12,7 @@ API_DIR := services/api
 MIGRATIONS := $(sort $(wildcard $(API_DIR)/migrations/*.sql))
 AUTH_SEED := $(API_DIR)/seeds/local_phase3_auth_users.sql
 
-.PHONY: db-up db-up-e2e db-wait db-wait-e2e db-migrate db-seed-auth db-bootstrap db-create-e2e db-reset-e2e dev-api dev-web test-api test-web test-e2e lint build verify
+.PHONY: db-up db-up-e2e db-wait db-wait-e2e db-migrate db-seed-auth db-bootstrap db-create-e2e db-reset-e2e dev-api dev-web test-api test-web test-e2e lint build verify audit-web audit-api verify-security
 
 db-up:
 	CLINICPULSE_POSTGRES_PORT="$(POSTGRES_PORT)" docker compose up -d postgres
@@ -70,6 +70,12 @@ test-api:
 test-web:
 	npm test
 
+audit-web:
+	npm audit --audit-level=moderate
+
+audit-api:
+	cd "$(API_DIR)" && govulncheck ./...
+
 test-e2e: db-up-e2e db-reset-e2e
 	E2E_DATABASE_URL="$(E2E_DATABASE_URL)" npm run test:e2e
 
@@ -80,3 +86,5 @@ build:
 	npm run build
 
 verify: test-web lint test-api build
+
+verify-security: audit-web audit-api

@@ -30,6 +30,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Audit dependencies
+        run: npm audit --audit-level=moderate
+
       - name: Test
         run: npm run test
 
@@ -60,6 +63,12 @@ jobs:
 
       - name: Vet
         run: go vet ./...
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Govulncheck
+        run: govulncheck ./...
 
   e2e:
     name: E2E

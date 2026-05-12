@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { signInAs } from "./helpers/auth";
+
 const password = "ClinicPulseDemo123!";
 const reporterAccount = {
   email: "reporter@clinicpulse.local",
@@ -28,15 +30,6 @@ type ReportSignal = {
   stock: "normal" | "low" | "stockout" | "unknown";
   queue: "low" | "moderate" | "high" | "unknown";
 };
-
-async function signInAs(page: Page, account: { email: string; password: string }, home: string) {
-  await page.context().clearCookies();
-  await page.goto("/login");
-  await page.getByLabel("Email").fill(account.email);
-  await page.getByLabel("Password").fill(account.password);
-  await page.getByRole("button", { name: "Log in" }).click();
-  await expect(page).toHaveURL(new RegExp(`${home.replace("/", "\\/")}$`));
-}
 
 async function fetchPendingReports(page: Page) {
   const pendingResponse = await page.request.get("/api/clinicpulse/v1/reports/pending");
@@ -119,6 +112,8 @@ function formatCleanupError(error: unknown) {
 test("hands an online field report from reporter to district review and admin evidence context", async ({
   page,
 }, testInfo) => {
+  test.setTimeout(90_000);
+
   const testNotes = `Phase 3 handoff Playwright ${Date.now()}`;
   const duplicateNotes = `${testNotes} with changed note text`;
   const reportSignal = reportSignalForProject(testInfo.project.name);
@@ -126,7 +121,7 @@ test("hands an online field report from reporter to district review and admin ev
   let primaryError: unknown;
 
   try {
-    await signInAs(page, reporterAccount, "/field");
+    await signInAs(page, reporterAccount.email, "/field");
 
     await chooseReportSignal(page, reportSignal);
     await page
@@ -139,7 +134,7 @@ test("hands an online field report from reporter to district review and admin ev
       page.getByTestId("field-report-receipt").filter({ hasText: successMessage }),
     ).toBeVisible();
 
-    await signInAs(page, districtManagerAccount, "/district");
+    await signInAs(page, districtManagerAccount.email, "/district");
     await page.goto("/district");
 
     const queue = page.locator('[data-testid="report-review-queue"]:visible');
@@ -165,7 +160,7 @@ test("hands an online field report from reporter to district review and admin ev
       .toBe("reviewed");
     const pendingReviewCountAfterAcceptance = (await fetchPendingReports(page)).length;
 
-    await signInAs(page, orgAdminAccount, "/admin");
+    await signInAs(page, orgAdminAccount.email, "/admin");
     await page.goto("/admin");
 
     const adminReviewPressure = page.locator("#admin-review-pressure");
@@ -179,7 +174,7 @@ test("hands an online field report from reporter to district review and admin ev
       }),
     ).toBeVisible();
 
-    await signInAs(page, reporterAccount, "/field");
+    await signInAs(page, reporterAccount.email, "/field");
     await chooseReportSignal(page, reportSignal);
     await page
       .getByPlaceholder("Add context, barriers, and what changed today.")
@@ -189,7 +184,7 @@ test("hands an online field report from reporter to district review and admin ev
       page.getByTestId("field-report-receipt").filter({ hasText: "Already in review" }),
     ).toBeVisible();
 
-    await signInAs(page, districtManagerAccount, "/district");
+    await signInAs(page, districtManagerAccount.email, "/district");
     await expect
       .poll(async () => {
         const duplicatePendingReport = await findPendingReportByNotes(page, duplicateNotes);

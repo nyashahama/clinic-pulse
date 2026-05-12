@@ -56,6 +56,7 @@ export function StakeholderImpactStrip() {
                   src={photo.src}
                   alt={photo.alt}
                   fill
+                  priority={index === 0}
                   sizes="(min-width: 1024px) 18rem, (min-width: 640px) 50vw, 100vw"
                   className="object-cover"
                   style={{ objectPosition: photo.position }}
