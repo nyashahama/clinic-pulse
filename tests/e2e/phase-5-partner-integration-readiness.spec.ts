@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 const password = "ClinicPulseDemo123!";
 
@@ -10,11 +10,24 @@ async function signIn(page: Page, email: string) {
   await expect(page).toHaveURL(/\/admin$/);
 }
 
+async function openDashboardSidebar(page: Page): Promise<Locator> {
+  const viewport = page.viewportSize();
+
+  if (viewport && viewport.width < 768) {
+    await page.getByRole("button", { name: "Toggle dashboard navigation" }).click();
+    const mobileSidebar = page.locator('[data-slot="sidebar"][data-mobile="true"]').first();
+    await expect(mobileSidebar).toBeVisible();
+    return mobileSidebar;
+  }
+
+  const desktopSidebar = page.locator('[data-slot="sidebar-inner"]').first();
+  await expect(desktopSidebar).toBeVisible();
+  return desktopSidebar;
+}
+
 async function clickSidebarLink(page: Page, name: string, path: string) {
-  const link = page
-    .locator('[data-sidebar="sidebar"]')
-    .getByRole("link", { name, exact: true })
-    .first();
+  const sidebar = await openDashboardSidebar(page);
+  const link = sidebar.getByRole("link", { name, exact: true }).first();
 
   await expect(link).toHaveAttribute("href", path);
   await link.click();
