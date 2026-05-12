@@ -47,5 +47,10 @@ specs/
 docs/superpowers/
 clinicpulse-system-deliverable.md
 clinicpulse-yc-demo-product-ux-spec.md
-docs/
+# Most generated docs are ignored by default. Production-readiness docs are
+# intentionally tracked so the next phase remains visible in the repository.
+docs/*
+!docs/production-readiness-execution-plan.md
+!docs/phase-0-release-gate-stabilization-spec.md
+!docs/phase-0-release-gate-stabilization-implementation-plan.md
 reference-projects/
