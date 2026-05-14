@@ -21,6 +21,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"clinicpulse/services/api/internal/auth"
+	"clinicpulse/services/api/internal/security"
 	"clinicpulse/services/api/internal/service"
 	"clinicpulse/services/api/internal/store"
 )
@@ -86,12 +87,14 @@ type ClinicStore interface {
 type HandlerConfig struct {
 	APIKeyPepper           string
 	WebhookDeliveryEnabled bool
+	LoginRateLimiter       *security.FixedWindowLimiter
 }
 
 type Handler struct {
 	store                  ClinicStore
 	apiKeyPepper           string
 	webhookDeliveryEnabled bool
+	loginRateLimiter       *security.FixedWindowLimiter
 }
 
 func NewHandler(store ClinicStore, config HandlerConfig) Handler {
@@ -99,6 +102,7 @@ func NewHandler(store ClinicStore, config HandlerConfig) Handler {
 		store:                  store,
 		apiKeyPepper:           config.APIKeyPepper,
 		webhookDeliveryEnabled: config.WebhookDeliveryEnabled,
+		loginRateLimiter:       config.LoginRateLimiter,
 	}
 }
 
@@ -1149,6 +1153,18 @@ func (h Handler) Login(w nethttp.ResponseWriter, r *nethttp.Request) {
 	if email == "" || payload.Password == "" {
 		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "email and password are required")
 		return
+	}
+
+	if h.loginRateLimiter != nil {
+		ipAddress := ""
+		if remoteIP := remoteIPAddress(r.RemoteAddr); remoteIP != nil {
+			ipAddress = *remoteIP
+		}
+		key := "login:" + ipAddress + ":" + email
+		if !h.loginRateLimiter.Allow(key) {
+			respondUnauthorized(w)
+			return
+		}
 	}
 
 	user, err := h.store.GetUserByEmail(r.Context(), email)

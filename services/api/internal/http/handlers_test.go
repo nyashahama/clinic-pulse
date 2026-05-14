@@ -18,6 +18,7 @@ import (
 
 	"clinicpulse/services/api/internal/auth"
 	apihttp "clinicpulse/services/api/internal/http"
+	"clinicpulse/services/api/internal/security"
 	"clinicpulse/services/api/internal/store"
 )
 
@@ -3763,6 +3764,33 @@ func TestLoginReturnsGenericUnauthorizedForInvalidCredentials(t *testing.T) {
 	}
 }
 
+func TestLoginRateLimitReturnsGenericUnauthorized(t *testing.T) {
+	getUserCalls := 0
+	loginStore := successfulLoginStore(t)
+	loginStore.getUserCalls = &getUserCalls
+	router := apihttp.NewRouter(loginStore,
+		apihttp.WithLoginRateLimiter(security.NewFixedWindowLimiter(1, time.Minute, time.Now)),
+	)
+
+	for attempt := 0; attempt < 2; attempt++ {
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", strings.NewReader(`{"email":"manager@example.test","password":"wrong-password"}`))
+		req.RemoteAddr = "203.0.113.10:41234"
+		rec := httptest.NewRecorder()
+
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("expected generic unauthorized, got %d with body %s", rec.Code, rec.Body.String())
+		}
+		if strings.Contains(rec.Body.String(), "rate") || strings.Contains(rec.Body.String(), "throttle") {
+			t.Fatalf("login throttle response leaked throttle state: %s", rec.Body.String())
+		}
+	}
+	if getUserCalls != 1 {
+		t.Fatalf("expected throttled login to skip user lookup after first attempt, got %d lookups", getUserCalls)
+	}
+}
+
 func TestLoginMembershipFailureReturnsInternalErrorWithoutCreatingSession(t *testing.T) {
 	storeErr := errors.New("membership lookup failed")
 	createSessionCalls := 0
@@ -4063,6 +4091,7 @@ type fakeStore struct {
 	syncSummaryScope                      *store.ReportReviewScope
 	summarySince                          *time.Time
 	getUserEmail                          *string
+	getUserCalls                          *int
 	createSessionInput                    *store.CreateSessionInput
 	sessionAuditInput                     *store.CreateSessionWithAuditInput
 	auditInput                            *store.CreateAuditEventInput
@@ -4274,6 +4303,9 @@ func (f fakeStore) ReviewReportTx(_ context.Context, input store.ReviewReportInp
 }
 
 func (f fakeStore) GetUserByEmail(_ context.Context, email string) (store.User, error) {
+	if f.getUserCalls != nil {
+		*f.getUserCalls++
+	}
 	if f.getUserEmail != nil {
 		*f.getUserEmail = email
 	}

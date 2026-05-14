@@ -66,6 +66,7 @@ func NewRouter(store ClinicStore, options ...RouterOption) nethttp.Handler {
 	handler := NewHandler(store, HandlerConfig{
 		APIKeyPepper:           config.APIKeyPepper,
 		WebhookDeliveryEnabled: config.WebhookDeliveryEnabled,
+		LoginRateLimiter:       config.LoginRateLimiter,
 	})
 	requireAuth := RequireAuth(store)
 	partnerAuth := RequirePartnerAPIKey(store, config.APIKeyPepper)
