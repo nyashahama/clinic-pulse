@@ -507,7 +507,7 @@ func TestAdminLifecycleQueriesGetUserByIDReturnsPasswordLifecycleFields(t *testi
 	}
 }
 
-func TestUpdateUserPasswordUpdatesHashChangedAtAndClearsResetRequired(t *testing.T) {
+func TestUpdateUserPasswordUpdatesHashTimestampsAndClearsResetRequired(t *testing.T) {
 	ctx := context.Background()
 	store := integrationStore(t)
 	oldHash := "old-hash"
@@ -522,11 +522,13 @@ func TestUpdateUserPasswordUpdatesHashChangedAtAndClearsResetRequired(t *testing
 		t.Fatalf("CreateUser returned error: %v", err)
 	}
 	previousChangedAt := time.Now().UTC().Add(-24 * time.Hour).Truncate(time.Microsecond)
+	previousUpdatedAt := time.Now().UTC().Add(-23 * time.Hour).Truncate(time.Microsecond)
 	if _, err := store.pool.Exec(ctx, `
 UPDATE users
 SET password_changed_at = $2,
-    password_reset_required = true
-WHERE id = $1`, user.ID, previousChangedAt); err != nil {
+    password_reset_required = true,
+    updated_at = $3
+WHERE id = $1`, user.ID, previousChangedAt, previousUpdatedAt); err != nil {
 		t.Fatalf("set previous password lifecycle fields: %v", err)
 	}
 
@@ -544,6 +546,9 @@ WHERE id = $1`, user.ID, previousChangedAt); err != nil {
 	if updated.PasswordChangedAt == nil || !updated.PasswordChangedAt.After(previousChangedAt) {
 		t.Fatalf("expected password_changed_at after %s, got %+v", previousChangedAt, updated.PasswordChangedAt)
 	}
+	if !updated.UpdatedAt.After(previousUpdatedAt) {
+		t.Fatalf("expected updated_at after %s, got %s", previousUpdatedAt, updated.UpdatedAt)
+	}
 
 	got, err := store.GetUserByID(ctx, user.ID)
 	if err != nil {
@@ -551,6 +556,9 @@ WHERE id = $1`, user.ID, previousChangedAt); err != nil {
 	}
 	if got.PasswordHash == nil || *got.PasswordHash != "new-hash" || got.PasswordResetRequired || got.PasswordChangedAt == nil || !got.PasswordChangedAt.After(previousChangedAt) {
 		t.Fatalf("expected persisted password lifecycle update, got %+v", got)
+	}
+	if !got.UpdatedAt.After(previousUpdatedAt) {
+		t.Fatalf("expected persisted updated_at after %s, got %s", previousUpdatedAt, got.UpdatedAt)
 	}
 }
 
