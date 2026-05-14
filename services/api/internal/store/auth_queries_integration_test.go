@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -182,6 +183,87 @@ VALUES ($1, $2, 'district_manager', 'Zulu District'),
 	if strings.Join(gotRoles, ",") != "district_manager,reporter,system_admin" {
 		t.Fatalf("unexpected membership order: %v", gotRoles)
 	}
+}
+
+func TestAdminLifecycleQueriesCreateDisableAndRevokeSessions(t *testing.T) {
+	ctx := context.Background()
+	store := integrationStore(t)
+	passwordHash := "hash"
+
+	user, err := store.CreateUser(ctx, CreateUserInput{
+		Email:                 "pilot@example.test",
+		DisplayName:           "Pilot User",
+		PasswordHash:          &passwordHash,
+		PasswordResetRequired: true,
+	})
+	if err != nil {
+		t.Fatalf("CreateUser returned error: %v", err)
+	}
+	if user.ID == 0 || !user.PasswordResetRequired {
+		t.Fatalf("expected created user with password reset required, got %+v", user)
+	}
+
+	session := createIntegrationSession(t, ctx, store, CreateSessionInput{
+		UserID:    user.ID,
+		TokenHash: "token-hash-pilot",
+		ExpiresAt: time.Now().UTC().Add(time.Hour),
+	})
+
+	if err := store.DisableUser(ctx, user.ID, time.Now().UTC()); err != nil {
+		t.Fatalf("DisableUser returned error: %v", err)
+	}
+	if count, err := store.RevokeActiveSessionsForUser(ctx, user.ID); err != nil || count != 1 {
+		t.Fatalf("expected one revoked session, count=%d err=%v", count, err)
+	}
+	if _, _, err := store.GetSessionByTokenHash(ctx, session.TokenHash); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("expected revoked session to be unusable, got %v", err)
+	}
+}
+
+func TestAdminLifecycleQueriesGetAdminUserAccessByUserID(t *testing.T) {
+	ctx := context.Background()
+	store := integrationStore(t)
+	passwordHash := "hash"
+
+	user, err := store.CreateUser(ctx, CreateUserInput{
+		Email:        "manager@example.test",
+		DisplayName:  "Manager User",
+		PasswordHash: &passwordHash,
+	})
+	if err != nil {
+		t.Fatalf("CreateUser returned error: %v", err)
+	}
+	orgID := insertIntegrationOrganisation(t, ctx, store, "District Access", "district-access")
+	membership, err := store.UpsertOrganisationMembership(ctx, UpsertMembershipInput{
+		UserID:         user.ID,
+		OrganisationID: &orgID,
+		Role:           "org_admin",
+	})
+	if err != nil {
+		t.Fatalf("UpsertOrganisationMembership returned error: %v", err)
+	}
+	if membership.UserID != user.ID || membership.OrganisationID == nil || *membership.OrganisationID != orgID {
+		t.Fatalf("unexpected membership: %+v", membership)
+	}
+
+	access, err := store.GetAdminUserAccessByUserID(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("GetAdminUserAccessByUserID returned error: %v", err)
+	}
+	if access.UserID != user.ID || access.Role != "org_admin" || access.OrganisationID == nil || *access.OrganisationID != orgID {
+		t.Fatalf("unexpected admin user access: %+v", access)
+	}
+}
+
+func integrationStore(t *testing.T) Store {
+	t.Helper()
+
+	databaseURL := os.Getenv("AUTH_STORE_TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("set AUTH_STORE_TEST_DATABASE_URL to run auth store integration tests")
+	}
+
+	return newIntegrationStore(t, context.Background(), databaseURL)
 }
 
 func newIntegrationStore(t *testing.T, ctx context.Context, databaseURL string) Store {

@@ -58,10 +58,35 @@ func TestLocalPhase3AuthSeedExistsOutsideMigrations(t *testing.T) {
 		"reporter@clinicpulse.local",
 		"Password hashes correspond to the local demo password shared out-of-band.",
 		"$2b$",
+		"password_changed_at",
+		"password_reset_required",
 	}
 	for _, value := range required {
 		if !strings.Contains(seedSQL, value) {
 			t.Fatalf("expected local auth seed to contain %q", value)
+		}
+	}
+}
+
+func TestAuthLifecycleMigrationAddsAdminLifecycleColumnsAndIndexes(t *testing.T) {
+	t.Parallel()
+
+	migrationSQL := readMigrationFile(t, "0009_auth_hardening_admin_lifecycle.sql")
+	required := []string{
+		"ADD COLUMN password_changed_at TIMESTAMPTZ",
+		"ADD COLUMN password_reset_required BOOLEAN NOT NULL DEFAULT false",
+		"SET password_changed_at = updated_at",
+		"CREATE INDEX users_disabled_at_idx ON users (disabled_at)",
+		"WHERE disabled_at IS NOT NULL",
+		"CREATE INDEX users_password_reset_required_idx ON users (password_reset_required)",
+		"WHERE password_reset_required = true",
+		"CREATE VIEW admin_user_access AS",
+		"max(sessions.last_seen_at) AS last_seen_at",
+		"sessions.expires_at > now()",
+	}
+	for _, value := range required {
+		if !strings.Contains(migrationSQL, value) {
+			t.Fatalf("expected auth lifecycle migration to contain %q", value)
 		}
 	}
 }

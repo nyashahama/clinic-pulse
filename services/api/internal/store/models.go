@@ -275,13 +275,29 @@ type AdminUserAccessRow struct {
 type AdminAuditEventRow = AuditEvent
 
 type User struct {
-	ID           int64      `json:"id"`
-	Email        string     `json:"email"`
-	DisplayName  string     `json:"displayName"`
-	PasswordHash *string    `json:"-"`
-	DisabledAt   *time.Time `json:"disabledAt,omitempty"`
-	CreatedAt    time.Time  `json:"createdAt"`
-	UpdatedAt    time.Time  `json:"updatedAt"`
+	ID                    int64      `json:"id"`
+	Email                 string     `json:"email"`
+	DisplayName           string     `json:"displayName"`
+	PasswordHash          *string    `json:"-"`
+	DisabledAt            *time.Time `json:"disabledAt,omitempty"`
+	PasswordChangedAt     *time.Time `json:"passwordChangedAt,omitempty"`
+	PasswordResetRequired bool       `json:"passwordResetRequired"`
+	CreatedAt             time.Time  `json:"createdAt"`
+	UpdatedAt             time.Time  `json:"updatedAt"`
+}
+
+type CreateUserInput struct {
+	Email                 string
+	DisplayName           string
+	PasswordHash          *string
+	PasswordResetRequired bool
+}
+
+type UpdateUserLifecycleInput struct {
+	UserID      int64
+	DisplayName *string
+	Disabled    *bool
+	UpdatedAt   time.Time
 }
 
 type Organisation struct {
@@ -299,6 +315,13 @@ type OrganisationMembership struct {
 	Role           string    `json:"role"`
 	District       *string   `json:"district,omitempty"`
 	CreatedAt      time.Time `json:"createdAt"`
+}
+
+type UpsertMembershipInput struct {
+	UserID         int64
+	OrganisationID *int64
+	Role           string
+	District       *string
 }
 
 type Session struct {
