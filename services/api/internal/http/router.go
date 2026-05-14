@@ -5,11 +5,17 @@ import (
 	nethttp "net/http"
 
 	"github.com/go-chi/chi/v5"
+
+	"clinicpulse/services/api/internal/security"
 )
 
 type RouterConfig struct {
 	APIKeyPepper           string
 	WebhookDeliveryEnabled bool
+	TrustedOrigins         []string
+	LoginRateLimiter       *security.FixedWindowLimiter
+	MutationRateLimiter    *security.FixedWindowLimiter
+	trustedOriginsSet      bool
 }
 
 type RouterOption func(*RouterConfig)
@@ -26,6 +32,25 @@ func WithWebhookDeliveryEnabled(value bool) RouterOption {
 	}
 }
 
+func WithTrustedOrigins(origins []string) RouterOption {
+	return func(config *RouterConfig) {
+		config.TrustedOrigins = append([]string(nil), origins...)
+		config.trustedOriginsSet = true
+	}
+}
+
+func WithLoginRateLimiter(limiter *security.FixedWindowLimiter) RouterOption {
+	return func(config *RouterConfig) {
+		config.LoginRateLimiter = limiter
+	}
+}
+
+func WithMutationRateLimiter(limiter *security.FixedWindowLimiter) RouterOption {
+	return func(config *RouterConfig) {
+		config.MutationRateLimiter = limiter
+	}
+}
+
 func NewRouter(store ClinicStore, options ...RouterOption) nethttp.Handler {
 	config := RouterConfig{}
 	for _, option := range options {
@@ -34,6 +59,10 @@ func NewRouter(store ClinicStore, options ...RouterOption) nethttp.Handler {
 
 	router := chi.NewRouter()
 	router.Use(RequestLogger(log.Default()))
+	if config.trustedOriginsSet {
+		router.Use(ProtectCookieMutations(config.TrustedOrigins))
+	}
+	router.Use(RateLimitMutations(config.MutationRateLimiter))
 	handler := NewHandler(store, HandlerConfig{
 		APIKeyPepper:           config.APIKeyPepper,
 		WebhookDeliveryEnabled: config.WebhookDeliveryEnabled,

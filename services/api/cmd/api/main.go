@@ -4,10 +4,12 @@ import (
 	"context"
 	"log"
 	"os"
+	"time"
 
 	"clinicpulse/services/api/internal/config"
 	apihttp "clinicpulse/services/api/internal/http"
 	apiruntime "clinicpulse/services/api/internal/runtime"
+	"clinicpulse/services/api/internal/security"
 	"clinicpulse/services/api/internal/store"
 )
 
@@ -30,6 +32,9 @@ func main() {
 		store.New(pool),
 		apihttp.WithAPIKeyPepper(cfg.APIKeyPepper),
 		apihttp.WithWebhookDeliveryEnabled(cfg.WebhookDeliveryEnabled),
+		apihttp.WithTrustedOrigins(cfg.TrustedOrigins),
+		apihttp.WithLoginRateLimiter(security.NewFixedWindowLimiter(cfg.LoginRateLimit, cfg.RateLimitWindow, time.Now)),
+		apihttp.WithMutationRateLimiter(security.NewFixedWindowLimiter(cfg.MutationRateLimit, cfg.RateLimitWindow, time.Now)),
 	)
 	server := apiruntime.NewServer(apiruntime.ServerConfig{
 		Addr:            cfg.Addr,
