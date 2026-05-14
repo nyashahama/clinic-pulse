@@ -68,15 +68,14 @@ Repository evidence:
 - `docs/api.md` for API routes.
 - `docs/database-schema.md` for persistence model.
 - `docs/engineering-decisions.md` for tradeoffs.
-- `public/showcase/screenshots/` for workflow screenshots.
-- `public/showcase/videos/clinicpulse-demo-walkthrough.webm` for the short demo walkthrough.
+- `npm run capture:showcase` for local workflow screenshots and the short demo walkthrough under `public/showcase/`.
 - `.github/workflows/ci.yml` for CI baseline.
 
-The case study can be reviewed directly from this repository with local setup, screenshots, video, and CI coverage.
+The case study can be reviewed directly from this repository with local setup, local showcase captures, and CI coverage.
 
 ## Publication Next Steps
 
 - Deploy a clean public demo with seeded demo credentials.
-- Publish this case study on the portfolio site with the repository screenshots and walkthrough.
+- Publish this case study on the portfolio site with locally generated screenshots and walkthrough.
 - Convert the walkthrough to MP4 if the portfolio host requires it.
 - Create `v0.1.0-alpha` after final verification.

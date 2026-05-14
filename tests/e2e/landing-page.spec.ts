@@ -1,8 +1,12 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+async function gotoLanding(page: Page) {
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+}
 
 test.describe("landing page 2026", () => {
   test("keeps required navigation and demo actions reachable", async ({ page }) => {
-    await page.goto("/");
+    await gotoLanding(page);
 
     const header = page.locator("header");
 
@@ -15,7 +19,7 @@ test.describe("landing page 2026", () => {
   });
 
   test("opens with the live operations incident narrative", async ({ page }) => {
-    await page.goto("/");
+    await gotoLanding(page);
 
     const hero = page.locator("section").filter({
       has: page.getByRole("heading", {
@@ -52,7 +56,7 @@ test.describe("landing page 2026", () => {
       { width: 390, height: 1000 },
     ]) {
       await page.setViewportSize(viewport);
-      await page.goto("/");
+      await gotoLanding(page);
 
       const hero = page.locator("section").filter({
         has: page.getByRole("heading", {
@@ -73,7 +77,7 @@ test.describe("landing page 2026", () => {
   });
 
   test("keeps responsive surfaces inside the viewport", async ({ page }) => {
-    await page.goto("/");
+    await gotoLanding(page);
 
     const overflow = await page.evaluate(() => {
       const doc = document.documentElement;
@@ -93,7 +97,7 @@ test.describe("landing page 2026", () => {
   });
 
   test("keeps the mobile hero compact enough to reach the story", async ({ page }) => {
-    await page.goto("/");
+    await gotoLanding(page);
 
     const viewport = page.viewportSize();
     test.skip(!viewport || viewport.width > 500, "mobile-only hero compactness check");
@@ -111,7 +115,7 @@ test.describe("landing page 2026", () => {
   });
 
   test("connects real-world stakeholders to the status gap", async ({ page }) => {
-    await page.goto("/");
+    await gotoLanding(page);
 
     const impactStrip = page.locator("section").filter({
       has: page.getByRole("heading", { name: "One status change affects everyone." }),
@@ -146,7 +150,7 @@ test.describe("landing page 2026", () => {
   });
 
   test("aligns the desktop stakeholder chapter without dead space", async ({ page }) => {
-    await page.goto("/");
+    await gotoLanding(page);
 
     const viewport = page.viewportSize();
     test.skip(!viewport || viewport.width < 1024, "desktop-only composition check");
@@ -165,7 +169,7 @@ test.describe("landing page 2026", () => {
   });
 
   test("shows one connected incident flow from report to audit", async ({ page }) => {
-    await page.goto("/");
+    await gotoLanding(page);
     await page.getByRole("link", { name: "Watch the incident flow" }).click();
 
     const flow = page.locator("#flow");
@@ -181,7 +185,7 @@ test.describe("landing page 2026", () => {
   });
 
   test("presents product surfaces with a clear operations hierarchy", async ({ page }) => {
-    await page.goto("/");
+    await gotoLanding(page);
 
     const product = page.locator("#product");
 
@@ -197,7 +201,7 @@ test.describe("landing page 2026", () => {
   });
 
   test("keeps the desktop product surfaces in a compact grid", async ({ page }) => {
-    await page.goto("/");
+    await gotoLanding(page);
 
     const viewport = page.viewportSize();
     test.skip(!viewport || viewport.width < 1024, "desktop-only product layout check");
@@ -224,7 +228,7 @@ test.describe("landing page 2026", () => {
   });
 
   test("ends with public-sector evidence and an incident-specific CTA", async ({ page }) => {
-    await page.goto("/");
+    await gotoLanding(page);
 
     const trust = page.locator("#trust");
     const cta = page.locator("section").filter({

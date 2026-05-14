@@ -2,6 +2,16 @@
 
 Postgres migrations live in `services/api/migrations`. They are the source of truth for table definitions, constraints, indexes, and seed data.
 
+## Migration Ledger
+
+| Table | Purpose |
+| --- | --- |
+| `schema_migrations` | Records SQL migration filename, checksum, and applied timestamp so managed databases are migrated once and checksum drift fails fast |
+
+`make db-migrate` and the API migration command create this ledger automatically before applying pending SQL files.
+
+Databases that already contain ClinicPulse tables but do not have a `schema_migrations` ledger are treated as pre-ledger schemas. The runner does not automatically adopt them: it creates the ledger, attempts the first pending SQL file, and fails safely if the schema objects already exist. Phase 1 staging should use a fresh managed database or a restored database that already includes the ledger. Any one-time ledger backfill must be deliberate, backed up, checksum-verified against the exact SQL files, and documented for operators before running the migrator again.
+
 ## Clinic Directory And Services
 
 | Table | Purpose |
@@ -106,6 +116,6 @@ make db-seed-auth
 
 That target runs `services/api/seeds/local_phase3_auth_users.sql`.
 
-## Migration Caveat
+## Migration Replay
 
-`make db-bootstrap` applies SQL files in order to a fresh local database. The current migration runner does not maintain a migration ledger, so use a fresh database or the e2e reset target when replaying the full migration set.
+`make db-bootstrap` applies pending SQL files in order through the migration ledger and then seeds local auth users. Use a fresh database, a database with a valid ledger, or the e2e reset target when intentionally replaying the full migration set.

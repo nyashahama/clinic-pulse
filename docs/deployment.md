@@ -1,0 +1,106 @@
+# Deployment Runbook
+
+ClinicPulse staging uses Vercel for the Next.js frontend and a Docker host for the Go API. The staging database should be a managed Postgres instance.
+
+## Frontend: Vercel
+
+Configure the Vercel project with the repository root as the project root. The project contract is recorded in `vercel.json`.
+
+| Variable | Value |
+| --- | --- |
+| `CLINICPULSE_DEPLOY_ENV` | `staging` |
+| `CLINICPULSE_API_BASE_URL` | HTTPS URL for the deployed Docker API |
+| `NEXT_PUBLIC_CLINICPULSE_API_BASE_URL` | `/api/clinicpulse` |
+| `CLINICPULSE_ALLOW_DEMO_FALLBACK` | `false` |
+
+Browsers should call `/api/clinicpulse/*`. The Next.js rewrite forwards those requests to `CLINICPULSE_API_BASE_URL`, keeping the deployed API origin out of client code.
+
+## Backend: Docker API
+
+Run the Go API as a Docker web service using the API image.
+
+| Variable | Value |
+| --- | --- |
+| `CLINICPULSE_DEPLOY_ENV` | `staging` |
+| `DATABASE_URL` | Managed Postgres connection URL |
+| `CLINICPULSE_API_KEY_PEPPER` | At least 32 characters |
+| `CLINICPULSE_WEBHOOK_DELIVERY_ENABLED` | `false` until intentionally enabled |
+| `PORT` | Supplied by Render, Railway, or the Docker host |
+
+Start command:
+
+```bash
+/app/clinicpulse-api
+```
+
+Migration command:
+
+```bash
+/app/clinicpulse-migrate
+```
+
+Run migrations before starting a new API image against staging.
+
+Phase 1 staging should use a fresh managed DB or one that already includes `schema_migrations`; do not expect the migrator to auto-adopt pre-ledger schemas.
+
+## Render Notes
+
+- Create a Docker web service using `services/api/Dockerfile`.
+- Provision managed Postgres and set `DATABASE_URL` from the managed database connection URL.
+- Set the Docker API environment variables listed above.
+- Render supplies `PORT`; do not hard-code it.
+- Run `/app/clinicpulse-migrate` against the staging database before promoting the new API image.
+
+## Railway Notes
+
+- Create a Docker service rooted at `services/api`.
+- Provision Railway Postgres and set `DATABASE_URL` from the Railway database connection URL.
+- Set the Docker API environment variables listed above.
+- Railway supplies `PORT`; do not hard-code it.
+- Run `/app/clinicpulse-migrate` against the staging database before promoting the new API image.
+
+## Managed Postgres Backup, Restore, And Migration
+
+Create a staging backup before migrations or image promotion:
+
+```bash
+pg_dump "$DATABASE_URL" --format=custom --file=clinicpulse-staging-$(date +%Y%m%d%H%M%S).dump
+```
+
+Run the migration container against staging:
+
+```bash
+docker run --rm \
+  -e CLINICPULSE_DEPLOY_ENV=staging \
+  -e DATABASE_URL="$DATABASE_URL" \
+  -e CLINICPULSE_API_KEY_PEPPER="$CLINICPULSE_API_KEY_PEPPER" \
+  clinicpulse-api:<tag> \
+  /app/clinicpulse-migrate
+```
+
+Restore a managed Postgres backup when a rollback requires database restoration:
+
+```bash
+pg_restore --clean --if-exists --no-owner --dbname="$DATABASE_URL" clinicpulse-staging-backup.dump
+```
+
+Prefer roll-forward corrective migrations when data shape changes can be repaired without restoring the entire database.
+
+## Staging Recreation Checklist
+
+- Provision a fresh managed Postgres database.
+- Confirm the database is fresh or already includes `schema_migrations`.
+- Create the Docker API service and configure the backend environment variables.
+- Run `/app/clinicpulse-migrate` against staging.
+- Start the API image with `/app/clinicpulse-api`.
+- Confirm the API exposes a healthy HTTPS base URL.
+- Create or reconnect the Vercel frontend project.
+- Configure the Vercel frontend environment variables.
+- Confirm browser traffic uses `/api/clinicpulse/*`.
+- Smoke test booking, district console, clinic detail, public finder, field reporting, admin, login, and registration paths that are in scope for the staging handoff.
+
+## Rollback
+
+- Frontend: promote the previous Vercel deployment.
+- API: redeploy the previous Docker image tag.
+- Database: restore the latest known-good managed Postgres backup, or apply a roll-forward corrective migration when restoration would lose desired data.

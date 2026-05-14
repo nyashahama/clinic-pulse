@@ -3,20 +3,26 @@ package main
 import (
 	"context"
 	"log"
-	"net/http"
+	"os"
 
 	"clinicpulse/services/api/internal/config"
 	apihttp "clinicpulse/services/api/internal/http"
+	apiruntime "clinicpulse/services/api/internal/runtime"
 	"clinicpulse/services/api/internal/store"
 )
 
 func main() {
-	cfg := config.Load()
+	logger := log.New(os.Stdout, "", log.LstdFlags)
+
+	cfg, err := config.Load()
+	if err != nil {
+		logger.Fatalf("load config: %v", err)
+	}
 
 	ctx := context.Background()
 	pool, err := store.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
-		log.Fatalf("open database: %v", err)
+		logger.Fatalf("open database: %v", err)
 	}
 	defer pool.Close()
 
@@ -25,5 +31,16 @@ func main() {
 		apihttp.WithAPIKeyPepper(cfg.APIKeyPepper),
 		apihttp.WithWebhookDeliveryEnabled(cfg.WebhookDeliveryEnabled),
 	)
-	log.Fatal(http.ListenAndServe(cfg.Addr, router))
+	server := apiruntime.NewServer(apiruntime.ServerConfig{
+		Addr:            cfg.Addr,
+		ReadTimeout:     cfg.ReadTimeout,
+		WriteTimeout:    cfg.WriteTimeout,
+		IdleTimeout:     cfg.IdleTimeout,
+		ShutdownTimeout: cfg.ShutdownTimeout,
+	}, router)
+
+	logger.Printf("starting api server deploy_env=%s addr=%s", cfg.DeployEnv, cfg.Addr)
+	if err := apiruntime.Serve(ctx, server, cfg.ShutdownTimeout, logger); err != nil {
+		logger.Fatalf("serve api: %v", err)
+	}
 }

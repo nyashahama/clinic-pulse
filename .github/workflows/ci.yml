@@ -106,3 +106,24 @@ jobs:
       - name: Stop E2E database
         if: always()
         run: docker compose stop postgres || true
+
+  api-container:
+    name: API Container
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: services/api/go.mod
+          cache-dependency-path: services/api/go.sum
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+
+      - name: Build and smoke-test API container
+        run: make test-api-container

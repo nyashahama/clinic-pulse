@@ -29,12 +29,23 @@ jobs:
       - name: Keep local docs out of tracked changes
         shell: bash
         run: |
-          allowed_tracked_docs='^docs/(api|architecture|database-schema|demo-video|engineering-decisions|portfolio-case-study|release|screenshots|production-readiness-execution-plan|phase-0-release-gate-stabilization-(spec|implementation-plan|closeout))\.md$'
+          allowed_tracked_docs='^docs/(api|architecture|database-schema|demo-video|engineering-decisions|portfolio-case-study|release|screenshots|deployment|production-readiness-execution-plan|phase-0-release-gate-stabilization-(spec|implementation-plan|closeout)|phase-1-production-runtime-and-deployment-(spec|implementation-plan))\.md$'
           disallowed_docs="$(git diff --name-only origin/main...HEAD | grep -E '^docs/' | grep -Ev "$allowed_tracked_docs" || true)"
 
           if [ -n "$disallowed_docs" ]; then
             echo "docs/ is local-only except for the intentionally tracked docs. Do not force-add local docs into public commits."
             echo "$disallowed_docs"
+            exit 1
+          fi
+
+      - name: Keep generated showcase media local
+        shell: bash
+        run: |
+          generated_showcase_media="$(git diff --name-only --diff-filter=ACMRT origin/main...HEAD | grep -E '^public/showcase/' || true)"
+
+          if [ -n "$generated_showcase_media" ]; then
+            echo "public/showcase/ contains generated local screenshots and videos. Do not commit generated media."
+            echo "$generated_showcase_media"
             exit 1
           fi
 

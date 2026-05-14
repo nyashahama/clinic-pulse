@@ -15,6 +15,9 @@
 /playwright-report
 /test-results
 
+# local showcase captures
+/public/showcase/
+
 # next.js
 /.next/
 /out/
@@ -54,4 +57,7 @@ docs/*
 !docs/phase-0-release-gate-stabilization-spec.md
 !docs/phase-0-release-gate-stabilization-implementation-plan.md
 !docs/phase-0-release-gate-stabilization-closeout.md
+!docs/phase-1-production-runtime-and-deployment-spec.md
+!docs/phase-1-production-runtime-and-deployment-implementation-plan.md
+!docs/deployment.md
 reference-projects/

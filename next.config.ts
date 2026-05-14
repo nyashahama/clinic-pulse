@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
-const clinicPulseApiBaseUrl =
-  process.env.CLINICPULSE_API_BASE_URL || "http://localhost:8080";
+import { validateFrontendRuntimeEnv } from "./lib/runtime/frontend-env";
+
+const frontendEnv = validateFrontendRuntimeEnv();
+const clinicPulseApiBaseUrl = frontendEnv.apiBaseUrl;
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1"],

@@ -7,12 +7,13 @@ E2E_DATABASE_URL ?= postgres://clinicpulse:clinicpulse@localhost:$(E2E_POSTGRES_
 E2E_DATABASE_ADMIN_URL ?= postgres://clinicpulse:clinicpulse@localhost:$(E2E_POSTGRES_PORT)/postgres?sslmode=disable
 CLINICPULSE_API_BASE_URL ?= http://localhost:8080
 NEXT_PUBLIC_CLINICPULSE_API_BASE_URL ?= /api/clinicpulse
+API_IMAGE ?= clinicpulse-api:local
+DOCKER_BUILD_ATTEMPTS ?= 3
 
 API_DIR := services/api
-MIGRATIONS := $(sort $(wildcard $(API_DIR)/migrations/*.sql))
 AUTH_SEED := $(API_DIR)/seeds/local_phase3_auth_users.sql
 
-.PHONY: db-up db-up-e2e db-wait db-wait-e2e db-migrate db-seed-auth db-bootstrap db-create-e2e db-reset-e2e dev-api dev-web test-api test-web test-e2e lint build verify audit-web audit-api verify-security
+.PHONY: db-up db-up-e2e db-wait db-wait-e2e db-migrate db-seed-auth db-bootstrap db-create-e2e db-reset-e2e-empty db-reset-e2e dev-api dev-web test-api test-web test-e2e lint build verify audit-web audit-api verify-security build-api-container migrate-api-container test-api-container
 
 db-up:
 	CLINICPULSE_POSTGRES_PORT="$(POSTGRES_PORT)" docker compose up -d postgres
@@ -41,10 +42,7 @@ db-wait-e2e:
 	exit 1
 
 db-migrate:
-	@for file in $(MIGRATIONS); do \
-		echo "Applying $$file"; \
-		psql "$(DATABASE_URL)" -v ON_ERROR_STOP=1 -f "$$file"; \
-	done
+	cd "$(API_DIR)" && DATABASE_URL="$(DATABASE_URL)" CLINICPULSE_DEPLOY_ENV="local" go run ./cmd/migrate
 
 db-seed-auth:
 	psql "$(DATABASE_URL)" -v ON_ERROR_STOP=1 -f "$(AUTH_SEED)"
@@ -54,8 +52,10 @@ db-bootstrap: db-migrate db-seed-auth
 db-create-e2e: db-wait-e2e
 	psql "$(E2E_DATABASE_ADMIN_URL)" -tAc "SELECT 1 FROM pg_database WHERE datname = '$(E2E_DATABASE_NAME)'" | grep -q 1 || psql "$(E2E_DATABASE_ADMIN_URL)" -v ON_ERROR_STOP=1 -c "CREATE DATABASE $(E2E_DATABASE_NAME)"
 
-db-reset-e2e: db-create-e2e
+db-reset-e2e-empty: db-create-e2e
 	psql "$(E2E_DATABASE_URL)" -v ON_ERROR_STOP=1 -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+
+db-reset-e2e: db-reset-e2e-empty
 	$(MAKE) DATABASE_URL="$(E2E_DATABASE_URL)" db-bootstrap
 
 dev-api:
@@ -78,6 +78,45 @@ audit-api:
 
 test-e2e: db-up-e2e db-reset-e2e
 	E2E_DATABASE_URL="$(E2E_DATABASE_URL)" npm run test:e2e
+
+build-api-container:
+	@for attempt in $$(seq 1 "$(DOCKER_BUILD_ATTEMPTS)"); do \
+		if docker build -t "$(API_IMAGE)" -f "$(API_DIR)/Dockerfile" "$(API_DIR)"; then \
+			exit 0; \
+		fi; \
+		if [ "$$attempt" -eq "$(DOCKER_BUILD_ATTEMPTS)" ]; then \
+			exit 1; \
+		fi; \
+		echo "docker build failed on attempt $$attempt/$(DOCKER_BUILD_ATTEMPTS); retrying..." >&2; \
+		sleep $$((attempt * 5)); \
+	done
+
+migrate-api-container: build-api-container db-up-e2e db-reset-e2e-empty
+	docker run --rm --network host \
+		-e CLINICPULSE_DEPLOY_ENV=local \
+		-e DATABASE_URL="$(E2E_DATABASE_URL)" \
+		-e CLINICPULSE_API_KEY_PEPPER=local-development-pepper \
+		"$(API_IMAGE)" /app/clinicpulse-migrate
+
+test-api-container: migrate-api-container
+	@docker rm -f clinicpulse-api-smoke >/dev/null 2>&1 || true
+	docker run --rm -d --network host --name clinicpulse-api-smoke \
+		-e CLINICPULSE_DEPLOY_ENV=local \
+		-e DATABASE_URL="$(E2E_DATABASE_URL)" \
+		-e CLINICPULSE_API_ADDR=:18080 \
+		-e CLINICPULSE_API_KEY_PEPPER=local-development-pepper \
+		"$(API_IMAGE)"
+	@trap 'docker rm -f clinicpulse-api-smoke >/dev/null 2>&1 || true' EXIT; \
+	for attempt in $$(seq 1 30); do \
+		if curl -fsS http://localhost:18080/healthz >/dev/null && curl -fsS http://localhost:18080/readyz >/dev/null; then \
+			docker rm -f clinicpulse-api-smoke >/dev/null; \
+			exit 0; \
+		fi; \
+		sleep 1; \
+	done; \
+	docker logs clinicpulse-api-smoke; \
+	docker rm -f clinicpulse-api-smoke >/dev/null; \
+	exit 1
 
 lint:
 	npm run lint
