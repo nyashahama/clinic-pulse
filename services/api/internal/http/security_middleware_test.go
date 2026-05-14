@@ -17,6 +17,7 @@ func TestCSRFProtectionRejectsUntrustedCookieMutationOrigin(t *testing.T) {
 	)
 	req := httptest.NewRequest(http.MethodPost, "/v1/reports", strings.NewReader(`{}`))
 	req.Header.Set("Origin", "https://evil.example")
+	req.Header.Set("Referer", "https://app.clinicpulse.example/reports")
 	req.AddCookie(&http.Cookie{Name: "clinicpulse_session", Value: sessionTokenForTest(t)})
 	rec := httptest.NewRecorder()
 
@@ -24,6 +25,24 @@ func TestCSRFProtectionRejectsUntrustedCookieMutationOrigin(t *testing.T) {
 
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("expected forbidden, got %d with body %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestCSRFProtectionAllowsServerSideCookieMutationWithoutBrowserOrigin(t *testing.T) {
+	router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{}),
+		apihttp.WithTrustedOrigins([]string{"https://app.clinicpulse.example"}),
+	)
+	req := httptest.NewRequest(http.MethodPost, "/v1/reports", strings.NewReader(`{"clinicId":"clinic-1","status":"operational"}`))
+	req.AddCookie(&http.Cookie{Name: "clinicpulse_session", Value: sessionTokenForTest(t)})
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code == http.StatusForbidden {
+		t.Fatalf("expected missing browser origin to pass through, body %s", rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), "csrf_rejected") {
+		t.Fatalf("expected response not to leak csrf rejection, got %s", rec.Body.String())
 	}
 }
 
@@ -40,6 +59,38 @@ func TestCSRFProtectionAllowsTrustedCookieMutationOrigin(t *testing.T) {
 
 	if rec.Code == http.StatusForbidden {
 		t.Fatalf("expected trusted origin not to be rejected, body %s", rec.Body.String())
+	}
+}
+
+func TestCSRFProtectionAllowsTrustedRefererWhenOriginAbsent(t *testing.T) {
+	router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{}),
+		apihttp.WithTrustedOrigins([]string{"https://app.clinicpulse.example"}),
+	)
+	req := httptest.NewRequest(http.MethodPost, "/v1/reports", strings.NewReader(`{"clinicId":"clinic-1","status":"operational"}`))
+	req.Header.Set("Referer", "https://app.clinicpulse.example/reports/new")
+	req.AddCookie(&http.Cookie{Name: "clinicpulse_session", Value: sessionTokenForTest(t)})
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code == http.StatusForbidden {
+		t.Fatalf("expected trusted referer not to be rejected, body %s", rec.Body.String())
+	}
+}
+
+func TestCSRFProtectionAllowsPartnerMutationWithoutBrowserOrigin(t *testing.T) {
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	handler := apihttp.ProtectCookieMutations([]string{"https://app.clinicpulse.example"})(next)
+	req := httptest.NewRequest(http.MethodPost, "/v1/partner/events", strings.NewReader(`{}`))
+	req.AddCookie(&http.Cookie{Name: "clinicpulse_session", Value: sessionTokenForTest(t)})
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code == http.StatusForbidden {
+		t.Fatalf("expected partner mutation not to be rejected, body %s", rec.Body.String())
 	}
 }
 

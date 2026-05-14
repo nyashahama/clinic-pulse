@@ -24,10 +24,21 @@ func ProtectCookieMutations(trustedOrigins []string) func(nethttp.Handler) netht
 			}
 
 			origin := strings.TrimRight(strings.ToLower(strings.TrimSpace(r.Header.Get("Origin"))), "/")
-			if origin == "" {
-				origin = originFromReferer(r.Header.Get("Referer"))
+			if origin != "" {
+				if _, ok := trusted[origin]; !ok {
+					RespondError(w, nethttp.StatusForbidden, "csrf_rejected", "request origin is not allowed")
+					return
+				}
+				next.ServeHTTP(w, r)
+				return
 			}
-			if _, ok := trusted[origin]; !ok {
+
+			refererOrigin := originFromReferer(r.Header.Get("Referer"))
+			if refererOrigin == "" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			if _, ok := trusted[refererOrigin]; !ok {
 				RespondError(w, nethttp.StatusForbidden, "csrf_rejected", "request origin is not allowed")
 				return
 			}
@@ -40,7 +51,7 @@ func ProtectCookieMutations(trustedOrigins []string) func(nethttp.Handler) netht
 func RateLimitMutations(limiter *security.FixedWindowLimiter) func(nethttp.Handler) nethttp.Handler {
 	return func(next nethttp.Handler) nethttp.Handler {
 		return nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
-			if limiter == nil || !unsafeMethod(r.Method) {
+			if limiter == nil || !unsafeMethod(r.Method) || r.URL.Path == "/v1/auth/login" {
 				next.ServeHTTP(w, r)
 				return
 			}

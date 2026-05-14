@@ -42,6 +42,12 @@ func (l *FixedWindowLimiter) Allow(key string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
+	for key, entry := range l.buckets {
+		if !entry.windowEnd.IsZero() && !now.Before(entry.windowEnd) {
+			delete(l.buckets, key)
+		}
+	}
+
 	entry := l.buckets[key]
 	if entry.windowEnd.IsZero() || !now.Before(entry.windowEnd) {
 		entry = bucket{windowEnd: now.Add(l.window)}

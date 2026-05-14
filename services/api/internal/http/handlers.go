@@ -1156,12 +1156,7 @@ func (h Handler) Login(w nethttp.ResponseWriter, r *nethttp.Request) {
 	}
 
 	if h.loginRateLimiter != nil {
-		ipAddress := ""
-		if remoteIP := remoteIPAddress(r.RemoteAddr); remoteIP != nil {
-			ipAddress = *remoteIP
-		}
-		key := "login:" + ipAddress + ":" + email
-		if !h.loginRateLimiter.Allow(key) {
+		if !h.loginRateLimiter.Allow(loginRateLimitKey(r.RemoteAddr, email)) {
 			respondUnauthorized(w)
 			return
 		}
@@ -1239,6 +1234,11 @@ func (h Handler) Login(w nethttp.ResponseWriter, r *nethttp.Request) {
 		User:        publicUser(user),
 		Memberships: memberships,
 	})
+}
+
+func loginRateLimitKey(remoteAddr string, email string) string {
+	emailDigest := sha256.Sum256([]byte(email))
+	return "login:" + remoteIPAddressValue(remoteAddr) + ":" + hex.EncodeToString(emailDigest[:])
 }
 
 func (h Handler) Me(w nethttp.ResponseWriter, r *nethttp.Request) {

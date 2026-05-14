@@ -33,6 +33,32 @@ func TestFixedWindowLimiterResetsAfterWindow(t *testing.T) {
 	}
 }
 
+func TestFixedWindowLimiterPrunesExpiredBuckets(t *testing.T) {
+	now := time.Date(2026, 5, 14, 8, 0, 0, 0, time.UTC)
+	limiter := NewFixedWindowLimiter(1, time.Minute, func() time.Time { return now })
+
+	if !limiter.Allow("login:expired-a") {
+		t.Fatal("expected first expired-a attempt to pass")
+	}
+	if !limiter.Allow("login:expired-b") {
+		t.Fatal("expected first expired-b attempt to pass")
+	}
+	if len(limiter.buckets) != 2 {
+		t.Fatalf("expected two buckets before expiry, got %d", len(limiter.buckets))
+	}
+
+	now = now.Add(time.Minute + time.Second)
+	if !limiter.Allow("login:fresh") {
+		t.Fatal("expected fresh attempt after expiry to pass")
+	}
+	if len(limiter.buckets) != 1 {
+		t.Fatalf("expected expired buckets to be pruned, got %d buckets", len(limiter.buckets))
+	}
+	if _, ok := limiter.buckets["login:fresh"]; !ok {
+		t.Fatalf("expected fresh bucket to remain, got %#v", limiter.buckets)
+	}
+}
+
 func TestFixedWindowLimiterNilClockAllowsFirstKey(t *testing.T) {
 	limiter := NewFixedWindowLimiter(1, time.Millisecond, nil)
 

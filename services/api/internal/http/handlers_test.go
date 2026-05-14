@@ -3770,6 +3770,7 @@ func TestLoginRateLimitReturnsGenericUnauthorized(t *testing.T) {
 	loginStore.getUserCalls = &getUserCalls
 	router := apihttp.NewRouter(loginStore,
 		apihttp.WithLoginRateLimiter(security.NewFixedWindowLimiter(1, time.Minute, time.Now)),
+		apihttp.WithMutationRateLimiter(security.NewFixedWindowLimiter(1, time.Minute, time.Now)),
 	)
 
 	for attempt := 0; attempt < 2; attempt++ {
@@ -3788,6 +3789,28 @@ func TestLoginRateLimitReturnsGenericUnauthorized(t *testing.T) {
 	}
 	if getUserCalls != 1 {
 		t.Fatalf("expected throttled login to skip user lookup after first attempt, got %d lookups", getUserCalls)
+	}
+}
+
+func TestLoginMutationRateLimitStillReturnsGenericUnauthorizedForRotatingEmails(t *testing.T) {
+	router := apihttp.NewRouter(successfulLoginStore(t),
+		apihttp.WithLoginRateLimiter(security.NewFixedWindowLimiter(1, time.Minute, time.Now)),
+		apihttp.WithMutationRateLimiter(security.NewFixedWindowLimiter(1, time.Minute, time.Now)),
+	)
+
+	for _, email := range []string{"manager+1@example.test", "manager+2@example.test", "manager+3@example.test"} {
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", strings.NewReader(`{"email":"`+email+`","password":"wrong-password"}`))
+		req.RemoteAddr = "203.0.113.10:41234"
+		rec := httptest.NewRecorder()
+
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("expected generic unauthorized for %s, got %d with body %s", email, rec.Code, rec.Body.String())
+		}
+		if strings.Contains(rec.Body.String(), "rate_limited") || strings.Contains(rec.Body.String(), "rate") || strings.Contains(rec.Body.String(), "throttle") {
+			t.Fatalf("login response leaked rate-limit state for %s: %s", email, rec.Body.String())
+		}
 	}
 }
 
