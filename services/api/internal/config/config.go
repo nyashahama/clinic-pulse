@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -37,6 +38,10 @@ type Config struct {
 	IdleTimeout            time.Duration
 	ShutdownTimeout        time.Duration
 	WebhookDeliveryEnabled bool
+	TrustedOrigins         []string
+	LoginRateLimit         int
+	MutationRateLimit      int
+	RateLimitWindow        time.Duration
 }
 
 func Load() (Config, error) {
@@ -75,6 +80,11 @@ func Load() (Config, error) {
 
 	apiKeyPepper := os.Getenv("CLINICPULSE_API_KEY_PEPPER")
 	webhookDeliveryEnabled := os.Getenv("CLINICPULSE_WEBHOOK_DELIVERY_ENABLED") == "true"
+	trustedOrigins := splitCSV(os.Getenv("CLINICPULSE_TRUSTED_ORIGINS"))
+	rateLimitWindow, err := durationFromEnv("CLINICPULSE_RATE_LIMIT_WINDOW", time.Minute)
+	if err != nil {
+		return Config{}, err
+	}
 
 	cfg := Config{
 		DeployEnv:              deployEnv,
@@ -86,6 +96,10 @@ func Load() (Config, error) {
 		IdleTimeout:            idleTimeout,
 		ShutdownTimeout:        shutdownTimeout,
 		WebhookDeliveryEnabled: webhookDeliveryEnabled,
+		TrustedOrigins:         trustedOrigins,
+		LoginRateLimit:         intEnv("CLINICPULSE_LOGIN_RATE_LIMIT", 8),
+		MutationRateLimit:      intEnv("CLINICPULSE_MUTATION_RATE_LIMIT", 60),
+		RateLimitWindow:        rateLimitWindow,
 	}
 
 	if err := cfg.Validate(); err != nil {
@@ -114,6 +128,14 @@ func (c Config) Validate() error {
 		if len(c.APIKeyPepper) < minAPIKeyPepperLength {
 			problems = append(problems, fmt.Sprintf("CLINICPULSE_API_KEY_PEPPER must be at least %d characters outside local deploy env", minAPIKeyPepperLength))
 		}
+
+		if len(c.TrustedOrigins) == 0 {
+			problems = append(problems, "CLINICPULSE_TRUSTED_ORIGINS is required outside local deploy env")
+		}
+	}
+
+	if c.LoginRateLimit <= 0 || c.MutationRateLimit <= 0 || c.RateLimitWindow <= 0 {
+		problems = append(problems, "rate limit settings must be positive")
 	}
 
 	for _, timeout := range []struct {
@@ -142,6 +164,30 @@ func envOrDefault(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func splitCSV(value string) []string {
+	parts := strings.Split(value, ",")
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			result = append(result, strings.TrimRight(part, "/"))
+		}
+	}
+	return result
+}
+
+func intEnv(key string, fallback int) int {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed <= 0 {
+		return fallback
+	}
+	return parsed
 }
 
 func durationFromEnv(key string, fallback time.Duration) (time.Duration, error) {
