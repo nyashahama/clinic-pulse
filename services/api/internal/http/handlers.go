@@ -798,40 +798,14 @@ func (h Handler) authorizeAdminUserManagement(w nethttp.ResponseWriter, r *netht
 }
 
 func adminAccessChangeFromRequest(role string, organisationID *int64, district *string) (service.AdminUserAccessChange, []string) {
-	fields := []string(nil)
 	normalizedRole := strings.ToLower(strings.TrimSpace(role))
 	normalizedDistrict := optionalTrimmedString(district)
-
-	if normalizedRole == "" {
-		fields = append(fields, "role: role is required")
-	} else if !validAdminUserRole(normalizedRole) {
-		fields = append(fields, "role: role must be one of: system_admin, org_admin, district_manager, reporter")
-	}
-	if organisationID != nil && *organisationID <= 0 {
-		fields = append(fields, "organisationId: organisationId must be positive")
-	}
-	if normalizedRole != "" && normalizedRole != "system_admin" && organisationID == nil {
-		fields = append(fields, "organisationId: organisationId is required")
-	}
-	if normalizedRole == "system_admin" {
-		organisationID = nil
-		normalizedDistrict = nil
-	}
-
-	return service.AdminUserAccessChange{
+	change := service.AdminUserAccessChange{
 		Role:           normalizedRole,
 		OrganisationID: organisationID,
 		District:       normalizedDistrict,
-	}, fields
-}
-
-func validAdminUserRole(role string) bool {
-	switch role {
-	case "system_admin", "org_admin", "district_manager", "reporter":
-		return true
-	default:
-		return false
 	}
+	return change, service.ValidateAdminUserAccessChange(change)
 }
 
 func optionalTrimmedAdminDisplayName(value *string) (*string, []string) {

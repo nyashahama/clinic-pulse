@@ -1206,6 +1206,59 @@ func TestAdminCanCreateUserWithoutLeakingHash(t *testing.T) {
 	}
 }
 
+func TestAdminCreateUserRejectsDistrictManagerWithoutDistrictBeforeCreateUser(t *testing.T) {
+	orgID := int64(1)
+	var created store.CreateUserInput
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{createUserInput: &created}))
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/users", strings.NewReader(`{"email":"dm@example.test","displayName":"District Manager","role":"district_manager","organisationId":1}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected validation error, got %d with body %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"code":"validation_error"`) {
+		t.Fatalf("expected validation_error response, got %s", rec.Body.String())
+	}
+	if created.Email != "" {
+		t.Fatalf("expected CreateUser not to be called, got %#v", created)
+	}
+}
+
+func TestAdminCreateUserRejectsOrgScopedRolesWithDistrictBeforeCreateUser(t *testing.T) {
+	tests := []struct {
+		name string
+		role string
+	}{
+		{name: "reporter", role: "reporter"},
+		{name: "org admin", role: "org_admin"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			orgID := int64(1)
+			var created store.CreateUserInput
+			router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{createUserInput: &created}))
+			body := `{"email":"scoped@example.test","displayName":"Scoped User","role":"` + tt.role + `","organisationId":1,"district":"Tshwane"}`
+			req := newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/users", strings.NewReader(body))
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("expected validation error, got %d with body %s", rec.Code, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), `"code":"validation_error"`) {
+				t.Fatalf("expected validation_error response, got %s", rec.Body.String())
+			}
+			if created.Email != "" {
+				t.Fatalf("expected CreateUser not to be called, got %#v", created)
+			}
+		})
+	}
+}
+
 func TestAdminCanRevokeManagedUserSessions(t *testing.T) {
 	orgID := int64(1)
 	revokedUserID := int64(0)
@@ -1279,6 +1332,59 @@ func TestAdminCanUpdateManagedUserAccess(t *testing.T) {
 	}
 	if membershipInput.District == nil || *membershipInput.District != district {
 		t.Fatalf("expected district %q, got %#v", district, membershipInput.District)
+	}
+}
+
+func TestAdminUpdateUserAccessRejectsInvalidRoleScopeBeforeMembershipUpsert(t *testing.T) {
+	orgID := int64(1)
+	tests := []struct {
+		name string
+		body string
+	}{
+		{
+			name: "district manager without district",
+			body: `{"role":"district_manager","organisationId":1}`,
+		},
+		{
+			name: "reporter with district",
+			body: `{"role":"reporter","organisationId":1,"district":"Tshwane"}`,
+		},
+		{
+			name: "org admin with district",
+			body: `{"role":"org_admin","organisationId":1,"district":"Tshwane"}`,
+		},
+		{
+			name: "system admin with organisation",
+			body: `{"role":"system_admin","organisationId":1}`,
+		},
+		{
+			name: "system admin with district",
+			body: `{"role":"system_admin","district":"Tshwane"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var membershipInput store.UpsertMembershipInput
+			router := apihttp.NewRouter(authenticatedAdminStore(t, "system_admin", orgID, fakeStore{
+				adminUserAccess:       store.AdminUserAccessRow{UserID: 42, Role: "reporter", OrganisationID: &orgID},
+				upsertMembershipInput: &membershipInput,
+			}))
+			req := newAuthenticatedRequest(t, http.MethodPut, "/v1/admin/users/42/access", strings.NewReader(tt.body))
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("expected validation error, got %d with body %s", rec.Code, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), `"code":"validation_error"`) {
+				t.Fatalf("expected validation_error response, got %s", rec.Body.String())
+			}
+			if membershipInput.UserID != 0 {
+				t.Fatalf("expected membership not to be upserted, got %#v", membershipInput)
+			}
+		})
 	}
 }
 
