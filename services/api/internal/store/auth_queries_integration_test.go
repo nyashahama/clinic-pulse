@@ -293,6 +293,21 @@ func TestAdminLifecycleQueriesReplaceOrganisationMembership(t *testing.T) {
 	}
 }
 
+func TestAdminLifecycleQueriesUpsertOrganisationMembershipMissingUserReturnsNoRows(t *testing.T) {
+	ctx := context.Background()
+	store := integrationStore(t)
+	orgID := insertIntegrationOrganisation(t, ctx, store, "Missing User Access", "missing-user-access")
+
+	_, err := store.UpsertOrganisationMembership(ctx, UpsertMembershipInput{
+		UserID:         999_999,
+		OrganisationID: &orgID,
+		Role:           "org_admin",
+	})
+	if !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("expected pgx.ErrNoRows for missing user membership replacement, got %v", err)
+	}
+}
+
 func TestAdminLifecycleQueriesGetAdminUserAccessByUserIDUsesRoleRankOrder(t *testing.T) {
 	ctx := context.Background()
 	store := integrationStore(t)

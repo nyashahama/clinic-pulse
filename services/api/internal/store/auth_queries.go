@@ -171,6 +171,12 @@ SET
 WHERE id = $1
 RETURNING id, email, display_name, password_hash, disabled_at, password_changed_at, password_reset_required, created_at, updated_at`
 
+	lockUserForMembershipReplacementSQL = `
+SELECT id
+FROM users
+WHERE id = $1
+FOR UPDATE`
+
 	deleteOrganisationMembershipsForUserSQL = `
 DELETE FROM organisation_memberships
 WHERE user_id = $1`
@@ -327,6 +333,11 @@ func (s Store) UpsertOrganisationMembership(ctx context.Context, input UpsertMem
 		return OrganisationMembership{}, err
 	}
 	defer tx.Rollback(ctx)
+
+	var lockedUserID int64
+	if err := tx.QueryRow(ctx, lockUserForMembershipReplacementSQL, input.UserID).Scan(&lockedUserID); err != nil {
+		return OrganisationMembership{}, err
+	}
 
 	if _, err := tx.Exec(ctx, deleteOrganisationMembershipsForUserSQL, input.UserID); err != nil {
 		return OrganisationMembership{}, err
