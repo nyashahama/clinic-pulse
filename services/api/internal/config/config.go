@@ -85,6 +85,14 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	loginRateLimit, err := intEnv("CLINICPULSE_LOGIN_RATE_LIMIT", 8)
+	if err != nil {
+		return Config{}, err
+	}
+	mutationRateLimit, err := intEnv("CLINICPULSE_MUTATION_RATE_LIMIT", 60)
+	if err != nil {
+		return Config{}, err
+	}
 
 	cfg := Config{
 		DeployEnv:              deployEnv,
@@ -97,8 +105,8 @@ func Load() (Config, error) {
 		ShutdownTimeout:        shutdownTimeout,
 		WebhookDeliveryEnabled: webhookDeliveryEnabled,
 		TrustedOrigins:         trustedOrigins,
-		LoginRateLimit:         intEnv("CLINICPULSE_LOGIN_RATE_LIMIT", 8),
-		MutationRateLimit:      intEnv("CLINICPULSE_MUTATION_RATE_LIMIT", 60),
+		LoginRateLimit:         loginRateLimit,
+		MutationRateLimit:      mutationRateLimit,
 		RateLimitWindow:        rateLimitWindow,
 	}
 
@@ -178,16 +186,21 @@ func splitCSV(value string) []string {
 	return result
 }
 
-func intEnv(key string, fallback int) int {
+func intEnv(key string, fallback int) (int, error) {
 	value := strings.TrimSpace(os.Getenv(key))
 	if value == "" {
-		return fallback
+		return fallback, nil
 	}
+
 	parsed, err := strconv.Atoi(value)
-	if err != nil || parsed <= 0 {
-		return fallback
+	if err != nil {
+		return 0, fmt.Errorf("%s must be a positive integer: %w", key, err)
 	}
-	return parsed
+	if parsed <= 0 {
+		return 0, fmt.Errorf("%s must be positive", key)
+	}
+
+	return parsed, nil
 }
 
 func durationFromEnv(key string, fallback time.Duration) (time.Duration, error) {

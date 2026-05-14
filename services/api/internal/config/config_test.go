@@ -130,6 +130,44 @@ func TestLoadParsesTrustedOrigins(t *testing.T) {
 	}
 }
 
+func TestLoadRejectsInvalidRateLimits(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		key   string
+		value string
+	}{
+		{
+			name:  "zero login limit",
+			key:   "CLINICPULSE_LOGIN_RATE_LIMIT",
+			value: "0",
+		},
+		{
+			name:  "negative mutation limit",
+			key:   "CLINICPULSE_MUTATION_RATE_LIMIT",
+			value: "-1",
+		},
+		{
+			name:  "non-integer login limit",
+			key:   "CLINICPULSE_LOGIN_RATE_LIMIT",
+			value: "abc",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			clearConfigEnv(t)
+			t.Setenv(tt.key, tt.value)
+
+			_, err := Load()
+			if err == nil {
+				t.Fatal("Load() error = nil, want validation error")
+			}
+
+			if !strings.Contains(err.Error(), tt.key) {
+				t.Fatalf("Load() error = %q, want mention %s", err.Error(), tt.key)
+			}
+		})
+	}
+}
+
 func TestLoadRejectsNonPositiveTimeout(t *testing.T) {
 	clearConfigEnv(t)
 	t.Setenv("CLINICPULSE_API_READ_TIMEOUT", "0s")
