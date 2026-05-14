@@ -21,8 +21,10 @@ async function signIn(page: Page) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(demoAccount.email);
   await page.getByLabel("Password").fill(demoAccount.password);
-  await page.getByRole("button", { name: "Log in" }).click();
-  await expect(page).toHaveURL(/\/demo$/);
+  await Promise.all([
+    page.waitForURL(/\/admin$/),
+    page.getByRole("button", { name: "Log in" }).click(),
+  ]);
 }
 
 async function capture(page: Page, filename: string) {
@@ -59,6 +61,7 @@ async function captureScreenshots(page: Page) {
   await capture(page, "booking-thanks-desktop.png");
 
   await signIn(page);
+  await gotoStable(page, "/demo");
   await expect(page.getByRole("heading", { name: "Clinic table" })).toBeVisible();
   await capture(page, "district-console-desktop.png");
 
@@ -72,12 +75,12 @@ async function captureScreenshots(page: Page) {
   await capture(page, "finder-mobile.png");
 
   await gotoStable(page, "/field");
-  await expect(page.getByRole("heading", { name: "Mobile reporting flow" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Field workbench" })).toBeVisible();
   await capture(page, "field-report-mobile.png");
 
   await page.setViewportSize({ width: 1440, height: 1100 });
   await gotoStable(page, "/admin");
-  await expect(page.getByRole("heading", { name: "Admin control deck" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Operations admin deck" })).toBeVisible();
   await capture(page, "admin-readiness-desktop.png");
 }
 
@@ -96,6 +99,7 @@ async function recordWalkthrough(browser: Browser, baseURL: string | undefined) 
   await page.waitForTimeout(900);
 
   await signIn(page);
+  await gotoStable(page, "/demo");
   await page.waitForTimeout(900);
 
   await gotoStable(page, "/demo/clinics/clinic-mamelodi-east");

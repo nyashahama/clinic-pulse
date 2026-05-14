@@ -8,6 +8,7 @@ E2E_DATABASE_ADMIN_URL ?= postgres://clinicpulse:clinicpulse@localhost:$(E2E_POS
 CLINICPULSE_API_BASE_URL ?= http://localhost:8080
 NEXT_PUBLIC_CLINICPULSE_API_BASE_URL ?= /api/clinicpulse
 API_IMAGE ?= clinicpulse-api:local
+DOCKER_BUILD_ATTEMPTS ?= 3
 
 API_DIR := services/api
 AUTH_SEED := $(API_DIR)/seeds/local_phase3_auth_users.sql
@@ -79,7 +80,16 @@ test-e2e: db-up-e2e db-reset-e2e
 	E2E_DATABASE_URL="$(E2E_DATABASE_URL)" npm run test:e2e
 
 build-api-container:
-	docker build -t "$(API_IMAGE)" -f "$(API_DIR)/Dockerfile" "$(API_DIR)"
+	@for attempt in $$(seq 1 "$(DOCKER_BUILD_ATTEMPTS)"); do \
+		if docker build -t "$(API_IMAGE)" -f "$(API_DIR)/Dockerfile" "$(API_DIR)"; then \
+			exit 0; \
+		fi; \
+		if [ "$$attempt" -eq "$(DOCKER_BUILD_ATTEMPTS)" ]; then \
+			exit 1; \
+		fi; \
+		echo "docker build failed on attempt $$attempt/$(DOCKER_BUILD_ATTEMPTS); retrying..." >&2; \
+		sleep $$((attempt * 5)); \
+	done
 
 migrate-api-container: build-api-container db-up-e2e db-reset-e2e-empty
 	docker run --rm --network host \
