@@ -106,4 +106,16 @@ describe("validateFrontendRuntimeEnv", () => {
       }).allowPublicRegistration,
     ).toBe(false);
   });
+
+  it("rejects public registration outside local deployments", () => {
+    expect(() =>
+      validateFrontendRuntimeEnv({
+        CLINICPULSE_DEPLOY_ENV: "staging",
+        CLINICPULSE_API_BASE_URL: "https://api.clinicpulse.test",
+        NEXT_PUBLIC_CLINICPULSE_API_BASE_URL: "/api/clinicpulse",
+        CLINICPULSE_ALLOW_DEMO_FALLBACK: "false",
+        CLINICPULSE_ALLOW_PUBLIC_REGISTRATION: "true",
+      }),
+    ).toThrowError(/CLINICPULSE_ALLOW_PUBLIC_REGISTRATION/);
+  });
 });

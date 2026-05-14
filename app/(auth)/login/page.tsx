@@ -8,6 +8,8 @@ import { validateFrontendRuntimeEnv } from "@/lib/runtime/frontend-env";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 const demoAccounts = [
   {
     role: "System admin",

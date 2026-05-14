@@ -3,6 +3,8 @@ import { SignupForm, type SignupActionState } from "@/components/auth/signup-for
 import { validateFrontendRuntimeEnv } from "@/lib/runtime/frontend-env";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
 async function signupAction(
   _state: SignupActionState,
   formData: FormData,
