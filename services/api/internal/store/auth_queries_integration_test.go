@@ -507,6 +507,53 @@ func TestAdminLifecycleQueriesGetUserByIDReturnsPasswordLifecycleFields(t *testi
 	}
 }
 
+func TestUpdateUserPasswordUpdatesHashChangedAtAndClearsResetRequired(t *testing.T) {
+	ctx := context.Background()
+	store := integrationStore(t)
+	oldHash := "old-hash"
+
+	user, err := store.CreateUser(ctx, CreateUserInput{
+		Email:                 "change-password@example.test",
+		DisplayName:           "Change Password",
+		PasswordHash:          &oldHash,
+		PasswordResetRequired: true,
+	})
+	if err != nil {
+		t.Fatalf("CreateUser returned error: %v", err)
+	}
+	previousChangedAt := time.Now().UTC().Add(-24 * time.Hour).Truncate(time.Microsecond)
+	if _, err := store.pool.Exec(ctx, `
+UPDATE users
+SET password_changed_at = $2,
+    password_reset_required = true
+WHERE id = $1`, user.ID, previousChangedAt); err != nil {
+		t.Fatalf("set previous password lifecycle fields: %v", err)
+	}
+
+	updated, err := store.UpdateUserPassword(ctx, user.ID, "new-hash")
+	if err != nil {
+		t.Fatalf("UpdateUserPassword returned error: %v", err)
+	}
+
+	if updated.PasswordHash == nil || *updated.PasswordHash != "new-hash" {
+		t.Fatalf("expected updated password hash, got %+v", updated.PasswordHash)
+	}
+	if updated.PasswordResetRequired {
+		t.Fatalf("expected password reset requirement to clear, got %+v", updated)
+	}
+	if updated.PasswordChangedAt == nil || !updated.PasswordChangedAt.After(previousChangedAt) {
+		t.Fatalf("expected password_changed_at after %s, got %+v", previousChangedAt, updated.PasswordChangedAt)
+	}
+
+	got, err := store.GetUserByID(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("GetUserByID returned error: %v", err)
+	}
+	if got.PasswordHash == nil || *got.PasswordHash != "new-hash" || got.PasswordResetRequired || got.PasswordChangedAt == nil || !got.PasswordChangedAt.After(previousChangedAt) {
+		t.Fatalf("expected persisted password lifecycle update, got %+v", got)
+	}
+}
+
 func integrationStore(t *testing.T) Store {
 	t.Helper()
 

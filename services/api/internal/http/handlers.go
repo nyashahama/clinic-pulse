@@ -57,6 +57,7 @@ type ClinicStore interface {
 	GetUserByID(ctx context.Context, userID int64) (store.User, error)
 	GetAdminUserAccessByUserID(ctx context.Context, userID int64) (store.AdminUserAccessRow, error)
 	UpdateUserLifecycle(ctx context.Context, input store.UpdateUserLifecycleInput) (store.User, error)
+	UpdateUserPassword(ctx context.Context, userID int64, passwordHash string) (store.User, error)
 	UpsertOrganisationMembership(ctx context.Context, input store.UpsertMembershipInput) (store.OrganisationMembership, error)
 	RevokeActiveSessionsForUser(ctx context.Context, userID int64) (int64, error)
 	CreateAuditEvent(ctx context.Context, input store.CreateAuditEventInput) (store.AuditEvent, error)
@@ -1633,6 +1634,42 @@ func (h Handler) Me(w nethttp.ResponseWriter, r *nethttp.Request) {
 	})
 }
 
+func (h Handler) ChangePassword(w nethttp.ResponseWriter, r *nethttp.Request) {
+	details, ok := authDetailsFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	var payload changePasswordRequest
+	if !decodeSingleJSON(w, r, &payload) {
+		return
+	}
+	if payload.CurrentPassword == "" || len(payload.NewPassword) < 12 {
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "currentPassword and a 12+ character newPassword are required")
+		return
+	}
+	if details.User.PasswordHash == nil {
+		respondUnauthorized(w)
+		return
+	}
+	okPassword, err := auth.VerifyPassword(payload.CurrentPassword, *details.User.PasswordHash)
+	if err != nil || !okPassword {
+		respondUnauthorized(w)
+		return
+	}
+	hash, err := auth.HashPassword(payload.NewPassword)
+	if err != nil {
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "newPassword is invalid")
+		return
+	}
+	if _, err := h.store.UpdateUserPassword(r.Context(), details.User.ID, hash); err != nil {
+		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	w.WriteHeader(nethttp.StatusNoContent)
+}
+
 func (h Handler) Logout(w nethttp.ResponseWriter, r *nethttp.Request) {
 	if cookie, err := r.Cookie(sessionCookieName); err == nil {
 		if tokenHash, err := auth.HashSessionToken(cookie.Value); err == nil {
@@ -2187,6 +2224,11 @@ func parseOfflineSyncTimestamp(value string) (time.Time, bool) {
 type loginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+type changePasswordRequest struct {
+	CurrentPassword string `json:"currentPassword"`
+	NewPassword     string `json:"newPassword"`
 }
 
 type authLoginResponse struct {

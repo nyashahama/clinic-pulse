@@ -4273,6 +4273,76 @@ func TestAuthMeUnknownExpiredRevokedOrDisabledSessionReturnsUnauthorized(t *test
 	}
 }
 
+func TestAuthenticatedUserCanChangeOwnPassword(t *testing.T) {
+	oldHash := hashPasswordForTest(t, "old-password")
+	var updatedHash string
+	router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{
+		userPasswordHash:    &oldHash,
+		updatedPasswordHash: &updatedHash,
+	}))
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/password", strings.NewReader(`{"currentPassword":"old-password","newPassword":"new-secure-password-123"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "http://localhost:3000")
+	req.AddCookie(&http.Cookie{Name: "clinicpulse_session", Value: sessionTokenForTest(t)})
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected no content, got %d with body %s", rec.Code, rec.Body.String())
+	}
+	if updatedHash == "" || strings.Contains(updatedHash, "new-secure-password-123") {
+		t.Fatalf("expected hashed password update")
+	}
+}
+
+func TestChangeOwnPasswordRejectsWrongCurrentPasswordWithoutUpdatingHash(t *testing.T) {
+	oldHash := hashPasswordForTest(t, "old-password")
+	var updatedHash string
+	router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{
+		userPasswordHash:    &oldHash,
+		updatedPasswordHash: &updatedHash,
+	}))
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/password", strings.NewReader(`{"currentPassword":"wrong-password","newPassword":"new-secure-password-123"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "http://localhost:3000")
+	req.AddCookie(&http.Cookie{Name: "clinicpulse_session", Value: sessionTokenForTest(t)})
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assertGenericUnauthorized(t, rec)
+	if updatedHash != "" {
+		t.Fatalf("expected wrong current password not to update hash, got %q", updatedHash)
+	}
+	if strings.Contains(rec.Body.String(), "wrong-password") || strings.Contains(rec.Body.String(), "new-secure-password-123") {
+		t.Fatalf("expected password material not to appear in response, got %s", rec.Body.String())
+	}
+}
+
+func TestChangeOwnPasswordAllowsTrustedOriginWithCSRFMiddleware(t *testing.T) {
+	oldHash := hashPasswordForTest(t, "old-password")
+	var updatedHash string
+	router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{
+		userPasswordHash:    &oldHash,
+		updatedPasswordHash: &updatedHash,
+	}), apihttp.WithTrustedOrigins([]string{"http://localhost:3000"}))
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/password", strings.NewReader(`{"currentPassword":"old-password","newPassword":"new-secure-password-123"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "http://localhost:3000")
+	req.AddCookie(&http.Cookie{Name: "clinicpulse_session", Value: sessionTokenForTest(t)})
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected trusted-origin password change not to be blocked, got %d with body %s", rec.Code, rec.Body.String())
+	}
+	if updatedHash == "" {
+		t.Fatal("expected trusted-origin password change to update hash")
+	}
+}
+
 func TestLogoutRevokesValidCookieHashAndClearsCookie(t *testing.T) {
 	token := sessionTokenForTest(t)
 	tokenHash := hashSessionTokenForTest(t, token)
@@ -4434,6 +4504,9 @@ type fakeStore struct {
 	sessionAuditInput                     *store.CreateSessionWithAuditInput
 	auditInput                            *store.CreateAuditEventInput
 	getSessionTokenHash                   *string
+	userPasswordHash                      *string
+	updatedPasswordHash                   *string
+	updatePasswordUserID                  *int64
 	revokedTokenHash                      *string
 	revokedSessionsUserID                 *int64
 	createCalls                           *int
@@ -4467,6 +4540,7 @@ type fakeStore struct {
 	reviewErr                             error
 	getUserErr                            error
 	getUserByIDErr                        error
+	updatePasswordErr                     error
 	createSessionErr                      error
 	createSessionWithAuditErr             error
 	auditErr                              error
@@ -4713,6 +4787,41 @@ func (f fakeStore) UpdateUserLifecycle(_ context.Context, input store.UpdateUser
 	return user, nil
 }
 
+func (f fakeStore) UpdateUserPassword(_ context.Context, userID int64, passwordHash string) (store.User, error) {
+	if f.updatePasswordUserID != nil {
+		*f.updatePasswordUserID = userID
+	}
+	if f.updatedPasswordHash != nil {
+		*f.updatedPasswordHash = passwordHash
+	}
+	if f.updatePasswordErr != nil {
+		return store.User{}, f.updatePasswordErr
+	}
+	now := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
+	user := f.updatedUser
+	if user.ID == 0 {
+		user.ID = userID
+	}
+	if user.Email == "" {
+		user.Email = f.sessionUser.Email
+	}
+	if user.DisplayName == "" {
+		user.DisplayName = f.sessionUser.DisplayName
+	}
+	user.PasswordHash = &passwordHash
+	user.PasswordResetRequired = false
+	if user.PasswordChangedAt == nil {
+		user.PasswordChangedAt = &now
+	}
+	if user.CreatedAt.IsZero() {
+		user.CreatedAt = now
+	}
+	if user.UpdatedAt.IsZero() {
+		user.UpdatedAt = now
+	}
+	return user, nil
+}
+
 func (f fakeStore) UpsertOrganisationMembership(_ context.Context, input store.UpsertMembershipInput) (store.OrganisationMembership, error) {
 	if f.upsertMembershipInput != nil {
 		*f.upsertMembershipInput = input
@@ -4927,7 +5036,11 @@ func (f fakeStore) GetSessionByTokenHash(_ context.Context, tokenHash string) (s
 	if f.getSessionTokenHash != nil {
 		*f.getSessionTokenHash = tokenHash
 	}
-	return f.session, f.sessionUser, f.getSessionErr
+	user := f.sessionUser
+	if f.userPasswordHash != nil {
+		user.PasswordHash = f.userPasswordHash
+	}
+	return f.session, user, f.getSessionErr
 }
 
 func (f fakeStore) RevokeSession(_ context.Context, tokenHash string) error {

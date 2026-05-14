@@ -171,6 +171,15 @@ SET
 WHERE id = $1
 RETURNING id, email, display_name, password_hash, disabled_at, password_changed_at, password_reset_required, created_at, updated_at`
 
+	updateUserPasswordSQL = `
+UPDATE users
+SET password_hash = $2,
+    password_changed_at = now(),
+    password_reset_required = false,
+    updated_at = now()
+WHERE id = $1
+RETURNING id, email, display_name, password_hash, disabled_at, password_changed_at, password_reset_required, created_at, updated_at`
+
 	lockUserForMembershipReplacementSQL = `
 SELECT id
 FROM users
@@ -265,6 +274,10 @@ func (s Store) UpdateUserLifecycle(ctx context.Context, input UpdateUserLifecycl
 		input.Disabled,
 		input.UpdatedAt,
 	))
+}
+
+func (s Store) UpdateUserPassword(ctx context.Context, userID int64, passwordHash string) (User, error) {
+	return scanUser(s.pool.QueryRow(ctx, updateUserPasswordSQL, userID, passwordHash))
 }
 
 func (s Store) CreateSession(ctx context.Context, input CreateSessionInput) (Session, error) {
