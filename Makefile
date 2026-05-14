@@ -9,7 +9,6 @@ CLINICPULSE_API_BASE_URL ?= http://localhost:8080
 NEXT_PUBLIC_CLINICPULSE_API_BASE_URL ?= /api/clinicpulse
 
 API_DIR := services/api
-MIGRATIONS := $(sort $(wildcard $(API_DIR)/migrations/*.sql))
 AUTH_SEED := $(API_DIR)/seeds/local_phase3_auth_users.sql
 
 .PHONY: db-up db-up-e2e db-wait db-wait-e2e db-migrate db-seed-auth db-bootstrap db-create-e2e db-reset-e2e dev-api dev-web test-api test-web test-e2e lint build verify audit-web audit-api verify-security
@@ -41,10 +40,7 @@ db-wait-e2e:
 	exit 1
 
 db-migrate:
-	@for file in $(MIGRATIONS); do \
-		echo "Applying $$file"; \
-		psql "$(DATABASE_URL)" -v ON_ERROR_STOP=1 -f "$$file"; \
-	done
+	cd "$(API_DIR)" && DATABASE_URL="$(DATABASE_URL)" CLINICPULSE_DEPLOY_ENV="local" go run ./cmd/migrate
 
 db-seed-auth:
 	psql "$(DATABASE_URL)" -v ON_ERROR_STOP=1 -f "$(AUTH_SEED)"
