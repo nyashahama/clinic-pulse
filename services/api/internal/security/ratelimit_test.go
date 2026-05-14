@@ -32,3 +32,29 @@ func TestFixedWindowLimiterResetsAfterWindow(t *testing.T) {
 		t.Fatal("expected attempt after window to pass")
 	}
 }
+
+func TestFixedWindowLimiterNilClockAllowsFirstKey(t *testing.T) {
+	limiter := NewFixedWindowLimiter(1, time.Millisecond, nil)
+
+	if !limiter.Allow("login:nil-clock@example.test") {
+		t.Fatal("expected first attempt with nil clock to pass")
+	}
+}
+
+func TestFixedWindowLimiterNonPositiveLimitAllows(t *testing.T) {
+	now := time.Date(2026, 5, 14, 8, 0, 0, 0, time.UTC)
+	limiter := NewFixedWindowLimiter(0, time.Minute, func() time.Time { return now })
+
+	if !limiter.Allow("key") {
+		t.Fatal("expected non-positive limit to allow")
+	}
+}
+
+func TestFixedWindowLimiterNonPositiveWindowAllows(t *testing.T) {
+	now := time.Date(2026, 5, 14, 8, 0, 0, 0, time.UTC)
+	limiter := NewFixedWindowLimiter(1, 0, func() time.Time { return now })
+
+	if !limiter.Allow("key") {
+		t.Fatal("expected non-positive window to allow")
+	}
+}
