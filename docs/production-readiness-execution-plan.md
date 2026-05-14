@@ -2,7 +2,7 @@
 
 Date: 2026-05-12
 Status: Active roadmap
-Current phase: Phase 1 - Production Runtime And Deployment
+Current phase: Phase 2 - Security And Auth Hardening
 
 ## Purpose
 
@@ -14,6 +14,7 @@ ClinicPulse is currently a production-shaped alpha. It has the core product loop
 
 - `Not started`: no implementation work has begun.
 - `Planned`: spec and implementation plan exist.
+- `Spec in review`: spec exists and is awaiting approval before implementation planning.
 - `In progress`: implementation branch is active.
 - `Blocked`: implementation is waiting on a decision, dependency, or external setup.
 - `Complete`: phase acceptance criteria passed and closeout is documented.
@@ -38,8 +39,8 @@ Phase 0 makes these commands reliable and enforceable. Later phases may add stri
 | Phase | Status | Target Outcome | Estimated Effort |
 | --- | --- | --- | --- |
 | Phase 0 - Release Gate Stabilization | Complete | Clean dependency/security scans, stable E2E, and blocking CI gates | 1-2 days |
-| Phase 1 - Production Runtime And Deployment | In progress | Repeatable staging deployment with production runtime controls | 3-5 days |
-| Phase 2 - Security And Auth Hardening | Not started | Production-safe auth, sessions, secrets, rate limits, and account lifecycle | 1 week |
+| Phase 1 - Production Runtime And Deployment | Complete | Repeatable staging deployment with production runtime controls | 3-5 days |
+| Phase 2 - Security And Auth Hardening | Spec in review | Production-safe auth, sessions, secrets, rate limits, and account lifecycle | 1 week |
 | Phase 3 - Pilot Data And Product Integrity | Not started | Real data provenance, completed pilot workflows, and legal/safety surfaces | 1-2 weeks |
 | Phase 4 - Observability And Operations | Not started | Logs, metrics, tracing, alerts, runbooks, and incident process | 1 week |
 | Phase 5 - Pilot Launch Readiness | Not started | Release candidate, stakeholder docs, operational signoff, and launch checklist | 1-2 weeks |
@@ -71,6 +72,7 @@ Do not start Phase 1 until the commands in "Production Readiness Gates" pass fro
 
 Spec: `docs/phase-1-production-runtime-and-deployment-spec.md`
 Plan: `docs/phase-1-production-runtime-and-deployment-implementation-plan.md`
+Closeout: `docs/phase-1-production-runtime-and-deployment-closeout.md`
 Deployment runbook: `docs/deployment.md`
 
 Goal:
@@ -93,6 +95,8 @@ Phase 1 is complete when a clean staging deploy can be recreated from CI and the
 
 ## Phase 2 - Security And Auth Hardening
 
+Spec: `docs/phase-2-security-and-auth-hardening-spec.md`
+
 Goal:
 
 Remove demo-only authentication assumptions and harden request/session behavior.
@@ -100,7 +104,7 @@ Remove demo-only authentication assumptions and harden request/session behavior.
 Scope:
 
 - Remove visible demo credentials from production-facing UI.
-- Enforce real admin provisioning, invite, password reset, disable, and role-change flows.
+- Enforce real admin provisioning, disable, enable, and role-change flows.
 - Add login throttling, API rate limiting, CSRF/origin protection for cookie-auth mutations, and session rotation/revocation.
 - Enforce secure cookies, secret strength, API key pepper, and least-privilege production configuration.
 - Add security headers and CSP.

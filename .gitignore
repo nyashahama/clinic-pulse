@@ -62,5 +62,7 @@ docs/*
 !docs/phase-0-release-gate-stabilization-closeout.md
 !docs/phase-1-production-runtime-and-deployment-spec.md
 !docs/phase-1-production-runtime-and-deployment-implementation-plan.md
+!docs/phase-1-production-runtime-and-deployment-closeout.md
+!docs/phase-2-security-and-auth-hardening-spec.md
 !docs/deployment.md
 reference-projects/
