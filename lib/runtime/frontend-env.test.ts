@@ -49,6 +49,16 @@ describe("validateFrontendRuntimeEnv", () => {
     ).toThrowError(/NEXT_PUBLIC_CLINICPULSE_API_BASE_URL/);
   });
 
+  it("rejects staging runtime configuration without an explicit demo fallback opt-out", () => {
+    expect(() =>
+      validateFrontendRuntimeEnv({
+        CLINICPULSE_DEPLOY_ENV: "staging",
+        CLINICPULSE_API_BASE_URL: "https://api.staging.clinicpulse.example",
+        NEXT_PUBLIC_CLINICPULSE_API_BASE_URL: "/api/clinicpulse",
+      }),
+    ).toThrowError(/CLINICPULSE_ALLOW_DEMO_FALLBACK/);
+  });
+
   it("rejects malformed staging API base URLs", () => {
     expect(() =>
       validateFrontendRuntimeEnv({

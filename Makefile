@@ -12,7 +12,7 @@ API_IMAGE ?= clinicpulse-api:local
 API_DIR := services/api
 AUTH_SEED := $(API_DIR)/seeds/local_phase3_auth_users.sql
 
-.PHONY: db-up db-up-e2e db-wait db-wait-e2e db-migrate db-seed-auth db-bootstrap db-create-e2e db-reset-e2e dev-api dev-web test-api test-web test-e2e lint build verify audit-web audit-api verify-security build-api-container migrate-api-container test-api-container
+.PHONY: db-up db-up-e2e db-wait db-wait-e2e db-migrate db-seed-auth db-bootstrap db-create-e2e db-reset-e2e-empty db-reset-e2e dev-api dev-web test-api test-web test-e2e lint build verify audit-web audit-api verify-security build-api-container migrate-api-container test-api-container
 
 db-up:
 	CLINICPULSE_POSTGRES_PORT="$(POSTGRES_PORT)" docker compose up -d postgres
@@ -51,8 +51,10 @@ db-bootstrap: db-migrate db-seed-auth
 db-create-e2e: db-wait-e2e
 	psql "$(E2E_DATABASE_ADMIN_URL)" -tAc "SELECT 1 FROM pg_database WHERE datname = '$(E2E_DATABASE_NAME)'" | grep -q 1 || psql "$(E2E_DATABASE_ADMIN_URL)" -v ON_ERROR_STOP=1 -c "CREATE DATABASE $(E2E_DATABASE_NAME)"
 
-db-reset-e2e: db-create-e2e
+db-reset-e2e-empty: db-create-e2e
 	psql "$(E2E_DATABASE_URL)" -v ON_ERROR_STOP=1 -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+
+db-reset-e2e: db-reset-e2e-empty
 	$(MAKE) DATABASE_URL="$(E2E_DATABASE_URL)" db-bootstrap
 
 dev-api:
@@ -79,7 +81,7 @@ test-e2e: db-up-e2e db-reset-e2e
 build-api-container:
 	docker build -t "$(API_IMAGE)" -f "$(API_DIR)/Dockerfile" "$(API_DIR)"
 
-migrate-api-container: build-api-container db-up-e2e db-reset-e2e
+migrate-api-container: build-api-container db-up-e2e db-reset-e2e-empty
 	docker run --rm --network host \
 		-e CLINICPULSE_DEPLOY_ENV=local \
 		-e DATABASE_URL="$(E2E_DATABASE_URL)" \

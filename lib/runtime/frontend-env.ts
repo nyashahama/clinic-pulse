@@ -77,9 +77,9 @@ export function validateFrontendRuntimeEnv(
       );
     }
 
-    if (env.CLINICPULSE_ALLOW_DEMO_FALLBACK === "true") {
+    if (env.CLINICPULSE_ALLOW_DEMO_FALLBACK !== "false") {
       problems.push(
-        "CLINICPULSE_ALLOW_DEMO_FALLBACK=true is not allowed outside local deployments.",
+        "CLINICPULSE_ALLOW_DEMO_FALLBACK must be explicitly false outside local deployments.",
       );
     }
   }
