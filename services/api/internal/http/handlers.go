@@ -53,6 +53,13 @@ type ClinicStore interface {
 	ListClinicAuditEvents(ctx context.Context, clinicID string) ([]store.AuditEvent, error)
 	ListAdminUserAccess(ctx context.Context, organisationID *int64) ([]store.AdminUserAccessRow, error)
 	ListAdminAuditEvents(ctx context.Context, organisationID *int64, limit int) ([]store.AdminAuditEventRow, error)
+	CreateUser(ctx context.Context, input store.CreateUserInput) (store.User, error)
+	GetUserByID(ctx context.Context, userID int64) (store.User, error)
+	GetAdminUserAccessByUserID(ctx context.Context, userID int64) (store.AdminUserAccessRow, error)
+	UpdateUserLifecycle(ctx context.Context, input store.UpdateUserLifecycleInput) (store.User, error)
+	UpsertOrganisationMembership(ctx context.Context, input store.UpsertMembershipInput) (store.OrganisationMembership, error)
+	RevokeActiveSessionsForUser(ctx context.Context, userID int64) (int64, error)
+	CreateAuditEvent(ctx context.Context, input store.CreateAuditEventInput) (store.AuditEvent, error)
 	CreateReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, store.CurrentStatus, store.AuditEvent, error)
 	CreatePendingReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, error)
 	GetPendingReportByPayload(ctx context.Context, input store.CreateReportInput) (store.Report, error)
@@ -519,6 +526,212 @@ func (h Handler) ListAdminUsers(w nethttp.ResponseWriter, r *nethttp.Request) {
 	RespondJSON(w, nethttp.StatusOK, users)
 }
 
+func (h Handler) CreateAdminUser(w nethttp.ResponseWriter, r *nethttp.Request) {
+	var payload createAdminUserRequest
+	if !decodeSingleJSON(w, r, &payload) {
+		return
+	}
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	change, fields := adminAccessChangeFromRequest(payload.Role, payload.OrganisationID, payload.District)
+	email := strings.ToLower(strings.TrimSpace(payload.Email))
+	displayName := strings.TrimSpace(payload.DisplayName)
+	if email == "" {
+		fields = append(fields, "email: email is required")
+	}
+	if displayName == "" {
+		fields = append(fields, "displayName: displayName is required")
+	}
+	if len(fields) > 0 {
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", fields...)
+		return
+	}
+	if !service.CanManageUserAccess(adminActorForPrincipal(principal), service.AdminUserAccess{}, change) {
+		RespondError(w, nethttp.StatusForbidden, "forbidden", "forbidden")
+		return
+	}
+
+	temporaryPassword, err := generateTemporaryPassword()
+	if err != nil {
+		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	passwordHash, err := auth.HashPassword(temporaryPassword)
+	if err != nil {
+		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+
+	user, err := h.store.CreateUser(r.Context(), store.CreateUserInput{
+		Email:                 email,
+		DisplayName:           displayName,
+		PasswordHash:          &passwordHash,
+		PasswordResetRequired: true,
+	})
+	if err != nil {
+		respondStoreError(w, err, "failed to create admin user")
+		return
+	}
+
+	membership, err := h.store.UpsertOrganisationMembership(r.Context(), store.UpsertMembershipInput{
+		UserID:         user.ID,
+		OrganisationID: change.OrganisationID,
+		Role:           change.Role,
+		District:       change.District,
+	})
+	if err != nil {
+		respondStoreError(w, err, "failed to update admin user access")
+		return
+	}
+
+	if err := h.createAdminUserAuditEvent(r.Context(), principal, "admin.user_created", "Admin user created.", user.ID, change.OrganisationID, map[string]any{
+		"email":          user.Email,
+		"role":           change.Role,
+		"organisationId": change.OrganisationID,
+		"district":       change.District,
+	}); err != nil {
+		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusCreated, createAdminUserResponse{
+		User:              publicUser(user),
+		Access:            membership,
+		TemporaryPassword: temporaryPassword,
+	})
+}
+
+func (h Handler) UpdateAdminUser(w nethttp.ResponseWriter, r *nethttp.Request) {
+	userID, ok := parsePositiveInt64Param(w, r, "userId", "admin user not found")
+	if !ok {
+		return
+	}
+	var payload updateAdminUserRequest
+	if !decodeSingleJSON(w, r, &payload) {
+		return
+	}
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+	target, ok := h.authorizeAdminUserManagement(w, r, principal, userID, nil)
+	if !ok {
+		return
+	}
+
+	displayName, fields := optionalTrimmedAdminDisplayName(payload.DisplayName)
+	if len(fields) > 0 {
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", fields...)
+		return
+	}
+
+	user, err := h.store.UpdateUserLifecycle(r.Context(), store.UpdateUserLifecycleInput{
+		UserID:      userID,
+		DisplayName: displayName,
+		Disabled:    payload.Disabled,
+		UpdatedAt:   time.Now().UTC(),
+	})
+	if err != nil {
+		respondStoreError(w, err, "admin user not found")
+		return
+	}
+
+	metadata := map[string]any{}
+	if displayName != nil {
+		metadata["displayNameChanged"] = true
+	}
+	if payload.Disabled != nil {
+		metadata["disabled"] = *payload.Disabled
+	}
+	if err := h.createAdminUserAuditEvent(r.Context(), principal, "admin.user_updated", "Admin user lifecycle updated.", userID, target.OrganisationID, metadata); err != nil {
+		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusOK, updateAdminUserResponse{User: publicUser(user)})
+}
+
+func (h Handler) UpdateAdminUserAccess(w nethttp.ResponseWriter, r *nethttp.Request) {
+	userID, ok := parsePositiveInt64Param(w, r, "userId", "admin user not found")
+	if !ok {
+		return
+	}
+	var payload updateAdminUserAccessRequest
+	if !decodeSingleJSON(w, r, &payload) {
+		return
+	}
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+	change, fields := adminAccessChangeFromRequest(payload.Role, payload.OrganisationID, payload.District)
+	if len(fields) > 0 {
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", fields...)
+		return
+	}
+	if _, ok := h.authorizeAdminUserManagement(w, r, principal, userID, &change); !ok {
+		return
+	}
+
+	membership, err := h.store.UpsertOrganisationMembership(r.Context(), store.UpsertMembershipInput{
+		UserID:         userID,
+		OrganisationID: change.OrganisationID,
+		Role:           change.Role,
+		District:       change.District,
+	})
+	if err != nil {
+		respondStoreError(w, err, "admin user not found")
+		return
+	}
+
+	if err := h.createAdminUserAuditEvent(r.Context(), principal, "admin.user_access_updated", "Admin user access updated.", userID, change.OrganisationID, map[string]any{
+		"role":           change.Role,
+		"organisationId": change.OrganisationID,
+		"district":       change.District,
+	}); err != nil {
+		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusOK, updateAdminUserAccessResponse{Access: membership})
+}
+
+func (h Handler) RevokeAdminUserSessions(w nethttp.ResponseWriter, r *nethttp.Request) {
+	userID, ok := parsePositiveInt64Param(w, r, "userId", "admin user not found")
+	if !ok {
+		return
+	}
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+	target, ok := h.authorizeAdminUserManagement(w, r, principal, userID, nil)
+	if !ok {
+		return
+	}
+
+	revokedSessions, err := h.store.RevokeActiveSessionsForUser(r.Context(), userID)
+	if err != nil {
+		respondStoreError(w, err, "admin user not found")
+		return
+	}
+	if err := h.createAdminUserAuditEvent(r.Context(), principal, "admin.user_sessions_revoked", "Admin user sessions revoked.", userID, target.OrganisationID, map[string]any{
+		"revokedSessions": revokedSessions,
+	}); err != nil {
+		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusOK, revokeAdminUserSessionsResponse{RevokedSessions: revokedSessions})
+}
+
 func (h Handler) ListAdminAuditEvents(w nethttp.ResponseWriter, r *nethttp.Request) {
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
@@ -543,6 +756,152 @@ func adminReadOrganisationScope(principal Principal) *int64 {
 		return nil
 	}
 	return principal.OrganisationID
+}
+
+func adminActorForPrincipal(principal Principal) service.AdminActor {
+	return service.AdminActor{
+		UserID:         principal.UserID,
+		Role:           principal.Role,
+		OrganisationID: principal.OrganisationID,
+	}
+}
+
+func adminUserAccessFromRow(row store.AdminUserAccessRow) service.AdminUserAccess {
+	return service.AdminUserAccess{
+		UserID:         row.UserID,
+		Role:           row.Role,
+		OrganisationID: row.OrganisationID,
+		District:       row.District,
+	}
+}
+
+func (h Handler) authorizeAdminUserManagement(w nethttp.ResponseWriter, r *nethttp.Request, principal Principal, userID int64, requestedChange *service.AdminUserAccessChange) (service.AdminUserAccess, bool) {
+	row, err := h.store.GetAdminUserAccessByUserID(r.Context(), userID)
+	if err != nil {
+		respondStoreError(w, err, "admin user not found")
+		return service.AdminUserAccess{}, false
+	}
+	target := adminUserAccessFromRow(row)
+	change := service.AdminUserAccessChange{
+		Role:           target.Role,
+		OrganisationID: target.OrganisationID,
+		District:       target.District,
+	}
+	if requestedChange != nil {
+		change = *requestedChange
+	}
+	if !service.CanManageUserAccess(adminActorForPrincipal(principal), target, change) {
+		RespondError(w, nethttp.StatusForbidden, "forbidden", "forbidden")
+		return service.AdminUserAccess{}, false
+	}
+	return target, true
+}
+
+func adminAccessChangeFromRequest(role string, organisationID *int64, district *string) (service.AdminUserAccessChange, []string) {
+	fields := []string(nil)
+	normalizedRole := strings.ToLower(strings.TrimSpace(role))
+	normalizedDistrict := optionalTrimmedString(district)
+
+	if normalizedRole == "" {
+		fields = append(fields, "role: role is required")
+	} else if !validAdminUserRole(normalizedRole) {
+		fields = append(fields, "role: role must be one of: system_admin, org_admin, district_manager, reporter")
+	}
+	if organisationID != nil && *organisationID <= 0 {
+		fields = append(fields, "organisationId: organisationId must be positive")
+	}
+	if normalizedRole != "" && normalizedRole != "system_admin" && organisationID == nil {
+		fields = append(fields, "organisationId: organisationId is required")
+	}
+	if normalizedRole == "system_admin" {
+		organisationID = nil
+		normalizedDistrict = nil
+	}
+
+	return service.AdminUserAccessChange{
+		Role:           normalizedRole,
+		OrganisationID: organisationID,
+		District:       normalizedDistrict,
+	}, fields
+}
+
+func validAdminUserRole(role string) bool {
+	switch role {
+	case "system_admin", "org_admin", "district_manager", "reporter":
+		return true
+	default:
+		return false
+	}
+}
+
+func optionalTrimmedAdminDisplayName(value *string) (*string, []string) {
+	if value == nil {
+		return nil, nil
+	}
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil, []string{"displayName: displayName is required"}
+	}
+	return &trimmed, nil
+}
+
+func optionalTrimmedString(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
+}
+
+func (h Handler) createAdminUserAuditEvent(ctx context.Context, principal Principal, eventType string, summary string, userID int64, organisationID *int64, metadata map[string]any) error {
+	entityType := "user"
+	entityID := strconv.FormatInt(userID, 10)
+	actorName := optionalTrimmedString(&principal.DisplayName)
+	actorRole := optionalTrimmedString(&principal.Role)
+	eventOrganisationID := organisationID
+	if eventOrganisationID == nil {
+		eventOrganisationID = principal.OrganisationID
+	}
+	_, err := h.store.CreateAuditEvent(ctx, store.CreateAuditEventInput{
+		EventType:      eventType,
+		Summary:        summary,
+		CreatedAt:      time.Now().UTC(),
+		ActorUserID:    &principal.UserID,
+		ActorName:      actorName,
+		ActorRole:      actorRole,
+		OrganisationID: eventOrganisationID,
+		EntityType:     &entityType,
+		EntityID:       &entityID,
+		Metadata:       compactAdminAuditMetadata(metadata),
+	})
+	return err
+}
+
+func compactAdminAuditMetadata(metadata map[string]any) map[string]any {
+	if metadata == nil {
+		return map[string]any{}
+	}
+	compacted := make(map[string]any, len(metadata))
+	for key, value := range metadata {
+		switch typed := value.(type) {
+		case *int64:
+			if typed != nil {
+				compacted[key] = *typed
+			}
+		case *string:
+			if typed != nil {
+				compacted[key] = *typed
+			}
+		default:
+			if value != nil {
+				compacted[key] = value
+			}
+		}
+	}
+	return compacted
 }
 
 func (h Handler) RevokeAdminPartnerAPIKey(w nethttp.ResponseWriter, r *nethttp.Request) {
@@ -1428,6 +1787,14 @@ func generateWebhookSecret() (string, error) {
 	return "cp_whsec_" + base64.RawURLEncoding.EncodeToString(randomBytes), nil
 }
 
+func generateTemporaryPassword() (string, error) {
+	randomBytes := make([]byte, 18)
+	if _, err := rand.Read(randomBytes); err != nil {
+		return "", err
+	}
+	return "cp_tmp_" + base64.RawURLEncoding.EncodeToString(randomBytes), nil
+}
+
 func hashWebhookSecret(secret string, pepper string) string {
 	material := secret
 	if pepper != "" {
@@ -1699,6 +2066,43 @@ type reviewReportRequest struct {
 type reviewReportResponse struct {
 	Report        store.Report         `json:"report"`
 	CurrentStatus *store.CurrentStatus `json:"currentStatus,omitempty"`
+}
+
+type createAdminUserRequest struct {
+	Email          string  `json:"email"`
+	DisplayName    string  `json:"displayName"`
+	Role           string  `json:"role"`
+	OrganisationID *int64  `json:"organisationId,omitempty"`
+	District       *string `json:"district,omitempty"`
+}
+
+type createAdminUserResponse struct {
+	User              store.User                   `json:"user"`
+	Access            store.OrganisationMembership `json:"access"`
+	TemporaryPassword string                       `json:"temporaryPassword"`
+}
+
+type updateAdminUserRequest struct {
+	DisplayName *string `json:"displayName,omitempty"`
+	Disabled    *bool   `json:"disabled,omitempty"`
+}
+
+type updateAdminUserResponse struct {
+	User store.User `json:"user"`
+}
+
+type updateAdminUserAccessRequest struct {
+	Role           string  `json:"role"`
+	OrganisationID *int64  `json:"organisationId,omitempty"`
+	District       *string `json:"district,omitempty"`
+}
+
+type updateAdminUserAccessResponse struct {
+	Access store.OrganisationMembership `json:"access"`
+}
+
+type revokeAdminUserSessionsResponse struct {
+	RevokedSessions int64 `json:"revokedSessions"`
 }
 
 type createPartnerAPIKeyRequest struct {
