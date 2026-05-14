@@ -105,7 +105,8 @@ export function validateFrontendRuntimeEnv(
     deployEnv,
     apiBaseUrl,
     browserApiBaseUrl,
-    showDemoCredentials: deployEnv === "local",
+    showDemoCredentials:
+      deployEnv === "local" && env.CLINICPULSE_ALLOW_DEMO_FALLBACK !== "false",
     allowPublicRegistration: deployEnv === "local" && allowPublicRegistration,
   };
 }

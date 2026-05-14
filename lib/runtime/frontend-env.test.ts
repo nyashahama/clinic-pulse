@@ -83,6 +83,13 @@ describe("validateFrontendRuntimeEnv", () => {
 
     expect(
       validateFrontendRuntimeEnv({
+        CLINICPULSE_DEPLOY_ENV: "local",
+        CLINICPULSE_ALLOW_DEMO_FALLBACK: "false",
+      }).showDemoCredentials,
+    ).toBe(false);
+
+    expect(
+      validateFrontendRuntimeEnv({
         CLINICPULSE_DEPLOY_ENV: "staging",
         CLINICPULSE_API_BASE_URL: "https://api.clinicpulse.test",
         NEXT_PUBLIC_CLINICPULSE_API_BASE_URL: "/api/clinicpulse",
