@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 import { validateFrontendRuntimeEnv } from "./lib/runtime/frontend-env";
+import { buildSecurityHeaders } from "./lib/runtime/security-headers";
 
 const frontendEnv = validateFrontendRuntimeEnv();
 const clinicPulseApiBaseUrl = frontendEnv.apiBaseUrl;
@@ -21,6 +22,14 @@ const nextConfig: NextConfig = {
         pathname: "/**",
       },
     ],
+  },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: buildSecurityHeaders({ deployEnv: frontendEnv.deployEnv }),
+      },
+    ];
   },
   async rewrites() {
     return [
