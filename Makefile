@@ -7,11 +7,12 @@ E2E_DATABASE_URL ?= postgres://clinicpulse:clinicpulse@localhost:$(E2E_POSTGRES_
 E2E_DATABASE_ADMIN_URL ?= postgres://clinicpulse:clinicpulse@localhost:$(E2E_POSTGRES_PORT)/postgres?sslmode=disable
 CLINICPULSE_API_BASE_URL ?= http://localhost:8080
 NEXT_PUBLIC_CLINICPULSE_API_BASE_URL ?= /api/clinicpulse
+API_IMAGE ?= clinicpulse-api:local
 
 API_DIR := services/api
 AUTH_SEED := $(API_DIR)/seeds/local_phase3_auth_users.sql
 
-.PHONY: db-up db-up-e2e db-wait db-wait-e2e db-migrate db-seed-auth db-bootstrap db-create-e2e db-reset-e2e dev-api dev-web test-api test-web test-e2e lint build verify audit-web audit-api verify-security
+.PHONY: db-up db-up-e2e db-wait db-wait-e2e db-migrate db-seed-auth db-bootstrap db-create-e2e db-reset-e2e dev-api dev-web test-api test-web test-e2e lint build verify audit-web audit-api verify-security build-api-container migrate-api-container test-api-container
 
 db-up:
 	CLINICPULSE_POSTGRES_PORT="$(POSTGRES_PORT)" docker compose up -d postgres
@@ -74,6 +75,36 @@ audit-api:
 
 test-e2e: db-up-e2e db-reset-e2e
 	E2E_DATABASE_URL="$(E2E_DATABASE_URL)" npm run test:e2e
+
+build-api-container:
+	docker build -t "$(API_IMAGE)" -f "$(API_DIR)/Dockerfile" "$(API_DIR)"
+
+migrate-api-container: build-api-container db-up-e2e db-reset-e2e
+	docker run --rm --network host \
+		-e CLINICPULSE_DEPLOY_ENV=local \
+		-e DATABASE_URL="$(E2E_DATABASE_URL)" \
+		-e CLINICPULSE_API_KEY_PEPPER=local-development-pepper \
+		"$(API_IMAGE)" /app/clinicpulse-migrate
+
+test-api-container: migrate-api-container
+	@docker rm -f clinicpulse-api-smoke >/dev/null 2>&1 || true
+	docker run --rm -d --network host --name clinicpulse-api-smoke \
+		-e CLINICPULSE_DEPLOY_ENV=local \
+		-e DATABASE_URL="$(E2E_DATABASE_URL)" \
+		-e CLINICPULSE_API_ADDR=:18080 \
+		-e CLINICPULSE_API_KEY_PEPPER=local-development-pepper \
+		"$(API_IMAGE)"
+	@trap 'docker rm -f clinicpulse-api-smoke >/dev/null 2>&1 || true' EXIT; \
+	for attempt in $$(seq 1 30); do \
+		if curl -fsS http://localhost:18080/healthz >/dev/null && curl -fsS http://localhost:18080/readyz >/dev/null; then \
+			docker rm -f clinicpulse-api-smoke >/dev/null; \
+			exit 0; \
+		fi; \
+		sleep 1; \
+	done; \
+	docker logs clinicpulse-api-smoke; \
+	docker rm -f clinicpulse-api-smoke >/dev/null; \
+	exit 1
 
 lint:
 	npm run lint
