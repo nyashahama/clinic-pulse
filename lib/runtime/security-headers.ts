@@ -9,6 +9,8 @@ function contentSecurityPolicy(deployEnv: DeployEnv) {
     deployEnv === "local"
       ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
       : "script-src 'self' 'unsafe-inline'";
+  const connectSrc =
+    deployEnv === "local" ? "connect-src 'self' https:" : "connect-src 'self'";
 
   return [
     "default-src 'self'",
@@ -16,7 +18,7 @@ function contentSecurityPolicy(deployEnv: DeployEnv) {
     "frame-ancestors 'none'",
     "object-src 'none'",
     "form-action 'self'",
-    "connect-src 'self' https:",
+    connectSrc,
     "img-src 'self' data: blob: https://images.unsplash.com https://images.pexels.com",
     "style-src 'self' 'unsafe-inline'",
     scriptSrc,
