@@ -148,7 +148,19 @@ WHERE id = $1`
 	getAdminUserAccessByUserIDSQL = `
 SELECT user_id, email, display_name, disabled_at, created_at, role, organisation_id, district, last_seen_at
 FROM admin_user_access
-WHERE user_id = $1`
+WHERE user_id = $1
+ORDER BY
+    CASE role
+        WHEN 'system_admin' THEN 4
+        WHEN 'org_admin' THEN 3
+        WHEN 'district_manager' THEN 2
+        WHEN 'reporter' THEN 1
+        ELSE 0
+    END DESC,
+    organisation_id NULLS FIRST,
+    district NULLS FIRST,
+    membership_id
+LIMIT 1`
 
 	updateUserLifecycleSQL = `
 UPDATE users
@@ -159,11 +171,13 @@ SET
 WHERE id = $1
 RETURNING id, email, display_name, password_hash, disabled_at, password_changed_at, password_reset_required, created_at, updated_at`
 
-	upsertOrganisationMembershipSQL = `
+	deleteOrganisationMembershipsForUserSQL = `
+DELETE FROM organisation_memberships
+WHERE user_id = $1`
+
+	insertOrganisationMembershipSQL = `
 INSERT INTO organisation_memberships (user_id, organisation_id, role, district)
 VALUES ($1, $2, $3, $4)
-ON CONFLICT (user_id, role, COALESCE(organisation_id, 0), COALESCE(district, ''))
-DO UPDATE SET role = EXCLUDED.role, organisation_id = EXCLUDED.organisation_id, district = EXCLUDED.district
 RETURNING id, user_id, organisation_id, role, district, created_at`
 
 	listMembershipsForUserSQL = `
@@ -308,12 +322,31 @@ func (s Store) ListMembershipsForUser(ctx context.Context, userID int64) ([]Orga
 }
 
 func (s Store) UpsertOrganisationMembership(ctx context.Context, input UpsertMembershipInput) (OrganisationMembership, error) {
-	return scanOrganisationMembership(s.pool.QueryRow(ctx, upsertOrganisationMembershipSQL,
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return OrganisationMembership{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, deleteOrganisationMembershipsForUserSQL, input.UserID); err != nil {
+		return OrganisationMembership{}, err
+	}
+
+	membership, err := scanOrganisationMembership(tx.QueryRow(ctx, insertOrganisationMembershipSQL,
 		input.UserID,
 		input.OrganisationID,
 		input.Role,
 		input.District,
 	))
+	if err != nil {
+		return OrganisationMembership{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return OrganisationMembership{}, err
+	}
+
+	return membership, nil
 }
 
 func scanSessionWithUser(row pgx.Row) (Session, User, error) {

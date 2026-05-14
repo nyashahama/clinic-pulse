@@ -20,6 +20,7 @@ SELECT
     users.display_name,
     users.disabled_at,
     users.created_at,
+    organisation_memberships.id AS membership_id,
     organisation_memberships.role,
     organisation_memberships.organisation_id,
     organisation_memberships.district,

@@ -81,6 +81,7 @@ func TestAuthLifecycleMigrationAddsAdminLifecycleColumnsAndIndexes(t *testing.T)
 		"CREATE INDEX users_password_reset_required_idx ON users (password_reset_required)",
 		"WHERE password_reset_required = true",
 		"CREATE VIEW admin_user_access AS",
+		"organisation_memberships.id AS membership_id",
 		"max(sessions.last_seen_at) AS last_seen_at",
 		"sessions.expires_at > now()",
 	}

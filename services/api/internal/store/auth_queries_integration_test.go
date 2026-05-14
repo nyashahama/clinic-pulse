@@ -255,6 +255,140 @@ func TestAdminLifecycleQueriesGetAdminUserAccessByUserID(t *testing.T) {
 	}
 }
 
+func TestAdminLifecycleQueriesReplaceOrganisationMembership(t *testing.T) {
+	ctx := context.Background()
+	store := integrationStore(t)
+	passwordHash := "hash"
+
+	user, err := store.CreateUser(ctx, CreateUserInput{
+		Email:        "access-change@example.test",
+		DisplayName:  "Access Change",
+		PasswordHash: &passwordHash,
+	})
+	if err != nil {
+		t.Fatalf("CreateUser returned error: %v", err)
+	}
+	orgID := insertIntegrationOrganisation(t, ctx, store, "Access District", "access-district")
+	if _, err := store.UpsertOrganisationMembership(ctx, UpsertMembershipInput{
+		UserID:         user.ID,
+		OrganisationID: &orgID,
+		Role:           "reporter",
+	}); err != nil {
+		t.Fatalf("initial UpsertOrganisationMembership returned error: %v", err)
+	}
+	if _, err := store.UpsertOrganisationMembership(ctx, UpsertMembershipInput{
+		UserID:         user.ID,
+		OrganisationID: &orgID,
+		Role:           "org_admin",
+	}); err != nil {
+		t.Fatalf("replacement UpsertOrganisationMembership returned error: %v", err)
+	}
+
+	memberships, err := store.ListMembershipsForUser(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("ListMembershipsForUser returned error: %v", err)
+	}
+	if len(memberships) != 1 || memberships[0].Role != "org_admin" {
+		t.Fatalf("expected replacement to leave only org_admin membership, got %+v", memberships)
+	}
+}
+
+func TestAdminLifecycleQueriesGetAdminUserAccessByUserIDUsesRoleRankOrder(t *testing.T) {
+	ctx := context.Background()
+	store := integrationStore(t)
+	passwordHash := "hash"
+
+	user, err := store.CreateUser(ctx, CreateUserInput{
+		Email:        "multi-access@example.test",
+		DisplayName:  "Multi Access",
+		PasswordHash: &passwordHash,
+	})
+	if err != nil {
+		t.Fatalf("CreateUser returned error: %v", err)
+	}
+	lowOrgID := insertIntegrationOrganisation(t, ctx, store, "Alpha Access", "alpha-access")
+	highOrgID := insertIntegrationOrganisation(t, ctx, store, "Zulu Access", "zulu-access")
+	if _, err := store.pool.Exec(ctx, `
+INSERT INTO organisation_memberships (organisation_id, user_id, role, district)
+VALUES ($1, $3, 'reporter', NULL),
+       ($1, $3, 'district_manager', 'Zulu District'),
+       ($2, $3, 'org_admin', NULL),
+       ($1, $3, 'org_admin', NULL)`, lowOrgID, highOrgID, user.ID); err != nil {
+		t.Fatalf("insert multiple memberships: %v", err)
+	}
+
+	access, err := store.GetAdminUserAccessByUserID(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("GetAdminUserAccessByUserID returned error: %v", err)
+	}
+	if access.Role != "org_admin" || access.OrganisationID == nil || *access.OrganisationID != lowOrgID {
+		t.Fatalf("expected highest-ranked org_admin access with lowest organisation id, got %+v", access)
+	}
+}
+
+func TestAdminLifecycleQueriesUpdateUserLifecycleAndEnableUser(t *testing.T) {
+	ctx := context.Background()
+	store := integrationStore(t)
+	passwordHash := "hash"
+
+	user, err := store.CreateUser(ctx, CreateUserInput{
+		Email:        "lifecycle@example.test",
+		DisplayName:  "Lifecycle User",
+		PasswordHash: &passwordHash,
+	})
+	if err != nil {
+		t.Fatalf("CreateUser returned error: %v", err)
+	}
+	disabled := true
+	updatedAt := time.Now().UTC().Add(-time.Minute).Truncate(time.Microsecond)
+	renamed := "Renamed Lifecycle User"
+	updated, err := store.UpdateUserLifecycle(ctx, UpdateUserLifecycleInput{
+		UserID:      user.ID,
+		DisplayName: &renamed,
+		Disabled:    &disabled,
+		UpdatedAt:   updatedAt,
+	})
+	if err != nil {
+		t.Fatalf("UpdateUserLifecycle returned error: %v", err)
+	}
+	if updated.DisplayName != renamed || updated.DisabledAt == nil || !updated.UpdatedAt.Equal(updatedAt) {
+		t.Fatalf("unexpected updated user lifecycle: %+v", updated)
+	}
+	if err := store.EnableUser(ctx, user.ID); err != nil {
+		t.Fatalf("EnableUser returned error: %v", err)
+	}
+	enabled, err := store.GetUserByID(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("GetUserByID returned error: %v", err)
+	}
+	if enabled.DisabledAt != nil {
+		t.Fatalf("expected enabled user to clear disabled_at, got %+v", enabled)
+	}
+}
+
+func TestAdminLifecycleQueriesGetUserByIDReturnsPasswordLifecycleFields(t *testing.T) {
+	ctx := context.Background()
+	store := integrationStore(t)
+	passwordHash := "hash"
+
+	user, err := store.CreateUser(ctx, CreateUserInput{
+		Email:                 "password-lifecycle@example.test",
+		DisplayName:           "Password Lifecycle",
+		PasswordHash:          &passwordHash,
+		PasswordResetRequired: true,
+	})
+	if err != nil {
+		t.Fatalf("CreateUser returned error: %v", err)
+	}
+	got, err := store.GetUserByID(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("GetUserByID returned error: %v", err)
+	}
+	if got.PasswordChangedAt == nil || !got.PasswordResetRequired {
+		t.Fatalf("expected password lifecycle fields to persist, got %+v", got)
+	}
+}
+
 func integrationStore(t *testing.T) Store {
 	t.Helper()
 
