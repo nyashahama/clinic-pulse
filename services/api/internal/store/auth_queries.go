@@ -212,6 +212,48 @@ func (s Store) CreateUser(ctx context.Context, input CreateUserInput) (User, err
 	))
 }
 
+func (s Store) CreateAdminUserWithAccessTx(ctx context.Context, input CreateAdminUserWithAccessInput) (User, OrganisationMembership, AuditEvent, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return User{}, OrganisationMembership{}, AuditEvent{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	user, err := scanUser(tx.QueryRow(ctx, createUserSQL,
+		strings.ToLower(strings.TrimSpace(input.User.Email)),
+		strings.TrimSpace(input.User.DisplayName),
+		input.User.PasswordHash,
+		input.User.PasswordResetRequired,
+	))
+	if err != nil {
+		return User{}, OrganisationMembership{}, AuditEvent{}, err
+	}
+
+	access := input.Access
+	access.UserID = user.ID
+	membership, err := scanOrganisationMembership(tx.QueryRow(ctx, insertOrganisationMembershipSQL,
+		access.UserID,
+		access.OrganisationID,
+		access.Role,
+		access.District,
+	))
+	if err != nil {
+		return User{}, OrganisationMembership{}, AuditEvent{}, err
+	}
+
+	auditInput := adminUserCreatedAuditEvent(input.AuditEvent, user)
+	auditEvent, err := insertAuditEvent(ctx, tx, auditInput)
+	if err != nil {
+		return User{}, OrganisationMembership{}, AuditEvent{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return User{}, OrganisationMembership{}, AuditEvent{}, err
+	}
+
+	return user, membership, auditEvent, nil
+}
+
 func (s Store) GetUserByID(ctx context.Context, userID int64) (User, error) {
 	return scanUser(s.pool.QueryRow(ctx, getUserByIDSQL, userID))
 }
@@ -540,6 +582,22 @@ func auditEventForSession(input CreateAuditEventInput, session Session) CreateAu
 
 	input.Metadata = cloneMetadata(input.Metadata)
 	input.Metadata["sessionId"] = session.ID
+	return input
+}
+
+func adminUserCreatedAuditEvent(input CreateAuditEventInput, user User) CreateAuditEventInput {
+	if input.EntityType == nil {
+		entityType := "user"
+		input.EntityType = &entityType
+	}
+	if input.EntityID == nil {
+		entityID := strconv.FormatInt(user.ID, 10)
+		input.EntityID = &entityID
+	}
+	if input.CreatedAt.IsZero() {
+		input.CreatedAt = user.CreatedAt
+	}
+	input.Metadata = cloneMetadata(input.Metadata)
 	return input
 }
 

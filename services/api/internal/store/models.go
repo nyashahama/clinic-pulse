@@ -324,6 +324,12 @@ type UpsertMembershipInput struct {
 	District       *string
 }
 
+type CreateAdminUserWithAccessInput struct {
+	User       CreateUserInput
+	Access     UpsertMembershipInput
+	AuditEvent CreateAuditEventInput
+}
+
 type Session struct {
 	ID         int64      `json:"id"`
 	UserID     int64      `json:"userId"`

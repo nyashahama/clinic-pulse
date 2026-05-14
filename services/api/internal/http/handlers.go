@@ -53,7 +53,7 @@ type ClinicStore interface {
 	ListClinicAuditEvents(ctx context.Context, clinicID string) ([]store.AuditEvent, error)
 	ListAdminUserAccess(ctx context.Context, organisationID *int64) ([]store.AdminUserAccessRow, error)
 	ListAdminAuditEvents(ctx context.Context, organisationID *int64, limit int) ([]store.AdminAuditEventRow, error)
-	CreateUser(ctx context.Context, input store.CreateUserInput) (store.User, error)
+	CreateAdminUserWithAccessTx(ctx context.Context, input store.CreateAdminUserWithAccessInput) (store.User, store.OrganisationMembership, store.AuditEvent, error)
 	GetUserByID(ctx context.Context, userID int64) (store.User, error)
 	GetAdminUserAccessByUserID(ctx context.Context, userID int64) (store.AdminUserAccessRow, error)
 	UpdateUserLifecycle(ctx context.Context, input store.UpdateUserLifecycleInput) (store.User, error)
@@ -566,36 +566,36 @@ func (h Handler) CreateAdminUser(w nethttp.ResponseWriter, r *nethttp.Request) {
 		return
 	}
 
-	user, err := h.store.CreateUser(r.Context(), store.CreateUserInput{
-		Email:                 email,
-		DisplayName:           displayName,
-		PasswordHash:          &passwordHash,
-		PasswordResetRequired: true,
+	auditInput := adminUserAuditEventInput(principal, "admin.user_created", "Admin user created.", 0, change.OrganisationID, map[string]any{
+		"email":          email,
+		"role":           change.Role,
+		"organisationId": change.OrganisationID,
+		"district":       change.District,
+	})
+	user, membership, _, err := h.store.CreateAdminUserWithAccessTx(r.Context(), store.CreateAdminUserWithAccessInput{
+		User: store.CreateUserInput{
+			Email:                 email,
+			DisplayName:           displayName,
+			PasswordHash:          &passwordHash,
+			PasswordResetRequired: true,
+		},
+		Access: store.UpsertMembershipInput{
+			OrganisationID: change.OrganisationID,
+			Role:           change.Role,
+			District:       change.District,
+		},
+		AuditEvent: auditInput,
 	})
 	if err != nil {
 		respondStoreError(w, err, "failed to create admin user")
 		return
 	}
 
-	membership, err := h.store.UpsertOrganisationMembership(r.Context(), store.UpsertMembershipInput{
-		UserID:         user.ID,
-		OrganisationID: change.OrganisationID,
-		Role:           change.Role,
-		District:       change.District,
-	})
-	if err != nil {
-		respondStoreError(w, err, "failed to update admin user access")
-		return
+	if user.Email == "" {
+		user.Email = email
 	}
-
-	if err := h.createAdminUserAuditEvent(r.Context(), principal, "admin.user_created", "Admin user created.", user.ID, change.OrganisationID, map[string]any{
-		"email":          user.Email,
-		"role":           change.Role,
-		"organisationId": change.OrganisationID,
-		"district":       change.District,
-	}); err != nil {
-		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
-		return
+	if user.DisplayName == "" {
+		user.DisplayName = displayName
 	}
 
 	RespondJSON(w, nethttp.StatusCreated, createAdminUserResponse{
@@ -831,15 +831,18 @@ func optionalTrimmedString(value *string) *string {
 }
 
 func (h Handler) createAdminUserAuditEvent(ctx context.Context, principal Principal, eventType string, summary string, userID int64, organisationID *int64, metadata map[string]any) error {
-	entityType := "user"
-	entityID := strconv.FormatInt(userID, 10)
+	_, err := h.store.CreateAuditEvent(ctx, adminUserAuditEventInput(principal, eventType, summary, userID, organisationID, metadata))
+	return err
+}
+
+func adminUserAuditEventInput(principal Principal, eventType string, summary string, userID int64, organisationID *int64, metadata map[string]any) store.CreateAuditEventInput {
 	actorName := optionalTrimmedString(&principal.DisplayName)
 	actorRole := optionalTrimmedString(&principal.Role)
 	eventOrganisationID := organisationID
 	if eventOrganisationID == nil {
 		eventOrganisationID = principal.OrganisationID
 	}
-	_, err := h.store.CreateAuditEvent(ctx, store.CreateAuditEventInput{
+	input := store.CreateAuditEventInput{
 		EventType:      eventType,
 		Summary:        summary,
 		CreatedAt:      time.Now().UTC(),
@@ -847,11 +850,15 @@ func (h Handler) createAdminUserAuditEvent(ctx context.Context, principal Princi
 		ActorName:      actorName,
 		ActorRole:      actorRole,
 		OrganisationID: eventOrganisationID,
-		EntityType:     &entityType,
-		EntityID:       &entityID,
 		Metadata:       compactAdminAuditMetadata(metadata),
-	})
-	return err
+	}
+	if userID > 0 {
+		entityType := "user"
+		entityID := strconv.FormatInt(userID, 10)
+		input.EntityType = &entityType
+		input.EntityID = &entityID
+	}
+	return input
 }
 
 func compactAdminAuditMetadata(metadata map[string]any) map[string]any {

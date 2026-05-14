@@ -1170,11 +1170,11 @@ func TestAdminUsersUsesGlobalScopeForSystemAdmins(t *testing.T) {
 
 func TestAdminCanCreateUserWithoutLeakingHash(t *testing.T) {
 	orgID := int64(1)
-	var created store.CreateUserInput
-	var auditInput store.CreateAuditEventInput
+	var txInput store.CreateAdminUserWithAccessInput
+	txCalls := 0
 	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
-		createUserInput: &created,
-		auditInput:      &auditInput,
+		createAdminUserWithAccessInput: &txInput,
+		createAdminUserWithAccessCalls: &txCalls,
 	}))
 	req := httptest.NewRequest(http.MethodPost, "/v1/admin/users", strings.NewReader(`{"email":"pilot@example.test","displayName":"Pilot User","role":"reporter","organisationId":1}`))
 	req.Header.Set("Content-Type", "application/json")
@@ -1187,7 +1187,10 @@ func TestAdminCanCreateUserWithoutLeakingHash(t *testing.T) {
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("expected created, got %d with body %s", rec.Code, rec.Body.String())
 	}
-	if created.PasswordHash == nil || strings.Contains(rec.Body.String(), *created.PasswordHash) {
+	if txCalls != 1 {
+		t.Fatalf("expected transactional admin create to be called once, got %d", txCalls)
+	}
+	if txInput.User.PasswordHash == nil || strings.Contains(rec.Body.String(), *txInput.User.PasswordHash) {
 		t.Fatalf("response leaked password hash")
 	}
 	if !strings.Contains(rec.Body.String(), "temporaryPassword") {
@@ -1197,12 +1200,54 @@ func TestAdminCanCreateUserWithoutLeakingHash(t *testing.T) {
 		TemporaryPassword string `json:"temporaryPassword"`
 	}
 	decodeJSON(t, rec, &got)
-	auditMetadata, err := json.Marshal(auditInput.Metadata)
+	auditMetadata, err := json.Marshal(txInput.AuditEvent.Metadata)
 	if err != nil {
 		t.Fatalf("failed to marshal audit metadata: %v", err)
 	}
-	if strings.Contains(string(auditMetadata), got.TemporaryPassword) || strings.Contains(string(auditMetadata), *created.PasswordHash) {
+	if strings.Contains(string(auditMetadata), got.TemporaryPassword) || strings.Contains(string(auditMetadata), *txInput.User.PasswordHash) {
 		t.Fatalf("audit metadata leaked password material: %s", string(auditMetadata))
+	}
+}
+
+func TestAdminCreateUserTransactionErrorDoesNotLeakPasswordMaterial(t *testing.T) {
+	orgID := int64(1)
+	storeErr := errors.New("database password leaked")
+	var txInput store.CreateAdminUserWithAccessInput
+	txCalls := 0
+	var created store.CreateUserInput
+	var membershipInput store.UpsertMembershipInput
+	var auditInput store.CreateAuditEventInput
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+		createAdminUserWithAccessInput: &txInput,
+		createAdminUserWithAccessCalls: &txCalls,
+		createAdminUserWithAccessErr:   storeErr,
+		createUserInput:                &created,
+		upsertMembershipInput:          &membershipInput,
+		auditInput:                     &auditInput,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/users", strings.NewReader(`{"email":"pilot-error@example.test","displayName":"Pilot User","role":"reporter","organisationId":1}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assertInternalError(t, rec, storeErr)
+	if txCalls != 1 {
+		t.Fatalf("expected transactional admin create to be called once, got %d", txCalls)
+	}
+	if created.Email != "" {
+		t.Fatalf("expected standalone CreateUser not to be called, got %#v", created)
+	}
+	if membershipInput.UserID != 0 {
+		t.Fatalf("expected standalone membership upsert not to be called, got %#v", membershipInput)
+	}
+	if auditInput.EventType != "" {
+		t.Fatalf("expected standalone audit insert not to be called, got %#v", auditInput)
+	}
+	if strings.Contains(rec.Body.String(), "temporaryPassword") {
+		t.Fatalf("expected error response not to return temporary password, got %s", rec.Body.String())
+	}
+	if txInput.User.PasswordHash != nil && strings.Contains(rec.Body.String(), *txInput.User.PasswordHash) {
+		t.Fatalf("response leaked password hash")
 	}
 }
 
@@ -4356,6 +4401,7 @@ type fakeStore struct {
 	upsertIntegrationStatusChecks         *[]store.IntegrationStatusCheck
 	createInput                           *store.CreateReportInput
 	createUserInput                       *store.CreateUserInput
+	createAdminUserWithAccessInput        *store.CreateAdminUserWithAccessInput
 	updateUserLifecycleInput              *store.UpdateUserLifecycleInput
 	upsertMembershipInput                 *store.UpsertMembershipInput
 	createPartnerAPIKeyInput              *store.CreatePartnerAPIKeyInput
@@ -4391,6 +4437,7 @@ type fakeStore struct {
 	revokedTokenHash                      *string
 	revokedSessionsUserID                 *int64
 	createCalls                           *int
+	createAdminUserWithAccessCalls        *int
 	createPartnerAPIKeyCalls              *int
 	createPartnerWebhookEventCalls        *int
 	createSessionCalls                    *int
@@ -4413,6 +4460,7 @@ type fakeStore struct {
 	currentStatusesErr                    error
 	createErr                             error
 	createUserErr                         error
+	createAdminUserWithAccessErr          error
 	updateUserLifecycleErr                error
 	upsertMembershipErr                   error
 	updateFreshnessErr                    error
@@ -4525,6 +4573,74 @@ func (f fakeStore) CreateUser(_ context.Context, input store.CreateUserInput) (s
 		user.UpdatedAt = now
 	}
 	return user, nil
+}
+
+func (f fakeStore) CreateAdminUserWithAccessTx(_ context.Context, input store.CreateAdminUserWithAccessInput) (store.User, store.OrganisationMembership, store.AuditEvent, error) {
+	if f.createAdminUserWithAccessCalls != nil {
+		*f.createAdminUserWithAccessCalls++
+	}
+	if f.createAdminUserWithAccessInput != nil {
+		*f.createAdminUserWithAccessInput = input
+	}
+	if f.createAdminUserWithAccessErr != nil {
+		return store.User{}, store.OrganisationMembership{}, store.AuditEvent{}, f.createAdminUserWithAccessErr
+	}
+	now := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
+	user := f.createdUser
+	if user.ID == 0 {
+		user.ID = 101
+	}
+	if user.Email == "" {
+		user.Email = input.User.Email
+	}
+	if user.DisplayName == "" {
+		user.DisplayName = input.User.DisplayName
+	}
+	user.PasswordHash = input.User.PasswordHash
+	user.PasswordResetRequired = input.User.PasswordResetRequired
+	if user.CreatedAt.IsZero() {
+		user.CreatedAt = now
+	}
+	if user.UpdatedAt.IsZero() {
+		user.UpdatedAt = now
+	}
+
+	membership := f.upsertMembership
+	if membership.ID == 0 {
+		membership.ID = 1
+	}
+	membership.UserID = user.ID
+	membership.OrganisationID = input.Access.OrganisationID
+	membership.Role = input.Access.Role
+	membership.District = input.Access.District
+	if membership.CreatedAt.IsZero() {
+		membership.CreatedAt = now
+	}
+
+	auditEvent := f.createAuditEvent
+	if auditEvent.ID == 0 {
+		auditEvent.ID = 1
+	}
+	auditEvent.EventType = input.AuditEvent.EventType
+	auditEvent.Summary = input.AuditEvent.Summary
+	auditEvent.ActorUserID = input.AuditEvent.ActorUserID
+	auditEvent.ActorRole = input.AuditEvent.ActorRole
+	auditEvent.OrganisationID = input.AuditEvent.OrganisationID
+	auditEvent.EntityType = input.AuditEvent.EntityType
+	if auditEvent.EntityType == nil {
+		entityType := "user"
+		auditEvent.EntityType = &entityType
+	}
+	auditEvent.EntityID = input.AuditEvent.EntityID
+	if auditEvent.EntityID == nil {
+		entityID := strconv.FormatInt(user.ID, 10)
+		auditEvent.EntityID = &entityID
+	}
+	auditEvent.Metadata = input.AuditEvent.Metadata
+	if auditEvent.CreatedAt.IsZero() {
+		auditEvent.CreatedAt = now
+	}
+	return user, membership, auditEvent, nil
 }
 
 func (f fakeStore) GetUserByID(_ context.Context, userID int64) (store.User, error) {

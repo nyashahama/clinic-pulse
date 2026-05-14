@@ -220,6 +220,109 @@ func TestAdminLifecycleQueriesCreateDisableAndRevokeSessions(t *testing.T) {
 	}
 }
 
+func TestAdminLifecycleQueriesCreateAdminUserWithAccessTxCommitsUserMembershipAndAudit(t *testing.T) {
+	ctx := context.Background()
+	store := integrationStore(t)
+	orgID := insertIntegrationOrganisation(t, ctx, store, "Atomic Admin Create", "atomic-admin-create")
+	passwordHash := "hash"
+	actorRole := "org_admin"
+
+	user, membership, auditEvent, err := store.CreateAdminUserWithAccessTx(ctx, CreateAdminUserWithAccessInput{
+		User: CreateUserInput{
+			Email:                 "atomic-admin@example.test",
+			DisplayName:           "Atomic Admin",
+			PasswordHash:          &passwordHash,
+			PasswordResetRequired: true,
+		},
+		Access: UpsertMembershipInput{
+			OrganisationID: &orgID,
+			Role:           "reporter",
+		},
+		AuditEvent: CreateAuditEventInput{
+			ActorRole:      &actorRole,
+			OrganisationID: &orgID,
+			EventType:      "admin.user_created",
+			Summary:        "Admin user created.",
+			Metadata:       map[string]any{"role": "reporter"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateAdminUserWithAccessTx returned error: %v", err)
+	}
+	if user.ID == 0 || !user.PasswordResetRequired {
+		t.Fatalf("expected created user with password reset required, got %+v", user)
+	}
+	if membership.UserID != user.ID || membership.OrganisationID == nil || *membership.OrganisationID != orgID {
+		t.Fatalf("expected membership for created user and org %d, got %+v", orgID, membership)
+	}
+	if auditEvent.EntityType == nil || *auditEvent.EntityType != "user" {
+		t.Fatalf("expected audit entity type user, got %+v", auditEvent.EntityType)
+	}
+	if auditEvent.EntityID == nil || *auditEvent.EntityID != fmt.Sprintf("%d", user.ID) {
+		t.Fatalf("expected audit entity id %d, got %+v", user.ID, auditEvent.EntityID)
+	}
+}
+
+func TestAdminLifecycleQueriesCreateAdminUserWithAccessTxRollsBackMissingOrganisation(t *testing.T) {
+	ctx := context.Background()
+	store := integrationStore(t)
+	passwordHash := "hash"
+	missingOrgID := int64(999_999)
+
+	_, _, _, err := store.CreateAdminUserWithAccessTx(ctx, CreateAdminUserWithAccessInput{
+		User: CreateUserInput{
+			Email:        "missing-org-admin@example.test",
+			DisplayName:  "Missing Org Admin",
+			PasswordHash: &passwordHash,
+		},
+		Access: UpsertMembershipInput{
+			OrganisationID: &missingOrgID,
+			Role:           "reporter",
+		},
+		AuditEvent: CreateAuditEventInput{
+			EventType: "admin.user_created",
+			Summary:   "Admin user created.",
+		},
+	})
+	if err == nil {
+		t.Fatal("expected missing organisation to fail transaction")
+	}
+	if _, err := store.GetUserByEmail(ctx, "missing-org-admin@example.test"); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("expected user insert to roll back after membership failure, got %v", err)
+	}
+}
+
+func TestAdminLifecycleQueriesCreateAdminUserWithAccessTxRollsBackAuditFailure(t *testing.T) {
+	ctx := context.Background()
+	store := integrationStore(t)
+	orgID := insertIntegrationOrganisation(t, ctx, store, "Atomic Audit Failure", "atomic-audit-failure")
+	passwordHash := "hash"
+	invalidRole := "not_a_role"
+
+	_, _, _, err := store.CreateAdminUserWithAccessTx(ctx, CreateAdminUserWithAccessInput{
+		User: CreateUserInput{
+			Email:        "audit-failure-admin@example.test",
+			DisplayName:  "Audit Failure Admin",
+			PasswordHash: &passwordHash,
+		},
+		Access: UpsertMembershipInput{
+			OrganisationID: &orgID,
+			Role:           "reporter",
+		},
+		AuditEvent: CreateAuditEventInput{
+			ActorRole: &invalidRole,
+			EventType: "admin.user_created",
+			Summary:   "Admin user created.",
+		},
+	})
+	if err == nil {
+		t.Fatal("expected invalid audit event to fail transaction")
+	}
+	if _, err := store.GetUserByEmail(ctx, "audit-failure-admin@example.test"); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("expected user insert to roll back after audit failure, got %v", err)
+	}
+}
+
 func TestAdminLifecycleQueriesGetAdminUserAccessByUserID(t *testing.T) {
 	ctx := context.Background()
 	store := integrationStore(t)
