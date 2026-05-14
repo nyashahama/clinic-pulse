@@ -142,6 +142,13 @@ func (c Config) Validate() error {
 		}
 	}
 
+	for _, origin := range c.TrustedOrigins {
+		if !isValidTrustedOrigin(origin) {
+			problems = append(problems, "CLINICPULSE_TRUSTED_ORIGINS must contain only http:// or https:// origins without paths, queries, or fragments")
+			break
+		}
+	}
+
 	if c.LoginRateLimit <= 0 || c.MutationRateLimit <= 0 || c.RateLimitWindow <= 0 {
 		problems = append(problems, "rate limit settings must be positive")
 	}
@@ -213,8 +220,30 @@ func durationFromEnv(key string, fallback time.Duration) (time.Duration, error) 
 	if err != nil {
 		return 0, fmt.Errorf("%s must be a valid duration: %w", key, err)
 	}
+	if duration <= 0 {
+		return 0, fmt.Errorf("%s must be positive", key)
+	}
 
 	return duration, nil
+}
+
+func isValidTrustedOrigin(origin string) bool {
+	parsed, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return false
+	}
+	if parsed.Host == "" || parsed.User != nil {
+		return false
+	}
+	if parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" || parsed.RawPath != "" {
+		return false
+	}
+
+	return true
 }
 
 func isLocalDatabaseURL(databaseURL string) bool {

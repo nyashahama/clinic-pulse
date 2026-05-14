@@ -106,6 +106,7 @@ func TestLoadRejectsUnsafeStagingConfig(t *testing.T) {
 }
 
 func TestLoadRequiresTrustedOriginsOutsideLocal(t *testing.T) {
+	clearConfigEnv(t)
 	t.Setenv("CLINICPULSE_DEPLOY_ENV", "staging")
 	t.Setenv("DATABASE_URL", "postgres://clinicpulse.example/staging")
 	t.Setenv("CLINICPULSE_API_KEY_PEPPER", strings.Repeat("p", 32))
@@ -118,6 +119,7 @@ func TestLoadRequiresTrustedOriginsOutsideLocal(t *testing.T) {
 }
 
 func TestLoadParsesTrustedOrigins(t *testing.T) {
+	clearConfigEnv(t)
 	t.Setenv("CLINICPULSE_DEPLOY_ENV", "local")
 	t.Setenv("CLINICPULSE_TRUSTED_ORIGINS", "http://localhost:3000, https://clinicpulse.example")
 
@@ -127,6 +129,35 @@ func TestLoadParsesTrustedOrigins(t *testing.T) {
 	}
 	if len(cfg.TrustedOrigins) != 2 || cfg.TrustedOrigins[1] != "https://clinicpulse.example" {
 		t.Fatalf("unexpected trusted origins: %#v", cfg.TrustedOrigins)
+	}
+}
+
+func TestLoadRejectsInvalidTrustedOrigins(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		value string
+	}{
+		{
+			name:  "token",
+			value: "not-a-url",
+		},
+		{
+			name:  "path",
+			value: "https://app.example/path",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			clearConfigEnv(t)
+			t.Setenv("CLINICPULSE_DEPLOY_ENV", string(DeployEnvStaging))
+			t.Setenv("DATABASE_URL", "postgres://clinicpulse.example/staging")
+			t.Setenv("CLINICPULSE_API_KEY_PEPPER", strings.Repeat("p", 32))
+			t.Setenv("CLINICPULSE_TRUSTED_ORIGINS", tt.value)
+
+			_, err := Load()
+			if err == nil || !strings.Contains(err.Error(), "CLINICPULSE_TRUSTED_ORIGINS") {
+				t.Fatalf("expected trusted origin validation error, got %v", err)
+			}
+		})
 	}
 }
 
@@ -165,6 +196,16 @@ func TestLoadRejectsInvalidRateLimits(t *testing.T) {
 				t.Fatalf("Load() error = %q, want mention %s", err.Error(), tt.key)
 			}
 		})
+	}
+}
+
+func TestLoadRejectsNonPositiveRateLimitWindow(t *testing.T) {
+	clearConfigEnv(t)
+	t.Setenv("CLINICPULSE_RATE_LIMIT_WINDOW", "0s")
+
+	_, err := Load()
+	if err == nil || !strings.Contains(err.Error(), "CLINICPULSE_RATE_LIMIT_WINDOW") {
+		t.Fatalf("expected rate limit window validation error, got %v", err)
 	}
 }
 
