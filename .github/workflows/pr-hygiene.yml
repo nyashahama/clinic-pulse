@@ -29,7 +29,7 @@ jobs:
       - name: Keep local docs out of tracked changes
         shell: bash
         run: |
-          allowed_tracked_docs='^docs/(api|architecture|database-schema|demo-video|engineering-decisions|portfolio-case-study|release|screenshots|deployment|production-readiness-execution-plan|phase-0-release-gate-stabilization-(spec|implementation-plan|closeout)|phase-1-production-runtime-and-deployment-(spec|implementation-plan|closeout)|phase-2-security-and-auth-hardening-spec)\.md$'
+          allowed_tracked_docs='^docs/(api|architecture|database-schema|demo-video|engineering-decisions|portfolio-case-study|release|screenshots|deployment|production-readiness-execution-plan|phase-0-release-gate-stabilization-(spec|implementation-plan|closeout)|phase-1-production-runtime-and-deployment-(spec|implementation-plan|closeout)|phase-2-security-and-auth-hardening-(spec|implementation-plan))\.md$'
           disallowed_docs="$(git diff --name-only origin/main...HEAD | grep -E '^docs/' | grep -Ev "$allowed_tracked_docs" || true)"
 
           if [ -n "$disallowed_docs" ]; then
