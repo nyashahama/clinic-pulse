@@ -34,6 +34,7 @@ jobs:
 
     env:
       DATABASE_URL: postgres://clinicpulse:clinicpulse@localhost:5432/clinicpulse?sslmode=disable
+      CLINICPULSE_DEPLOY_ENV: local
       CLINICPULSE_API_ADDR: :8080
 
     steps:
@@ -57,10 +58,8 @@ jobs:
           sudo apt-get install --yes postgresql-client
 
       - name: Apply migrations
-        run: |
-          for migration in services/api/migrations/*.sql; do
-            psql -v ON_ERROR_STOP=1 --single-transaction "$DATABASE_URL" < "$migration"
-          done
+        working-directory: services/api
+        run: go run ./cmd/migrate
 
       - name: Start API
         working-directory: services/api
