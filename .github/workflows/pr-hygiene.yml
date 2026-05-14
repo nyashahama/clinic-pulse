@@ -38,6 +38,17 @@ jobs:
             exit 1
           fi
 
+      - name: Keep generated showcase media local
+        shell: bash
+        run: |
+          generated_showcase_media="$(git diff --name-only --diff-filter=ACMRT origin/main...HEAD | grep -E '^public/showcase/' || true)"
+
+          if [ -n "$generated_showcase_media" ]; then
+            echo "public/showcase/ contains generated local screenshots and videos. Do not commit generated media."
+            echo "$generated_showcase_media"
+            exit 1
+          fi
+
       - name: Check workflow syntax shape
         run: |
           test -f .github/workflows/ci.yml

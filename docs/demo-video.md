@@ -1,6 +1,8 @@
 # Demo Video Script
 
-Demo walkthrough asset: [`public/showcase/videos/clinicpulse-demo-walkthrough.webm`](../public/showcase/videos/clinicpulse-demo-walkthrough.webm)
+Local demo walkthrough asset: `public/showcase/videos/clinicpulse-demo-walkthrough.webm`
+
+The walkthrough video is generated locally by `npm run capture:showcase` and is intentionally ignored by git.
 
 Target length: 60 to 90 seconds.
 
@@ -31,7 +33,7 @@ Target length: 60 to 90 seconds.
 - Hide browser bookmarks and unrelated local windows.
 - Record at 1080p or higher for external publishing.
 - Keep narration factual and implementation-specific.
-- The checked-in walkthrough is WebM from Playwright. Convert to MP4 only for portfolio or social platforms that require it.
+- The generated walkthrough is WebM from Playwright. Convert to MP4 only for portfolio or social platforms that require it.
 
 ## Regenerate Local Walkthrough
 
