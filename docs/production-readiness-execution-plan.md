@@ -38,7 +38,7 @@ Phase 0 makes these commands reliable and enforceable. Later phases may add stri
 | Phase | Status | Target Outcome | Estimated Effort |
 | --- | --- | --- | --- |
 | Phase 0 - Release Gate Stabilization | Complete | Clean dependency/security scans, stable E2E, and blocking CI gates | 1-2 days |
-| Phase 1 - Production Runtime And Deployment | Planned | Repeatable staging deployment with production runtime controls | 3-5 days |
+| Phase 1 - Production Runtime And Deployment | In progress | Repeatable staging deployment with production runtime controls | 3-5 days |
 | Phase 2 - Security And Auth Hardening | Not started | Production-safe auth, sessions, secrets, rate limits, and account lifecycle | 1 week |
 | Phase 3 - Pilot Data And Product Integrity | Not started | Real data provenance, completed pilot workflows, and legal/safety surfaces | 1-2 weeks |
 | Phase 4 - Observability And Operations | Not started | Logs, metrics, tracing, alerts, runbooks, and incident process | 1 week |
@@ -71,6 +71,7 @@ Do not start Phase 1 until the commands in "Production Readiness Gates" pass fro
 
 Spec: `docs/phase-1-production-runtime-and-deployment-spec.md`
 Plan: `docs/phase-1-production-runtime-and-deployment-implementation-plan.md`
+Deployment runbook: `docs/deployment.md`
 
 Goal:
 
