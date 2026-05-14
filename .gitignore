@@ -18,6 +18,9 @@
 # local showcase captures
 /public/showcase/
 
+# local reference attribution notes
+/DASHBOARD_REFERENCE_ATTRIBUTION.md
+
 # next.js
 /.next/
 /out/
