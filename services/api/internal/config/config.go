@@ -187,7 +187,7 @@ func splitCSV(value string) []string {
 	for _, part := range parts {
 		part = strings.TrimSpace(part)
 		if part != "" {
-			result = append(result, strings.TrimRight(part, "/"))
+			result = append(result, part)
 		}
 	}
 	return result

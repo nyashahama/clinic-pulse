@@ -145,6 +145,10 @@ func TestLoadRejectsInvalidTrustedOrigins(t *testing.T) {
 			name:  "path",
 			value: "https://app.example/path",
 		},
+		{
+			name:  "root path",
+			value: "https://app.example/",
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			clearConfigEnv(t)
