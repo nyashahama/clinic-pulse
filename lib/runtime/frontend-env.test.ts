@@ -8,6 +8,8 @@ describe("validateFrontendRuntimeEnv", () => {
       deployEnv: "local",
       apiBaseUrl: "http://localhost:8080",
       browserApiBaseUrl: "/api/clinicpulse",
+      showDemoCredentials: true,
+      allowPublicRegistration: false,
     });
   });
 
@@ -23,6 +25,8 @@ describe("validateFrontendRuntimeEnv", () => {
       deployEnv: "staging",
       apiBaseUrl: "https://api.staging.clinicpulse.example",
       browserApiBaseUrl: "/api/clinicpulse",
+      showDemoCredentials: false,
+      allowPublicRegistration: false,
     });
   });
 
@@ -68,5 +72,38 @@ describe("validateFrontendRuntimeEnv", () => {
         CLINICPULSE_ALLOW_DEMO_FALLBACK: "false",
       }),
     ).toThrowError(/CLINICPULSE_API_BASE_URL/);
+  });
+
+  it("shows demo credentials only in local deployments", () => {
+    expect(
+      validateFrontendRuntimeEnv({
+        CLINICPULSE_DEPLOY_ENV: "local",
+      }).showDemoCredentials,
+    ).toBe(true);
+
+    expect(
+      validateFrontendRuntimeEnv({
+        CLINICPULSE_DEPLOY_ENV: "staging",
+        CLINICPULSE_API_BASE_URL: "https://api.clinicpulse.test",
+        NEXT_PUBLIC_CLINICPULSE_API_BASE_URL: "/api/clinicpulse",
+        CLINICPULSE_ALLOW_DEMO_FALLBACK: "false",
+      }).showDemoCredentials,
+    ).toBe(false);
+  });
+
+  it("keeps public registration disabled outside local deployments", () => {
+    expect(
+      validateFrontendRuntimeEnv({ CLINICPULSE_DEPLOY_ENV: "local" })
+        .allowPublicRegistration,
+    ).toBe(false);
+
+    expect(
+      validateFrontendRuntimeEnv({
+        CLINICPULSE_DEPLOY_ENV: "production",
+        CLINICPULSE_API_BASE_URL: "https://api.clinicpulse.example",
+        NEXT_PUBLIC_CLINICPULSE_API_BASE_URL: "/api/clinicpulse",
+        CLINICPULSE_ALLOW_DEMO_FALLBACK: "false",
+      }).allowPublicRegistration,
+    ).toBe(false);
   });
 });

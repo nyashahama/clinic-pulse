@@ -10,6 +10,7 @@ type FrontendRuntimeEnv = {
   CLINICPULSE_API_BASE_URL?: string;
   NEXT_PUBLIC_CLINICPULSE_API_BASE_URL?: string;
   CLINICPULSE_ALLOW_DEMO_FALLBACK?: string;
+  CLINICPULSE_ALLOW_PUBLIC_REGISTRATION?: string;
   NODE_ENV?: string;
 };
 
@@ -17,6 +18,8 @@ type FrontendRuntimeConfig = {
   deployEnv: DeployEnv;
   apiBaseUrl: string;
   browserApiBaseUrl: string;
+  showDemoCredentials: boolean;
+  allowPublicRegistration: boolean;
 };
 
 function isDeployEnv(value: string): value is DeployEnv {
@@ -47,6 +50,8 @@ export function validateFrontendRuntimeEnv(
   const apiBaseUrl = env.CLINICPULSE_API_BASE_URL || DEFAULT_API_BASE_URL;
   const browserApiBaseUrl =
     env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL || DEFAULT_BROWSER_API_BASE_URL;
+  const allowPublicRegistration =
+    env.CLINICPULSE_ALLOW_PUBLIC_REGISTRATION === "true";
 
   if (deployEnv !== "local") {
     if (!env.CLINICPULSE_API_BASE_URL) {
@@ -82,6 +87,12 @@ export function validateFrontendRuntimeEnv(
         "CLINICPULSE_ALLOW_DEMO_FALLBACK must be explicitly false outside local deployments.",
       );
     }
+
+    if (allowPublicRegistration) {
+      problems.push(
+        "CLINICPULSE_ALLOW_PUBLIC_REGISTRATION must not be true outside local deployments in Phase 2.",
+      );
+    }
   }
 
   if (problems.length > 0) {
@@ -94,5 +105,7 @@ export function validateFrontendRuntimeEnv(
     deployEnv,
     apiBaseUrl,
     browserApiBaseUrl,
+    showDemoCredentials: deployEnv === "local",
+    allowPublicRegistration: deployEnv === "local" && allowPublicRegistration,
   };
 }

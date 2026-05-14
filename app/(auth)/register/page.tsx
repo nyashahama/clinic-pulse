@@ -1,5 +1,6 @@
 import { ClinicPulseMark } from "@/components/brand/clinicpulse-logo";
 import { SignupForm, type SignupActionState } from "@/components/auth/signup-form";
+import { validateFrontendRuntimeEnv } from "@/lib/runtime/frontend-env";
 import Link from "next/link";
 
 async function signupAction(
@@ -20,8 +21,24 @@ async function signupAction(
     organisation,
     role,
   };
+  const frontendEnv = validateFrontendRuntimeEnv();
 
-  if (!fullName || !email || !organisation || !role || !password || !confirmPassword) {
+  if (!fullName || !email || !organisation || !role) {
+    return {
+      fields,
+      error: "Complete every field to request a ClinicPulse account.",
+    };
+  }
+
+  if (!frontendEnv.allowPublicRegistration) {
+    return {
+      fields,
+      error:
+        "Account requests are reviewed by administrators before access is provisioned.",
+    };
+  }
+
+  if (!password || !confirmPassword) {
     return {
       fields,
       error: "Complete every field to request a ClinicPulse account.",
@@ -50,6 +67,8 @@ async function signupAction(
 }
 
 export default function RegisterPage() {
+  const frontendEnv = validateFrontendRuntimeEnv();
+
   return (
     <div className="flex min-h-[100dvh] w-full flex-col items-center justify-between px-4 pb-5 pt-24 sm:px-6">
       <div className="grow basis-0" />
@@ -71,12 +90,17 @@ export default function RegisterPage() {
           </div>
 
           <div className="mt-8">
-            <SignupForm action={signupAction} />
+            <SignupForm
+              action={signupAction}
+              allowPublicRegistration={frontendEnv.allowPublicRegistration}
+            />
           </div>
 
           <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-200">
-            New accounts are currently provisioned by administrators. The local
-            demo includes seeded users you can use from the sign in page.
+            New accounts are currently provisioned by administrators.
+            {frontendEnv.showDemoCredentials
+              ? " The local demo includes seeded users you can use from the sign in page."
+              : null}
           </div>
 
           <p className="mt-6 text-center text-sm font-medium text-neutral-500 dark:text-muted-foreground">
