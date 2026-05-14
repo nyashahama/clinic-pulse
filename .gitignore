@@ -56,4 +56,5 @@ docs/*
 !docs/phase-0-release-gate-stabilization-closeout.md
 !docs/phase-1-production-runtime-and-deployment-spec.md
 !docs/phase-1-production-runtime-and-deployment-implementation-plan.md
+!docs/deployment.md
 reference-projects/

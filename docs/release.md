@@ -7,7 +7,7 @@ Release tag status: Pending final verification and user approval.
 ## Pre-Release Checklist
 
 - README includes live demo status, demo credentials, local run path, docs index, and validation commands.
-- Architecture, API, database schema, engineering decisions, screenshots, demo video, and portfolio case study docs are present.
+- Architecture, API, database schema, deployment, engineering decisions, screenshots, demo video, and portfolio case study docs are present, including docs/deployment.md.
 - External assets that are not ready are clearly marked pending.
 - `npm run lint` passes.
 - `make verify` passes.
@@ -20,10 +20,13 @@ Release tag status: Pending final verification and user approval.
 npm ci
 make verify
 make test-e2e
+make test-api-container
 npm audit --audit-level=moderate
 cd services/api && govulncheck ./...
 git status --short
 ```
+
+For Phase 1 staging handoff, also confirm the Vercel frontend variables and Docker API variables in docs/deployment.md.
 
 ## Tag Commands
 
