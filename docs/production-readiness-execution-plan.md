@@ -2,13 +2,13 @@
 
 Date: 2026-05-12
 Status: Active roadmap
-Current phase: Phase 2 - Security And Auth Hardening
+Current phase: Phase 3 - Pilot Data And Product Integrity
 
 ## Purpose
 
 This document is the persistent production-readiness map for ClinicPulse. Keep it updated after every phase so the next phase is always obvious.
 
-ClinicPulse is currently a production-shaped alpha. It has the core product loop, real API/database foundations, auth, roles, audit evidence, admin governance surfaces, and a stable Phase 0 release gate, but it still needs security hardening, deployability, observability, and pilot governance before it can be treated as production software.
+ClinicPulse is currently a production-shaped alpha. It has the core product loop, real API/database foundations, hardened auth, roles, audit evidence, admin governance surfaces, and stable release gates, but it still needs real pilot data integrity, observability, and pilot governance before it can be treated as production software.
 
 ## Phase Status Key
 
@@ -27,8 +27,8 @@ These gates must be green before a production or pilot release candidate is cut:
 npm ci
 make verify
 make test-e2e
-npm audit --audit-level=moderate
-cd services/api && govulncheck ./...
+make verify-security
+make test-api-container
 git status --short
 ```
 
@@ -40,7 +40,7 @@ Phase 0 makes these commands reliable and enforceable. Later phases may add stri
 | --- | --- | --- | --- |
 | Phase 0 - Release Gate Stabilization | Complete | Clean dependency/security scans, stable E2E, and blocking CI gates | 1-2 days |
 | Phase 1 - Production Runtime And Deployment | Complete | Repeatable staging deployment with production runtime controls | 3-5 days |
-| Phase 2 - Security And Auth Hardening | Planned | Production-safe auth, sessions, secrets, rate limits, and account lifecycle | 1 week |
+| Phase 2 - Security And Auth Hardening | Complete | Production-safe auth, sessions, secrets, rate limits, and account lifecycle | 1 week |
 | Phase 3 - Pilot Data And Product Integrity | Not started | Real data provenance, completed pilot workflows, and legal/safety surfaces | 1-2 weeks |
 | Phase 4 - Observability And Operations | Not started | Logs, metrics, tracing, alerts, runbooks, and incident process | 1 week |
 | Phase 5 - Pilot Launch Readiness | Not started | Release candidate, stakeholder docs, operational signoff, and launch checklist | 1-2 weeks |
@@ -97,6 +97,7 @@ Phase 1 is complete when a clean staging deploy can be recreated from CI and the
 
 Spec: `docs/phase-2-security-and-auth-hardening-spec.md`
 Plan: `docs/phase-2-security-and-auth-hardening-implementation-plan.md`
+Closeout: `docs/phase-2-security-and-auth-hardening-closeout.md`
 
 Goal:
 
@@ -114,6 +115,8 @@ Scope:
 Exit rule:
 
 Phase 2 is complete when a production tenant can operate without seeded demo accounts or demo fallback assumptions.
+
+Status: Complete. The closeout records verification evidence and residual risk.
 
 ## Phase 3 - Pilot Data And Product Integrity
 

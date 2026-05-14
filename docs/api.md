@@ -29,6 +29,7 @@ Seeded roles are `reporter`, `district_manager`, `org_admin`, and `system_admin`
 | `POST` | `/v1/auth/login` | Public | Creates a session from email and password |
 | `POST` | `/v1/auth/logout` | Public | Revokes the current session when present |
 | `GET` | `/v1/auth/me` | Session | Returns the current authenticated user and roles |
+| `POST` | `/v1/auth/password` | Session | Changes the current user's password after verifying the current password |
 
 ## Public Clinic Data
 
@@ -58,6 +59,10 @@ Admin routes require a session with `org_admin` or `system_admin`.
 | --- | --- | --- |
 | `GET` | `/v1/admin/partner-readiness` | Returns partner readiness summary |
 | `GET` | `/v1/admin/users` | Lists users, memberships, role scope, disabled state, and latest active session signal |
+| `POST` | `/v1/admin/users` | Creates a pilot user, role membership, audit event, and one-time temporary password |
+| `PATCH` | `/v1/admin/users/{userId}` | Updates managed user display name or disabled state |
+| `PUT` | `/v1/admin/users/{userId}/access` | Replaces managed user role, organisation, and optional district scope |
+| `POST` | `/v1/admin/users/{userId}/sessions/revoke` | Revokes active sessions for a managed user |
 | `GET` | `/v1/admin/audit-events` | Lists recent admin-visible audit events |
 | `POST` | `/v1/admin/api-keys` | Creates a partner API key and returns the one-time secret |
 | `GET` | `/v1/admin/api-keys` | Lists partner API keys |
@@ -97,6 +102,17 @@ Reporter routes require a session with `reporter`, `district_manager`, `org_admi
 ## Response And Error Shape
 
 Handlers use the shared response helpers in `services/api/internal/http/respond.go`. Validation and auth failures return JSON error responses with appropriate HTTP status codes. Route-specific response models live in `services/api/internal/store/models.go`, service files under `services/api/internal/service`, and frontend API types under `lib/demo/api-types.ts`.
+
+Common security responses:
+
+| Status | Code | Meaning |
+| --- | --- | --- |
+| `401` | `unauthorized` | Authentication failed, the session is invalid, the user is disabled, or login throttling blocked the attempt. Login and password failures intentionally use generic responses. |
+| `403` | `csrf_rejected` | A cookie-authenticated unsafe request included an untrusted `Origin` or `Referer`. |
+| `403` | `forbidden` | The authenticated principal is not allowed to manage the requested user, scope, or admin action. |
+| `429` | `rate_limited` | The per-IP/path unsafe mutation limiter rejected the request. Login throttling returns the generic unauthorized response instead. |
+
+Unsafe cookie-authenticated methods are `POST`, `PUT`, `PATCH`, and `DELETE`. Trusted browser origins are configured with `CLINICPULSE_TRUSTED_ORIGINS`; partner API-key routes use their own authentication path and are not part of the browser CSRF flow.
 
 ## Future OpenAPI Path
 

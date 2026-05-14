@@ -65,5 +65,6 @@ docs/*
 !docs/phase-1-production-runtime-and-deployment-closeout.md
 !docs/phase-2-security-and-auth-hardening-spec.md
 !docs/phase-2-security-and-auth-hardening-implementation-plan.md
+!docs/phase-2-security-and-auth-hardening-closeout.md
 !docs/deployment.md
 reference-projects/

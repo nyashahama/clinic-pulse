@@ -7,6 +7,8 @@ const webBaseURL = `http://127.0.0.1:${webPort}`;
 const e2eDatabaseURL =
   process.env.E2E_DATABASE_URL ??
   "postgres://clinicpulse:clinicpulse@localhost:5432/clinicpulse_e2e?sslmode=disable";
+const e2eLoginRateLimit = process.env.CLINICPULSE_E2E_LOGIN_RATE_LIMIT ?? "1000";
+const e2eMutationRateLimit = process.env.CLINICPULSE_E2E_MUTATION_RATE_LIMIT ?? "1000";
 const reuseExistingServer = process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER === "true";
 
 export default defineConfig({
@@ -23,7 +25,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: `cd services/api && DATABASE_URL="${e2eDatabaseURL}" CLINICPULSE_API_ADDR=":${apiPort}" CLINICPULSE_API_KEY_PEPPER="local-e2e-pepper" go run ./cmd/api`,
+      command: `cd services/api && DATABASE_URL="${e2eDatabaseURL}" CLINICPULSE_API_ADDR=":${apiPort}" CLINICPULSE_API_KEY_PEPPER="local-e2e-pepper" CLINICPULSE_LOGIN_RATE_LIMIT="${e2eLoginRateLimit}" CLINICPULSE_MUTATION_RATE_LIMIT="${e2eMutationRateLimit}" go run ./cmd/api`,
       url: `${apiBaseURL}/healthz`,
       timeout: 60_000,
       reuseExistingServer,
