@@ -41,7 +41,7 @@ Phase 0 makes these commands reliable and enforceable. Later phases may add stri
 | Phase 0 - Release Gate Stabilization | Complete | Clean dependency/security scans, stable E2E, and blocking CI gates | 1-2 days |
 | Phase 1 - Production Runtime And Deployment | Complete | Repeatable staging deployment with production runtime controls | 3-5 days |
 | Phase 2 - Security And Auth Hardening | Complete | Production-safe auth, sessions, secrets, rate limits, and account lifecycle | 1 week |
-| Phase 3 - Pilot Data And Product Integrity | Not started | Real data provenance, completed pilot workflows, and legal/safety surfaces | 1-2 weeks |
+| Phase 3 - Pilot Data And Product Integrity | Planned | Real data provenance, completed pilot workflows, and legal/safety surfaces | 1-2 weeks |
 | Phase 4 - Observability And Operations | Not started | Logs, metrics, tracing, alerts, runbooks, and incident process | 1 week |
 | Phase 5 - Pilot Launch Readiness | Not started | Release candidate, stakeholder docs, operational signoff, and launch checklist | 1-2 weeks |
 
@@ -119,6 +119,9 @@ Phase 2 is complete when a production tenant can operate without seeded demo acc
 Status: Complete. The closeout records verification evidence and residual risk.
 
 ## Phase 3 - Pilot Data And Product Integrity
+
+Spec: `docs/phase-3-pilot-data-product-integrity-spec.md`
+Plan: `docs/phase-3-pilot-data-product-integrity-implementation-plan.md`
 
 Goal:
 
