@@ -16,6 +16,9 @@ const orgAdminAccount = {
   password,
 };
 const successMessage = "Waiting for district review.";
+const serverMutationHeaders = {
+  "x-clinicpulse-server-mutation": "1",
+};
 
 type PendingReport = {
   id: number;
@@ -76,6 +79,7 @@ function reportSignalForProject(projectName: string): ReportSignal {
 async function rejectPendingReportsByNotes(page: Page, notes: string) {
   const loginResponse = await page.request.post("/api/clinicpulse/v1/auth/login", {
     data: districtManagerAccount,
+    headers: serverMutationHeaders,
   });
   if (!loginResponse.ok()) {
     throw new Error(`Cleanup login failed with ${loginResponse.status()}`);
@@ -93,6 +97,7 @@ async function rejectPendingReportsByNotes(page: Page, notes: string) {
           decision: "rejected",
           notes: "Cleaned up by phase 3 report review E2E test.",
         },
+        headers: serverMutationHeaders,
       },
     );
     if (!reviewResponse.ok()) {

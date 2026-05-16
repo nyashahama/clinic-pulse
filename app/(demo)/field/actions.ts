@@ -15,6 +15,10 @@ import {
 import { createReport, syncOfflineReportsApi } from "@/lib/demo/api-client";
 import { mapOnlineFieldReportToCreateReportInput } from "@/lib/demo/field-report";
 
+const serverMutationHeaders = {
+  "x-clinicpulse-server-mutation": "1",
+} as const;
+
 export async function createFieldReport(
   input: OnlineFieldReportActionInput,
 ): Promise<OnlineFieldReportResult> {
@@ -32,6 +36,7 @@ export async function createFieldReport(
     init: {
       headers: {
         cookie: cookieHeader,
+        ...serverMutationHeaders,
       },
     },
   });
@@ -69,6 +74,7 @@ export async function syncQueuedFieldReports(
       init: {
         headers: {
           cookie: cookieHeader,
+          ...serverMutationHeaders,
         },
       },
     },

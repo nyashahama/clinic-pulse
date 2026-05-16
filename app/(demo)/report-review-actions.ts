@@ -12,6 +12,9 @@ import { reviewReport } from "@/lib/demo/api-client";
 import type { ReviewReportApiInput } from "@/lib/demo/api-types";
 
 const REVIEW_ROLES = ["district_manager", "org_admin", "system_admin"] as const;
+const serverMutationHeaders = {
+  "x-clinicpulse-server-mutation": "1",
+} as const;
 
 export type ReviewPendingReportActionInput = {
   reportId: number;
@@ -37,6 +40,7 @@ export async function reviewPendingReportAction(input: ReviewPendingReportAction
       init: {
         headers: {
           cookie: cookieHeader,
+          ...serverMutationHeaders,
         },
       },
     },
