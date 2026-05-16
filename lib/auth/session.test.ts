@@ -242,14 +242,13 @@ describe("auth workflow role guards", () => {
 
     expect(FIELD_WORKFLOW_ROLES).toEqual([
       "reporter",
-      "district_manager",
       "org_admin",
       "system_admin",
     ]);
     expect(requireWorkflowRole(session, "field")).toBe(session);
   });
 
-  it("allows district manager access to the field, district, and demo workflows", () => {
+  it("keeps district managers in district command workflows", () => {
     const session = authSession("district_manager");
 
     expect(DEMO_WORKFLOW_ROLES).toEqual([
@@ -257,7 +256,7 @@ describe("auth workflow role guards", () => {
       "org_admin",
       "system_admin",
     ]);
-    expect(requireWorkflowRole(session, "field")).toBe(session);
+    expect(() => requireWorkflowRole(session, "field")).toThrow("Insufficient role");
     expect(requireWorkflowRole(session, "district")).toBe(session);
     expect(requireWorkflowRole(session, "demo")).toBe(session);
   });

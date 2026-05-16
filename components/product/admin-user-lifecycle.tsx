@@ -1,7 +1,7 @@
 "use client";
 
 import type { ComponentType, SVGProps } from "react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { KeyRound, RefreshCw, ShieldCheck, UserPlus, UserX } from "lucide-react";
 
@@ -124,6 +124,21 @@ function mutationErrorMessage(error: unknown) {
   return "Admin user update failed.";
 }
 
+function optimisticFormString(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function optimisticFormNumber(formData: FormData, key: string) {
+  const value = optimisticFormString(formData, key);
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
 function LifecycleBadge({
   children,
   tone = "info",
@@ -208,10 +223,15 @@ export function AdminUserLifecycle({
   const [temporaryPassword, setTemporaryPassword] =
     useState<TemporaryPasswordState>(null);
   const [feedback, setFeedback] = useState<FeedbackState>(null);
+  const [localUsers, setLocalUsers] = useState(users);
   const rows = useMemo(
-    () => users.map((user) => ({ ...user, risk: getRisk(user) })),
-    [users],
+    () => localUsers.map((user) => ({ ...user, risk: getRisk(user) })),
+    [localUsers],
   );
+
+  useEffect(() => {
+    setLocalUsers(users);
+  }, [users]);
 
   async function createUser(formData: FormData) {
     setFeedback(null);
@@ -234,6 +254,16 @@ export function AdminUserLifecycle({
     setFeedback(null);
     try {
       await updateUserAction(userId, disabled);
+      setLocalUsers((current) =>
+        current.map((user) =>
+          user.userId === userId
+            ? {
+                ...user,
+                disabledAt: disabled ? new Date().toISOString() : null,
+              }
+            : user,
+        ),
+      );
       setFeedback({
         tone: "success",
         message: disabled ? "User disabled." : "User enabled.",
@@ -247,6 +277,19 @@ export function AdminUserLifecycle({
     setFeedback(null);
     try {
       await updateAccessAction(userId, formData);
+      const role = optimisticFormString(formData, "role");
+      setLocalUsers((current) =>
+        current.map((user) =>
+          user.userId === userId
+            ? {
+                ...user,
+                role: isActiveRole(role) ? role : user.role,
+                organisationId: optimisticFormNumber(formData, "organisationId"),
+                district: optimisticFormString(formData, "district") || null,
+              }
+            : user,
+        ),
+      );
       setFeedback({ tone: "success", message: "User access updated." });
     } catch (error) {
       setFeedback({ tone: "error", message: mutationErrorMessage(error) });

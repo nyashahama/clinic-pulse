@@ -49,7 +49,6 @@ const ROLE_RANK: Record<AuthRole, number> = {
 
 export const FIELD_WORKFLOW_ROLES = [
   "reporter",
-  "district_manager",
   "org_admin",
   "system_admin",
 ] as const satisfies readonly AuthRole[];
