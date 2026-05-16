@@ -25,23 +25,28 @@ const (
 	defaultWriteTimeout    = 20 * time.Second
 	defaultIdleTimeout     = 60 * time.Second
 	defaultShutdownTimeout = 10 * time.Second
+	defaultServiceName     = "clinicpulse-api"
 	minAPIKeyPepperLength  = 32
+	minMetricsTokenLength  = 24
 )
 
 type Config struct {
-	DeployEnv              DeployEnv
-	Addr                   string
-	DatabaseURL            string
-	APIKeyPepper           string
-	ReadTimeout            time.Duration
-	WriteTimeout           time.Duration
-	IdleTimeout            time.Duration
-	ShutdownTimeout        time.Duration
-	WebhookDeliveryEnabled bool
-	TrustedOrigins         []string
-	LoginRateLimit         int
-	MutationRateLimit      int
-	RateLimitWindow        time.Duration
+	DeployEnv                DeployEnv
+	Addr                     string
+	DatabaseURL              string
+	APIKeyPepper             string
+	ReadTimeout              time.Duration
+	WriteTimeout             time.Duration
+	IdleTimeout              time.Duration
+	ShutdownTimeout          time.Duration
+	WebhookDeliveryEnabled   bool
+	TrustedOrigins           []string
+	LoginRateLimit           int
+	MutationRateLimit        int
+	RateLimitWindow          time.Duration
+	MetricsEnabled           bool
+	MetricsToken             string
+	ObservabilityServiceName string
 }
 
 func Load() (Config, error) {
@@ -93,21 +98,30 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	metricsEnabled, err := boolEnv("CLINICPULSE_METRICS_ENABLED", false)
+	if err != nil {
+		return Config{}, err
+	}
+	metricsToken := strings.TrimSpace(os.Getenv("CLINICPULSE_METRICS_TOKEN"))
+	observabilityServiceName := envOrDefault("CLINICPULSE_OBSERVABILITY_SERVICE_NAME", defaultServiceName)
 
 	cfg := Config{
-		DeployEnv:              deployEnv,
-		Addr:                   addr,
-		DatabaseURL:            databaseURL,
-		APIKeyPepper:           apiKeyPepper,
-		ReadTimeout:            readTimeout,
-		WriteTimeout:           writeTimeout,
-		IdleTimeout:            idleTimeout,
-		ShutdownTimeout:        shutdownTimeout,
-		WebhookDeliveryEnabled: webhookDeliveryEnabled,
-		TrustedOrigins:         trustedOrigins,
-		LoginRateLimit:         loginRateLimit,
-		MutationRateLimit:      mutationRateLimit,
-		RateLimitWindow:        rateLimitWindow,
+		DeployEnv:                deployEnv,
+		Addr:                     addr,
+		DatabaseURL:              databaseURL,
+		APIKeyPepper:             apiKeyPepper,
+		ReadTimeout:              readTimeout,
+		WriteTimeout:             writeTimeout,
+		IdleTimeout:              idleTimeout,
+		ShutdownTimeout:          shutdownTimeout,
+		WebhookDeliveryEnabled:   webhookDeliveryEnabled,
+		TrustedOrigins:           trustedOrigins,
+		LoginRateLimit:           loginRateLimit,
+		MutationRateLimit:        mutationRateLimit,
+		RateLimitWindow:          rateLimitWindow,
+		MetricsEnabled:           metricsEnabled,
+		MetricsToken:             metricsToken,
+		ObservabilityServiceName: observabilityServiceName,
 	}
 
 	if err := cfg.Validate(); err != nil {
@@ -140,6 +154,14 @@ func (c Config) Validate() error {
 		if len(c.TrustedOrigins) == 0 {
 			problems = append(problems, "CLINICPULSE_TRUSTED_ORIGINS is required outside local deploy env")
 		}
+
+		if c.MetricsEnabled && len(strings.TrimSpace(c.MetricsToken)) < minMetricsTokenLength {
+			problems = append(problems, fmt.Sprintf("CLINICPULSE_METRICS_TOKEN must be at least %d characters outside local deploy env when metrics are enabled", minMetricsTokenLength))
+		}
+	}
+
+	if strings.TrimSpace(c.ObservabilityServiceName) == "" {
+		problems = append(problems, "CLINICPULSE_OBSERVABILITY_SERVICE_NAME is required")
 	}
 
 	for _, origin := range c.TrustedOrigins {
@@ -205,6 +227,20 @@ func intEnv(key string, fallback int) (int, error) {
 	}
 	if parsed <= 0 {
 		return 0, fmt.Errorf("%s must be positive", key)
+	}
+
+	return parsed, nil
+}
+
+func boolEnv(key string, fallback bool) (bool, error) {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback, nil
+	}
+
+	parsed, err := strconv.ParseBool(value)
+	if err != nil {
+		return false, fmt.Errorf("%s must be a boolean: %w", key, err)
 	}
 
 	return parsed, nil
