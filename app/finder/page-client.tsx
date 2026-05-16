@@ -59,6 +59,13 @@ export default function FinderPageClient({ clinics }: FinderPageClientProps) {
                 <span className="font-medium text-content-emphasis">{status || "all"}</span>
               </span>
             </div>
+            <p className="mt-2 text-xs">
+              Pilot safety: confirm stale or pending data before operational decisions.{" "}
+              <Link href="/legal/safety" className="underline">
+                Read safety notes
+              </Link>
+              .
+            </p>
           </div>
         </section>
 

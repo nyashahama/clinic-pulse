@@ -8,6 +8,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { FieldClinicList } from "@/components/demo/field-clinic-list";
@@ -596,6 +597,13 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
         <div className="mt-3 flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
           <p className="text-content-subtle">
             Clinic status stream is currently {isOnline ? "online" : "offline"}.
+          </p>
+          <p className="text-xs text-content-subtle">
+            Pilot safety: confirm stale or pending data before operational decisions.{" "}
+            <Link href="/legal/safety" className="underline">
+              Read safety notes
+            </Link>
+            .
           </p>
         </div>
       </ReferencePanel>

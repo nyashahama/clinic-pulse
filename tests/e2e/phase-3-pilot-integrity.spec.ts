@@ -30,3 +30,17 @@ test("district and admin surfaces expose data trust labels", async ({ page }) =>
   await expect(page.getByText(/report submission, report review, stale reconciliation/i).first()).toBeVisible();
   await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
 });
+
+test("pilot safety, privacy, and terms pages are reachable", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByRole("link", { name: /safety/i }).click();
+  await expect(page).toHaveURL(/\/legal\/safety/);
+  await expect(page.getByRole("heading", { name: /Pilot safety/i })).toBeVisible();
+  await expect(page.getByText(/human confirmation/i)).toBeVisible();
+
+  await page.goto("/legal/privacy");
+  await expect(page.getByRole("heading", { name: /Privacy/i })).toBeVisible();
+
+  await page.goto("/legal/terms");
+  await expect(page.getByRole("heading", { name: /Terms/i })).toBeVisible();
+});

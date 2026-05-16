@@ -156,6 +156,13 @@ export default function LoginPage() {
           >
             Privacy Policy
           </Link>
+          , and{" "}
+          <Link
+            href="/legal/safety"
+            className="font-semibold text-neutral-600 hover:text-neutral-800 dark:text-muted-foreground dark:hover:text-foreground"
+          >
+            Safety Notes
+          </Link>
           .
         </p>
       </div>
