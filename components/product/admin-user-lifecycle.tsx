@@ -1,7 +1,7 @@
 "use client";
 
 import type { ComponentType, SVGProps } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { KeyRound, RefreshCw, ShieldCheck, UserPlus, UserX } from "lucide-react";
 
@@ -69,6 +69,8 @@ type FeedbackState = {
   tone: "success" | "error";
   message: string;
 } | null;
+
+type UserOverrideState = Record<number, Partial<AdminUserLifecycleUser>>;
 
 function formatDateTime(value?: string | null) {
   if (!value) {
@@ -223,15 +225,16 @@ export function AdminUserLifecycle({
   const [temporaryPassword, setTemporaryPassword] =
     useState<TemporaryPasswordState>(null);
   const [feedback, setFeedback] = useState<FeedbackState>(null);
-  const [localUsers, setLocalUsers] = useState(users);
+  const [userOverrides, setUserOverrides] = useState<UserOverrideState>({});
   const rows = useMemo(
-    () => localUsers.map((user) => ({ ...user, risk: getRisk(user) })),
-    [localUsers],
-  );
+    () =>
+      users.map((user) => {
+        const row = { ...user, ...(userOverrides[user.userId] ?? {}) };
 
-  useEffect(() => {
-    setLocalUsers(users);
-  }, [users]);
+        return { ...row, risk: getRisk(row) };
+      }),
+    [users, userOverrides],
+  );
 
   async function createUser(formData: FormData) {
     setFeedback(null);
@@ -254,16 +257,13 @@ export function AdminUserLifecycle({
     setFeedback(null);
     try {
       await updateUserAction(userId, disabled);
-      setLocalUsers((current) =>
-        current.map((user) =>
-          user.userId === userId
-            ? {
-                ...user,
-                disabledAt: disabled ? new Date().toISOString() : null,
-              }
-            : user,
-        ),
-      );
+      setUserOverrides((current) => ({
+        ...current,
+        [userId]: {
+          ...(current[userId] ?? {}),
+          disabledAt: disabled ? new Date().toISOString() : null,
+        },
+      }));
       setFeedback({
         tone: "success",
         message: disabled ? "User disabled." : "User enabled.",
@@ -278,18 +278,15 @@ export function AdminUserLifecycle({
     try {
       await updateAccessAction(userId, formData);
       const role = optimisticFormString(formData, "role");
-      setLocalUsers((current) =>
-        current.map((user) =>
-          user.userId === userId
-            ? {
-                ...user,
-                role: isActiveRole(role) ? role : user.role,
-                organisationId: optimisticFormNumber(formData, "organisationId"),
-                district: optimisticFormString(formData, "district") || null,
-              }
-            : user,
-        ),
-      );
+      setUserOverrides((current) => ({
+        ...current,
+        [userId]: {
+          ...(current[userId] ?? {}),
+          ...(isActiveRole(role) ? { role } : {}),
+          organisationId: optimisticFormNumber(formData, "organisationId"),
+          district: optimisticFormString(formData, "district") || null,
+        },
+      }));
       setFeedback({ tone: "success", message: "User access updated." });
     } catch (error) {
       setFeedback({ tone: "error", message: mutationErrorMessage(error) });
