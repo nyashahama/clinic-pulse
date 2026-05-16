@@ -2,6 +2,7 @@ import { ClinicPulseMark } from "@/components/brand/clinicpulse-logo";
 import { LoginForm } from "@/components/auth/login-form";
 import type { EmailSignInActionState } from "@/components/auth/email-sign-in";
 import { ClinicPulseAuthApiError, login } from "@/lib/auth/api";
+import { getSafeAuthReturnPath } from "@/lib/auth/redirects";
 import { getMembershipHomeHref } from "@/lib/auth/role-home";
 import { applySessionCookieFromHeader } from "@/lib/auth/session";
 import { validateFrontendRuntimeEnv } from "@/lib/runtime/frontend-env";
@@ -29,6 +30,14 @@ const demoAccounts = [
   },
 ];
 
+type LoginPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+function firstSearchParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
 async function loginAction(
   _state: EmailSignInActionState,
   formData: FormData,
@@ -37,6 +46,7 @@ async function loginAction(
 
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const returnTo = getSafeAuthReturnPath(String(formData.get("next") ?? ""));
 
   if (!email || !password) {
     return {
@@ -52,7 +62,7 @@ async function loginAction(
     await applySessionCookieFromHeader(result.setCookie);
     nextPath = result.data.user.passwordResetRequired
       ? "/change-password"
-      : getMembershipHomeHref(result.data.memberships);
+      : returnTo ?? getMembershipHomeHref(result.data.memberships);
   } catch (error) {
     if (
       error instanceof ClinicPulseAuthApiError &&
@@ -70,8 +80,10 @@ async function loginAction(
   redirect(nextPath);
 }
 
-export default function LoginPage() {
+export default async function LoginPage({ searchParams }: LoginPageProps) {
   const frontendEnv = validateFrontendRuntimeEnv();
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const returnTo = getSafeAuthReturnPath(firstSearchParam(resolvedSearchParams.next));
 
   return (
     <div className="flex min-h-[100dvh] w-full flex-col items-center justify-between px-4 pb-5 pt-24 sm:px-6">
@@ -94,7 +106,7 @@ export default function LoginPage() {
           </div>
 
           <div className="mt-8">
-            <LoginForm loginAction={loginAction} />
+            <LoginForm loginAction={loginAction} returnTo={returnTo ?? undefined} />
           </div>
 
           {frontendEnv.showDemoCredentials ? (
@@ -155,6 +167,13 @@ export default function LoginPage() {
             className="font-semibold text-neutral-600 hover:text-neutral-800 dark:text-muted-foreground dark:hover:text-foreground"
           >
             Privacy Policy
+          </Link>
+          , and{" "}
+          <Link
+            href="/legal/safety"
+            className="font-semibold text-neutral-600 hover:text-neutral-800 dark:text-muted-foreground dark:hover:text-foreground"
+          >
+            Safety Notes
           </Link>
           .
         </p>

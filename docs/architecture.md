@@ -71,6 +71,14 @@ Unsafe cookie-authenticated mutations pass through trusted-origin CSRF checks an
 | Admin readiness | `/admin` | `/v1/admin/*` | user lifecycle, sessions, partner keys, webhooks, exports, integration checks |
 | Partner integration | external partner client | `/v1/partner/*` | partner API keys, export runs, status data |
 
+## Processing Evidence
+
+Stale status reconciliation is safe to rerun: it only escalates freshness state and writes audit evidence for actual transitions. Offline sync attempts are stored in `report_sync_attempts` with duplicate, conflict, validation, and server-error outcomes for the sync summary and admin ingestion views. Partner export generation creates export-run evidence with checksums and record counts. Webhook tests always leave evidence: preview-only runs are recorded when delivery is disabled, and failed test evidence is recorded when delivery is enabled but no delivery implementation is available.
+
+## Pilot Data Trust
+
+Pilot-facing operational data carries source, freshness, review, confidence, and evidence context. Browser-local demo state is not treated as pilot source of truth. Field reports become authoritative after server receipt and district review. Stale reconciliation, sync failures, exports, and webhook attempts leave audit or admin evidence so users can distinguish reviewed current data from pending, stale, failed, or demo-seeded state.
+
 ## Demo Fallback
 
 `CLINICPULSE_ALLOW_DEMO_FALLBACK` controls whether API failures may fall back to seeded frontend demo state and whether local seeded credential hints are visible. This is useful for local demos. Production and staging must keep it disabled because operational failures and seeded access assumptions should be visible.

@@ -68,6 +68,30 @@ func TestLocalPhase3AuthSeedExistsOutsideMigrations(t *testing.T) {
 	}
 }
 
+func TestLocalPhase3ReviewEvidenceSeedExistsOutsideMigrations(t *testing.T) {
+	t.Parallel()
+
+	seedSQL := readSeedFile(t, "local_phase3_review_evidence.sql")
+	required := []string{
+		"Local-only Phase 3 review evidence seed.",
+		"pilot_ingestion_runs",
+		"report_reviews",
+		"report_sync_attempts",
+		"partner_api_keys",
+		"partner_webhook_subscriptions",
+		"partner_webhook_events",
+		"partner_export_runs",
+		"clinicpulse.webhook_test",
+		"sha256:local-review-partner-export",
+		"now() - interval",
+	}
+	for _, value := range required {
+		if !strings.Contains(seedSQL, value) {
+			t.Fatalf("expected local review evidence seed to contain %q", value)
+		}
+	}
+}
+
 func TestAuthLifecycleMigrationAddsAdminLifecycleColumnsAndIndexes(t *testing.T) {
 	t.Parallel()
 
@@ -160,6 +184,26 @@ func TestPartnerReadinessMigrationAddsPartnerTables(t *testing.T) {
 	for _, value := range required {
 		if !strings.Contains(migrationSQL, value) {
 			t.Fatalf("expected partner readiness migration to contain %q", value)
+		}
+	}
+}
+
+func TestPilotDataIntegrityMigrationAddsIngestionRuns(t *testing.T) {
+	t.Parallel()
+
+	migrationSQL := readMigrationFile(t, "0010_pilot_data_integrity.sql")
+	required := []string{
+		"CREATE TABLE IF NOT EXISTS pilot_ingestion_runs",
+		"organisation_id BIGINT NOT NULL REFERENCES organisations(id)",
+		"source_name TEXT NOT NULL",
+		"source_reference TEXT NOT NULL",
+		"status TEXT NOT NULL CHECK (status IN ('succeeded', 'failed', 'partial'))",
+		"validation_errors JSONB NOT NULL DEFAULT '[]'::jsonb",
+		"pilot_ingestion_runs_org_started_idx",
+	}
+	for _, value := range required {
+		if !strings.Contains(migrationSQL, value) {
+			t.Fatalf("expected pilot data integrity migration to contain %q", value)
 		}
 	}
 }

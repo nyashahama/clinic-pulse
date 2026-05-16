@@ -53,8 +53,10 @@ test("desktop admin navigation opens standalone governance modules", async ({
   await signIn(page, "system-admin@clinicpulse.local");
   for (const [name, path] of [
     ["Tenant health", "/admin/tenant-health"],
+    ["Reporting coverage", "/admin/reporting-coverage"],
     ["Data ingestion", "/admin/data-ingestion"],
     ["Security", "/admin/security"],
+    ["Partner readiness", "/admin/partner-readiness"],
     ["Audit evidence", "/admin/audit-evidence"],
   ] as const) {
     await page.goto("/admin");

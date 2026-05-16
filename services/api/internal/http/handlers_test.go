@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -1086,6 +1087,16 @@ func TestAdminUsersAndAuditEventsRequireAdminRole(t *testing.T) {
 			role: "district_manager",
 			path: "/v1/admin/audit-events",
 		},
+		{
+			name: "reporter ingestion runs",
+			role: "reporter",
+			path: "/v1/admin/ingestion/runs",
+		},
+		{
+			name: "district manager ingestion runs",
+			role: "district_manager",
+			path: "/v1/admin/ingestion/runs",
+		},
 	}
 
 	for _, tt := range tests {
@@ -1555,6 +1566,90 @@ func TestAdminAuditEventsUsesGlobalScopeForSystemAdmins(t *testing.T) {
 	}
 }
 
+func TestAdminIngestionRunsListsRuns(t *testing.T) {
+	now := time.Date(2026, 5, 16, 8, 0, 0, 0, time.UTC)
+	completedAt := now.Add(3 * time.Second)
+	actorID := int64(42)
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", 77, fakeStore{
+		pilotIngestionRuns: []store.PilotIngestionRun{{
+			ID:               "ingest-001",
+			OrganisationID:   77,
+			SourceName:       "pilot CSV import",
+			SourceReference:  "district-upload.csv",
+			Status:           "partial",
+			RecordsReceived:  20,
+			RecordsImported:  18,
+			RecordsRejected:  2,
+			ValidationErrors: []string{"clinic code missing", "district invalid"},
+			ActorUserID:      &actorID,
+			StartedAt:        now,
+			CompletedAt:      &completedAt,
+		}},
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/ingestion/runs", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+	for _, want := range []string{
+		`"runs"`,
+		`"id":"ingest-001"`,
+		`"sourceName":"pilot CSV import"`,
+		`"sourceReference":"district-upload.csv"`,
+		`"validationErrorCount":2`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("expected ingestion run response to contain %s, got %s", want, body)
+		}
+	}
+	if strings.Contains(body, "clinic code missing") {
+		t.Fatalf("expected response to expose validation error count without raw validation details, got %s", body)
+	}
+}
+
+func TestAdminIngestionRunsScopesOrganisationAdmins(t *testing.T) {
+	orgID := int64(77)
+	var gotOrgID *int64
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+		listPilotIngestionRunsOrgID: &gotOrgID,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/ingestion/runs", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if gotOrgID == nil || *gotOrgID != orgID {
+		t.Fatalf("expected org admin ingestion runs scoped to org %d, got %#v", orgID, gotOrgID)
+	}
+}
+
+func TestAdminIngestionRunsUsesGlobalScopeForSystemAdmins(t *testing.T) {
+	orgID := int64(77)
+	sentinelOrgID := int64(-1)
+	gotOrgID := &sentinelOrgID
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "system_admin", orgID, fakeStore{
+		listPilotIngestionRunsOrgID: &gotOrgID,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/ingestion/runs", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if gotOrgID != nil {
+		t.Fatalf("expected system admin ingestion runs to use global scope, got %#v", gotOrgID)
+	}
+}
+
 func TestAdminAuditEventsStoreErrorsUseInternalError(t *testing.T) {
 	storeErr := errors.New("database password leaked")
 	router := apihttp.NewRouter(authenticatedAdminStore(t, "system_admin", 77, fakeStore{
@@ -1793,18 +1888,22 @@ func TestAdminPartnerWebhookRejectsUnsafeTargetURLs(t *testing.T) {
 
 func TestAdminPartnerWebhookTestDeliveryEnabledIsExplicitlyNotImplemented(t *testing.T) {
 	orgID := int64(77)
+	secretHash := "stored-webhook-secret-hash"
 	subscriptions := []store.PartnerWebhookSubscription{{
 		ID:             5,
 		OrganisationID: &orgID,
 		Name:           "Status webhook",
 		TargetURL:      "https://partner.example.test/webhooks/clinicpulse",
 		EventTypes:     []string{"clinic.status_changed"},
+		SecretHash:     secretHash,
 		Status:         "active",
 	}}
 	events := []store.PartnerWebhookEvent{}
+	var eventInput store.CreatePartnerWebhookEventInput
 	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
-		partnerWebhookSubscriptions: &subscriptions,
-		partnerWebhookEvents:        &events,
+		partnerWebhookSubscriptions:    &subscriptions,
+		partnerWebhookEvents:           &events,
+		createPartnerWebhookEventInput: &eventInput,
 	}), apihttp.WithWebhookDeliveryEnabled(true))
 	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/webhooks/5/test", nil)
 	rec := httptest.NewRecorder()
@@ -1814,11 +1913,20 @@ func TestAdminPartnerWebhookTestDeliveryEnabledIsExplicitlyNotImplemented(t *tes
 	if rec.Code != http.StatusNotImplemented {
 		t.Fatalf("expected status %d, got %d with body %s", http.StatusNotImplemented, rec.Code, rec.Body.String())
 	}
-	if len(events) != 0 {
-		t.Fatalf("expected no fake delivery event when delivery is enabled but not implemented, got %#v", events)
+	if len(events) != 1 {
+		t.Fatalf("expected failed webhook delivery evidence, got %#v", events)
+	}
+	if eventInput.SubscriptionID != 5 || eventInput.Status != "failed" || eventInput.AttemptCount != 1 || eventInput.EventType != "clinicpulse.webhook_test" {
+		t.Fatalf("unexpected webhook failure event input: %#v", eventInput)
+	}
+	if eventInput.LastError == nil || !strings.Contains(*eventInput.LastError, "not implemented") {
+		t.Fatalf("expected not implemented failure evidence, got %#v", eventInput.LastError)
 	}
 	if !strings.Contains(rec.Body.String(), "not_implemented") {
 		t.Fatalf("expected explicit not implemented response, got %s", rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), secretHash) || strings.Contains(fmt.Sprint(eventInput.Payload), secretHash) || strings.Contains(fmt.Sprint(eventInput.Metadata), secretHash) {
+		t.Fatalf("expected webhook failure evidence not to expose secrets, response=%s input=%#v", rec.Body.String(), eventInput)
 	}
 }
 
@@ -3324,7 +3432,7 @@ func TestOfflineSyncRejectsInvalidJSON(t *testing.T) {
 	}
 }
 
-func TestSyncSummaryRequiresDistrictManagerOrHigher(t *testing.T) {
+func TestSyncSummaryRequiresAuthenticatedReporterOrHigher(t *testing.T) {
 	summary := store.SyncSummary{
 		OfflineReportsReceived:    3,
 		DuplicateSyncsHandled:     1,
@@ -3340,7 +3448,7 @@ func TestSyncSummaryRequiresDistrictManagerOrHigher(t *testing.T) {
 		{name: "district manager", role: "district_manager", wantCode: http.StatusOK},
 		{name: "org admin", role: "org_admin", wantCode: http.StatusOK},
 		{name: "system admin", role: "system_admin", wantCode: http.StatusOK},
-		{name: "reporter", role: "reporter", wantCode: http.StatusForbidden},
+		{name: "reporter", role: "reporter", wantCode: http.StatusOK},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			var since time.Time
@@ -3394,6 +3502,31 @@ func TestSyncSummaryPassesReviewScopeForDistrictManager(t *testing.T) {
 	}
 	if scope.Role != "district_manager" || scope.District == nil || *scope.District != defaultTestDistrict {
 		t.Fatalf("expected district-manager review scope, got %#v", scope)
+	}
+	if scope.UserID == nil || *scope.UserID != 42 {
+		t.Fatalf("expected authenticated user id in review scope, got %#v", scope)
+	}
+}
+
+func TestSyncSummaryPassesReporterUserScope(t *testing.T) {
+	var scope store.ReportReviewScope
+	router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{
+		syncSummary:      &store.SyncSummary{OfflineReportsReceived: 1},
+		syncSummaryScope: &scope,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/sync/summary", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if scope.Role != "reporter" {
+		t.Fatalf("expected reporter review scope, got %#v", scope)
+	}
+	if scope.UserID == nil || *scope.UserID != 42 {
+		t.Fatalf("expected reporter user id in review scope, got %#v", scope)
 	}
 }
 
@@ -4440,6 +4573,7 @@ type fakeStore struct {
 	adminUsers                            []store.AdminUserAccessRow
 	adminUserAccess                       store.AdminUserAccessRow
 	adminAuditEvents                      []store.AdminAuditEventRow
+	pilotIngestionRuns                    []store.PilotIngestionRun
 	currentStatuses                       []store.CurrentStatus
 	createReport                          store.Report
 	createStatus                          store.CurrentStatus
@@ -4489,6 +4623,8 @@ type fakeStore struct {
 	listAdminUsersOrgID                   **int64
 	listAdminAuditEventsOrgID             **int64
 	listAdminAuditEventsLimit             *int
+	listPilotIngestionRunsOrgID           **int64
+	listPilotIngestionRunsLimit           *int
 	partnerReadinessOrgID                 *int64
 	getPartnerExportRunOrgID              *int64
 	getPartnerExportRunID                 *int64
@@ -4530,6 +4666,7 @@ type fakeStore struct {
 	adminUsersErr                         error
 	adminUserAccessErr                    error
 	adminAuditEventsErr                   error
+	pilotIngestionRunsErr                 error
 	currentStatusesErr                    error
 	createErr                             error
 	createUserErr                         error
@@ -4618,6 +4755,16 @@ func (f fakeStore) ListAdminAuditEvents(_ context.Context, organisationID *int64
 		*f.listAdminAuditEventsLimit = limit
 	}
 	return f.adminAuditEvents, f.adminAuditEventsErr
+}
+
+func (f fakeStore) ListPilotIngestionRuns(_ context.Context, organisationID *int64, limit int) ([]store.PilotIngestionRun, error) {
+	if f.listPilotIngestionRunsOrgID != nil {
+		*f.listPilotIngestionRunsOrgID = organisationID
+	}
+	if f.listPilotIngestionRunsLimit != nil {
+		*f.listPilotIngestionRunsLimit = limit
+	}
+	return f.pilotIngestionRuns, f.pilotIngestionRunsErr
 }
 
 func (f fakeStore) CreateUser(_ context.Context, input store.CreateUserInput) (store.User, error) {

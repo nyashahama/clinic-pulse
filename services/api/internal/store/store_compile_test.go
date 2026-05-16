@@ -22,6 +22,7 @@ func TestStorePublicAPICompiles(t *testing.T) {
 	var _ func(Store, context.Context, string) ([]AuditEvent, error) = Store.ListClinicAuditEvents
 	var _ func(Store, context.Context, *int64) ([]AdminUserAccessRow, error) = Store.ListAdminUserAccess
 	var _ func(Store, context.Context, *int64, int) ([]AdminAuditEventRow, error) = Store.ListAdminAuditEvents
+	var _ func(Store, context.Context, *int64, int) ([]PilotIngestionRun, error) = Store.ListPilotIngestionRuns
 	var _ func(Store, context.Context, CreateAuditEventInput) (AuditEvent, error) = Store.CreateAuditEvent
 	var _ func(Store, context.Context, CreateReportInput) (Report, CurrentStatus, AuditEvent, error) = Store.CreateReportTx
 	var _ func(Store, context.Context, CreateReportInput) (Report, error) = Store.CreatePendingReportTx
@@ -61,6 +62,20 @@ func TestListAdminAuditEventsSQLOrdersRecentEventsAndLimits(t *testing.T) {
 	}
 	if !strings.Contains(listAdminAuditEventsSQL, "LIMIT $2") {
 		t.Fatal("expected admin audit event SQL to use caller-provided limit parameter")
+	}
+}
+
+func TestListPilotIngestionRunsSQLScopesOrganisationAndLimits(t *testing.T) {
+	t.Parallel()
+
+	if !strings.Contains(listPilotIngestionRunsSQL, "WHERE $1::bigint IS NULL OR organisation_id = $1") {
+		t.Fatal("expected pilot ingestion runs SQL to scope by organisation id when present")
+	}
+	if !strings.Contains(listPilotIngestionRunsSQL, "ORDER BY started_at DESC, id DESC") {
+		t.Fatal("expected pilot ingestion runs SQL to order newest runs first")
+	}
+	if !strings.Contains(listPilotIngestionRunsSQL, "LIMIT $2") {
+		t.Fatal("expected pilot ingestion runs SQL to apply caller limit")
 	}
 }
 
@@ -138,6 +153,23 @@ func TestSyncSummaryForReviewScopeSQLScopesClinicRowsForDistrictManagers(t *test
 	}
 	if !strings.Contains(syncSummarySinceForReviewScopeSQL, "($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)") {
 		t.Fatal("expected review scope role and district parameters in scoped summary SQL")
+	}
+}
+
+func TestSyncSummaryForReviewScopeSQLScopesReporterRowsByUserID(t *testing.T) {
+	t.Parallel()
+
+	if !strings.Contains(syncSummarySinceForReviewScopeSQL, "$2 = 'reporter' AND $4::bigint IS NOT NULL AND report_sync_attempts.submitted_by_user_id = $4") {
+		t.Fatal("expected reporter sync attempts to scope by submitted_by_user_id")
+	}
+	if !strings.Contains(syncSummarySinceForReviewScopeSQL, "$2 = 'reporter' AND $4::bigint IS NOT NULL AND reports.submitted_by_user_id = $4") {
+		t.Fatal("expected reporter pending reports to scope by submitted_by_user_id")
+	}
+	if !strings.Contains(syncSummarySinceForReviewScopeSQL, "reporter_attempts.submitted_by_user_id = $4") {
+		t.Fatal("expected reporter current-status evidence to use reporter sync attempts")
+	}
+	if !strings.Contains(syncSummarySinceForReviewScopeSQL, "reporter_reports.submitted_by_user_id = $4") {
+		t.Fatal("expected reporter current-status evidence to use reporter reports")
 	}
 }
 

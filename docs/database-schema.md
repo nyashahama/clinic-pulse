@@ -93,12 +93,26 @@ Important session behavior:
 | Table | Purpose |
 | --- | --- |
 | `report_sync_attempts` | Records offline sync outcomes, duplicate/conflict handling, validation errors, and sync metadata |
+| `pilot_ingestion_runs` | Records pilot source ingestion runs, source references, import/rejection counts, validation errors, actor, and completion state |
 
 Important fields:
 
 - `external_id` tracks client-generated report IDs.
 - `result` is constrained to `created`, `duplicate`, `conflict`, `validation_error`, `forbidden`, or `server_error`.
 - `clinic_id` can be null after migration `0007_nullable_sync_attempt_clinic_id.sql`.
+- `pilot_ingestion_runs.validation_errors` stores an array of validation labels while the admin API exposes only the count.
+
+## Pilot Data Provenance And Derived States
+
+Pilot provenance is assembled from existing operational tables instead of one broad denormalized trust table:
+
+- `reports.source`, `reports.offline_created`, `reports.review_state`, reviewer fields, and report timestamps provide field-report provenance and review evidence.
+- `current_status.source`, `current_status.freshness`, `current_status.confidence_score`, and status timestamps provide the current operational data trust state.
+- `report_sync_attempts` provides sync evidence for queued, synced, duplicate, conflict, validation, forbidden, and server-error outcomes.
+- `audit_events` provides append-only evidence for report submission, report review, stale reconciliation, access, export, webhook, and admin actions.
+- `pilot_ingestion_runs` provides controlled source-ingestion evidence when imported pilot data is available outside the field-report flow.
+
+The frontend derives user-facing trust labels from these fields. Labels such as reviewed field data, pending review, stale, needs confirmation, failed sync, and demo data are derived presentation states, not separate persisted enums.
 
 ## Partner Readiness, Webhooks, And Exports
 

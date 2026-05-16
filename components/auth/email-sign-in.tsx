@@ -19,12 +19,18 @@ const inputClassName =
 const buttonClassName =
   "inline-flex w-full shrink-0 items-center justify-center rounded-xl border border-neutral-950 bg-neutral-950 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/10 transition hover:-translate-y-0.5 hover:bg-neutral-800 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70 dark:border-primary dark:bg-primary dark:text-primary-foreground dark:shadow-black/30 dark:hover:bg-primary/90";
 
-export function EmailSignIn({ action }: { action?: EmailSignInAction }) {
+export function EmailSignIn({
+  action,
+  returnTo,
+}: {
+  action?: EmailSignInAction;
+  returnTo?: string;
+}) {
   if (!action) {
     return <EmailOnlySignIn />;
   }
 
-  return <PasswordEmailSignIn action={action} />;
+  return <PasswordEmailSignIn action={action} returnTo={returnTo} />;
 }
 
 function EmailOnlySignIn() {
@@ -60,11 +66,19 @@ function EmailOnlySignIn() {
   );
 }
 
-function PasswordEmailSignIn({ action }: { action: EmailSignInAction }) {
+function PasswordEmailSignIn({
+  action,
+  returnTo,
+}: {
+  action: EmailSignInAction;
+  returnTo?: string;
+}) {
   const [state, formAction, pending] = useActionState(action, {});
 
   return (
     <form action={formAction} className="flex flex-col gap-y-4">
+      {returnTo ? <input type="hidden" name="next" value={returnTo} /> : null}
+
       <label>
         <span className="mb-2 block text-sm font-semibold leading-none text-neutral-900 dark:text-foreground">
           Email

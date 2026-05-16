@@ -274,6 +274,21 @@ type AdminUserAccessRow struct {
 
 type AdminAuditEventRow = AuditEvent
 
+type PilotIngestionRun struct {
+	ID               string     `json:"id"`
+	OrganisationID   int64      `json:"organisationId"`
+	SourceName       string     `json:"sourceName"`
+	SourceReference  string     `json:"sourceReference"`
+	Status           string     `json:"status"`
+	RecordsReceived  int        `json:"recordsReceived"`
+	RecordsImported  int        `json:"recordsImported"`
+	RecordsRejected  int        `json:"recordsRejected"`
+	ValidationErrors []string   `json:"validationErrors,omitempty"`
+	ActorUserID      *int64     `json:"actorUserId,omitempty"`
+	StartedAt        time.Time  `json:"startedAt"`
+	CompletedAt      *time.Time `json:"completedAt,omitempty"`
+}
+
 type User struct {
 	ID                    int64      `json:"id"`
 	Email                 string     `json:"email"`
@@ -400,6 +415,7 @@ type ReviewReportInput struct {
 type ReportReviewScope struct {
 	Role     string
 	District *string
+	UserID   *int64
 }
 
 type CreateSessionInput struct {

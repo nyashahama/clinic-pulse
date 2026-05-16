@@ -64,12 +64,13 @@ Admin routes require a session with `org_admin` or `system_admin`.
 | `PUT` | `/v1/admin/users/{userId}/access` | Replaces managed user role, organisation, and optional district scope |
 | `POST` | `/v1/admin/users/{userId}/sessions/revoke` | Revokes active sessions for a managed user |
 | `GET` | `/v1/admin/audit-events` | Lists recent admin-visible audit events |
+| `GET` | `/v1/admin/ingestion/runs` | Lists pilot ingestion runs with source, status, record counts, and validation error counts |
 | `POST` | `/v1/admin/api-keys` | Creates a partner API key and returns the one-time secret |
 | `GET` | `/v1/admin/api-keys` | Lists partner API keys |
 | `POST` | `/v1/admin/api-keys/{keyId}/revoke` | Revokes a partner API key |
 | `GET` | `/v1/admin/webhooks` | Lists partner webhook subscriptions |
 | `POST` | `/v1/admin/webhooks` | Creates a partner webhook subscription |
-| `POST` | `/v1/admin/webhooks/{subscriptionId}/test` | Creates a test webhook event or preview |
+| `POST` | `/v1/admin/webhooks/{subscriptionId}/test` | Creates webhook test evidence; when delivery is disabled it records a preview, and when delivery is enabled but unavailable it records failed evidence before returning `501` |
 | `POST` | `/v1/admin/exports` | Creates a partner export run |
 | `GET` | `/v1/admin/exports/{exportId}` | Returns one partner export run |
 
@@ -86,9 +87,9 @@ Operational routes require a session with `district_manager`, `org_admin`, or `s
 | `GET` | `/v1/clinics/{clinicId}/reports` | Lists reports for a clinic |
 | `GET` | `/v1/clinics/{clinicId}/audit-events` | Lists audit events for a clinic |
 | `GET` | `/v1/reports/pending` | Lists reports waiting for review |
-| `POST` | `/v1/status/reconcile-staleness` | Reconciles stale clinic status |
+| `POST` | `/v1/status/reconcile-staleness` | Idempotently reconciles stale status and records audit evidence for state transitions |
 | `POST` | `/v1/reports/{reportId}/review` | Accepts or rejects a report |
-| `GET` | `/v1/sync/summary` | Returns offline sync and pilot readiness summary |
+| `GET` | `/v1/sync/summary` | Returns sync health, duplicate/conflict/validation failure counts, stale clinic counts, and latest sync evidence |
 
 ## Reporter Routes
 

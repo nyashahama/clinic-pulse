@@ -30,7 +30,7 @@ export default function AuthLayout({
   return (
     <div className="relative grid min-h-[100dvh] min-h-screen grid-cols-1 min-[900px]:grid-cols-[minmax(0,1fr)_440px] lg:grid-cols-[minmax(0,1fr)_595px]">
       <div className="relative">
-        <div className="absolute inset-0 isolate overflow-hidden bg-[#eef3f2] dark:bg-background">
+        <div className="pointer-events-none absolute inset-0 isolate overflow-hidden bg-[#eef3f2] dark:bg-background">
           <div
             className="absolute inset-y-0 left-1/2 w-[1200px] -translate-x-1/2"
             style={{

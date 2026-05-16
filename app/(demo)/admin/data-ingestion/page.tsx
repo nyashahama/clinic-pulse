@@ -13,6 +13,11 @@ import {
 } from "@/lib/demo/api-client";
 import type { ClinicDetailApiResponse, ReportApiResponse } from "@/lib/demo/api-types";
 import { summarizeReportingCoverage } from "@/lib/product/admin-governance";
+import {
+  buildDataTrustState,
+  type DataFreshness,
+  type ReviewState,
+} from "@/lib/product/data-trust";
 import { requireDemoWorkflowAccess } from "../../workflow-guard";
 import { getAdminLoaderOptions } from "../admin-loaders";
 import {
@@ -50,6 +55,59 @@ function reportEvidence(report: ReportApiResponse) {
   return `${source}; ${formatLabel(report.status)} status; ${formatLabel(
     report.reviewState,
   )} review`;
+}
+
+function dataFreshnessForClinic(clinic: ClinicDetailApiResponse): DataFreshness {
+  const freshness = clinic.currentStatus?.freshness;
+
+  if (
+    freshness === "fresh" ||
+    freshness === "needs_confirmation" ||
+    freshness === "stale" ||
+    freshness === "unknown"
+  ) {
+    return freshness;
+  }
+
+  return "unknown";
+}
+
+function reviewStateForReport(report: ReportApiResponse): ReviewState {
+  if (report.reviewState === "pending") {
+    return "pending_review";
+  }
+
+  if (report.reviewState === "rejected") {
+    return "rejected";
+  }
+
+  if (report.reviewState === "accepted") {
+    return "reviewed";
+  }
+
+  return "unknown";
+}
+
+function dataTrustForReport(report: ReportApiResponse) {
+  return buildDataTrustState({
+    source: "field_report",
+    freshness: "fresh",
+    reviewState: reviewStateForReport(report),
+    lastVerifiedAt: report.receivedAt,
+    evidenceHref: "/admin/audit-evidence",
+  });
+}
+
+function dataTrustForClinic(clinic: ClinicDetailApiResponse) {
+  return buildDataTrustState({
+    source: clinic.currentStatus?.source?.toLowerCase().includes("reconciliation")
+      ? "system_reconciliation"
+      : "seeded_demo",
+    freshness: dataFreshnessForClinic(clinic),
+    reviewState: clinic.currentStatus ? "not_required" : "unknown",
+    lastVerifiedAt: clinic.currentStatus?.lastReportedAt ?? clinic.currentStatus?.updatedAt,
+    evidenceHref: "/admin/audit-evidence",
+  });
 }
 
 export default async function Page() {
@@ -145,7 +203,8 @@ export default async function Page() {
       <AdminFilterBar>
         <StatusBadge tone={coverage.tone}>Read only ingestion evidence</StatusBadge>
         <span className="text-sm text-muted-foreground">
-          This module reviews ingestion state only; retry and incident handoff controls are not exposed here.
+          Sync, ingestion, stale reconciliation, source, freshness, and review state are visible here.
+          Retry and incident handoff controls are not exposed.
         </span>
       </AdminFilterBar>
       <AdminEvidenceTable
@@ -206,7 +265,16 @@ export default async function Page() {
           {
             key: "evidence",
             header: "Pending report evidence",
-            render: (row) => reportEvidence(row),
+            render: (row) => {
+              const trust = dataTrustForReport(row);
+
+              return (
+                <div className="space-y-1">
+                  <p>{reportEvidence(row)}</p>
+                  <StatusBadge tone={trust.tone}>{trust.label}</StatusBadge>
+                </div>
+              );
+            },
           },
           {
             key: "submitted",
@@ -255,6 +323,20 @@ export default async function Page() {
                 {formatLabel(row.currentStatus?.freshness)}
               </StatusBadge>
             ),
+          },
+          {
+            key: "trust",
+            header: "Data trust",
+            render: (row) => {
+              const trust = dataTrustForClinic(row);
+
+              return (
+                <div className="space-y-1">
+                  <StatusBadge tone={trust.tone}>{trust.label}</StatusBadge>
+                  <p className="max-w-xs text-xs text-muted-foreground">{trust.description}</p>
+                </div>
+              );
+            },
           },
           {
             key: "updated",

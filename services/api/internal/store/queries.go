@@ -345,6 +345,25 @@ WHERE $1::bigint IS NULL OR organisation_id = $1
 ORDER BY created_at DESC, id DESC
 LIMIT $2`
 
+	listPilotIngestionRunsSQL = `
+SELECT
+    id,
+    organisation_id,
+    source_name,
+    source_reference,
+    status,
+    records_received,
+    records_imported,
+    records_rejected,
+    validation_errors,
+    actor_user_id,
+    started_at,
+    completed_at
+FROM pilot_ingestion_runs
+WHERE $1::bigint IS NULL OR organisation_id = $1
+ORDER BY started_at DESC, id DESC
+LIMIT $2`
+
 	verifyClinicExistsSQL = `SELECT id FROM clinics WHERE id = $1`
 
 	insertReportSQL = `
@@ -859,6 +878,8 @@ WITH attempt_counts AS (
     LEFT JOIN clinics ON clinics.id = report_sync_attempts.clinic_id
     WHERE report_sync_attempts.received_at >= $1
         AND (
+            ($2 = 'reporter' AND $4::bigint IS NOT NULL AND report_sync_attempts.submitted_by_user_id = $4)
+            OR
             (
                 report_sync_attempts.clinic_id IS NOT NULL
                 AND ($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)
@@ -874,7 +895,8 @@ pending_offline AS (
         AND reports.review_state = 'pending'
         AND reports.received_at >= $1
         AND (
-            ($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)
+            ($2 = 'reporter' AND $4::bigint IS NOT NULL AND reports.submitted_by_user_id = $4)
+            OR ($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)
             OR $2 IN ('org_admin', 'system_admin')
         )
 ),
@@ -885,7 +907,27 @@ current_status_counts AS (
     FROM current_status
     JOIN clinics ON clinics.id = current_status.clinic_id
     WHERE (
-        ($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)
+        (
+            $2 = 'reporter'
+            AND $4::bigint IS NOT NULL
+            AND (
+                EXISTS (
+                    SELECT 1
+                    FROM report_sync_attempts reporter_attempts
+                    WHERE reporter_attempts.submitted_by_user_id = $4
+                        AND reporter_attempts.clinic_id = current_status.clinic_id
+                        AND reporter_attempts.received_at >= $1
+                )
+                OR EXISTS (
+                    SELECT 1
+                    FROM reports reporter_reports
+                    WHERE reporter_reports.submitted_by_user_id = $4
+                        AND reporter_reports.clinic_id = current_status.clinic_id
+                        AND reporter_reports.received_at >= $1
+                )
+            )
+        )
+        OR ($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)
         OR $2 IN ('org_admin', 'system_admin')
     )
 ),
@@ -897,7 +939,27 @@ median_status_age AS (
     FROM current_status
     JOIN clinics ON clinics.id = current_status.clinic_id
     WHERE (
-        ($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)
+        (
+            $2 = 'reporter'
+            AND $4::bigint IS NOT NULL
+            AND (
+                EXISTS (
+                    SELECT 1
+                    FROM report_sync_attempts reporter_attempts
+                    WHERE reporter_attempts.submitted_by_user_id = $4
+                        AND reporter_attempts.clinic_id = current_status.clinic_id
+                        AND reporter_attempts.received_at >= $1
+                )
+                OR EXISTS (
+                    SELECT 1
+                    FROM reports reporter_reports
+                    WHERE reporter_reports.submitted_by_user_id = $4
+                        AND reporter_reports.clinic_id = current_status.clinic_id
+                        AND reporter_reports.received_at >= $1
+                )
+            )
+        )
+        OR ($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)
         OR $2 IN ('org_admin', 'system_admin')
     )
 )
@@ -1456,7 +1518,7 @@ func (s Store) GetSyncSummarySinceForReviewScope(ctx context.Context, since time
 	var medianAge sql.NullFloat64
 	summary.WindowStartedAt = since
 
-	if err := s.pool.QueryRow(ctx, syncSummarySinceForReviewScopeSQL, since, scope.Role, scope.District).Scan(
+	if err := s.pool.QueryRow(ctx, syncSummarySinceForReviewScopeSQL, since, scope.Role, scope.District, scope.UserID).Scan(
 		&summary.OfflineReportsReceived,
 		&summary.DuplicateSyncsHandled,
 		&summary.ConflictsNeedingAttention,
@@ -1622,6 +1684,55 @@ func (s Store) ListAdminAuditEvents(ctx context.Context, organisationID *int64, 
 	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (AdminAuditEventRow, error) {
 		return scanAuditEvent(row)
 	})
+}
+
+func (s Store) ListPilotIngestionRuns(ctx context.Context, organisationID *int64, limit int) ([]PilotIngestionRun, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	rows, err := s.pool.Query(ctx, listPilotIngestionRunsSQL, organisationID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return pgx.CollectRows(rows, scanPilotIngestionRun)
+}
+
+func scanPilotIngestionRun(row pgx.CollectableRow) (PilotIngestionRun, error) {
+	var run PilotIngestionRun
+	var validationErrors []byte
+	var actorUserID sql.NullInt64
+	var completedAt sql.NullTime
+
+	if err := row.Scan(
+		&run.ID,
+		&run.OrganisationID,
+		&run.SourceName,
+		&run.SourceReference,
+		&run.Status,
+		&run.RecordsReceived,
+		&run.RecordsImported,
+		&run.RecordsRejected,
+		&validationErrors,
+		&actorUserID,
+		&run.StartedAt,
+		&completedAt,
+	); err != nil {
+		return PilotIngestionRun{}, err
+	}
+
+	if len(validationErrors) > 0 {
+		if err := json.Unmarshal(validationErrors, &run.ValidationErrors); err != nil {
+			return PilotIngestionRun{}, err
+		}
+	}
+	if run.ValidationErrors == nil {
+		run.ValidationErrors = []string{}
+	}
+	run.ActorUserID = nullInt64Ptr(actorUserID)
+	run.CompletedAt = nullTimePtr(completedAt)
+	return run, nil
 }
 
 func (s Store) CreateAuditEvent(ctx context.Context, input CreateAuditEventInput) (AuditEvent, error) {

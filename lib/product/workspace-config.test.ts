@@ -59,8 +59,10 @@ const expectedSidebarLabels = {
   system_admin: [
     "Platform Overview",
     "Tenant health",
+    "Reporting coverage",
     "Data ingestion",
     "Security",
+    "Partner readiness",
     "Integrations",
     "Demo controls",
     "Audit evidence",
@@ -162,9 +164,9 @@ describe("product workspace navigation config", () => {
     },
   );
 
-  it("keeps partner readiness under organisation admin only", () => {
+  it("keeps partner readiness visible to admin roles only", () => {
     expect(sidebarLabelsForRole("org_admin")).toContain("Partner readiness");
-    expect(sidebarLabelsForRole("system_admin")).not.toContain("Partner readiness");
+    expect(sidebarLabelsForRole("system_admin")).toContain("Partner readiness");
     expect(sidebarLabelsForRole("district_manager")).not.toContain("Partner readiness");
     expect(sidebarLabelsForRole("reporter")).not.toContain("Partner readiness");
   });
@@ -199,8 +201,10 @@ describe("product workspace navigation config", () => {
     expect(workspaceUrlsForRole("system_admin")).toEqual(
       expect.arrayContaining([
         "/admin/tenant-health",
+        "/admin/reporting-coverage",
         "/admin/data-ingestion",
         "/admin/security",
+        "/admin/partner-readiness",
         "/admin/integrations",
         "/admin#demo-controls",
         "/admin/audit-evidence",

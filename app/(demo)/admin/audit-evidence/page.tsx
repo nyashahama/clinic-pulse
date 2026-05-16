@@ -7,6 +7,7 @@ import {
 import type {
   AdminAuditEventApiResponse,
   PartnerExportRunApiResponse,
+  PartnerWebhookEventApiResponse,
 } from "@/lib/demo/api-types";
 import { requireDemoWorkflowAccess } from "../../workflow-guard";
 import { loadAdminGovernanceData } from "../admin-loaders";
@@ -46,6 +47,34 @@ function compactRecord(value: Record<string, unknown>) {
     .join("; ");
 }
 
+function eventTrustGroup(event: AdminAuditEventApiResponse) {
+  if (includesAny(event.eventType, ["sync", "report.submitted", "report.received"])) {
+    return "Report submission evidence";
+  }
+
+  if (includesAny(event.eventType, ["review"])) {
+    return "Review state evidence";
+  }
+
+  if (includesAny(event.eventType, ["stale", "reconciliation"])) {
+    return "Stale reconciliation evidence";
+  }
+
+  if (includesAny(event.eventType, ["export"])) {
+    return "Partner export evidence";
+  }
+
+  if (includesAny(event.eventType, ["webhook"])) {
+    return "Webhook delivery evidence";
+  }
+
+  if (includesAny(event.eventType, ["access", "auth", "role", "user", "session"])) {
+    return "Access evidence";
+  }
+
+  return "Operating evidence";
+}
+
 function requesterLabel(
   exportRun: PartnerExportRunApiResponse,
   userById: Map<number, string>,
@@ -55,6 +84,20 @@ function requesterLabel(
   }
 
   return userById.get(exportRun.requestedByUserId) ?? `User ${exportRun.requestedByUserId}`;
+}
+
+function webhookEventTone(event: PartnerWebhookEventApiResponse) {
+  return event.status === "failed" ? "blocked" : "info";
+}
+
+function webhookEventEvidence(event: PartnerWebhookEventApiResponse) {
+  if (event.lastError) {
+    return event.lastError;
+  }
+
+  return event.status === "preview_only"
+    ? "Preview-only webhook test event recorded without delivery."
+    : "Webhook delivery/test event recorded.";
 }
 
 export default async function Page() {
@@ -69,6 +112,13 @@ export default async function Page() {
     includesAny(event.eventType, ["access", "auth", "role", "user"]),
   ).length;
   const exportRuns = partnerReadiness.exportRuns;
+  const webhookEvents = partnerReadiness.webhookEvents;
+  const webhookTestEvents = webhookEvents.filter(
+    (event) => event.status === "preview_only" || includesAny(event.eventType, ["webhook_test"]),
+  ).length;
+  const webhookFailures = webhookEvents.filter(
+    (event) => event.status === "failed" || Boolean(event.lastError),
+  ).length;
 
   return (
     <div className="space-y-4">
@@ -95,6 +145,16 @@ export default async function Page() {
             tone: "info",
           },
           {
+            label: "Webhook test evidence",
+            value: formatCount(webhookTestEvents),
+            tone: webhookTestEvents > 0 ? "info" : "attention",
+          },
+          {
+            label: "Webhook failures",
+            value: formatCount(webhookFailures),
+            tone: toneForAttention(webhookFailures),
+          },
+          {
             label: "Access-related events",
             value: formatCount(accessEvents),
             tone: toneForAttention(accessEvents),
@@ -104,7 +164,8 @@ export default async function Page() {
       <AdminFilterBar>
         <StatusBadge tone="info">Operating evidence</StatusBadge>
         <span className="text-sm text-muted-foreground">
-          Evidence is shown for review and traceability; this module does not make formal attestations.
+          Report submission, report review, stale reconciliation, sync attempt, export, webhook, and
+          access evidence are grouped for trust review. This module does not make formal attestations.
         </span>
       </AdminFilterBar>
       <AdminEvidenceTable
@@ -140,6 +201,11 @@ export default async function Page() {
             render: (row) => <p className="max-w-md text-sm">{row.summary}</p>,
           },
           {
+            key: "trustGroup",
+            header: "Trust group",
+            render: (row) => <StatusBadge tone="info">{eventTrustGroup(row)}</StatusBadge>,
+          },
+          {
             key: "createdAt",
             header: "Created",
             render: (row) => formatDateTime(row.createdAt),
@@ -171,9 +237,55 @@ export default async function Page() {
             render: (row) => <p className="max-w-sm text-sm">{compactRecord(row.scope)}</p>,
           },
           {
+            key: "freshness",
+            header: "Freshness assumption",
+            render: () => (
+              <p className="max-w-sm text-sm">
+                Export evidence should be read with current source, freshness, and review state.
+              </p>
+            ),
+          },
+          {
             key: "requester",
             header: "Requester",
             render: (row) => requesterLabel(row, userById),
+          },
+          {
+            key: "createdAt",
+            header: "Created",
+            render: (row) => formatDateTime(row.createdAt),
+          },
+        ]}
+      />
+      <AdminEvidenceTable
+        label="Webhook delivery and test evidence"
+        rows={webhookEvents}
+        getRowKey={(row) => String(row.id)}
+        columns={[
+          {
+            key: "eventType",
+            header: "Event",
+            render: (row) => <StatusBadge tone={webhookEventTone(row)}>{formatLabel(row.eventType)}</StatusBadge>,
+          },
+          {
+            key: "subscription",
+            header: "Subscription",
+            render: (row) => `Subscription ${row.subscriptionId}`,
+          },
+          {
+            key: "status",
+            header: "Status",
+            render: (row) => <StatusBadge tone={webhookEventTone(row)}>{formatLabel(row.status)}</StatusBadge>,
+          },
+          {
+            key: "attempts",
+            header: "Attempts",
+            render: (row) => formatCount(row.attemptCount),
+          },
+          {
+            key: "evidence",
+            header: "Evidence",
+            render: (row) => <p className="max-w-md text-sm">{webhookEventEvidence(row)}</p>,
           },
           {
             key: "createdAt",

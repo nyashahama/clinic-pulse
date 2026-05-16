@@ -54,6 +54,7 @@ type ClinicStore interface {
 	ListClinicAuditEvents(ctx context.Context, clinicID string) ([]store.AuditEvent, error)
 	ListAdminUserAccess(ctx context.Context, organisationID *int64) ([]store.AdminUserAccessRow, error)
 	ListAdminAuditEvents(ctx context.Context, organisationID *int64, limit int) ([]store.AdminAuditEventRow, error)
+	ListPilotIngestionRuns(ctx context.Context, organisationID *int64, limit int) ([]store.PilotIngestionRun, error)
 	CreateAdminUserWithAccessTx(ctx context.Context, input store.CreateAdminUserWithAccessInput) (store.User, store.OrganisationMembership, store.AuditEvent, error)
 	GetUserByID(ctx context.Context, userID int64) (store.User, error)
 	GetAdminUserAccessByUserID(ctx context.Context, userID int64) (store.AdminUserAccessRow, error)
@@ -751,6 +752,43 @@ func (h Handler) ListAdminAuditEvents(w nethttp.ResponseWriter, r *nethttp.Reque
 	RespondJSON(w, nethttp.StatusOK, events)
 }
 
+func (h Handler) ListAdminIngestionRuns(w nethttp.ResponseWriter, r *nethttp.Request) {
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	runs, err := h.store.ListPilotIngestionRuns(r.Context(), adminReadOrganisationScope(principal), 50)
+	if err != nil {
+		respondStoreError(w, err, "failed to list pilot ingestion runs")
+		return
+	}
+	if runs == nil {
+		runs = []store.PilotIngestionRun{}
+	}
+
+	responseRuns := make([]adminIngestionRunResponse, 0, len(runs))
+	for _, run := range runs {
+		responseRuns = append(responseRuns, adminIngestionRunResponse{
+			ID:                   run.ID,
+			OrganisationID:       run.OrganisationID,
+			SourceName:           run.SourceName,
+			SourceReference:      run.SourceReference,
+			Status:               run.Status,
+			RecordsReceived:      run.RecordsReceived,
+			RecordsImported:      run.RecordsImported,
+			RecordsRejected:      run.RecordsRejected,
+			ValidationErrorCount: len(run.ValidationErrors),
+			ActorUserID:          run.ActorUserID,
+			StartedAt:            run.StartedAt,
+			CompletedAt:          run.CompletedAt,
+		})
+	}
+
+	RespondJSON(w, nethttp.StatusOK, adminIngestionRunsResponse{Runs: responseRuns})
+}
+
 func adminReadOrganisationScope(principal Principal) *int64 {
 	if principal.Role == "system_admin" {
 		return nil
@@ -1081,6 +1119,34 @@ func (h Handler) CreateAdminPartnerWebhookTestEvent(w nethttp.ResponseWriter, r 
 		return
 	}
 	if h.webhookDeliveryEnabled {
+		now := time.Now().UTC()
+		lastError := "webhook delivery is not implemented"
+		if _, err := h.store.CreatePartnerWebhookEvent(r.Context(), store.CreatePartnerWebhookEventInput{
+			SubscriptionID: subscriptionID,
+			EventType:      "clinicpulse.webhook_test",
+			Payload: map[string]any{
+				"eventType":      "clinicpulse.webhook_test",
+				"subscriptionId": subscriptionID,
+				"targetUrl":      subscription.TargetURL,
+				"previewOnly":    false,
+			},
+			Metadata: map[string]any{
+				"previewOnly":       false,
+				"deliveryEnabled":   true,
+				"deliveryAttempted": false,
+			},
+			Status:       "failed",
+			AttemptCount: 1,
+			LastError:    &lastError,
+			CreatedAt:    now,
+		}); err != nil {
+			respondPartnerAdminMutationError(w, err, "failed to create partner webhook test event")
+			return
+		}
+		if _, err := h.refreshPartnerIntegrationStatusChecks(r.Context(), principal.OrganisationID, now); err != nil {
+			respondStoreError(w, err, "failed to refresh integration status checks")
+			return
+		}
 		RespondError(w, nethttp.StatusNotImplemented, "not_implemented", "webhook delivery is not implemented")
 		return
 	}
@@ -2025,9 +2091,11 @@ func publicSession(session store.Session) store.Session {
 }
 
 func reviewScopeForPrincipal(principal Principal) store.ReportReviewScope {
+	userID := principal.UserID
 	return store.ReportReviewScope{
 		Role:     principal.Role,
 		District: principal.DistrictScope,
+		UserID:   &userID,
 	}
 }
 
@@ -2197,6 +2265,25 @@ type updateAdminUserAccessResponse struct {
 
 type revokeAdminUserSessionsResponse struct {
 	RevokedSessions int64 `json:"revokedSessions"`
+}
+
+type adminIngestionRunsResponse struct {
+	Runs []adminIngestionRunResponse `json:"runs"`
+}
+
+type adminIngestionRunResponse struct {
+	ID                   string     `json:"id"`
+	OrganisationID       int64      `json:"organisationId"`
+	SourceName           string     `json:"sourceName"`
+	SourceReference      string     `json:"sourceReference"`
+	Status               string     `json:"status"`
+	RecordsReceived      int        `json:"recordsReceived"`
+	RecordsImported      int        `json:"recordsImported"`
+	RecordsRejected      int        `json:"recordsRejected"`
+	ValidationErrorCount int        `json:"validationErrorCount"`
+	ActorUserID          *int64     `json:"actorUserId,omitempty"`
+	StartedAt            time.Time  `json:"startedAt"`
+	CompletedAt          *time.Time `json:"completedAt,omitempty"`
 }
 
 type createPartnerAPIKeyRequest struct {

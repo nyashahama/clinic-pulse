@@ -188,8 +188,10 @@ const ROLE_WORKSPACES: Record<AuthRole, DashboardWorkspace> = {
             icon: <ShieldIcon />,
             items: [
               { title: "Tenant health", url: "/admin/tenant-health" },
+              { title: "Reporting coverage", url: "/admin/reporting-coverage" },
               { title: "Data ingestion", url: "/admin/data-ingestion" },
               { title: "Security", url: "/admin/security" },
+              { title: "Partner readiness", url: "/admin/partner-readiness" },
               { title: "Integrations", url: "/admin/integrations" },
               { title: "Demo controls", url: "/admin#demo-controls" },
               { title: "Audit evidence", url: "/admin/audit-evidence" },

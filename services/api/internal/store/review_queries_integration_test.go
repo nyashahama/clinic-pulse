@@ -472,6 +472,187 @@ VALUES
 	}
 }
 
+func TestSyncSummaryForReviewScopeScopesReporterRowsByUserID(t *testing.T) {
+	databaseURL := os.Getenv("AUTH_STORE_TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("set AUTH_STORE_TEST_DATABASE_URL to run offline sync store integration tests")
+	}
+
+	ctx := context.Background()
+	store := newIntegrationStore(t, ctx, databaseURL)
+
+	reporterID := insertIntegrationUser(t, ctx, store, "sync-reporter-a@example.test", "Sync Reporter A", nil, nil)
+	otherReporterID := insertIntegrationUser(t, ctx, store, "sync-reporter-b@example.test", "Sync Reporter B", nil, nil)
+	insertIntegrationClinic(t, ctx, store, "clinic-sync-reporter-a", "Reporter A Sync Clinic")
+	insertIntegrationClinic(t, ctx, store, "clinic-sync-reporter-b", "Reporter B Sync Clinic")
+
+	baseTime := time.Date(2126, 5, 4, 12, 0, 0, 0, time.UTC)
+	windowStart := baseTime.Add(-time.Minute)
+	reporterReport, err := store.CreatePendingReportTx(ctx, CreateReportInput{
+		ExternalID:        stringPtr("sync-reporter-a-pending"),
+		ClinicID:          "clinic-sync-reporter-a",
+		ReporterName:      stringPtr("Sync Reporter A"),
+		Source:            "field_worker",
+		OfflineCreated:    true,
+		SubmittedAt:       baseTime.Add(-10 * time.Minute),
+		ReceivedAt:        baseTime,
+		Status:            "degraded",
+		ReviewState:       "pending",
+		SubmittedByUserID: &reporterID,
+	})
+	if err != nil {
+		t.Fatalf("CreatePendingReportTx reporter report returned error: %v", err)
+	}
+	otherReporterReport, err := store.CreatePendingReportTx(ctx, CreateReportInput{
+		ExternalID:        stringPtr("sync-reporter-b-pending"),
+		ClinicID:          "clinic-sync-reporter-b",
+		ReporterName:      stringPtr("Sync Reporter B"),
+		Source:            "field_worker",
+		OfflineCreated:    true,
+		SubmittedAt:       baseTime.Add(-10 * time.Minute),
+		ReceivedAt:        baseTime,
+		Status:            "degraded",
+		ReviewState:       "pending",
+		SubmittedByUserID: &otherReporterID,
+	})
+	if err != nil {
+		t.Fatalf("CreatePendingReportTx other reporter report returned error: %v", err)
+	}
+
+	for _, fixture := range []struct {
+		externalID string
+		reportID   int64
+		reporterID *int64
+		clinicID   string
+		result     string
+	}{
+		{externalID: "sync-reporter-a-created", reportID: reporterReport.ID, reporterID: &reporterID, clinicID: "clinic-sync-reporter-a", result: "created"},
+		{externalID: "sync-reporter-a-duplicate", reportID: reporterReport.ID, reporterID: &reporterID, clinicID: "clinic-sync-reporter-a", result: "duplicate"},
+		{externalID: "sync-reporter-a-conflict", reportID: reporterReport.ID, reporterID: &reporterID, clinicID: "clinic-sync-reporter-a", result: "conflict"},
+		{externalID: "sync-reporter-a-validation", reportID: reporterReport.ID, reporterID: &reporterID, clinicID: "clinic-sync-reporter-a", result: "validation_error"},
+		{externalID: "sync-reporter-b-created", reportID: otherReporterReport.ID, reporterID: &otherReporterID, clinicID: "clinic-sync-reporter-b", result: "created"},
+		{externalID: "sync-anonymous-created", reportID: reporterReport.ID, clinicID: "clinic-sync-reporter-a", result: "created"},
+	} {
+		_, err := store.CreateReportSyncAttempt(ctx, CreateReportSyncAttemptInput{
+			ExternalID:        fixture.externalID,
+			ReportID:          &fixture.reportID,
+			SubmittedByUserID: fixture.reporterID,
+			ClinicID:          fixture.clinicID,
+			Result:            fixture.result,
+			ReceivedAt:        baseTime,
+		})
+		if err != nil {
+			t.Fatalf("CreateReportSyncAttempt %s returned error: %v", fixture.externalID, err)
+		}
+	}
+	if _, err := store.pool.Exec(ctx, `
+INSERT INTO current_status (
+    clinic_id,
+    status,
+    freshness,
+    last_reported_at,
+    source,
+    updated_at
+)
+VALUES
+    ('clinic-sync-reporter-a', 'unknown', 'stale', $1, 'integration_test', $1),
+    ('clinic-sync-reporter-b', 'unknown', 'needs_confirmation', $1, 'integration_test', $1)`, baseTime); err != nil {
+		t.Fatalf("insert reporter current_status fixtures: %v", err)
+	}
+
+	summary, err := store.GetSyncSummarySinceForReviewScope(ctx, windowStart, ReportReviewScope{
+		Role:   "reporter",
+		UserID: &reporterID,
+	})
+	if err != nil {
+		t.Fatalf("GetSyncSummarySinceForReviewScope reporter returned error: %v", err)
+	}
+	if summary.OfflineReportsReceived != 1 ||
+		summary.DuplicateSyncsHandled != 1 ||
+		summary.ConflictsNeedingAttention != 1 ||
+		summary.ValidationFailures != 1 ||
+		summary.PendingOfflineReports != 1 {
+		t.Fatalf("expected reporter summary to include only the reporter's sync rows, got %+v", summary)
+	}
+	if summary.StaleClinics != 1 || summary.NeedsConfirmationClinics != 0 {
+		t.Fatalf("expected reporter status evidence to stay scoped to the reporter's clinic, got %+v", summary)
+	}
+	if summary.MedianCurrentStatusAgeHours == nil {
+		t.Fatalf("expected reporter median current status age, got %+v", summary)
+	}
+}
+
+func TestListPilotIngestionRunsScopesOrganisation(t *testing.T) {
+	databaseURL := os.Getenv("AUTH_STORE_TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("set AUTH_STORE_TEST_DATABASE_URL to run pilot ingestion store integration tests")
+	}
+
+	ctx := context.Background()
+	store := newIntegrationStore(t, ctx, databaseURL)
+	orgA := insertIntegrationOrganisation(t, ctx, store, "Pilot Org A", "pilot-org-a")
+	orgB := insertIntegrationOrganisation(t, ctx, store, "Pilot Org B", "pilot-org-b")
+	actorID := insertIntegrationUser(t, ctx, store, "ingestion-actor@example.test", "Ingestion Actor", nil, nil)
+	startedAt := time.Date(2026, 5, 16, 8, 0, 0, 0, time.UTC)
+	completedAt := startedAt.Add(2 * time.Second)
+
+	if _, err := store.pool.Exec(ctx, `
+INSERT INTO pilot_ingestion_runs (
+    id,
+    organisation_id,
+    source_name,
+    source_reference,
+    status,
+    records_received,
+    records_imported,
+    records_rejected,
+    validation_errors,
+    actor_user_id,
+    started_at,
+    completed_at
+)
+VALUES
+    ('ingest-org-a', $1, 'pilot CSV import', 'district-upload-a.csv', 'partial', 20, 18, 2, '["clinic code missing", "district invalid"]'::jsonb, $3, $4, $5),
+    ('ingest-org-b', $2, 'pilot CSV import', 'district-upload-b.csv', 'succeeded', 5, 5, 0, '[]'::jsonb, NULL, $4, $5)`,
+		orgA, orgB, actorID, startedAt, completedAt,
+	); err != nil {
+		t.Fatalf("insert pilot ingestion fixtures: %v", err)
+	}
+
+	runs, err := store.ListPilotIngestionRuns(ctx, &orgA, 10)
+	if err != nil {
+		t.Fatalf("ListPilotIngestionRuns returned error: %v", err)
+	}
+	if len(runs) != 1 {
+		t.Fatalf("expected one scoped ingestion run, got %+v", runs)
+	}
+	run := runs[0]
+	if run.ID != "ingest-org-a" ||
+		run.OrganisationID != orgA ||
+		run.SourceName != "pilot CSV import" ||
+		run.SourceReference != "district-upload-a.csv" ||
+		run.Status != "partial" ||
+		run.RecordsReceived != 20 ||
+		run.RecordsImported != 18 ||
+		run.RecordsRejected != 2 ||
+		run.ActorUserID == nil ||
+		*run.ActorUserID != actorID ||
+		run.CompletedAt == nil {
+		t.Fatalf("unexpected scoped ingestion run: %+v", run)
+	}
+	if len(run.ValidationErrors) != 2 || run.ValidationErrors[0] != "clinic code missing" {
+		t.Fatalf("expected validation errors to scan safely, got %+v", run.ValidationErrors)
+	}
+
+	allRuns, err := store.ListPilotIngestionRuns(ctx, nil, 10)
+	if err != nil {
+		t.Fatalf("ListPilotIngestionRuns global returned error: %v", err)
+	}
+	if len(allRuns) != 2 {
+		t.Fatalf("expected system scope to see both ingestion runs, got %+v", allRuns)
+	}
+}
+
 func TestCreateReportSyncAttemptAllowsValidationAttemptWithoutClinicID(t *testing.T) {
 	databaseURL := os.Getenv("AUTH_STORE_TEST_DATABASE_URL")
 	if databaseURL == "" {
