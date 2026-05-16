@@ -34,7 +34,9 @@ func ProtectCookieMutations(trustedOrigins []string) func(nethttp.Handler) netht
 
 			if origin != "" {
 				if _, ok := trusted[origin]; !ok {
-					RespondError(w, nethttp.StatusForbidden, "csrf_rejected", "request origin is not allowed")
+					recordRequestHTTPError(r, "csrf")
+					recordRequestCSRFDenial(r, "denied")
+					RespondErrorWithRequestID(w, nethttp.StatusForbidden, "csrf_rejected", "request origin is not allowed", requestIDForErrorResponse(r))
 					return
 				}
 				next.ServeHTTP(w, r)
@@ -42,11 +44,15 @@ func ProtectCookieMutations(trustedOrigins []string) func(nethttp.Handler) netht
 			}
 
 			if refererOrigin == "" {
-				RespondError(w, nethttp.StatusForbidden, "csrf_rejected", "request origin is not allowed")
+				recordRequestHTTPError(r, "csrf")
+				recordRequestCSRFDenial(r, "denied")
+				RespondErrorWithRequestID(w, nethttp.StatusForbidden, "csrf_rejected", "request origin is not allowed", requestIDForErrorResponse(r))
 				return
 			}
 			if _, ok := trusted[refererOrigin]; !ok {
-				RespondError(w, nethttp.StatusForbidden, "csrf_rejected", "request origin is not allowed")
+				recordRequestHTTPError(r, "csrf")
+				recordRequestCSRFDenial(r, "denied")
+				RespondErrorWithRequestID(w, nethttp.StatusForbidden, "csrf_rejected", "request origin is not allowed", requestIDForErrorResponse(r))
 				return
 			}
 
@@ -64,7 +70,9 @@ func RateLimitMutations(limiter *security.FixedWindowLimiter) func(nethttp.Handl
 			}
 			key := "mutation:" + remoteIPAddressValue(r.RemoteAddr) + ":" + r.URL.Path
 			if !limiter.Allow(key) {
-				RespondError(w, nethttp.StatusTooManyRequests, "rate_limited", "too many requests")
+				recordRequestHTTPError(r, "rate_limit")
+				recordRequestRateLimitDenial(r, "denied")
+				RespondErrorWithRequestID(w, nethttp.StatusTooManyRequests, "rate_limited", "too many requests", requestIDForErrorResponse(r))
 				return
 			}
 			next.ServeHTTP(w, r)

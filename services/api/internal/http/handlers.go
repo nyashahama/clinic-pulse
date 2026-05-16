@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -22,6 +23,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"clinicpulse/services/api/internal/auth"
+	"clinicpulse/services/api/internal/observability"
 	"clinicpulse/services/api/internal/security"
 	"clinicpulse/services/api/internal/service"
 	"clinicpulse/services/api/internal/store"
@@ -98,6 +100,8 @@ type HandlerConfig struct {
 	APIKeyPepper           string
 	WebhookDeliveryEnabled bool
 	LoginRateLimiter       *security.FixedWindowLimiter
+	Metrics                *observability.Registry
+	MetricsToken           string
 }
 
 type Handler struct {
@@ -105,14 +109,22 @@ type Handler struct {
 	apiKeyPepper           string
 	webhookDeliveryEnabled bool
 	loginRateLimiter       *security.FixedWindowLimiter
+	metrics                *observability.Registry
+	metricsToken           string
 }
 
 func NewHandler(store ClinicStore, config HandlerConfig) Handler {
+	metrics := config.Metrics
+	if metrics == nil {
+		metrics = observability.NewRegistry()
+	}
 	return Handler{
 		store:                  store,
 		apiKeyPepper:           config.APIKeyPepper,
 		webhookDeliveryEnabled: config.WebhookDeliveryEnabled,
 		loginRateLimiter:       config.LoginRateLimiter,
+		metrics:                metrics,
+		metricsToken:           strings.TrimSpace(config.MetricsToken),
 	}
 }
 
@@ -124,27 +136,113 @@ func Healthz(w nethttp.ResponseWriter, r *nethttp.Request) {
 }
 
 func (h Handler) Readyz(w nethttp.ResponseWriter, r *nethttp.Request) {
+	startedAt := time.Now()
 	if err := h.store.Ready(r.Context()); err != nil {
+		h.recordReadinessCheck("failure", time.Since(startedAt))
 		RespondJSON(w, nethttp.StatusServiceUnavailable, map[string]string{
 			"database": "unavailable",
 		})
 		return
 	}
+	h.recordReadinessCheck("success", time.Since(startedAt))
 	RespondJSON(w, nethttp.StatusOK, map[string]string{
 		"database": "ok",
 	})
 }
 
+func (h Handler) Metrics(w nethttp.ResponseWriter, r *nethttp.Request) {
+	if h.metricsToken != "" && !hasValidBearerToken(r.Header.Values("Authorization"), h.metricsToken) {
+		respondRequestError(w, r, nethttp.StatusUnauthorized, "auth", "unauthorized", "unauthorized")
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+	if h.metrics == nil {
+		_, _ = io.WriteString(w, observability.NewRegistry().RenderPrometheus())
+		return
+	}
+	_, _ = io.WriteString(w, h.metrics.RenderPrometheus())
+}
+
+func (h Handler) recordReadinessCheck(result string, duration time.Duration) {
+	if h.metrics == nil {
+		return
+	}
+	h.metrics.RecordReadinessCheck(result, duration)
+}
+
+func (h Handler) recordDomainOperation(ctx context.Context, operation string, result string) {
+	if registry, ok := metricsRegistryFromContext(ctx); ok {
+		registry.RecordDomainOperation(operation, result)
+		return
+	}
+	if h.metrics != nil {
+		h.metrics.RecordDomainOperation(operation, result)
+	}
+}
+
+func recordRequestHTTPError(r *nethttp.Request, kind string) {
+	if registry, ok := metricsRegistryFromContext(r.Context()); ok {
+		registry.RecordHTTPError(kind)
+	}
+}
+
+func recordRequestRateLimitDenial(r *nethttp.Request, result string) {
+	if registry, ok := metricsRegistryFromContext(r.Context()); ok {
+		registry.RecordRateLimitDenial(result)
+	}
+}
+
+func recordRequestCSRFDenial(r *nethttp.Request, result string) {
+	if registry, ok := metricsRegistryFromContext(r.Context()); ok {
+		registry.RecordCSRFDenial(result)
+	}
+}
+
+func requestIDForErrorResponse(r *nethttp.Request) string {
+	requestID, _ := RequestIDFromContext(r.Context())
+	return requestID
+}
+
+func respondRequestError(w nethttp.ResponseWriter, r *nethttp.Request, status int, kind string, code string, message string, fields ...string) {
+	respondRequestErrorWithLogCode(w, r, status, kind, code, code, message, fields...)
+}
+
+func respondRequestErrorWithLogCode(w nethttp.ResponseWriter, r *nethttp.Request, status int, kind string, logCode string, responseCode string, message string, fields ...string) {
+	recordRequestHTTPError(r, kind)
+	logRequestHTTPError(r, status, kind, logCode)
+	RespondErrorWithRequestID(w, status, responseCode, message, requestIDForErrorResponse(r), fields...)
+}
+
+func respondRequestUnauthorized(w nethttp.ResponseWriter, r *nethttp.Request) {
+	respondRequestError(w, r, nethttp.StatusUnauthorized, "auth", "unauthorized", "invalid credentials")
+}
+
+func hasValidBearerToken(authorizationValues []string, expectedToken string) bool {
+	if len(authorizationValues) != 1 {
+		return false
+	}
+	scheme, credential, ok := strings.Cut(authorizationValues[0], " ")
+	if !ok || scheme != "Bearer" || credential == "" {
+		return false
+	}
+	if strings.ContainsAny(credential, " \t\r\n") {
+		return false
+	}
+	presentedDigest := sha256.Sum256([]byte(credential))
+	expectedDigest := sha256.Sum256([]byte(expectedToken))
+	return subtle.ConstantTimeCompare(presentedDigest[:], expectedDigest[:]) == 1
+}
+
 func (h Handler) ListClinics(w nethttp.ResponseWriter, r *nethttp.Request) {
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 
 	clinics, err := h.store.ListClinics(r.Context())
 	if err != nil {
-		respondStoreError(w, err, "failed to list clinics")
+		respondRequestStoreError(w, r, err, "failed to list clinics")
 		return
 	}
 	clinics = filterClinicDetailsForOperationalRead(principal, clinics)
@@ -158,12 +256,12 @@ func (h Handler) ListClinics(w nethttp.ResponseWriter, r *nethttp.Request) {
 func (h Handler) ListPartnerClinics(w nethttp.ResponseWriter, r *nethttp.Request) {
 	principal, ok := PartnerPrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 	clinics, err := h.store.ListClinics(r.Context())
 	if err != nil {
-		respondStoreError(w, err, "failed to list clinics")
+		respondRequestStoreError(w, r, err, "failed to list clinics")
 		return
 	}
 	clinics = filterClinicDetailsForPartner(principal, clinics)
@@ -201,24 +299,24 @@ func partnerClinicDetails(clinics []store.ClinicDetail) []service.PartnerSafeCli
 func (h Handler) GetPartnerClinicStatus(w nethttp.ResponseWriter, r *nethttp.Request) {
 	principal, ok := PartnerPrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 
 	clinicID := chi.URLParam(r, "clinicId")
 	clinic, err := h.store.GetClinic(r.Context(), clinicID)
 	if err != nil {
-		respondStoreError(w, err, "clinic not found")
+		respondRequestStoreError(w, r, err, "clinic not found")
 		return
 	}
 	if !service.PartnerScopeAllowsDistrict(principal.AllowedDistricts, clinic.Clinic.District) {
-		RespondError(w, nethttp.StatusForbidden, "forbidden", "forbidden")
+		respondRequestError(w, r, nethttp.StatusForbidden, "auth", "forbidden", "forbidden")
 		return
 	}
 
 	status, err := h.store.GetCurrentStatus(r.Context(), clinicID)
 	if err != nil {
-		respondStoreError(w, err, "clinic status not found")
+		respondRequestStoreError(w, r, err, "clinic status not found")
 		return
 	}
 
@@ -237,32 +335,32 @@ func (h Handler) ListPartnerAlternatives(w nethttp.ResponseWriter, r *nethttp.Re
 	clinicID := strings.TrimSpace(r.URL.Query().Get("clinicId"))
 	serviceName := strings.TrimSpace(r.URL.Query().Get("service"))
 	if clinicID == "" {
-		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "clinicId: clinicId is required")
+		respondRequestError(w, r, nethttp.StatusBadRequest, "validation", "validation_error", "validation failed", "clinicId: clinicId is required")
 		return
 	}
 	if serviceName == "" {
-		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "service: service is required")
+		respondRequestError(w, r, nethttp.StatusBadRequest, "validation", "validation_error", "validation failed", "service: service is required")
 		return
 	}
 
 	principal, ok := PartnerPrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 	source, err := h.store.GetClinic(r.Context(), clinicID)
 	if err != nil {
-		respondStoreError(w, err, "clinic not found")
+		respondRequestStoreError(w, r, err, "clinic not found")
 		return
 	}
 	if !service.PartnerScopeAllowsDistrict(principal.AllowedDistricts, source.Clinic.District) {
-		RespondError(w, nethttp.StatusForbidden, "forbidden", "forbidden")
+		respondRequestError(w, r, nethttp.StatusForbidden, "auth", "forbidden", "forbidden")
 		return
 	}
 
 	candidates, err := h.store.ListClinics(r.Context())
 	if err != nil {
-		respondStoreError(w, err, "failed to list clinic alternatives")
+		respondRequestStoreError(w, r, err, "failed to list clinic alternatives")
 		return
 	}
 	candidates = filterClinicDetailsForPartner(principal, candidates)
@@ -287,18 +385,18 @@ func partnerAlternatives(alternatives []service.Alternative) []partnerAlternativ
 func (h Handler) GetPartnerLatestExport(w nethttp.ResponseWriter, r *nethttp.Request) {
 	principal, ok := PartnerPrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 
 	snapshot, err := h.store.GetPartnerReadinessSnapshot(r.Context(), principal.OrganisationID)
 	if err != nil {
-		respondStoreError(w, err, "partner export not found")
+		respondRequestStoreError(w, r, err, "partner export not found")
 		return
 	}
 	exportRun, ok := service.LatestPartnerExportForAllowedDistricts(snapshot.ExportRuns, principal.AllowedDistricts)
 	if !ok {
-		RespondError(w, nethttp.StatusNotFound, "not_found", "partner export not found")
+		respondRequestError(w, r, nethttp.StatusNotFound, "partner", "not_found", "partner export not found")
 		return
 	}
 
@@ -308,13 +406,13 @@ func (h Handler) GetPartnerLatestExport(w nethttp.ResponseWriter, r *nethttp.Req
 func (h Handler) GetPartnerIntegrationStatus(w nethttp.ResponseWriter, r *nethttp.Request) {
 	principal, ok := PartnerPrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 
 	checks, err := h.refreshPartnerIntegrationStatusChecks(r.Context(), principal.OrganisationID, time.Now().UTC())
 	if err != nil {
-		respondStoreError(w, err, "failed to refresh integration status checks")
+		respondRequestStoreError(w, r, err, "failed to refresh integration status checks")
 		return
 	}
 	RespondJSON(w, nethttp.StatusOK, service.PartnerSafeIntegrationStatusChecks(checks))
@@ -323,18 +421,18 @@ func (h Handler) GetPartnerIntegrationStatus(w nethttp.ResponseWriter, r *nethtt
 func (h Handler) GetAdminPartnerReadiness(w nethttp.ResponseWriter, r *nethttp.Request) {
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 
 	if _, err := h.refreshPartnerIntegrationStatusChecks(r.Context(), principal.OrganisationID, time.Now().UTC()); err != nil {
-		respondStoreError(w, err, "partner readiness not found")
+		respondRequestStoreError(w, r, err, "partner readiness not found")
 		return
 	}
 
 	snapshot, err := h.store.GetPartnerReadinessSnapshot(r.Context(), principal.OrganisationID)
 	if err != nil {
-		respondStoreError(w, err, "partner readiness not found")
+		respondRequestStoreError(w, r, err, "partner readiness not found")
 		return
 	}
 
@@ -443,28 +541,28 @@ func (h Handler) CreateAdminPartnerAPIKey(w nethttp.ResponseWriter, r *nethttp.R
 	}
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 
 	now := time.Now().UTC()
 	if fields := validateCreatePartnerAPIKeyRequest(payload, now); len(fields) > 0 {
-		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", fields...)
+		respondRequestError(w, r, nethttp.StatusBadRequest, "validation", "validation_error", "validation failed", fields...)
 		return
 	}
 
 	secret, prefix, err := auth.GenerateAPIKey(payload.Environment)
 	if err != nil {
 		if errors.Is(err, auth.ErrInvalidAPIKey) {
-			RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "environment: environment must be one of: demo, live")
+			respondRequestError(w, r, nethttp.StatusBadRequest, "validation", "validation_error", "validation failed", "environment: environment must be one of: demo, live")
 			return
 		}
-		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		respondRequestError(w, r, nethttp.StatusInternalServerError, "auth", "internal_error", "internal server error")
 		return
 	}
 	keyHash, err := auth.HashAPIKey(secret, h.apiKeyPepper)
 	if err != nil {
-		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		respondRequestError(w, r, nethttp.StatusInternalServerError, "auth", "internal_error", "internal server error")
 		return
 	}
 
@@ -481,7 +579,7 @@ func (h Handler) CreateAdminPartnerAPIKey(w nethttp.ResponseWriter, r *nethttp.R
 		CreatedAt:        now,
 	})
 	if err != nil {
-		respondPartnerAdminMutationError(w, err, "failed to create partner API key")
+		respondRequestPartnerAdminMutationError(w, r, err, "failed to create partner API key")
 		return
 	}
 
@@ -494,13 +592,13 @@ func (h Handler) CreateAdminPartnerAPIKey(w nethttp.ResponseWriter, r *nethttp.R
 func (h Handler) ListAdminPartnerAPIKeys(w nethttp.ResponseWriter, r *nethttp.Request) {
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 
 	apiKeys, err := h.store.ListPartnerAPIKeys(r.Context(), principal.OrganisationID)
 	if err != nil {
-		respondStoreError(w, err, "failed to list partner API keys")
+		respondRequestStoreError(w, r, err, "failed to list partner API keys")
 		return
 	}
 	if apiKeys == nil {
@@ -513,13 +611,13 @@ func (h Handler) ListAdminPartnerAPIKeys(w nethttp.ResponseWriter, r *nethttp.Re
 func (h Handler) ListAdminUsers(w nethttp.ResponseWriter, r *nethttp.Request) {
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 
 	users, err := h.store.ListAdminUserAccess(r.Context(), adminReadOrganisationScope(principal))
 	if err != nil {
-		respondStoreError(w, err, "failed to list admin users")
+		respondRequestStoreError(w, r, err, "failed to list admin users")
 		return
 	}
 	if users == nil {
@@ -536,7 +634,7 @@ func (h Handler) CreateAdminUser(w nethttp.ResponseWriter, r *nethttp.Request) {
 	}
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 
@@ -550,22 +648,22 @@ func (h Handler) CreateAdminUser(w nethttp.ResponseWriter, r *nethttp.Request) {
 		fields = append(fields, "displayName: displayName is required")
 	}
 	if len(fields) > 0 {
-		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", fields...)
+		respondRequestError(w, r, nethttp.StatusBadRequest, "validation", "validation_error", "validation failed", fields...)
 		return
 	}
 	if !service.CanManageUserAccess(adminActorForPrincipal(principal), service.AdminUserAccess{}, change) {
-		RespondError(w, nethttp.StatusForbidden, "forbidden", "forbidden")
+		respondRequestError(w, r, nethttp.StatusForbidden, "auth", "forbidden", "forbidden")
 		return
 	}
 
 	temporaryPassword, err := generateTemporaryPassword()
 	if err != nil {
-		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		respondRequestError(w, r, nethttp.StatusInternalServerError, "auth", "internal_error", "internal server error")
 		return
 	}
 	passwordHash, err := auth.HashPassword(temporaryPassword)
 	if err != nil {
-		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		respondRequestError(w, r, nethttp.StatusInternalServerError, "auth", "internal_error", "internal server error")
 		return
 	}
 
@@ -590,7 +688,7 @@ func (h Handler) CreateAdminUser(w nethttp.ResponseWriter, r *nethttp.Request) {
 		AuditEvent: auditInput,
 	})
 	if err != nil {
-		respondAdminUserCreateError(w, err)
+		respondRequestAdminUserCreateError(w, r, err)
 		return
 	}
 
@@ -619,7 +717,7 @@ func (h Handler) UpdateAdminUser(w nethttp.ResponseWriter, r *nethttp.Request) {
 	}
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 	target, ok := h.authorizeAdminUserManagement(w, r, principal, userID, nil)
@@ -629,7 +727,7 @@ func (h Handler) UpdateAdminUser(w nethttp.ResponseWriter, r *nethttp.Request) {
 
 	displayName, fields := optionalTrimmedAdminDisplayName(payload.DisplayName)
 	if len(fields) > 0 {
-		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", fields...)
+		respondRequestError(w, r, nethttp.StatusBadRequest, "validation", "validation_error", "validation failed", fields...)
 		return
 	}
 
@@ -652,7 +750,7 @@ func (h Handler) UpdateAdminUser(w nethttp.ResponseWriter, r *nethttp.Request) {
 		AuditEvent: auditInput,
 	})
 	if err != nil {
-		respondStoreError(w, err, "admin user not found")
+		respondRequestStoreError(w, r, err, "admin user not found")
 		return
 	}
 
@@ -670,12 +768,12 @@ func (h Handler) UpdateAdminUserAccess(w nethttp.ResponseWriter, r *nethttp.Requ
 	}
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 	change, fields := adminAccessChangeFromRequest(payload.Role, payload.OrganisationID, payload.District)
 	if len(fields) > 0 {
-		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", fields...)
+		respondRequestError(w, r, nethttp.StatusBadRequest, "validation", "validation_error", "validation failed", fields...)
 		return
 	}
 	if _, ok := h.authorizeAdminUserManagement(w, r, principal, userID, &change); !ok {
@@ -698,7 +796,7 @@ func (h Handler) UpdateAdminUserAccess(w nethttp.ResponseWriter, r *nethttp.Requ
 		AuditEvent: auditInput,
 	})
 	if err != nil {
-		respondStoreError(w, err, "admin user not found")
+		respondRequestStoreError(w, r, err, "admin user not found")
 		return
 	}
 
@@ -712,7 +810,7 @@ func (h Handler) RevokeAdminUserSessions(w nethttp.ResponseWriter, r *nethttp.Re
 	}
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 	target, ok := h.authorizeAdminUserManagement(w, r, principal, userID, nil)
@@ -726,7 +824,7 @@ func (h Handler) RevokeAdminUserSessions(w nethttp.ResponseWriter, r *nethttp.Re
 		AuditEvent: auditInput,
 	})
 	if err != nil {
-		respondStoreError(w, err, "admin user not found")
+		respondRequestStoreError(w, r, err, "admin user not found")
 		return
 	}
 
@@ -736,13 +834,13 @@ func (h Handler) RevokeAdminUserSessions(w nethttp.ResponseWriter, r *nethttp.Re
 func (h Handler) ListAdminAuditEvents(w nethttp.ResponseWriter, r *nethttp.Request) {
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 
 	events, err := h.store.ListAdminAuditEvents(r.Context(), adminReadOrganisationScope(principal), 100)
 	if err != nil {
-		respondStoreError(w, err, "failed to list admin audit events")
+		respondRequestStoreError(w, r, err, "failed to list admin audit events")
 		return
 	}
 	if events == nil {
@@ -755,13 +853,13 @@ func (h Handler) ListAdminAuditEvents(w nethttp.ResponseWriter, r *nethttp.Reque
 func (h Handler) ListAdminIngestionRuns(w nethttp.ResponseWriter, r *nethttp.Request) {
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 
 	runs, err := h.store.ListPilotIngestionRuns(r.Context(), adminReadOrganisationScope(principal), 50)
 	if err != nil {
-		respondStoreError(w, err, "failed to list pilot ingestion runs")
+		respondRequestStoreError(w, r, err, "failed to list pilot ingestion runs")
 		return
 	}
 	if runs == nil {
@@ -816,7 +914,7 @@ func adminUserAccessFromRow(row store.AdminUserAccessRow) service.AdminUserAcces
 func (h Handler) authorizeAdminUserManagement(w nethttp.ResponseWriter, r *nethttp.Request, principal Principal, userID int64, requestedChange *service.AdminUserAccessChange) (service.AdminUserAccess, bool) {
 	row, err := h.store.GetAdminUserAccessByUserID(r.Context(), userID)
 	if err != nil {
-		respondStoreError(w, err, "admin user not found")
+		respondRequestStoreError(w, r, err, "admin user not found")
 		return service.AdminUserAccess{}, false
 	}
 	target := adminUserAccessFromRow(row)
@@ -829,7 +927,7 @@ func (h Handler) authorizeAdminUserManagement(w nethttp.ResponseWriter, r *netht
 		change = *requestedChange
 	}
 	if !service.CanManageUserAccess(adminActorForPrincipal(principal), target, change) {
-		RespondError(w, nethttp.StatusForbidden, "forbidden", "forbidden")
+		respondRequestError(w, r, nethttp.StatusForbidden, "auth", "forbidden", "forbidden")
 		return service.AdminUserAccess{}, false
 	}
 	return target, true
@@ -997,25 +1095,25 @@ func (h Handler) RevokeAdminPartnerAPIKey(w nethttp.ResponseWriter, r *nethttp.R
 	}
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 	visible, err := h.adminPartnerAPIKeyVisible(r.Context(), principal.OrganisationID, keyID)
 	if err != nil {
-		respondStoreError(w, err, "partner API key not found")
+		respondRequestStoreError(w, r, err, "partner API key not found")
 		return
 	}
 	if !visible {
-		RespondError(w, nethttp.StatusNotFound, "not_found", "partner API key not found")
+		respondRequestError(w, r, nethttp.StatusNotFound, "partner", "not_found", "partner API key not found")
 		return
 	}
 
 	if err := h.store.RevokePartnerAPIKey(r.Context(), keyID, time.Now().UTC()); err != nil {
-		respondPartnerAdminMutationError(w, err, "partner API key not found")
+		respondRequestPartnerAdminMutationError(w, r, err, "partner API key not found")
 		return
 	}
 	if _, err := h.refreshPartnerIntegrationStatusChecks(r.Context(), principal.OrganisationID, time.Now().UTC()); err != nil {
-		respondStoreError(w, err, "failed to refresh integration status checks")
+		respondRequestStoreError(w, r, err, "failed to refresh integration status checks")
 		return
 	}
 
@@ -1025,18 +1123,18 @@ func (h Handler) RevokeAdminPartnerAPIKey(w nethttp.ResponseWriter, r *nethttp.R
 func (h Handler) ListAdminPartnerWebhooks(w nethttp.ResponseWriter, r *nethttp.Request) {
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 
 	subscriptions, err := h.store.ListPartnerWebhookSubscriptions(r.Context(), principal.OrganisationID)
 	if err != nil {
-		respondStoreError(w, err, "failed to list partner webhooks")
+		respondRequestStoreError(w, r, err, "failed to list partner webhooks")
 		return
 	}
 	events, err := h.store.ListPartnerWebhookEvents(r.Context(), principal.OrganisationID)
 	if err != nil {
-		respondStoreError(w, err, "failed to list partner webhook events")
+		respondRequestStoreError(w, r, err, "failed to list partner webhook events")
 		return
 	}
 	if subscriptions == nil {
@@ -1059,17 +1157,17 @@ func (h Handler) CreateAdminPartnerWebhook(w nethttp.ResponseWriter, r *nethttp.
 	}
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 	if fields := validateCreatePartnerWebhookRequest(payload); len(fields) > 0 {
-		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", fields...)
+		respondRequestError(w, r, nethttp.StatusBadRequest, "validation", "validation_error", "validation failed", fields...)
 		return
 	}
 
 	secret, err := generateWebhookSecret()
 	if err != nil {
-		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		respondRequestError(w, r, nethttp.StatusInternalServerError, "partner", "internal_error", "internal server error")
 		return
 	}
 	now := time.Now().UTC()
@@ -1085,7 +1183,7 @@ func (h Handler) CreateAdminPartnerWebhook(w nethttp.ResponseWriter, r *nethttp.
 		CreatedAt:        now,
 	})
 	if err != nil {
-		respondPartnerAdminMutationError(w, err, "failed to create partner webhook")
+		respondRequestPartnerAdminMutationError(w, r, err, "failed to create partner webhook")
 		return
 	}
 
@@ -1098,24 +1196,28 @@ func (h Handler) CreateAdminPartnerWebhook(w nethttp.ResponseWriter, r *nethttp.
 func (h Handler) CreateAdminPartnerWebhookTestEvent(w nethttp.ResponseWriter, r *nethttp.Request) {
 	subscriptionID, ok := parsePositiveInt64Param(w, r, "subscriptionId", "partner webhook not found")
 	if !ok {
+		h.recordDomainOperation(r.Context(), "partner.webhook_test", "error")
 		return
 	}
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 	subscription, found, err := h.adminPartnerWebhookSubscription(r.Context(), principal.OrganisationID, subscriptionID)
 	if err != nil {
-		respondStoreError(w, err, "partner webhook not found")
+		h.recordDomainOperation(r.Context(), "partner.webhook_test", "error")
+		respondRequestStoreError(w, r, err, "partner webhook not found")
 		return
 	}
 	if !found {
-		RespondError(w, nethttp.StatusNotFound, "not_found", "partner webhook not found")
+		h.recordDomainOperation(r.Context(), "partner.webhook_test", "error")
+		respondRequestError(w, r, nethttp.StatusNotFound, "partner", "not_found", "partner webhook not found")
 		return
 	}
 	if subscription.Status != "active" {
-		RespondError(w, nethttp.StatusConflict, "conflict", "partner webhook subscription is disabled")
+		h.recordDomainOperation(r.Context(), "partner.webhook_test", "error")
+		respondRequestError(w, r, nethttp.StatusConflict, "partner", "conflict", "partner webhook subscription is disabled")
 		return
 	}
 	if h.webhookDeliveryEnabled {
@@ -1140,14 +1242,17 @@ func (h Handler) CreateAdminPartnerWebhookTestEvent(w nethttp.ResponseWriter, r 
 			LastError:    &lastError,
 			CreatedAt:    now,
 		}); err != nil {
-			respondPartnerAdminMutationError(w, err, "failed to create partner webhook test event")
+			h.recordDomainOperation(r.Context(), "partner.webhook_test", "error")
+			respondRequestPartnerAdminMutationError(w, r, err, "failed to create partner webhook test event")
 			return
 		}
 		if _, err := h.refreshPartnerIntegrationStatusChecks(r.Context(), principal.OrganisationID, now); err != nil {
-			respondStoreError(w, err, "failed to refresh integration status checks")
+			h.recordDomainOperation(r.Context(), "partner.webhook_test", "error")
+			respondRequestStoreError(w, r, err, "failed to refresh integration status checks")
 			return
 		}
-		RespondError(w, nethttp.StatusNotImplemented, "not_implemented", "webhook delivery is not implemented")
+		h.recordDomainOperation(r.Context(), "partner.webhook_test", "failed")
+		respondRequestError(w, r, nethttp.StatusNotImplemented, "partner", "not_implemented", "webhook delivery is not implemented")
 		return
 	}
 
@@ -1169,13 +1274,16 @@ func (h Handler) CreateAdminPartnerWebhookTestEvent(w nethttp.ResponseWriter, r 
 		CreatedAt: now,
 	})
 	if err != nil {
-		respondPartnerAdminMutationError(w, err, "failed to create partner webhook test event")
+		h.recordDomainOperation(r.Context(), "partner.webhook_test", "error")
+		respondRequestPartnerAdminMutationError(w, r, err, "failed to create partner webhook test event")
 		return
 	}
 	if _, err := h.refreshPartnerIntegrationStatusChecks(r.Context(), principal.OrganisationID, now); err != nil {
-		respondStoreError(w, err, "failed to refresh integration status checks")
+		h.recordDomainOperation(r.Context(), "partner.webhook_test", "error")
+		respondRequestStoreError(w, r, err, "failed to refresh integration status checks")
 		return
 	}
+	h.recordDomainOperation(r.Context(), "partner.webhook_test", "preview_only")
 
 	RespondJSON(w, nethttp.StatusCreated, event)
 }
@@ -1187,7 +1295,7 @@ func (h Handler) CreateAdminPartnerExport(w nethttp.ResponseWriter, r *nethttp.R
 	}
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 
@@ -1201,10 +1309,12 @@ func (h Handler) CreateAdminPartnerExport(w nethttp.ResponseWriter, r *nethttp.R
 	if err != nil {
 		var validationErr service.ValidationError
 		if errors.As(err, &validationErr) {
-			RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", validationErr.Fields...)
+			h.recordDomainOperation(r.Context(), "partner.export", "error")
+			respondRequestError(w, r, nethttp.StatusBadRequest, "validation", "validation_error", "validation failed", validationErr.Fields...)
 			return
 		}
-		respondStoreError(w, err, "failed to build partner export")
+		h.recordDomainOperation(r.Context(), "partner.export", "error")
+		respondRequestStoreError(w, r, err, "failed to build partner export")
 		return
 	}
 
@@ -1219,13 +1329,16 @@ func (h Handler) CreateAdminPartnerExport(w nethttp.ResponseWriter, r *nethttp.R
 		CreatedAt:         now,
 	})
 	if err != nil {
-		respondPartnerAdminMutationError(w, err, "failed to create partner export")
+		h.recordDomainOperation(r.Context(), "partner.export", "error")
+		respondRequestPartnerAdminMutationError(w, r, err, "failed to create partner export")
 		return
 	}
 	if _, err := h.refreshPartnerIntegrationStatusChecks(r.Context(), principal.OrganisationID, now); err != nil {
-		respondStoreError(w, err, "failed to refresh integration status checks")
+		h.recordDomainOperation(r.Context(), "partner.export", "error")
+		respondRequestStoreError(w, r, err, "failed to refresh integration status checks")
 		return
 	}
+	h.recordDomainOperation(r.Context(), "partner.export", "created")
 
 	RespondJSON(w, nethttp.StatusCreated, exportRun)
 }
@@ -1237,13 +1350,13 @@ func (h Handler) GetAdminPartnerExport(w nethttp.ResponseWriter, r *nethttp.Requ
 	}
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 
 	exportRun, err := h.store.GetPartnerExportRunForOrganisation(r.Context(), principal.OrganisationID, exportID)
 	if err != nil {
-		respondStoreError(w, err, "partner export not found")
+		respondRequestStoreError(w, r, err, "partner export not found")
 		return
 	}
 
@@ -1253,16 +1366,16 @@ func (h Handler) GetAdminPartnerExport(w nethttp.ResponseWriter, r *nethttp.Requ
 func (h Handler) GetClinic(w nethttp.ResponseWriter, r *nethttp.Request) {
 	clinic, err := h.store.GetClinic(r.Context(), chi.URLParam(r, "clinicId"))
 	if err != nil {
-		respondStoreError(w, err, "clinic not found")
+		respondRequestStoreError(w, r, err, "clinic not found")
 		return
 	}
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 	if !canReadClinicOperationalRecords(principal, clinic.Clinic.District) {
-		RespondError(w, nethttp.StatusForbidden, "forbidden", "forbidden")
+		respondRequestError(w, r, nethttp.StatusForbidden, "auth", "forbidden", "forbidden")
 		return
 	}
 
@@ -1273,22 +1386,22 @@ func (h Handler) GetClinicStatus(w nethttp.ResponseWriter, r *nethttp.Request) {
 	clinicID := chi.URLParam(r, "clinicId")
 	clinic, err := h.store.GetClinic(r.Context(), clinicID)
 	if err != nil {
-		respondStoreError(w, err, "clinic not found")
+		respondRequestStoreError(w, r, err, "clinic not found")
 		return
 	}
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 	if !canReadClinicOperationalRecords(principal, clinic.Clinic.District) {
-		RespondError(w, nethttp.StatusForbidden, "forbidden", "forbidden")
+		respondRequestError(w, r, nethttp.StatusForbidden, "auth", "forbidden", "forbidden")
 		return
 	}
 
 	status, err := h.store.GetCurrentStatus(r.Context(), clinicID)
 	if err != nil {
-		respondStoreError(w, err, "clinic status not found")
+		respondRequestStoreError(w, r, err, "clinic status not found")
 		return
 	}
 
@@ -1299,22 +1412,22 @@ func (h Handler) ListClinicReports(w nethttp.ResponseWriter, r *nethttp.Request)
 	clinicID := chi.URLParam(r, "clinicId")
 	clinic, err := h.store.GetClinic(r.Context(), clinicID)
 	if err != nil {
-		respondStoreError(w, err, "clinic not found")
+		respondRequestStoreError(w, r, err, "clinic not found")
 		return
 	}
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 	if !canReadClinicOperationalRecords(principal, clinic.Clinic.District) {
-		RespondError(w, nethttp.StatusForbidden, "forbidden", "forbidden")
+		respondRequestError(w, r, nethttp.StatusForbidden, "auth", "forbidden", "forbidden")
 		return
 	}
 
 	reports, err := h.store.ListClinicReports(r.Context(), clinicID)
 	if err != nil {
-		respondStoreError(w, err, "failed to list clinic reports")
+		respondRequestStoreError(w, r, err, "failed to list clinic reports")
 		return
 	}
 	if reports == nil {
@@ -1327,13 +1440,13 @@ func (h Handler) ListClinicReports(w nethttp.ResponseWriter, r *nethttp.Request)
 func (h Handler) ListPendingReports(w nethttp.ResponseWriter, r *nethttp.Request) {
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 
 	reports, err := h.store.ListPendingReports(r.Context(), reviewScopeForPrincipal(principal))
 	if err != nil {
-		respondStoreError(w, err, "failed to list pending reports")
+		respondRequestStoreError(w, r, err, "failed to list pending reports")
 		return
 	}
 	if reports == nil {
@@ -1347,22 +1460,22 @@ func (h Handler) ListClinicAuditEvents(w nethttp.ResponseWriter, r *nethttp.Requ
 	clinicID := chi.URLParam(r, "clinicId")
 	clinic, err := h.store.GetClinic(r.Context(), clinicID)
 	if err != nil {
-		respondStoreError(w, err, "clinic not found")
+		respondRequestStoreError(w, r, err, "clinic not found")
 		return
 	}
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 	if !canReadClinicOperationalRecords(principal, clinic.Clinic.District) {
-		RespondError(w, nethttp.StatusForbidden, "forbidden", "forbidden")
+		respondRequestError(w, r, nethttp.StatusForbidden, "auth", "forbidden", "forbidden")
 		return
 	}
 
 	events, err := h.store.ListClinicAuditEvents(r.Context(), clinicID)
 	if err != nil {
-		respondStoreError(w, err, "failed to list clinic audit events")
+		respondRequestStoreError(w, r, err, "failed to list clinic audit events")
 		return
 	}
 	if events == nil {
@@ -1376,32 +1489,32 @@ func (h Handler) ListAlternatives(w nethttp.ResponseWriter, r *nethttp.Request) 
 	clinicID := strings.TrimSpace(r.URL.Query().Get("clinicId"))
 	serviceName := strings.TrimSpace(r.URL.Query().Get("service"))
 	if clinicID == "" {
-		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "clinicId: clinicId is required")
+		respondRequestError(w, r, nethttp.StatusBadRequest, "validation", "validation_error", "validation failed", "clinicId: clinicId is required")
 		return
 	}
 	if serviceName == "" {
-		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "service: service is required")
+		respondRequestError(w, r, nethttp.StatusBadRequest, "validation", "validation_error", "validation failed", "service: service is required")
 		return
 	}
 
 	source, err := h.store.GetClinic(r.Context(), clinicID)
 	if err != nil {
-		respondStoreError(w, err, "clinic not found")
+		respondRequestStoreError(w, r, err, "clinic not found")
 		return
 	}
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 	if !canReadClinicOperationalRecords(principal, source.Clinic.District) {
-		RespondError(w, nethttp.StatusForbidden, "forbidden", "forbidden")
+		respondRequestError(w, r, nethttp.StatusForbidden, "auth", "forbidden", "forbidden")
 		return
 	}
 
 	candidates, err := h.store.ListClinics(r.Context())
 	if err != nil {
-		respondStoreError(w, err, "failed to list clinic alternatives")
+		respondRequestStoreError(w, r, err, "failed to list clinic alternatives")
 		return
 	}
 	candidates = filterClinicDetailsForOperationalRead(principal, candidates)
@@ -1413,12 +1526,14 @@ func (h Handler) CreateReport(w nethttp.ResponseWriter, r *nethttp.Request) {
 	var payload createReportRequest
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&payload); err != nil {
-		RespondError(w, nethttp.StatusBadRequest, "invalid_json", "invalid JSON request body")
+		h.recordDomainOperation(r.Context(), "report.create", "validation_error")
+		respondRequestError(w, r, nethttp.StatusBadRequest, "validation", "invalid_json", "invalid JSON request body")
 		return
 	}
 	var extra any
 	if err := decoder.Decode(&extra); err != io.EOF {
-		RespondError(w, nethttp.StatusBadRequest, "invalid_json", "invalid JSON request body")
+		h.recordDomainOperation(r.Context(), "report.create", "validation_error")
+		respondRequestError(w, r, nethttp.StatusBadRequest, "validation", "invalid_json", "invalid JSON request body")
 		return
 	}
 
@@ -1436,11 +1551,20 @@ func (h Handler) CreateReport(w nethttp.ResponseWriter, r *nethttp.Request) {
 	if err != nil {
 		var validationErr service.ValidationError
 		if errors.As(err, &validationErr) {
-			RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", validationErr.Fields...)
+			h.recordDomainOperation(r.Context(), "report.create", "validation_error")
+			respondRequestError(w, r, nethttp.StatusBadRequest, "validation", "validation_error", "validation failed", validationErr.Fields...)
 			return
 		}
-		respondStoreError(w, err, "clinic not found")
+		h.recordDomainOperation(r.Context(), "report.create", "error")
+		respondRequestStoreError(w, r, err, "clinic not found")
 		return
+	}
+	if !result.Created {
+		h.recordDomainOperation(r.Context(), "report.create", "duplicate")
+	} else if result.Report.ReviewState == "pending" {
+		h.recordDomainOperation(r.Context(), "report.create", "pending_review")
+	} else {
+		h.recordDomainOperation(r.Context(), "report.create", "created")
 	}
 
 	RespondJSON(w, nethttp.StatusCreated, createReportResponse{
@@ -1452,18 +1576,19 @@ func (h Handler) CreateReport(w nethttp.ResponseWriter, r *nethttp.Request) {
 func (h Handler) ReviewReport(w nethttp.ResponseWriter, r *nethttp.Request) {
 	reportID, err := strconv.ParseInt(chi.URLParam(r, "reportId"), 10, 64)
 	if err != nil || reportID <= 0 {
-		RespondError(w, nethttp.StatusNotFound, "not_found", "report not found")
+		respondRequestError(w, r, nethttp.StatusNotFound, "validation", "not_found", "report not found")
 		return
 	}
 
 	var payload reviewReportRequest
 	if !decodeSingleJSON(w, r, &payload) {
+		h.recordDomainOperation(r.Context(), "report.review", "error")
 		return
 	}
 
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 
@@ -1480,19 +1605,31 @@ func (h Handler) ReviewReport(w nethttp.ResponseWriter, r *nethttp.Request) {
 	if err != nil {
 		var validationErr service.ValidationError
 		if errors.As(err, &validationErr) {
-			RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", validationErr.Fields...)
+			h.recordDomainOperation(r.Context(), "report.review", "error")
+			respondRequestError(w, r, nethttp.StatusBadRequest, "validation", "validation_error", "validation failed", validationErr.Fields...)
 			return
 		}
 		if errors.Is(err, store.ErrReportAlreadyReviewed) {
-			RespondError(w, nethttp.StatusConflict, "conflict", "report already reviewed")
+			h.recordDomainOperation(r.Context(), "report.review", "error")
+			respondRequestError(w, r, nethttp.StatusConflict, "validation", "conflict", "report already reviewed")
 			return
 		}
 		if errors.Is(err, store.ErrReportReviewForbidden) {
-			RespondError(w, nethttp.StatusForbidden, "forbidden", "forbidden")
+			h.recordDomainOperation(r.Context(), "report.review", "error")
+			respondRequestError(w, r, nethttp.StatusForbidden, "auth", "forbidden", "forbidden")
 			return
 		}
-		respondStoreError(w, err, "report not found")
+		h.recordDomainOperation(r.Context(), "report.review", "error")
+		respondRequestStoreError(w, r, err, "report not found")
 		return
+	}
+	switch report.ReviewState {
+	case "accepted":
+		h.recordDomainOperation(r.Context(), "report.review", "accepted")
+	case "rejected":
+		h.recordDomainOperation(r.Context(), "report.review", "rejected")
+	default:
+		h.recordDomainOperation(r.Context(), "report.review", "error")
 	}
 
 	RespondJSON(w, nethttp.StatusOK, reviewReportResponse{
@@ -1504,12 +1641,13 @@ func (h Handler) ReviewReport(w nethttp.ResponseWriter, r *nethttp.Request) {
 func (h Handler) SyncOfflineReports(w nethttp.ResponseWriter, r *nethttp.Request) {
 	var payload offlineSyncRequest
 	if !decodeSingleJSON(w, r, &payload) {
+		h.recordDomainOperation(r.Context(), "offline_sync", "error")
 		return
 	}
 
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 
@@ -1524,6 +1662,7 @@ func (h Handler) SyncOfflineReports(w nethttp.ResponseWriter, r *nethttp.Request
 			itemResult := h.offlineSyncValidationResult(r.Context(), actor, input, fields, now)
 			result.Results = append(result.Results, itemResult)
 			result.Summary.Failed++
+			h.recordOfflineSyncOperation(r.Context(), itemResult.Result)
 			continue
 		}
 
@@ -1533,9 +1672,23 @@ func (h Handler) SyncOfflineReports(w nethttp.ResponseWriter, r *nethttp.Request
 		result.Summary.Duplicate += itemResult.Summary.Duplicate
 		result.Summary.Conflict += itemResult.Summary.Conflict
 		result.Summary.Failed += itemResult.Summary.Failed
+		for _, syncResult := range itemResult.Results {
+			h.recordOfflineSyncOperation(r.Context(), syncResult.Result)
+		}
 	}
 
 	RespondJSON(w, nethttp.StatusOK, result)
+}
+
+func (h Handler) recordOfflineSyncOperation(ctx context.Context, result string) {
+	switch result {
+	case "created":
+		h.recordDomainOperation(ctx, "offline_sync", "synced")
+	case "duplicate", "conflict", "validation_error":
+		h.recordDomainOperation(ctx, "offline_sync", result)
+	default:
+		h.recordDomainOperation(ctx, "offline_sync", "error")
+	}
 }
 
 func (h Handler) offlineSyncValidationResult(ctx context.Context, actor service.OfflineSyncActor, input service.OfflineSyncItemInput, fields []string, now time.Time) service.OfflineSyncResult {
@@ -1586,14 +1739,14 @@ func normalizedOfflineSyncAttemptCount(count int) int {
 func (h Handler) GetSyncSummary(w nethttp.ResponseWriter, r *nethttp.Request) {
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 
 	since := time.Now().UTC().Add(-24 * time.Hour)
 	summary, err := h.store.GetSyncSummarySinceForReviewScope(r.Context(), since, reviewScopeForPrincipal(principal))
 	if err != nil {
-		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		respondRequestError(w, r, nethttp.StatusInternalServerError, "sync", "internal_error", "internal server error")
 		return
 	}
 
@@ -1603,13 +1756,13 @@ func (h Handler) GetSyncSummary(w nethttp.ResponseWriter, r *nethttp.Request) {
 func (h Handler) ReconcileStatusStaleness(w nethttp.ResponseWriter, r *nethttp.Request) {
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 
 	result, err := service.ReconcileStatusFreshnessForReviewScope(r.Context(), h.store, reviewScopeForPrincipal(principal), auditActorForPrincipal(principal), time.Now().UTC())
 	if err != nil {
-		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		respondRequestError(w, r, nethttp.StatusInternalServerError, "store", "internal_error", "internal server error")
 		return
 	}
 
@@ -1619,18 +1772,22 @@ func (h Handler) ReconcileStatusStaleness(w nethttp.ResponseWriter, r *nethttp.R
 func (h Handler) Login(w nethttp.ResponseWriter, r *nethttp.Request) {
 	var payload loginRequest
 	if !decodeSingleJSON(w, r, &payload) {
+		h.recordDomainOperation(r.Context(), "auth.login", "error")
 		return
 	}
 
 	email := strings.ToLower(strings.TrimSpace(payload.Email))
 	if email == "" || payload.Password == "" {
-		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "email and password are required")
+		h.recordDomainOperation(r.Context(), "auth.login", "error")
+		respondRequestError(w, r, nethttp.StatusBadRequest, "validation", "validation_error", "validation failed", "email and password are required")
 		return
 	}
 
 	if h.loginRateLimiter != nil {
 		if !h.loginRateLimiter.Allow(loginRateLimitKey(r.RemoteAddr, email)) {
-			respondUnauthorized(w)
+			recordRequestRateLimitDenial(r, "denied")
+			h.recordDomainOperation(r.Context(), "auth.login", "rate_limited")
+			respondRequestErrorWithLogCode(w, r, nethttp.StatusUnauthorized, "auth", "rate_limited", "unauthorized", "invalid credentials")
 			return
 		}
 	}
@@ -1640,7 +1797,8 @@ func (h Handler) Login(w nethttp.ResponseWriter, r *nethttp.Request) {
 	passwordHash := dummyPasswordHash
 	if err != nil {
 		if !errors.Is(err, pgx.ErrNoRows) {
-			RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+			h.recordDomainOperation(r.Context(), "auth.login", "error")
+			respondRequestErrorWithLogCode(w, r, nethttp.StatusInternalServerError, "auth", "auth_error", "internal_error", "internal server error")
 			return
 		}
 	} else if user.DisabledAt == nil && user.PasswordHash != nil {
@@ -1650,31 +1808,36 @@ func (h Handler) Login(w nethttp.ResponseWriter, r *nethttp.Request) {
 
 	ok, err := auth.VerifyPassword(payload.Password, passwordHash)
 	if err != nil || !validLoginUser || !ok {
-		respondUnauthorized(w)
+		h.recordDomainOperation(r.Context(), "auth.login", "invalid_credentials")
+		respondRequestErrorWithLogCode(w, r, nethttp.StatusUnauthorized, "auth", "invalid_credentials", "unauthorized", "invalid credentials")
 		return
 	}
 
 	memberships, err := h.store.ListMembershipsForUser(r.Context(), user.ID)
 	if err != nil {
-		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		h.recordDomainOperation(r.Context(), "auth.login", "error")
+		respondRequestErrorWithLogCode(w, r, nethttp.StatusInternalServerError, "auth", "auth_error", "internal_error", "internal server error")
 		return
 	}
 	if memberships == nil {
 		memberships = []store.OrganisationMembership{}
 	}
 	if len(memberships) == 0 {
-		respondUnauthorized(w)
+		h.recordDomainOperation(r.Context(), "auth.login", "invalid_credentials")
+		respondRequestErrorWithLogCode(w, r, nethttp.StatusUnauthorized, "auth", "invalid_credentials", "unauthorized", "invalid credentials")
 		return
 	}
 
 	token, err := auth.GenerateSessionToken()
 	if err != nil {
-		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		h.recordDomainOperation(r.Context(), "auth.login", "error")
+		respondRequestErrorWithLogCode(w, r, nethttp.StatusInternalServerError, "auth", "auth_error", "internal_error", "internal server error")
 		return
 	}
 	tokenHash, err := auth.HashSessionToken(token)
 	if err != nil {
-		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		h.recordDomainOperation(r.Context(), "auth.login", "error")
+		respondRequestErrorWithLogCode(w, r, nethttp.StatusInternalServerError, "auth", "auth_error", "internal_error", "internal server error")
 		return
 	}
 
@@ -1683,7 +1846,8 @@ func (h Handler) Login(w nethttp.ResponseWriter, r *nethttp.Request) {
 	ipAddress := remoteIPAddress(r.RemoteAddr)
 	principal, ok := PrincipalForMemberships(user, store.Session{}, memberships)
 	if !ok {
-		respondUnauthorized(w)
+		h.recordDomainOperation(r.Context(), "auth.login", "invalid_credentials")
+		respondRequestErrorWithLogCode(w, r, nethttp.StatusUnauthorized, "auth", "invalid_credentials", "unauthorized", "invalid credentials")
 		return
 	}
 	session, err := service.CreateLoginSessionWithAudit(r.Context(), h.store, store.CreateSessionInput{
@@ -1698,11 +1862,13 @@ func (h Handler) Login(w nethttp.ResponseWriter, r *nethttp.Request) {
 		IPAddress: ipAddress,
 	})
 	if err != nil {
-		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		h.recordDomainOperation(r.Context(), "auth.login", "error")
+		respondRequestErrorWithLogCode(w, r, nethttp.StatusInternalServerError, "auth", "auth_error", "internal_error", "internal server error")
 		return
 	}
 
 	setSessionCookie(w, token, session.ExpiresAt, secureSessionCookie(r))
+	h.recordDomainOperation(r.Context(), "auth.login", "success")
 	RespondJSON(w, nethttp.StatusOK, authLoginResponse{
 		User:        publicUser(user),
 		Memberships: memberships,
@@ -1730,29 +1896,29 @@ func (h Handler) Me(w nethttp.ResponseWriter, r *nethttp.Request) {
 
 	cookie, err := r.Cookie(sessionCookieName)
 	if err != nil || cookie.Value == "" {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 
 	tokenHash, err := auth.HashSessionToken(cookie.Value)
 	if err != nil {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 
 	session, user, err := h.store.GetSessionByTokenHash(r.Context(), tokenHash)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			respondUnauthorized(w)
+			respondRequestUnauthorized(w, r)
 			return
 		}
-		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		respondRequestError(w, r, nethttp.StatusInternalServerError, "store", "internal_error", "internal server error")
 		return
 	}
 
 	memberships, err := h.store.ListMembershipsForUser(r.Context(), user.ID)
 	if err != nil {
-		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		respondRequestError(w, r, nethttp.StatusInternalServerError, "store", "internal_error", "internal server error")
 		return
 	}
 	if memberships == nil {
@@ -1769,7 +1935,7 @@ func (h Handler) Me(w nethttp.ResponseWriter, r *nethttp.Request) {
 func (h Handler) ChangePassword(w nethttp.ResponseWriter, r *nethttp.Request) {
 	details, ok := authDetailsFromContext(r.Context())
 	if !ok {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 
@@ -1778,25 +1944,25 @@ func (h Handler) ChangePassword(w nethttp.ResponseWriter, r *nethttp.Request) {
 		return
 	}
 	if payload.CurrentPassword == "" || len(payload.NewPassword) < 12 {
-		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "currentPassword and a 12+ character newPassword are required")
+		respondRequestError(w, r, nethttp.StatusBadRequest, "validation", "validation_error", "validation failed", "currentPassword and a 12+ character newPassword are required")
 		return
 	}
 	if details.User.PasswordHash == nil {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 	okPassword, err := auth.VerifyPassword(payload.CurrentPassword, *details.User.PasswordHash)
 	if err != nil || !okPassword {
-		respondUnauthorized(w)
+		respondRequestUnauthorized(w, r)
 		return
 	}
 	hash, err := auth.HashPassword(payload.NewPassword)
 	if err != nil {
-		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "newPassword is invalid")
+		respondRequestError(w, r, nethttp.StatusBadRequest, "validation", "validation_error", "validation failed", "newPassword is invalid")
 		return
 	}
 	if _, err := h.store.UpdateUserPassword(r.Context(), details.User.ID, hash); err != nil {
-		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		respondRequestError(w, r, nethttp.StatusInternalServerError, "store", "internal_error", "internal server error")
 		return
 	}
 	w.WriteHeader(nethttp.StatusNoContent)
@@ -1806,7 +1972,7 @@ func (h Handler) Logout(w nethttp.ResponseWriter, r *nethttp.Request) {
 	if cookie, err := r.Cookie(sessionCookieName); err == nil {
 		if tokenHash, err := auth.HashSessionToken(cookie.Value); err == nil {
 			if err := h.store.RevokeSession(r.Context(), tokenHash); err != nil {
-				RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+				respondRequestError(w, r, nethttp.StatusInternalServerError, "store", "internal_error", "internal server error")
 				return
 			}
 		}
@@ -1825,14 +1991,23 @@ func respondStoreError(w nethttp.ResponseWriter, err error, notFoundMessage stri
 	RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
 }
 
-func respondAdminUserCreateError(w nethttp.ResponseWriter, err error) {
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-		RespondError(w, nethttp.StatusConflict, "conflict", "user already exists")
+func respondRequestStoreError(w nethttp.ResponseWriter, r *nethttp.Request, err error, notFoundMessage string) {
+	if errors.Is(err, pgx.ErrNoRows) {
+		respondRequestError(w, r, nethttp.StatusNotFound, "store", "not_found", notFoundMessage)
 		return
 	}
 
-	respondStoreError(w, err, "failed to create admin user")
+	respondRequestErrorWithLogCode(w, r, nethttp.StatusInternalServerError, "store", "store_error", "internal_error", "internal server error")
+}
+
+func respondRequestAdminUserCreateError(w nethttp.ResponseWriter, r *nethttp.Request, err error) {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		respondRequestError(w, r, nethttp.StatusConflict, "store", "conflict", "user already exists")
+		return
+	}
+
+	respondRequestStoreError(w, r, err, "failed to create admin user")
 }
 
 func respondPartnerAdminMutationError(w nethttp.ResponseWriter, err error, notFoundMessage string) {
@@ -1852,10 +2027,27 @@ func respondPartnerAdminMutationError(w nethttp.ResponseWriter, err error, notFo
 	}
 }
 
+func respondRequestPartnerAdminMutationError(w nethttp.ResponseWriter, r *nethttp.Request, err error, notFoundMessage string) {
+	switch {
+	case errors.Is(err, store.ErrInvalidPartnerScope):
+		respondRequestError(w, r, nethttp.StatusBadRequest, "validation", "validation_error", "validation failed", "scopes: scopes contain an unsupported value")
+	case errors.Is(err, store.ErrInvalidPartnerWebhookStatus):
+		respondRequestError(w, r, nethttp.StatusBadRequest, "validation", "validation_error", "validation failed", "status: status must be one of: active, disabled")
+	case errors.Is(err, store.ErrInvalidPartnerWebhookEventStatus):
+		respondRequestError(w, r, nethttp.StatusBadRequest, "validation", "validation_error", "validation failed", "status: status must be one of: queued, delivered, failed, preview_only")
+	case errors.Is(err, store.ErrInvalidPartnerExportFormat):
+		respondRequestError(w, r, nethttp.StatusBadRequest, "validation", "validation_error", "validation failed", "format: format must be one of: json, csv")
+	case errors.Is(err, store.ErrPartnerAPIKeyRevoked):
+		respondRequestError(w, r, nethttp.StatusConflict, "partner", "conflict", "partner API key already revoked")
+	default:
+		respondRequestStoreError(w, r, err, notFoundMessage)
+	}
+}
+
 func parsePositiveInt64Param(w nethttp.ResponseWriter, r *nethttp.Request, paramName string, notFoundMessage string) (int64, bool) {
 	value, err := strconv.ParseInt(chi.URLParam(r, paramName), 10, 64)
 	if err != nil || value <= 0 {
-		RespondError(w, nethttp.StatusNotFound, "not_found", notFoundMessage)
+		respondRequestError(w, r, nethttp.StatusNotFound, "validation", "not_found", notFoundMessage)
 		return 0, false
 	}
 	return value, true
@@ -1989,12 +2181,12 @@ func copyStringAnyMap(values map[string]any) map[string]any {
 func decodeSingleJSON(w nethttp.ResponseWriter, r *nethttp.Request, target any) bool {
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(target); err != nil {
-		RespondError(w, nethttp.StatusBadRequest, "invalid_json", "invalid JSON request body")
+		respondRequestError(w, r, nethttp.StatusBadRequest, "validation", "invalid_json", "invalid JSON request body")
 		return false
 	}
 	var extra any
 	if err := decoder.Decode(&extra); err != io.EOF {
-		RespondError(w, nethttp.StatusBadRequest, "invalid_json", "invalid JSON request body")
+		respondRequestError(w, r, nethttp.StatusBadRequest, "validation", "invalid_json", "invalid JSON request body")
 		return false
 	}
 	return true
