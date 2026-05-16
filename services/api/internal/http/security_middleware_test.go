@@ -28,7 +28,7 @@ func TestCSRFProtectionRejectsUntrustedCookieMutationOrigin(t *testing.T) {
 	}
 }
 
-func TestCSRFProtectionAllowsServerSideCookieMutationWithoutBrowserOrigin(t *testing.T) {
+func TestCSRFProtectionRejectsCookieMutationWithoutBrowserOriginOrServerHeader(t *testing.T) {
 	router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{}),
 		apihttp.WithTrustedOrigins([]string{"https://app.clinicpulse.example"}),
 	)
@@ -38,8 +38,27 @@ func TestCSRFProtectionAllowsServerSideCookieMutationWithoutBrowserOrigin(t *tes
 
 	router.ServeHTTP(rec, req)
 
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected missing browser origin to be rejected, got %d with body %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "csrf_rejected") {
+		t.Fatalf("expected csrf rejection, got %s", rec.Body.String())
+	}
+}
+
+func TestCSRFProtectionAllowsServerSideCookieMutationWithServerHeader(t *testing.T) {
+	router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{}),
+		apihttp.WithTrustedOrigins([]string{"https://app.clinicpulse.example"}),
+	)
+	req := httptest.NewRequest(http.MethodPost, "/v1/reports", strings.NewReader(`{"clinicId":"clinic-1","status":"operational"}`))
+	req.Header.Set("X-ClinicPulse-Server-Mutation", "1")
+	req.AddCookie(&http.Cookie{Name: "clinicpulse_session", Value: sessionTokenForTest(t)})
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
 	if rec.Code == http.StatusForbidden {
-		t.Fatalf("expected missing browser origin to pass through, body %s", rec.Body.String())
+		t.Fatalf("expected server mutation header to pass through, body %s", rec.Body.String())
 	}
 	if strings.Contains(rec.Body.String(), "csrf_rejected") {
 		t.Fatalf("expected response not to leak csrf rejection, got %s", rec.Body.String())

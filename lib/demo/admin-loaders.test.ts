@@ -40,6 +40,14 @@ import {
 import { AuthenticationRequiredError } from "@/lib/auth/session";
 
 const cookieHeader = "clinicpulse_session=session-token";
+const adminLoaderOptions = {
+  init: {
+    headers: {
+      cookie: cookieHeader,
+      "x-clinicpulse-server-mutation": "1",
+    },
+  },
+};
 const adminSession = {
   role: "system_admin",
   user: { id: 1, email: "admin@example.test", displayName: "Admin" },
@@ -92,37 +100,19 @@ describe("admin governance loaders", () => {
 
     expect(authMocks.getCurrentSession).toHaveBeenCalledWith({ cookieHeader });
     expect(authMocks.requireWorkflowRole).toHaveBeenCalledWith(adminSession, "admin");
-    expect(options).toEqual({
-      init: {
-        headers: {
-          cookie: cookieHeader,
-        },
-      },
-    });
+    expect(options).toEqual(adminLoaderOptions);
   });
 
   it("forwards loader options to fetchAdminUsers", async () => {
     await loadAdminUsers();
 
-    expect(apiClientMocks.fetchAdminUsers).toHaveBeenCalledWith({
-      init: {
-        headers: {
-          cookie: cookieHeader,
-        },
-      },
-    });
+    expect(apiClientMocks.fetchAdminUsers).toHaveBeenCalledWith(adminLoaderOptions);
   });
 
   it("forwards loader options to fetchAdminAuditEvents", async () => {
     await loadAdminAuditEvents();
 
-    expect(apiClientMocks.fetchAdminAuditEvents).toHaveBeenCalledWith({
-      init: {
-        headers: {
-          cookie: cookieHeader,
-        },
-      },
-    });
+    expect(apiClientMocks.fetchAdminAuditEvents).toHaveBeenCalledWith(adminLoaderOptions);
   });
 
   it("loads governance data with the same options object for each fetch", async () => {
