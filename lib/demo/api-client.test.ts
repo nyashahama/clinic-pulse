@@ -235,6 +235,8 @@ describe("ClinicPulse API client", () => {
     const headers = new Headers(fetchImpl.mock.calls[0]?.[1]?.headers);
     expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://api.example.test/v1/sync/summary");
     expect(headers.get("cookie")).toBe("clinicpulse_session=session-token");
+    expect(headers.get("x-request-id")).toMatch(/^[A-Za-z0-9._:-]{1,128}$/);
+    expect(headers.get("traceparent")).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/);
     expect(summary.offlineReportsReceived).toBe(2);
     expect(summary.duplicateSyncsHandled).toBe(1);
   });
@@ -481,6 +483,8 @@ describe("ClinicPulse API client", () => {
       init: {
         headers: new Headers([
           ["authorization", "Bearer field-token"],
+          ["traceparent", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"],
+          ["x-request-id", "field-console-req-1"],
           ["x-request-source", "field-console"],
         ]),
       },
@@ -488,6 +492,10 @@ describe("ClinicPulse API client", () => {
 
     const headers = new Headers(fetchImpl.mock.calls[0][1]?.headers);
     expect(headers.get("authorization")).toBe("Bearer field-token");
+    expect(headers.get("traceparent")).toBe(
+      "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+    );
+    expect(headers.get("x-request-id")).toBe("field-console-req-1");
     expect(headers.get("x-request-source")).toBe("field-console");
     expect(headers.get("content-type")).toBe("application/json");
   });
