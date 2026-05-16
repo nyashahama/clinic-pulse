@@ -1,8 +1,9 @@
-import { redirect } from "next/navigation";
-
+import { toClientAuthSession } from "@/lib/auth/session";
 import { requireDemoWorkflowAccess } from "../../workflow-guard";
+import FieldPageClient from "../page-client";
 
 export default async function Page() {
-  await requireDemoWorkflowAccess("field");
-  redirect("/field#submit-report");
+  const session = await requireDemoWorkflowAccess("field");
+
+  return <FieldPageClient session={toClientAuthSession(session)} />;
 }
