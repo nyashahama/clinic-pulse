@@ -1119,6 +1119,34 @@ func (h Handler) CreateAdminPartnerWebhookTestEvent(w nethttp.ResponseWriter, r 
 		return
 	}
 	if h.webhookDeliveryEnabled {
+		now := time.Now().UTC()
+		lastError := "webhook delivery is not implemented"
+		if _, err := h.store.CreatePartnerWebhookEvent(r.Context(), store.CreatePartnerWebhookEventInput{
+			SubscriptionID: subscriptionID,
+			EventType:      "clinicpulse.webhook_test",
+			Payload: map[string]any{
+				"eventType":      "clinicpulse.webhook_test",
+				"subscriptionId": subscriptionID,
+				"targetUrl":      subscription.TargetURL,
+				"previewOnly":    false,
+			},
+			Metadata: map[string]any{
+				"previewOnly":       false,
+				"deliveryEnabled":   true,
+				"deliveryAttempted": false,
+			},
+			Status:       "failed",
+			AttemptCount: 1,
+			LastError:    &lastError,
+			CreatedAt:    now,
+		}); err != nil {
+			respondPartnerAdminMutationError(w, err, "failed to create partner webhook test event")
+			return
+		}
+		if _, err := h.refreshPartnerIntegrationStatusChecks(r.Context(), principal.OrganisationID, now); err != nil {
+			respondStoreError(w, err, "failed to refresh integration status checks")
+			return
+		}
 		RespondError(w, nethttp.StatusNotImplemented, "not_implemented", "webhook delivery is not implemented")
 		return
 	}

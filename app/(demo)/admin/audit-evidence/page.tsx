@@ -7,6 +7,7 @@ import {
 import type {
   AdminAuditEventApiResponse,
   PartnerExportRunApiResponse,
+  PartnerWebhookEventApiResponse,
 } from "@/lib/demo/api-types";
 import { requireDemoWorkflowAccess } from "../../workflow-guard";
 import { loadAdminGovernanceData } from "../admin-loaders";
@@ -85,6 +86,20 @@ function requesterLabel(
   return userById.get(exportRun.requestedByUserId) ?? `User ${exportRun.requestedByUserId}`;
 }
 
+function webhookEventTone(event: PartnerWebhookEventApiResponse) {
+  return event.status === "failed" ? "blocked" : "info";
+}
+
+function webhookEventEvidence(event: PartnerWebhookEventApiResponse) {
+  if (event.lastError) {
+    return event.lastError;
+  }
+
+  return event.status === "preview_only"
+    ? "Preview-only webhook test event recorded without delivery."
+    : "Webhook delivery/test event recorded.";
+}
+
 export default async function Page() {
   await requireDemoWorkflowAccess("admin");
 
@@ -97,6 +112,10 @@ export default async function Page() {
     includesAny(event.eventType, ["access", "auth", "role", "user"]),
   ).length;
   const exportRuns = partnerReadiness.exportRuns;
+  const webhookEvents = partnerReadiness.webhookEvents;
+  const webhookFailures = webhookEvents.filter(
+    (event) => event.status === "failed" || Boolean(event.lastError),
+  ).length;
 
   return (
     <div className="space-y-4">
@@ -121,6 +140,11 @@ export default async function Page() {
             label: "Partner export evidence",
             value: formatCount(exportRuns.length),
             tone: "info",
+          },
+          {
+            label: "Webhook failure evidence",
+            value: formatCount(webhookFailures),
+            tone: toneForAttention(webhookFailures),
           },
           {
             label: "Access-related events",
@@ -217,6 +241,43 @@ export default async function Page() {
             key: "requester",
             header: "Requester",
             render: (row) => requesterLabel(row, userById),
+          },
+          {
+            key: "createdAt",
+            header: "Created",
+            render: (row) => formatDateTime(row.createdAt),
+          },
+        ]}
+      />
+      <AdminEvidenceTable
+        label="Webhook delivery and test evidence"
+        rows={webhookEvents}
+        getRowKey={(row) => String(row.id)}
+        columns={[
+          {
+            key: "eventType",
+            header: "Event",
+            render: (row) => <StatusBadge tone={webhookEventTone(row)}>{formatLabel(row.eventType)}</StatusBadge>,
+          },
+          {
+            key: "subscription",
+            header: "Subscription",
+            render: (row) => `Subscription ${row.subscriptionId}`,
+          },
+          {
+            key: "status",
+            header: "Status",
+            render: (row) => <StatusBadge tone={webhookEventTone(row)}>{formatLabel(row.status)}</StatusBadge>,
+          },
+          {
+            key: "attempts",
+            header: "Attempts",
+            render: (row) => formatCount(row.attemptCount),
+          },
+          {
+            key: "evidence",
+            header: "Evidence",
+            render: (row) => <p className="max-w-md text-sm">{webhookEventEvidence(row)}</p>,
           },
           {
             key: "createdAt",

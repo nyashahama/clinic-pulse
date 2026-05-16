@@ -70,7 +70,7 @@ Admin routes require a session with `org_admin` or `system_admin`.
 | `POST` | `/v1/admin/api-keys/{keyId}/revoke` | Revokes a partner API key |
 | `GET` | `/v1/admin/webhooks` | Lists partner webhook subscriptions |
 | `POST` | `/v1/admin/webhooks` | Creates a partner webhook subscription |
-| `POST` | `/v1/admin/webhooks/{subscriptionId}/test` | Creates a test webhook event or preview |
+| `POST` | `/v1/admin/webhooks/{subscriptionId}/test` | Creates webhook test evidence; when delivery is disabled it records a preview, and when delivery is enabled but unavailable it records failed evidence before returning `501` |
 | `POST` | `/v1/admin/exports` | Creates a partner export run |
 | `GET` | `/v1/admin/exports/{exportId}` | Returns one partner export run |
 
@@ -87,7 +87,7 @@ Operational routes require a session with `district_manager`, `org_admin`, or `s
 | `GET` | `/v1/clinics/{clinicId}/reports` | Lists reports for a clinic |
 | `GET` | `/v1/clinics/{clinicId}/audit-events` | Lists audit events for a clinic |
 | `GET` | `/v1/reports/pending` | Lists reports waiting for review |
-| `POST` | `/v1/status/reconcile-staleness` | Reconciles stale clinic status |
+| `POST` | `/v1/status/reconcile-staleness` | Reconciles stale clinic status; reruns only update freshness when state escalates and audit those transitions |
 | `POST` | `/v1/reports/{reportId}/review` | Accepts or rejects a report |
 | `GET` | `/v1/sync/summary` | Returns offline sync and pilot readiness summary |
 

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -1887,18 +1888,22 @@ func TestAdminPartnerWebhookRejectsUnsafeTargetURLs(t *testing.T) {
 
 func TestAdminPartnerWebhookTestDeliveryEnabledIsExplicitlyNotImplemented(t *testing.T) {
 	orgID := int64(77)
+	secretHash := "stored-webhook-secret-hash"
 	subscriptions := []store.PartnerWebhookSubscription{{
 		ID:             5,
 		OrganisationID: &orgID,
 		Name:           "Status webhook",
 		TargetURL:      "https://partner.example.test/webhooks/clinicpulse",
 		EventTypes:     []string{"clinic.status_changed"},
+		SecretHash:     secretHash,
 		Status:         "active",
 	}}
 	events := []store.PartnerWebhookEvent{}
+	var eventInput store.CreatePartnerWebhookEventInput
 	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
-		partnerWebhookSubscriptions: &subscriptions,
-		partnerWebhookEvents:        &events,
+		partnerWebhookSubscriptions:    &subscriptions,
+		partnerWebhookEvents:           &events,
+		createPartnerWebhookEventInput: &eventInput,
 	}), apihttp.WithWebhookDeliveryEnabled(true))
 	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/webhooks/5/test", nil)
 	rec := httptest.NewRecorder()
@@ -1908,11 +1913,20 @@ func TestAdminPartnerWebhookTestDeliveryEnabledIsExplicitlyNotImplemented(t *tes
 	if rec.Code != http.StatusNotImplemented {
 		t.Fatalf("expected status %d, got %d with body %s", http.StatusNotImplemented, rec.Code, rec.Body.String())
 	}
-	if len(events) != 0 {
-		t.Fatalf("expected no fake delivery event when delivery is enabled but not implemented, got %#v", events)
+	if len(events) != 1 {
+		t.Fatalf("expected failed webhook delivery evidence, got %#v", events)
+	}
+	if eventInput.SubscriptionID != 5 || eventInput.Status != "failed" || eventInput.AttemptCount != 1 || eventInput.EventType != "clinicpulse.webhook_test" {
+		t.Fatalf("unexpected webhook failure event input: %#v", eventInput)
+	}
+	if eventInput.LastError == nil || !strings.Contains(*eventInput.LastError, "not implemented") {
+		t.Fatalf("expected not implemented failure evidence, got %#v", eventInput.LastError)
 	}
 	if !strings.Contains(rec.Body.String(), "not_implemented") {
 		t.Fatalf("expected explicit not implemented response, got %s", rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), secretHash) || strings.Contains(fmt.Sprint(eventInput.Payload), secretHash) || strings.Contains(fmt.Sprint(eventInput.Metadata), secretHash) {
+		t.Fatalf("expected webhook failure evidence not to expose secrets, response=%s input=%#v", rec.Body.String(), eventInput)
 	}
 }
 
