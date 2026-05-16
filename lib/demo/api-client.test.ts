@@ -209,6 +209,36 @@ describe("ClinicPulse API client", () => {
     expect(fetchImpl.mock.calls[0][1]).toMatchObject({ method: "GET" });
   });
 
+  it("forwards authenticated headers when fetching the sync summary endpoint", async () => {
+    const fetchImpl = mockFetch({
+      windowStartedAt: "2026-05-03T00:00:00.000Z",
+      offlineReportsReceived: 2,
+      duplicateSyncsHandled: 1,
+      conflictsNeedingAttention: 0,
+      validationFailures: 0,
+      pendingOfflineReports: 0,
+      needsConfirmationClinics: 0,
+      staleClinics: 0,
+      medianCurrentStatusAgeHours: 3,
+    });
+
+    const summary = await fetchSyncSummary({
+      baseUrl: "https://api.example.test",
+      fetch: fetchImpl,
+      init: {
+        headers: {
+          cookie: "clinicpulse_session=session-token",
+        },
+      },
+    });
+
+    const headers = new Headers(fetchImpl.mock.calls[0]?.[1]?.headers);
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://api.example.test/v1/sync/summary");
+    expect(headers.get("cookie")).toBe("clinicpulse_session=session-token");
+    expect(summary.offlineReportsReceived).toBe(2);
+    expect(summary.duplicateSyncsHandled).toBe(1);
+  });
+
   it("posts status staleness reconciliation", async () => {
     const fetchImpl = mockFetch({
       checked: 4,
