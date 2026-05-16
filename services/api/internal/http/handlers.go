@@ -2025,9 +2025,11 @@ func publicSession(session store.Session) store.Session {
 }
 
 func reviewScopeForPrincipal(principal Principal) store.ReportReviewScope {
+	userID := principal.UserID
 	return store.ReportReviewScope{
 		Role:     principal.Role,
 		District: principal.DistrictScope,
+		UserID:   &userID,
 	}
 }
 

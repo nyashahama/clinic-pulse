@@ -141,6 +141,23 @@ func TestSyncSummaryForReviewScopeSQLScopesClinicRowsForDistrictManagers(t *test
 	}
 }
 
+func TestSyncSummaryForReviewScopeSQLScopesReporterRowsByUserID(t *testing.T) {
+	t.Parallel()
+
+	if !strings.Contains(syncSummarySinceForReviewScopeSQL, "$2 = 'reporter' AND $4::bigint IS NOT NULL AND report_sync_attempts.submitted_by_user_id = $4") {
+		t.Fatal("expected reporter sync attempts to scope by submitted_by_user_id")
+	}
+	if !strings.Contains(syncSummarySinceForReviewScopeSQL, "$2 = 'reporter' AND $4::bigint IS NOT NULL AND reports.submitted_by_user_id = $4") {
+		t.Fatal("expected reporter pending reports to scope by submitted_by_user_id")
+	}
+	if !strings.Contains(syncSummarySinceForReviewScopeSQL, "reporter_attempts.submitted_by_user_id = $4") {
+		t.Fatal("expected reporter current-status evidence to use reporter sync attempts")
+	}
+	if !strings.Contains(syncSummarySinceForReviewScopeSQL, "reporter_reports.submitted_by_user_id = $4") {
+		t.Fatal("expected reporter current-status evidence to use reporter reports")
+	}
+}
+
 func TestSyncSummarySQLComputesMedianCurrentStatusAge(t *testing.T) {
 	t.Parallel()
 

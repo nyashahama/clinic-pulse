@@ -3395,6 +3395,31 @@ func TestSyncSummaryPassesReviewScopeForDistrictManager(t *testing.T) {
 	if scope.Role != "district_manager" || scope.District == nil || *scope.District != defaultTestDistrict {
 		t.Fatalf("expected district-manager review scope, got %#v", scope)
 	}
+	if scope.UserID == nil || *scope.UserID != 42 {
+		t.Fatalf("expected authenticated user id in review scope, got %#v", scope)
+	}
+}
+
+func TestSyncSummaryPassesReporterUserScope(t *testing.T) {
+	var scope store.ReportReviewScope
+	router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{
+		syncSummary:      &store.SyncSummary{OfflineReportsReceived: 1},
+		syncSummaryScope: &scope,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/sync/summary", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if scope.Role != "reporter" {
+		t.Fatalf("expected reporter review scope, got %#v", scope)
+	}
+	if scope.UserID == nil || *scope.UserID != 42 {
+		t.Fatalf("expected reporter user id in review scope, got %#v", scope)
+	}
 }
 
 func TestReconcileStalenessRequiresDistrictManagerOrHigher(t *testing.T) {

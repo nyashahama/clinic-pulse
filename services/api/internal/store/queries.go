@@ -859,6 +859,8 @@ WITH attempt_counts AS (
     LEFT JOIN clinics ON clinics.id = report_sync_attempts.clinic_id
     WHERE report_sync_attempts.received_at >= $1
         AND (
+            ($2 = 'reporter' AND $4::bigint IS NOT NULL AND report_sync_attempts.submitted_by_user_id = $4)
+            OR
             (
                 report_sync_attempts.clinic_id IS NOT NULL
                 AND ($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)
@@ -874,7 +876,8 @@ pending_offline AS (
         AND reports.review_state = 'pending'
         AND reports.received_at >= $1
         AND (
-            ($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)
+            ($2 = 'reporter' AND $4::bigint IS NOT NULL AND reports.submitted_by_user_id = $4)
+            OR ($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)
             OR $2 IN ('org_admin', 'system_admin')
         )
 ),
@@ -885,7 +888,27 @@ current_status_counts AS (
     FROM current_status
     JOIN clinics ON clinics.id = current_status.clinic_id
     WHERE (
-        ($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)
+        (
+            $2 = 'reporter'
+            AND $4::bigint IS NOT NULL
+            AND (
+                EXISTS (
+                    SELECT 1
+                    FROM report_sync_attempts reporter_attempts
+                    WHERE reporter_attempts.submitted_by_user_id = $4
+                        AND reporter_attempts.clinic_id = current_status.clinic_id
+                        AND reporter_attempts.received_at >= $1
+                )
+                OR EXISTS (
+                    SELECT 1
+                    FROM reports reporter_reports
+                    WHERE reporter_reports.submitted_by_user_id = $4
+                        AND reporter_reports.clinic_id = current_status.clinic_id
+                        AND reporter_reports.received_at >= $1
+                )
+            )
+        )
+        OR ($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)
         OR $2 IN ('org_admin', 'system_admin')
     )
 ),
@@ -897,7 +920,27 @@ median_status_age AS (
     FROM current_status
     JOIN clinics ON clinics.id = current_status.clinic_id
     WHERE (
-        ($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)
+        (
+            $2 = 'reporter'
+            AND $4::bigint IS NOT NULL
+            AND (
+                EXISTS (
+                    SELECT 1
+                    FROM report_sync_attempts reporter_attempts
+                    WHERE reporter_attempts.submitted_by_user_id = $4
+                        AND reporter_attempts.clinic_id = current_status.clinic_id
+                        AND reporter_attempts.received_at >= $1
+                )
+                OR EXISTS (
+                    SELECT 1
+                    FROM reports reporter_reports
+                    WHERE reporter_reports.submitted_by_user_id = $4
+                        AND reporter_reports.clinic_id = current_status.clinic_id
+                        AND reporter_reports.received_at >= $1
+                )
+            )
+        )
+        OR ($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)
         OR $2 IN ('org_admin', 'system_admin')
     )
 )
@@ -1456,7 +1499,7 @@ func (s Store) GetSyncSummarySinceForReviewScope(ctx context.Context, since time
 	var medianAge sql.NullFloat64
 	summary.WindowStartedAt = since
 
-	if err := s.pool.QueryRow(ctx, syncSummarySinceForReviewScopeSQL, since, scope.Role, scope.District).Scan(
+	if err := s.pool.QueryRow(ctx, syncSummarySinceForReviewScopeSQL, since, scope.Role, scope.District, scope.UserID).Scan(
 		&summary.OfflineReportsReceived,
 		&summary.DuplicateSyncsHandled,
 		&summary.ConflictsNeedingAttention,

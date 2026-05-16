@@ -400,6 +400,7 @@ type ReviewReportInput struct {
 type ReportReviewScope struct {
 	Role     string
 	District *string
+	UserID   *int64
 }
 
 type CreateSessionInput struct {
