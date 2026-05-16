@@ -2,6 +2,19 @@ import { expect, test } from "@playwright/test";
 
 import { signInAs } from "./helpers/auth";
 
+const pilotCriticalRoutes = [
+  "/field",
+  "/field/submit-report",
+  "/field/sync-queue",
+  "/district",
+  "/admin/reporting-coverage",
+  "/admin/audit-evidence",
+  "/admin/data-ingestion",
+  "/admin/security",
+  "/admin/tenant-health",
+  "/admin/partner-readiness",
+];
+
 test("reporter can inspect server-authoritative field sync queue state", async ({ page }) => {
   await signInAs(page, "reporter@clinicpulse.local", "/field");
   await page.goto("/field/sync-queue");
@@ -43,4 +56,23 @@ test("pilot safety, privacy, and terms pages are reachable", async ({ page }) =>
 
   await page.goto("/legal/terms");
   await expect(page.getByRole("heading", { name: /Terms/i })).toBeVisible();
+});
+
+test("pilot-critical routes do not show implementation placeholders", async ({ page }) => {
+  await signInAs(page, "org-admin@clinicpulse.local", "/admin");
+
+  for (const route of pilotCriticalRoutes.filter((route) => route.startsWith("/admin"))) {
+    await page.goto(route);
+    await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
+  }
+
+  await signInAs(page, "reporter@clinicpulse.local", "/field");
+  for (const route of ["/field", "/field/submit-report", "/field/sync-queue"]) {
+    await page.goto(route);
+    await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
+  }
+
+  await signInAs(page, "district-manager@clinicpulse.local", "/district");
+  await page.goto("/district");
+  await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
 });
