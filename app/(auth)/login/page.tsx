@@ -50,7 +50,9 @@ async function loginAction(
   try {
     const result = await login(email, password);
     await applySessionCookieFromHeader(result.setCookie);
-    nextPath = getMembershipHomeHref(result.data.memberships);
+    nextPath = result.data.user.passwordResetRequired
+      ? "/change-password"
+      : getMembershipHomeHref(result.data.memberships);
   } catch (error) {
     if (
       error instanceof ClinicPulseAuthApiError &&

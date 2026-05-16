@@ -300,6 +300,11 @@ type UpdateUserLifecycleInput struct {
 	UpdatedAt   time.Time
 }
 
+type UpdateUserLifecycleWithAuditInput struct {
+	User       UpdateUserLifecycleInput
+	AuditEvent CreateAuditEventInput
+}
+
 type Organisation struct {
 	ID        int64     `json:"id"`
 	Name      string    `json:"name"`
@@ -324,9 +329,19 @@ type UpsertMembershipInput struct {
 	District       *string
 }
 
+type UpsertMembershipWithAuditInput struct {
+	Membership UpsertMembershipInput
+	AuditEvent CreateAuditEventInput
+}
+
 type CreateAdminUserWithAccessInput struct {
 	User       CreateUserInput
 	Access     UpsertMembershipInput
+	AuditEvent CreateAuditEventInput
+}
+
+type RevokeActiveSessionsWithAuditInput struct {
+	UserID     int64
 	AuditEvent CreateAuditEventInput
 }
 

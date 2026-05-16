@@ -17,6 +17,7 @@ export type AuthUser = {
   email: string;
   displayName: string;
   disabledAt?: string;
+  passwordResetRequired?: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -270,4 +271,17 @@ export async function logout(
     data: result.data,
     setCookie: readSetCookie(result.response),
   };
+}
+
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string,
+  options?: AuthApiClientOptions,
+) {
+  const result = await requestAuthApi<void>(["v1", "auth", "password"], options, {
+    body: JSON.stringify({ currentPassword, newPassword }),
+    method: "POST",
+  });
+
+  return result.data;
 }

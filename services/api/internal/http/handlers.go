@@ -19,6 +19,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"clinicpulse/services/api/internal/auth"
 	"clinicpulse/services/api/internal/security"
@@ -588,7 +589,7 @@ func (h Handler) CreateAdminUser(w nethttp.ResponseWriter, r *nethttp.Request) {
 		AuditEvent: auditInput,
 	})
 	if err != nil {
-		respondStoreError(w, err, "failed to create admin user")
+		respondAdminUserCreateError(w, err)
 		return
 	}
 
@@ -631,17 +632,12 @@ func (h Handler) UpdateAdminUser(w nethttp.ResponseWriter, r *nethttp.Request) {
 		return
 	}
 
-	user, err := h.store.UpdateUserLifecycle(r.Context(), store.UpdateUserLifecycleInput{
+	updateInput := store.UpdateUserLifecycleInput{
 		UserID:      userID,
 		DisplayName: displayName,
 		Disabled:    payload.Disabled,
 		UpdatedAt:   time.Now().UTC(),
-	})
-	if err != nil {
-		respondStoreError(w, err, "admin user not found")
-		return
 	}
-
 	metadata := map[string]any{}
 	if displayName != nil {
 		metadata["displayNameChanged"] = true
@@ -649,8 +645,13 @@ func (h Handler) UpdateAdminUser(w nethttp.ResponseWriter, r *nethttp.Request) {
 	if payload.Disabled != nil {
 		metadata["disabled"] = *payload.Disabled
 	}
-	if err := h.createAdminUserAuditEvent(r.Context(), principal, "admin.user_updated", "Admin user lifecycle updated.", userID, target.OrganisationID, metadata); err != nil {
-		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+	auditInput := adminUserAuditEventInput(principal, "admin.user_updated", "Admin user lifecycle updated.", userID, target.OrganisationID, metadata)
+	user, err := h.updateUserLifecycleWithAudit(r.Context(), store.UpdateUserLifecycleWithAuditInput{
+		User:       updateInput,
+		AuditEvent: auditInput,
+	})
+	if err != nil {
+		respondStoreError(w, err, "admin user not found")
 		return
 	}
 
@@ -680,23 +681,23 @@ func (h Handler) UpdateAdminUserAccess(w nethttp.ResponseWriter, r *nethttp.Requ
 		return
 	}
 
-	membership, err := h.store.UpsertOrganisationMembership(r.Context(), store.UpsertMembershipInput{
+	membershipInput := store.UpsertMembershipInput{
 		UserID:         userID,
 		OrganisationID: change.OrganisationID,
 		Role:           change.Role,
 		District:       change.District,
-	})
-	if err != nil {
-		respondStoreError(w, err, "admin user not found")
-		return
 	}
-
-	if err := h.createAdminUserAuditEvent(r.Context(), principal, "admin.user_access_updated", "Admin user access updated.", userID, change.OrganisationID, map[string]any{
+	auditInput := adminUserAuditEventInput(principal, "admin.user_access_updated", "Admin user access updated.", userID, change.OrganisationID, map[string]any{
 		"role":           change.Role,
 		"organisationId": change.OrganisationID,
 		"district":       change.District,
-	}); err != nil {
-		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+	})
+	membership, err := h.upsertOrganisationMembershipWithAudit(r.Context(), store.UpsertMembershipWithAuditInput{
+		Membership: membershipInput,
+		AuditEvent: auditInput,
+	})
+	if err != nil {
+		respondStoreError(w, err, "admin user not found")
 		return
 	}
 
@@ -718,15 +719,13 @@ func (h Handler) RevokeAdminUserSessions(w nethttp.ResponseWriter, r *nethttp.Re
 		return
 	}
 
-	revokedSessions, err := h.store.RevokeActiveSessionsForUser(r.Context(), userID)
+	auditInput := adminUserAuditEventInput(principal, "admin.user_sessions_revoked", "Admin user sessions revoked.", userID, target.OrganisationID, nil)
+	revokedSessions, err := h.revokeActiveSessionsForUserWithAudit(r.Context(), store.RevokeActiveSessionsWithAuditInput{
+		UserID:     userID,
+		AuditEvent: auditInput,
+	})
 	if err != nil {
 		respondStoreError(w, err, "admin user not found")
-		return
-	}
-	if err := h.createAdminUserAuditEvent(r.Context(), principal, "admin.user_sessions_revoked", "Admin user sessions revoked.", userID, target.OrganisationID, map[string]any{
-		"revokedSessions": revokedSessions,
-	}); err != nil {
-		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
 		return
 	}
 
@@ -836,6 +835,62 @@ func (h Handler) createAdminUserAuditEvent(ctx context.Context, principal Princi
 	return err
 }
 
+type adminUserLifecycleAuditStore interface {
+	UpdateUserLifecycleWithAuditTx(context.Context, store.UpdateUserLifecycleWithAuditInput) (store.User, store.AuditEvent, error)
+	UpsertOrganisationMembershipWithAuditTx(context.Context, store.UpsertMembershipWithAuditInput) (store.OrganisationMembership, store.AuditEvent, error)
+	RevokeActiveSessionsForUserWithAuditTx(context.Context, store.RevokeActiveSessionsWithAuditInput) (int64, store.AuditEvent, error)
+}
+
+func (h Handler) updateUserLifecycleWithAudit(ctx context.Context, input store.UpdateUserLifecycleWithAuditInput) (store.User, error) {
+	if txStore, ok := h.store.(adminUserLifecycleAuditStore); ok {
+		user, _, err := txStore.UpdateUserLifecycleWithAuditTx(ctx, input)
+		return user, err
+	}
+
+	user, err := h.store.UpdateUserLifecycle(ctx, input.User)
+	if err != nil {
+		return store.User{}, err
+	}
+	if _, err := h.store.CreateAuditEvent(ctx, input.AuditEvent); err != nil {
+		return store.User{}, err
+	}
+	return user, nil
+}
+
+func (h Handler) upsertOrganisationMembershipWithAudit(ctx context.Context, input store.UpsertMembershipWithAuditInput) (store.OrganisationMembership, error) {
+	if txStore, ok := h.store.(adminUserLifecycleAuditStore); ok {
+		membership, _, err := txStore.UpsertOrganisationMembershipWithAuditTx(ctx, input)
+		return membership, err
+	}
+
+	membership, err := h.store.UpsertOrganisationMembership(ctx, input.Membership)
+	if err != nil {
+		return store.OrganisationMembership{}, err
+	}
+	if _, err := h.store.CreateAuditEvent(ctx, input.AuditEvent); err != nil {
+		return store.OrganisationMembership{}, err
+	}
+	return membership, nil
+}
+
+func (h Handler) revokeActiveSessionsForUserWithAudit(ctx context.Context, input store.RevokeActiveSessionsWithAuditInput) (int64, error) {
+	if txStore, ok := h.store.(adminUserLifecycleAuditStore); ok {
+		revokedSessions, _, err := txStore.RevokeActiveSessionsForUserWithAuditTx(ctx, input)
+		return revokedSessions, err
+	}
+
+	revokedSessions, err := h.store.RevokeActiveSessionsForUser(ctx, input.UserID)
+	if err != nil {
+		return 0, err
+	}
+	input.AuditEvent.Metadata = cloneHandlerMetadata(input.AuditEvent.Metadata)
+	input.AuditEvent.Metadata["revokedSessions"] = revokedSessions
+	if _, err := h.store.CreateAuditEvent(ctx, input.AuditEvent); err != nil {
+		return 0, err
+	}
+	return revokedSessions, nil
+}
+
 func adminUserAuditEventInput(principal Principal, eventType string, summary string, userID int64, organisationID *int64, metadata map[string]any) store.CreateAuditEventInput {
 	actorName := optionalTrimmedString(&principal.DisplayName)
 	actorRole := optionalTrimmedString(&principal.Role)
@@ -884,6 +939,17 @@ func compactAdminAuditMetadata(metadata map[string]any) map[string]any {
 		}
 	}
 	return compacted
+}
+
+func cloneHandlerMetadata(metadata map[string]any) map[string]any {
+	if metadata == nil {
+		return map[string]any{}
+	}
+	cloned := make(map[string]any, len(metadata))
+	for key, value := range metadata {
+		cloned[key] = value
+	}
+	return cloned
 }
 
 func (h Handler) RevokeAdminPartnerAPIKey(w nethttp.ResponseWriter, r *nethttp.Request) {
@@ -1691,6 +1757,16 @@ func respondStoreError(w nethttp.ResponseWriter, err error, notFoundMessage stri
 	}
 
 	RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+}
+
+func respondAdminUserCreateError(w nethttp.ResponseWriter, err error) {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		RespondError(w, nethttp.StatusConflict, "conflict", "user already exists")
+		return
+	}
+
+	respondStoreError(w, err, "failed to create admin user")
 }
 
 func respondPartnerAdminMutationError(w nethttp.ResponseWriter, err error, notFoundMessage string) {

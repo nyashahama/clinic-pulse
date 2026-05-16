@@ -276,6 +276,35 @@ func (s Store) UpdateUserLifecycle(ctx context.Context, input UpdateUserLifecycl
 	))
 }
 
+func (s Store) UpdateUserLifecycleWithAuditTx(ctx context.Context, input UpdateUserLifecycleWithAuditInput) (User, AuditEvent, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return User{}, AuditEvent{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	user, err := scanUser(tx.QueryRow(ctx, updateUserLifecycleSQL,
+		input.User.UserID,
+		input.User.DisplayName,
+		input.User.Disabled,
+		input.User.UpdatedAt,
+	))
+	if err != nil {
+		return User{}, AuditEvent{}, err
+	}
+
+	auditEvent, err := insertAuditEvent(ctx, tx, input.AuditEvent)
+	if err != nil {
+		return User{}, AuditEvent{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return User{}, AuditEvent{}, err
+	}
+
+	return user, auditEvent, nil
+}
+
 func (s Store) UpdateUserPassword(ctx context.Context, userID int64, passwordHash string) (User, error) {
 	return scanUser(s.pool.QueryRow(ctx, updateUserPasswordSQL, userID, passwordHash))
 }
@@ -366,6 +395,33 @@ func (s Store) RevokeActiveSessionsForUser(ctx context.Context, userID int64) (i
 	return tag.RowsAffected(), err
 }
 
+func (s Store) RevokeActiveSessionsForUserWithAuditTx(ctx context.Context, input RevokeActiveSessionsWithAuditInput) (int64, AuditEvent, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return 0, AuditEvent{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	tag, err := tx.Exec(ctx, revokeActiveSessionsForUserSQL, input.UserID)
+	if err != nil {
+		return 0, AuditEvent{}, err
+	}
+	revokedSessions := tag.RowsAffected()
+	input.AuditEvent.Metadata = cloneMetadata(input.AuditEvent.Metadata)
+	input.AuditEvent.Metadata["revokedSessions"] = revokedSessions
+
+	auditEvent, err := insertAuditEvent(ctx, tx, input.AuditEvent)
+	if err != nil {
+		return 0, AuditEvent{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return 0, AuditEvent{}, err
+	}
+
+	return revokedSessions, auditEvent, nil
+}
+
 func (s Store) GetAdminUserAccessByUserID(ctx context.Context, userID int64) (AdminUserAccessRow, error) {
 	return scanAdminUserAccessRow(s.pool.QueryRow(ctx, getAdminUserAccessByUserIDSQL, userID))
 }
@@ -413,6 +469,45 @@ func (s Store) UpsertOrganisationMembership(ctx context.Context, input UpsertMem
 	}
 
 	return membership, nil
+}
+
+func (s Store) UpsertOrganisationMembershipWithAuditTx(ctx context.Context, input UpsertMembershipWithAuditInput) (OrganisationMembership, AuditEvent, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return OrganisationMembership{}, AuditEvent{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	membershipInput := input.Membership
+	var lockedUserID int64
+	if err := tx.QueryRow(ctx, lockUserForMembershipReplacementSQL, membershipInput.UserID).Scan(&lockedUserID); err != nil {
+		return OrganisationMembership{}, AuditEvent{}, err
+	}
+
+	if _, err := tx.Exec(ctx, deleteOrganisationMembershipsForUserSQL, membershipInput.UserID); err != nil {
+		return OrganisationMembership{}, AuditEvent{}, err
+	}
+
+	membership, err := scanOrganisationMembership(tx.QueryRow(ctx, insertOrganisationMembershipSQL,
+		membershipInput.UserID,
+		membershipInput.OrganisationID,
+		membershipInput.Role,
+		membershipInput.District,
+	))
+	if err != nil {
+		return OrganisationMembership{}, AuditEvent{}, err
+	}
+
+	auditEvent, err := insertAuditEvent(ctx, tx, input.AuditEvent)
+	if err != nil {
+		return OrganisationMembership{}, AuditEvent{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return OrganisationMembership{}, AuditEvent{}, err
+	}
+
+	return membership, auditEvent, nil
 }
 
 func scanSessionWithUser(row pgx.Row) (Session, User, error) {

@@ -24,6 +24,7 @@ async function logoutAction() {
       ? {
           headers: {
             cookie: cookieHeader,
+            "x-clinicpulse-server-mutation": "1",
           },
         }
       : undefined,
@@ -44,6 +45,9 @@ export default async function DemoLayout({ children }: { children: ReactNode }) 
   const currentSession = await getCurrentSession({ cookieHeader });
   if (!currentSession) {
     redirect("/login");
+  }
+  if (currentSession.user.passwordResetRequired) {
+    redirect("/change-password");
   }
 
   const session = requireRole(currentSession, AUTH_ROLES);

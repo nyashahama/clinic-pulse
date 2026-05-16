@@ -8,6 +8,8 @@ import (
 	"clinicpulse/services/api/internal/security"
 )
 
+const serverMutationHeaderName = "X-ClinicPulse-Server-Mutation"
+
 func ProtectCookieMutations(trustedOrigins []string) func(nethttp.Handler) nethttp.Handler {
 	trusted := map[string]struct{}{}
 	for _, origin := range trustedOrigins {
@@ -24,6 +26,12 @@ func ProtectCookieMutations(trustedOrigins []string) func(nethttp.Handler) netht
 			}
 
 			origin := strings.TrimRight(strings.ToLower(strings.TrimSpace(r.Header.Get("Origin"))), "/")
+			refererOrigin := originFromReferer(r.Header.Get("Referer"))
+			if origin == "" && refererOrigin == "" && r.Header.Get(serverMutationHeaderName) == "1" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			if origin != "" {
 				if _, ok := trusted[origin]; !ok {
 					RespondError(w, nethttp.StatusForbidden, "csrf_rejected", "request origin is not allowed")
@@ -33,9 +41,8 @@ func ProtectCookieMutations(trustedOrigins []string) func(nethttp.Handler) netht
 				return
 			}
 
-			refererOrigin := originFromReferer(r.Header.Get("Referer"))
 			if refererOrigin == "" {
-				next.ServeHTTP(w, r)
+				RespondError(w, nethttp.StatusForbidden, "csrf_rejected", "request origin is not allowed")
 				return
 			}
 			if _, ok := trusted[refererOrigin]; !ok {
