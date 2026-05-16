@@ -11,6 +11,8 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "capture:showcase": "playwright test --config=playwright.showcase.config.ts",
+    "smoke": "node scripts/smoke/clinicpulse-smoke.mjs",
+    "load:smoke": "node scripts/load/core-journeys.mjs",
     "test:watch": "vitest"
   },
   "dependencies": {
