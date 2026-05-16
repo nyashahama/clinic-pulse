@@ -30,6 +30,9 @@ Run the Go API as a Docker web service using the API image.
 | `CLINICPULSE_LOGIN_RATE_LIMIT` | Positive integer, default `8` attempts per window |
 | `CLINICPULSE_MUTATION_RATE_LIMIT` | Positive integer, default `60` unsafe mutations per window |
 | `CLINICPULSE_RATE_LIMIT_WINDOW` | Go duration, default `1m` |
+| `CLINICPULSE_METRICS_ENABLED` | `true` only when the metrics endpoint is protected and scraped by an approved monitor; otherwise unset or `false` |
+| `CLINICPULSE_METRICS_TOKEN` | High-entropy bearer token for the metrics scraper; never expose to frontend code |
+| `CLINICPULSE_OBSERVABILITY_SERVICE_NAME` | Stable service label for logs/metrics, for example `clinicpulse-api-staging` |
 | `PORT` | Supplied by Render, Railway, or the Docker host |
 
 Start command:
@@ -52,7 +55,22 @@ Phase 1 staging should use a fresh managed DB or one that already includes `sche
 
 Keep `CLINICPULSE_WEBHOOK_DELIVERY_ENABLED=false` until outbound delivery is implemented and reviewed. If it is enabled early, webhook test requests still record failed delivery evidence for admin review and return `501 not_implemented`; they do not expose webhook secrets.
 
-Phase 3 does not add a persistent background worker. Stale reconciliation, exports, webhook tests, and sync evidence remain API-triggered and auditable. Phase 4 will add production observability and scheduling decisions.
+Phase 3 does not add a persistent background worker. Stale reconciliation, exports, webhook tests, and sync evidence remain API-triggered and auditable. Phase 4 adds production observability runbooks, alert routing, and pilot-stage SLOs.
+
+## Observability Setup
+
+- Enable `CLINICPULSE_METRICS_ENABLED=true` only after `CLINICPULSE_METRICS_TOKEN` is set and the endpoint is reachable only by the monitoring vendor or a private scraper.
+- Configure the scraper to send `Authorization: Bearer <CLINICPULSE_METRICS_TOKEN>`.
+- Set `CLINICPULSE_OBSERVABILITY_SERVICE_NAME` to a stable value before the first pilot dashboard is created; changing it later can split metric history.
+- Forward API logs as structured JSON when the host supports it.
+- Redact request bodies, cookies, `Authorization`, `Set-Cookie`, API keys, webhook secrets, CSRF tokens, patient identifiers, and free-text clinical notes before logs leave the host.
+- Create uptime checks for the Vercel frontend, API health endpoint, and API readiness endpoint.
+- Build HTTP dashboards from `clinicpulse_http_requests_total{method,route,status_class,principal_type}`, `clinicpulse_http_request_duration_seconds_bucket{method,route,status_class,principal_type,le}`, `clinicpulse_http_request_duration_seconds_count{method,route,status_class,principal_type}`, `clinicpulse_http_request_duration_seconds_sum{method,route,status_class,principal_type}`, and `clinicpulse_http_errors_total{error_kind}`.
+- Build readiness dashboards from `clinicpulse_readiness_checks_total{result}`, `clinicpulse_readiness_check_duration_seconds_count{result}`, and `clinicpulse_readiness_check_duration_seconds_sum{result}`.
+- Build domain operation alerts from `clinicpulse_domain_operations_total{operation,result}` for `auth.login`, `report.create`, `report.review`, `offline_sync`, `partner.webhook_test`, and `partner.export`; treat stale clinic count as an admin/data-ingestion operational check unless a provider-derived monitor is configured.
+- Route Sev1/Sev2 alerts to the primary operator and pilot incident channel; route partner webhook/export alerts to the partner integration owner.
+
+Use `docs/operations/observability.md`, `docs/operations/alert-routing.md`, `docs/operations/incident-response.md`, and `docs/operations/slo.md` as the operator reference for pilot monitoring.
 
 ## Render Notes
 
@@ -61,6 +79,7 @@ Phase 3 does not add a persistent background worker. Stale reconciliation, expor
 - Set the Docker API environment variables listed above.
 - Render supplies `PORT`; do not hard-code it.
 - Run `/app/clinicpulse-migrate` against the staging database before promoting the new API image.
+- Configure Render log streams or a vendor drain only after redaction rules are confirmed.
 
 ## Railway Notes
 
@@ -69,6 +88,7 @@ Phase 3 does not add a persistent background worker. Stale reconciliation, expor
 - Set the Docker API environment variables listed above.
 - Railway supplies `PORT`; do not hard-code it.
 - Run `/app/clinicpulse-migrate` against the staging database before promoting the new API image.
+- Configure Railway log drains or a private agent only after redaction rules are confirmed.
 
 ## Managed Postgres Backup, Restore, And Migration
 
@@ -107,7 +127,9 @@ Prefer roll-forward corrective migrations when data shape changes can be repaire
 - Confirm the API exposes a healthy HTTPS base URL.
 - Create or reconnect the Vercel frontend project.
 - Configure the Vercel frontend environment variables.
+- Configure observability environment variables when pilot monitoring is in scope.
 - Confirm browser traffic uses `/api/clinicpulse/*`.
+- Confirm uptime checks and alert destinations are configured before pilot handoff.
 - Smoke test booking, district console, clinic detail, public finder, field reporting, admin, login, and registration paths that are in scope for the staging handoff.
 
 ## Rollback
