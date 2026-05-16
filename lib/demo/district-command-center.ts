@@ -363,6 +363,24 @@ function buildVerificationNeed(
   return `Confirm whether ${clinic.name} still needs district attention.`;
 }
 
+const commandDateTimeFormatter = new Intl.DateTimeFormat("en-ZA", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+function formatLastSyncLabel(value: string | null) {
+  if (!value) {
+    return "Last sync unavailable";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Last sync unavailable";
+  }
+
+  return `Last sync ${commandDateTimeFormatter.format(date)}`;
+}
+
 function buildBrief(
   input: DistrictCommandCenterInput,
   queue: DistrictSeverityQueueItem[],
@@ -370,7 +388,7 @@ function buildBrief(
 ): DistrictCommandCenter["brief"] {
   const operatorName = input.session?.displayName ?? input.session?.name ?? "District operator";
   const districtLabel = input.session?.district ?? selectedItem?.districtLabel ?? "District command";
-  const lastSyncLabel = input.lastSyncAt ? `Last sync ${input.lastSyncAt}` : "Last sync unavailable";
+  const lastSyncLabel = formatLastSyncLabel(input.lastSyncAt);
 
   if (queue.length === 0) {
     return {

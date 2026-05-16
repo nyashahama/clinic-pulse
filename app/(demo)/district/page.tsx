@@ -29,6 +29,7 @@ export default async function DistrictWorkspacePage() {
 
   return (
     <div className="grid gap-4">
+      <h1 className="sr-only">District operations</h1>
       <p className="rounded-lg border border-border-subtle bg-bg-default p-3 text-xs text-content-subtle shadow-sm">
         Pilot safety: confirm stale or pending data before operational decisions.{" "}
         <Link href="/legal/safety" className="underline">

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 
@@ -14,6 +15,7 @@ import {
 } from "@/lib/auth/session";
 import { DemoStoreProvider } from "@/lib/demo/demo-store";
 import { loadDemoHydrationForRole } from "@/lib/demo/server-hydration";
+import { getLoginHref } from "@/lib/auth/redirects";
 
 async function logoutAction() {
   "use server";
@@ -41,10 +43,12 @@ async function logoutAction() {
 
 export default async function DemoLayout({ children }: { children: ReactNode }) {
   await connection();
+  const requestHeaders = await headers();
+  const returnPath = requestHeaders.get("x-clinicpulse-pathname");
   const cookieHeader = await getSessionCookieHeader();
   const currentSession = await getCurrentSession({ cookieHeader });
   if (!currentSession) {
-    redirect("/login");
+    redirect(getLoginHref(returnPath));
   }
   if (currentSession.user.passwordResetRequired) {
     redirect("/change-password");

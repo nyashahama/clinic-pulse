@@ -51,6 +51,22 @@ Open `http://localhost:3000`.
 
 The migration command is intended for a fresh local database. The local auth seed is safe to rerun with `make db-seed-auth`.
 
+For a full Phase 3 review with realistic ingestion, sync, report-review, webhook, and export evidence, use the isolated review database:
+
+```bash
+make db-up-e2e
+make db-reset-review
+make dev-api-review
+```
+
+In a second terminal:
+
+```bash
+make dev-web-review
+```
+
+Open `http://localhost:3000`. The review API runs on `http://localhost:18080` and the review database runs on `localhost:55432`.
+
 ## Core Workflows
 
 | Workflow | Route | What it shows |
@@ -125,8 +141,12 @@ CLINICPULSE_ALLOW_DEMO_FALLBACK=false
 make db-up          # start local Postgres
 make db-bootstrap   # apply migrations and local auth seed to a fresh DB
 make db-seed-auth   # rerun only local auth seed
+make db-seed-review # seed local-only Phase 3 review evidence
+make db-reset-review # reset the isolated review DB and seed review evidence
 make dev-api        # run Go API on :8080
+make dev-api-review # run Go API on :18080 against the isolated review DB
 make dev-web        # run Next.js on :3000
+make dev-web-review # run Next.js on :3000 against the review API
 make test-web       # run Vitest
 make test-api       # run Go tests
 make test-e2e       # reset isolated e2e DB and run Playwright smoke tests

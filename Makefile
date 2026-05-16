@@ -12,8 +12,9 @@ DOCKER_BUILD_ATTEMPTS ?= 3
 
 API_DIR := services/api
 AUTH_SEED := $(API_DIR)/seeds/local_phase3_auth_users.sql
+REVIEW_SEED := $(API_DIR)/seeds/local_phase3_review_evidence.sql
 
-.PHONY: db-up db-up-e2e db-wait db-wait-e2e db-migrate db-seed-auth db-bootstrap db-create-e2e db-reset-e2e-empty db-reset-e2e dev-api dev-web test-api test-web test-e2e lint build verify audit-web audit-api verify-security build-api-container migrate-api-container test-api-container
+.PHONY: db-up db-up-e2e db-wait db-wait-e2e db-migrate db-seed-auth db-seed-review db-bootstrap db-create-e2e db-reset-e2e-empty db-reset-e2e db-reset-review dev-api dev-api-review dev-web dev-web-review test-api test-web test-e2e lint build verify audit-web audit-api verify-security build-api-container migrate-api-container test-api-container
 
 db-up:
 	CLINICPULSE_POSTGRES_PORT="$(POSTGRES_PORT)" docker compose up -d postgres
@@ -47,6 +48,9 @@ db-migrate:
 db-seed-auth:
 	psql "$(DATABASE_URL)" -v ON_ERROR_STOP=1 -f "$(AUTH_SEED)"
 
+db-seed-review:
+	psql "$(DATABASE_URL)" -v ON_ERROR_STOP=1 -f "$(REVIEW_SEED)"
+
 db-bootstrap: db-migrate db-seed-auth
 
 db-create-e2e: db-wait-e2e
@@ -58,11 +62,20 @@ db-reset-e2e-empty: db-create-e2e
 db-reset-e2e: db-reset-e2e-empty
 	$(MAKE) DATABASE_URL="$(E2E_DATABASE_URL)" db-bootstrap
 
+db-reset-review: db-reset-e2e
+	$(MAKE) DATABASE_URL="$(E2E_DATABASE_URL)" db-seed-review
+
 dev-api:
 	cd "$(API_DIR)" && DATABASE_URL="$(DATABASE_URL)" go run ./cmd/api
 
+dev-api-review:
+	cd "$(API_DIR)" && DATABASE_URL="$(E2E_DATABASE_URL)" CLINICPULSE_API_ADDR=":18080" go run ./cmd/api
+
 dev-web:
 	CLINICPULSE_API_BASE_URL="$(CLINICPULSE_API_BASE_URL)" NEXT_PUBLIC_CLINICPULSE_API_BASE_URL="$(NEXT_PUBLIC_CLINICPULSE_API_BASE_URL)" npm run dev
+
+dev-web-review:
+	CLINICPULSE_API_BASE_URL="http://localhost:18080" NEXT_PUBLIC_CLINICPULSE_API_BASE_URL="$(NEXT_PUBLIC_CLINICPULSE_API_BASE_URL)" npm run dev -- --port 3000
 
 test-api:
 	cd "$(API_DIR)" && go test ./...

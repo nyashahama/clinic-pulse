@@ -21,6 +21,26 @@ test("reporter can inspect server-authoritative field sync queue state", async (
 
   await expect(page.getByRole("heading", { name: "Sync queue" })).toBeVisible();
   await expect(page.getByText("Server-authoritative sync state").first()).toBeVisible();
+  const syncMetrics = page.getByLabel("Server-authoritative sync queue counts");
+  await expect(syncMetrics.locator("article", { hasText: "Synced" }).getByText(/[1-9]/)).toBeVisible();
+  await expect(syncMetrics.locator("article", { hasText: "Duplicates" }).getByText(/[1-9]/)).toBeVisible();
+  await expect(syncMetrics.locator("article", { hasText: "Validation failures" }).getByText(/[1-9]/)).toBeVisible();
+  await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
+});
+
+test("protected pilot route login returns to the originally requested route", async ({ page }) => {
+  await page.context().clearCookies();
+  await page.goto("/admin/reporting-coverage");
+
+  await expect(page).toHaveURL(/\/login\?next=%2Fadmin%2Freporting-coverage$/);
+  await page.getByLabel("Email").fill("org-admin@clinicpulse.local");
+  await page.getByLabel("Password").fill("ClinicPulseDemo123!");
+  await Promise.all([
+    page.waitForURL(/\/admin\/reporting-coverage$/),
+    page.getByRole("button", { name: "Log in" }).click(),
+  ]);
+
+  await expect(page.getByRole("heading", { name: "Reporting coverage" })).toBeVisible();
   await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
 });
 
@@ -29,6 +49,7 @@ test("district and admin surfaces expose data trust labels", async ({ page }) =>
   await page.goto("/district");
   await expect(page.getByRole("heading", { name: "Source, freshness, and review state" })).toBeVisible();
   await expect(page.getByText(/Reviewed field data|Pending review|Demo data|Stale/i).first()).toBeVisible();
+  await expect(page.getByText(/Last sync \\d{4}-\\d{2}-\\d{2}T/)).toHaveCount(0);
 
   await signInAs(page, "org-admin@clinicpulse.local", "/admin");
   await page.goto("/admin/reporting-coverage");
@@ -41,6 +62,7 @@ test("district and admin surfaces expose data trust labels", async ({ page }) =>
 
   await page.goto("/admin/audit-evidence");
   await expect(page.getByText(/report submission, report review, stale reconciliation/i).first()).toBeVisible();
+  await expect(page.getByText("Webhook test evidence")).toBeVisible();
   await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
 });
 
@@ -64,6 +86,10 @@ test("pilot-critical routes do not show implementation placeholders", async ({ p
   for (const route of pilotCriticalRoutes.filter((route) => route.startsWith("/admin"))) {
     await page.goto(route);
     await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
+    const horizontalOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(horizontalOverflow).toBeLessThanOrEqual(1);
   }
 
   await signInAs(page, "reporter@clinicpulse.local", "/field");

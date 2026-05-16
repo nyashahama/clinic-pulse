@@ -183,14 +183,14 @@ export function AdminEvidenceTable<Row>({
       )}
     >
       {rows.length ? (
-        <Table>
+        <Table className="table-fixed">
           <TableHeader className="bg-bg-muted/60">
             <TableRow className="border-border-subtle bg-bg-muted/60 hover:bg-bg-muted/60">
               {columns.map((column) => (
                 <TableHead
                   key={column.key}
                   className={cn(
-                    "h-11 px-3 text-xs font-semibold uppercase tracking-normal text-content-subtle",
+                    "h-11 whitespace-normal break-words px-3 align-top text-xs font-semibold uppercase tracking-normal text-content-subtle",
                     column.className,
                   )}
                 >
@@ -208,7 +208,10 @@ export function AdminEvidenceTable<Row>({
                 {columns.map((column) => (
                   <TableCell
                     key={column.key}
-                    className={cn("px-3 py-3 text-content-default", column.className)}
+                    className={cn(
+                      "whitespace-normal break-words px-3 py-3 align-top text-content-default",
+                      column.className,
+                    )}
                   >
                     {column.render(row)}
                   </TableCell>

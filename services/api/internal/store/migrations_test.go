@@ -68,6 +68,30 @@ func TestLocalPhase3AuthSeedExistsOutsideMigrations(t *testing.T) {
 	}
 }
 
+func TestLocalPhase3ReviewEvidenceSeedExistsOutsideMigrations(t *testing.T) {
+	t.Parallel()
+
+	seedSQL := readSeedFile(t, "local_phase3_review_evidence.sql")
+	required := []string{
+		"Local-only Phase 3 review evidence seed.",
+		"pilot_ingestion_runs",
+		"report_reviews",
+		"report_sync_attempts",
+		"partner_api_keys",
+		"partner_webhook_subscriptions",
+		"partner_webhook_events",
+		"partner_export_runs",
+		"clinicpulse.webhook_test",
+		"sha256:local-review-partner-export",
+		"now() - interval",
+	}
+	for _, value := range required {
+		if !strings.Contains(seedSQL, value) {
+			t.Fatalf("expected local review evidence seed to contain %q", value)
+		}
+	}
+}
+
 func TestAuthLifecycleMigrationAddsAdminLifecycleColumnsAndIndexes(t *testing.T) {
 	t.Parallel()
 

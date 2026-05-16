@@ -83,6 +83,8 @@ describe("buildDistrictCommandCenter", () => {
     expect(commandCenter.intervention.primaryAction.label).toBe("Open intervention plan");
     expect(commandCenter.analytics.statusMix.critical).toBe(1);
     expect(commandCenter.handover.items[0]).toContain("Ndlovu Clinic");
+    expect(commandCenter.brief.lastSyncLabel).toContain("Last sync");
+    expect(commandCenter.brief.lastSyncLabel).not.toContain("T06:10:00.000Z");
   });
 
   it("selects the requested clinic while preserving severity queue order", () => {

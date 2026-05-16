@@ -113,6 +113,9 @@ export default async function Page() {
   ).length;
   const exportRuns = partnerReadiness.exportRuns;
   const webhookEvents = partnerReadiness.webhookEvents;
+  const webhookTestEvents = webhookEvents.filter(
+    (event) => event.status === "preview_only" || includesAny(event.eventType, ["webhook_test"]),
+  ).length;
   const webhookFailures = webhookEvents.filter(
     (event) => event.status === "failed" || Boolean(event.lastError),
   ).length;
@@ -142,7 +145,12 @@ export default async function Page() {
             tone: "info",
           },
           {
-            label: "Webhook failure evidence",
+            label: "Webhook test evidence",
+            value: formatCount(webhookTestEvents),
+            tone: webhookTestEvents > 0 ? "info" : "attention",
+          },
+          {
+            label: "Webhook failures",
             value: formatCount(webhookFailures),
             tone: toneForAttention(webhookFailures),
           },

@@ -5,5 +5,10 @@ import FieldPageClient from "../page-client";
 export default async function Page() {
   const session = await requireDemoWorkflowAccess("field");
 
-  return <FieldPageClient session={toClientAuthSession(session)} />;
+  return (
+    <>
+      <h1 className="sr-only">Submit field report</h1>
+      <FieldPageClient session={toClientAuthSession(session)} />
+    </>
+  );
 }
