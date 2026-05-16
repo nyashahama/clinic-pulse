@@ -53,6 +53,31 @@ describe("data trust view models", () => {
     });
   });
 
+  it("does not imply human review when fresh data does not require review", () => {
+    const state = buildDataTrustState({
+      ...baseInput,
+      reviewState: "not_required",
+    });
+
+    expect(state).toMatchObject({
+      tone: "clear",
+      confidence: "high",
+      label: "Field data",
+    });
+    expect(state.label).not.toContain("Reviewed");
+    expect(state.description).not.toContain("reviewed");
+    expect(state.description).toContain("does not require review");
+  });
+
+  it("does not leak NaN copy for malformed verification timestamps", () => {
+    const state = buildDataTrustState({
+      ...baseInput,
+      lastVerifiedAt: "not-a-date",
+    });
+
+    expect(state.description).not.toContain("NaN");
+  });
+
   it("formats compact trust labels", () => {
     expect(formatTrustLabel("seeded_demo", "unknown", "unknown")).toBe("Demo data / unknown freshness / unknown review");
   });

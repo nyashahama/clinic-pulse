@@ -116,8 +116,8 @@ export function buildDataTrustState(input: DataTrustInput): DataTrustState {
       ...base,
       tone: "clear",
       confidence: "high",
-      label: reviewedLabel(input.source),
-      description: freshReviewedDescription(input),
+      label: input.reviewState === "reviewed" ? reviewedLabel(input.source) : sourceLabels[input.source],
+      description: freshHighConfidenceDescription(input),
     };
   }
 
@@ -138,15 +138,28 @@ function reviewedLabel(source: DataSource): string {
   return `Reviewed ${sourceLabels[source].toLowerCase()}`;
 }
 
-function freshReviewedDescription(input: DataTrustInput): string {
+function freshHighConfidenceDescription(input: DataTrustInput): string {
   const source = input.source === "field_report" ? "field-submitted data" : sourceLabels[input.source].toLowerCase();
-  const verifiedAt = input.lastVerifiedAt ? ` at ${formatUtcMinute(input.lastVerifiedAt)}` : "";
+  const timestamp = input.lastVerifiedAt ? formatUtcMinute(input.lastVerifiedAt) : undefined;
+
+  if (input.reviewState === "not_required") {
+    const verifiedAt = timestamp ? ` Last verified at ${timestamp}.` : "";
+
+    return `Fresh ${source} does not require review.${verifiedAt}`;
+  }
+
+  const verifiedAt = timestamp ? ` at ${timestamp}` : "";
 
   return `Fresh ${source} reviewed${verifiedAt}.`;
 }
 
-function formatUtcMinute(value: string): string {
+function formatUtcMinute(value: string): string | undefined {
   const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return undefined;
+  }
+
   const year = date.getUTCFullYear();
   const month = String(date.getUTCMonth() + 1).padStart(2, "0");
   const day = String(date.getUTCDate()).padStart(2, "0");
