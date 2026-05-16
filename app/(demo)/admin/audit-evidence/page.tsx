@@ -46,6 +46,34 @@ function compactRecord(value: Record<string, unknown>) {
     .join("; ");
 }
 
+function eventTrustGroup(event: AdminAuditEventApiResponse) {
+  if (includesAny(event.eventType, ["sync", "report.submitted", "report.received"])) {
+    return "Report submission evidence";
+  }
+
+  if (includesAny(event.eventType, ["review"])) {
+    return "Review state evidence";
+  }
+
+  if (includesAny(event.eventType, ["stale", "reconciliation"])) {
+    return "Stale reconciliation evidence";
+  }
+
+  if (includesAny(event.eventType, ["export"])) {
+    return "Partner export evidence";
+  }
+
+  if (includesAny(event.eventType, ["webhook"])) {
+    return "Webhook delivery evidence";
+  }
+
+  if (includesAny(event.eventType, ["access", "auth", "role", "user", "session"])) {
+    return "Access evidence";
+  }
+
+  return "Operating evidence";
+}
+
 function requesterLabel(
   exportRun: PartnerExportRunApiResponse,
   userById: Map<number, string>,
@@ -104,7 +132,8 @@ export default async function Page() {
       <AdminFilterBar>
         <StatusBadge tone="info">Operating evidence</StatusBadge>
         <span className="text-sm text-muted-foreground">
-          Evidence is shown for review and traceability; this module does not make formal attestations.
+          Report submission, report review, stale reconciliation, sync attempt, export, webhook, and
+          access evidence are grouped for trust review. This module does not make formal attestations.
         </span>
       </AdminFilterBar>
       <AdminEvidenceTable
@@ -140,6 +169,11 @@ export default async function Page() {
             render: (row) => <p className="max-w-md text-sm">{row.summary}</p>,
           },
           {
+            key: "trustGroup",
+            header: "Trust group",
+            render: (row) => <StatusBadge tone="info">{eventTrustGroup(row)}</StatusBadge>,
+          },
+          {
             key: "createdAt",
             header: "Created",
             render: (row) => formatDateTime(row.createdAt),
@@ -169,6 +203,15 @@ export default async function Page() {
             key: "scope",
             header: "Scope",
             render: (row) => <p className="max-w-sm text-sm">{compactRecord(row.scope)}</p>,
+          },
+          {
+            key: "freshness",
+            header: "Freshness assumption",
+            render: () => (
+              <p className="max-w-sm text-sm">
+                Export evidence should be read with current source, freshness, and review state.
+              </p>
+            ),
           },
           {
             key: "requester",

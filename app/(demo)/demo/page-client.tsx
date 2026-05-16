@@ -54,6 +54,12 @@ import {
   buildPendingReportReviews,
   summarizePendingReportReviews,
 } from "@/lib/product/report-review";
+import {
+  buildDataTrustState,
+  type DataFreshness,
+  type DataTrustState,
+} from "@/lib/product/data-trust";
+import type { ClinicRow } from "@/lib/demo/types";
 import { reviewPendingReportAction } from "../report-review-actions";
 
 const VALID_STATUSES = ["operational", "degraded", "non_functional", "unknown"] as const;
@@ -95,6 +101,44 @@ function statusRiskRank(status: DistrictCommandClinicInput["status"]) {
   return 0;
 }
 
+function normalizeDataFreshness(freshness: ClinicRow["freshness"]): DataFreshness {
+  if (
+    freshness === "fresh" ||
+    freshness === "needs_confirmation" ||
+    freshness === "stale" ||
+    freshness === "unknown"
+  ) {
+    return freshness;
+  }
+
+  return "unknown";
+}
+
+function trustToneClassName(tone: DataTrustState["tone"]) {
+  if (tone === "clear") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100";
+  }
+
+  if (tone === "blocked") {
+    return "border-red-200 bg-red-50 text-red-900 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-100";
+  }
+
+  return "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100";
+}
+
+function buildClinicDataTrustState(
+  clinic: ClinicRow,
+  pendingReviewClinicIds: Set<string>,
+) {
+  return buildDataTrustState({
+    source: pendingReviewClinicIds.has(clinic.id) ? "field_report" : "seeded_demo",
+    freshness: normalizeDataFreshness(clinic.freshness),
+    reviewState: pendingReviewClinicIds.has(clinic.id) ? "pending_review" : "not_required",
+    lastVerifiedAt: clinic.lastReportedAt,
+    evidenceHref: `/district/clinics/${clinic.id}`,
+  });
+}
+
 export default function DistrictConsolePage({
   consoleHref = "/demo",
   pendingReports,
@@ -123,6 +167,18 @@ export default function DistrictConsolePage({
     () =>
       showReportReview ? summarizePendingReportReviews(pendingReportReviews) : null,
     [pendingReportReviews, showReportReview],
+  );
+  const pendingReviewClinicIds = useMemo(
+    () => new Set(pendingReportReviews.map((review) => review.clinicId)),
+    [pendingReportReviews],
+  );
+  const dataTrustStates = useMemo(
+    () =>
+      clinicRows.slice(0, 4).map((clinic) => ({
+        clinic,
+        trust: buildClinicDataTrustState(clinic, pendingReviewClinicIds),
+      })),
+    [clinicRows, pendingReviewClinicIds],
   );
   const statusFilter = normalizeStatusFilter(searchParams.get("status"));
   const filteredClinicRows = useMemo(
@@ -578,6 +634,57 @@ export default function DistrictConsolePage({
       ) : null}
 
       <SupportingOperations>
+        <section
+          id="data-trust"
+          className="rounded-lg border border-border-subtle bg-bg-default p-4 text-content-default shadow-sm"
+        >
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
+                Pilot data trust
+              </p>
+              <h2 className="text-lg font-semibold">Source, freshness, and review state</h2>
+            </div>
+            <p className="max-w-xl text-sm text-muted-foreground">
+              District users can distinguish demo-seeded, stale, and pending-review data before
+              acting on clinic status.
+            </p>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {dataTrustStates.map(({ clinic, trust }) => (
+              <article
+                key={clinic.id}
+                className="rounded-lg border border-border-subtle bg-bg-muted/40 p-3"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-foreground">{clinic.name}</p>
+                    <p className="text-xs text-muted-foreground">{clinic.district}</p>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-md border px-2 py-0.5 text-xs font-medium ${trustToneClassName(
+                      trust.tone,
+                    )}`}
+                  >
+                    {trust.label}
+                  </span>
+                </div>
+                <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                  {trust.description}
+                </p>
+                {trust.evidenceHref ? (
+                  <Link
+                    className="mt-2 inline-flex text-xs font-medium text-foreground underline underline-offset-4"
+                    href={trust.evidenceHref}
+                  >
+                    Review evidence
+                  </Link>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        </section>
+
         {hasStatusFilter ? (
           <section className="rounded-lg border border-amber-200/80 bg-amber-50/70 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-100">
             <div className="flex flex-wrap items-center justify-between gap-2">

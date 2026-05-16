@@ -11,6 +11,12 @@ import {
 } from "@/lib/demo/api-client";
 import type { ClinicDetailApiResponse } from "@/lib/demo/api-types";
 import { summarizeReportingCoverage } from "@/lib/product/admin-governance";
+import {
+  buildDataTrustState,
+  type DataFreshness,
+  type DataSource,
+  type ReviewState,
+} from "@/lib/product/data-trust";
 import { requireDemoWorkflowAccess } from "../../workflow-guard";
 import { getAdminLoaderOptions } from "../admin-loaders";
 import {
@@ -46,6 +52,67 @@ function coverageNote(clinic: ClinicDetailApiResponse) {
   return "Current status evidence available";
 }
 
+function trustTone(tone: "clear" | "attention" | "blocked") {
+  return tone;
+}
+
+function dataSourceForClinic(clinic: ClinicDetailApiResponse): DataSource {
+  const source = clinic.currentStatus?.source?.toLowerCase() ?? "";
+
+  if (source.includes("field") || source.includes("report")) {
+    return "field_report";
+  }
+
+  if (source.includes("reconciliation")) {
+    return "system_reconciliation";
+  }
+
+  if (source.includes("import")) {
+    return "pilot_import";
+  }
+
+  return "seeded_demo";
+}
+
+function dataFreshnessForClinic(clinic: ClinicDetailApiResponse): DataFreshness {
+  const freshness = clinic.currentStatus?.freshness;
+
+  if (
+    freshness === "fresh" ||
+    freshness === "needs_confirmation" ||
+    freshness === "stale" ||
+    freshness === "unknown"
+  ) {
+    return freshness;
+  }
+
+  return "unknown";
+}
+
+function reviewStateForClinic(
+  clinic: ClinicDetailApiResponse,
+  pendingReviewClinicIds: Set<string>,
+): ReviewState {
+  if (pendingReviewClinicIds.has(clinic.clinic.id)) {
+    return "pending_review";
+  }
+
+  return clinic.currentStatus ? "not_required" : "unknown";
+}
+
+function dataTrustForClinic(
+  clinic: ClinicDetailApiResponse,
+  pendingReviewClinicIds: Set<string>,
+) {
+  return buildDataTrustState({
+    source: dataSourceForClinic(clinic),
+    freshness: dataFreshnessForClinic(clinic),
+    reviewState: reviewStateForClinic(clinic, pendingReviewClinicIds),
+    lastVerifiedAt: clinic.currentStatus?.lastReportedAt ?? clinic.currentStatus?.updatedAt,
+    evidenceHref: `/admin/audit-evidence`,
+  });
+}
+
 export default async function Page() {
   await requireDemoWorkflowAccess("admin");
 
@@ -64,6 +131,7 @@ export default async function Page() {
     validationFailureCount: syncSummary.validationFailures,
   });
   const attentionClinics = clinics.filter((clinic) => coverageTone(clinic) !== "clear").length;
+  const pendingReviewClinicIds = new Set(pendingReports.map((report) => report.clinicId));
 
   return (
     <div className="space-y-4">
@@ -106,7 +174,8 @@ export default async function Page() {
       <AdminFilterBar>
         <StatusBadge tone="info">Operating evidence</StatusBadge>
         <span className="text-sm text-muted-foreground">
-          Stale, unknown, and needs-confirmation statuses are highlighted for attention.
+          Source, freshness, and review state are shown beside each clinic. Stale, unknown, and
+          needs-confirmation statuses are highlighted for attention.
         </span>
       </AdminFilterBar>
       <AdminEvidenceTable
@@ -154,6 +223,20 @@ export default async function Page() {
                 </p>
               </div>
             ),
+          },
+          {
+            key: "dataTrust",
+            header: "Data trust",
+            render: (row) => {
+              const trust = dataTrustForClinic(row, pendingReviewClinicIds);
+
+              return (
+                <div className="space-y-1">
+                  <StatusBadge tone={trustTone(trust.tone)}>{trust.label}</StatusBadge>
+                  <p className="max-w-xs text-xs text-muted-foreground">{trust.description}</p>
+                </div>
+              );
+            },
           },
           {
             key: "evidence",
