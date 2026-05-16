@@ -52,6 +52,8 @@ Phase 1 staging should use a fresh managed DB or one that already includes `sche
 
 Keep `CLINICPULSE_WEBHOOK_DELIVERY_ENABLED=false` until outbound delivery is implemented and reviewed. If it is enabled early, webhook test requests still record failed delivery evidence for admin review and return `501 not_implemented`; they do not expose webhook secrets.
 
+Phase 3 does not add a persistent background worker. Stale reconciliation, exports, webhook tests, and sync evidence remain API-triggered and auditable. Phase 4 will add production observability and scheduling decisions.
+
 ## Render Notes
 
 - Create a Docker web service using `services/api/Dockerfile`.

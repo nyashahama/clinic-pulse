@@ -87,9 +87,9 @@ Operational routes require a session with `district_manager`, `org_admin`, or `s
 | `GET` | `/v1/clinics/{clinicId}/reports` | Lists reports for a clinic |
 | `GET` | `/v1/clinics/{clinicId}/audit-events` | Lists audit events for a clinic |
 | `GET` | `/v1/reports/pending` | Lists reports waiting for review |
-| `POST` | `/v1/status/reconcile-staleness` | Reconciles stale clinic status; reruns only update freshness when state escalates and audit those transitions |
+| `POST` | `/v1/status/reconcile-staleness` | Idempotently reconciles stale status and records audit evidence for state transitions |
 | `POST` | `/v1/reports/{reportId}/review` | Accepts or rejects a report |
-| `GET` | `/v1/sync/summary` | Returns offline sync and pilot readiness summary |
+| `GET` | `/v1/sync/summary` | Returns sync health, duplicate/conflict/validation failure counts, stale clinic counts, and latest sync evidence |
 
 ## Reporter Routes
 

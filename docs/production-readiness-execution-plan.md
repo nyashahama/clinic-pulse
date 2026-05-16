@@ -2,13 +2,13 @@
 
 Date: 2026-05-12
 Status: Active roadmap
-Current phase: Phase 3 - Pilot Data And Product Integrity
+Current phase: Phase 4 - Observability And Operations
 
 ## Purpose
 
 This document is the persistent production-readiness map for ClinicPulse. Keep it updated after every phase so the next phase is always obvious.
 
-ClinicPulse is currently a production-shaped alpha. It has the core product loop, real API/database foundations, hardened auth, roles, audit evidence, admin governance surfaces, and stable release gates, but it still needs real pilot data integrity, observability, and pilot governance before it can be treated as production software.
+ClinicPulse is currently a production-shaped alpha. It has the core product loop, real API/database foundations, hardened auth, roles, audit evidence, admin governance surfaces, pilot data integrity evidence, and stable release gates, but it still needs observability, operational runbooks, and pilot governance before it can be treated as production software.
 
 ## Phase Status Key
 
@@ -41,7 +41,7 @@ Phase 0 makes these commands reliable and enforceable. Later phases may add stri
 | Phase 0 - Release Gate Stabilization | Complete | Clean dependency/security scans, stable E2E, and blocking CI gates | 1-2 days |
 | Phase 1 - Production Runtime And Deployment | Complete | Repeatable staging deployment with production runtime controls | 3-5 days |
 | Phase 2 - Security And Auth Hardening | Complete | Production-safe auth, sessions, secrets, rate limits, and account lifecycle | 1 week |
-| Phase 3 - Pilot Data And Product Integrity | Planned | Real data provenance, completed pilot workflows, and legal/safety surfaces | 1-2 weeks |
+| Phase 3 - Pilot Data And Product Integrity | Complete | Real data provenance, completed pilot workflows, and legal/safety surfaces | 1-2 weeks |
 | Phase 4 - Observability And Operations | Not started | Logs, metrics, tracing, alerts, runbooks, and incident process | 1 week |
 | Phase 5 - Pilot Launch Readiness | Not started | Release candidate, stakeholder docs, operational signoff, and launch checklist | 1-2 weeks |
 
@@ -122,6 +122,7 @@ Status: Complete. The closeout records verification evidence and residual risk.
 
 Spec: `docs/phase-3-pilot-data-product-integrity-spec.md`
 Plan: `docs/phase-3-pilot-data-product-integrity-implementation-plan.md`
+Closeout: `docs/phase-3-pilot-data-product-integrity-closeout.md`
 
 Goal:
 
@@ -139,6 +140,8 @@ Scope:
 Exit rule:
 
 Phase 3 is complete when pilot users can tell what data is real, current, reviewed, and safe to act on.
+
+Status: Complete. The closeout records verification evidence and residual risk. Persistent production scheduling and operational alerting remain deferred to Phase 4.
 
 ## Phase 4 - Observability And Operations
 
