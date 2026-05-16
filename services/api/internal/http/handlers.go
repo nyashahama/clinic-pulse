@@ -54,6 +54,7 @@ type ClinicStore interface {
 	ListClinicAuditEvents(ctx context.Context, clinicID string) ([]store.AuditEvent, error)
 	ListAdminUserAccess(ctx context.Context, organisationID *int64) ([]store.AdminUserAccessRow, error)
 	ListAdminAuditEvents(ctx context.Context, organisationID *int64, limit int) ([]store.AdminAuditEventRow, error)
+	ListPilotIngestionRuns(ctx context.Context, organisationID *int64, limit int) ([]store.PilotIngestionRun, error)
 	CreateAdminUserWithAccessTx(ctx context.Context, input store.CreateAdminUserWithAccessInput) (store.User, store.OrganisationMembership, store.AuditEvent, error)
 	GetUserByID(ctx context.Context, userID int64) (store.User, error)
 	GetAdminUserAccessByUserID(ctx context.Context, userID int64) (store.AdminUserAccessRow, error)
@@ -749,6 +750,43 @@ func (h Handler) ListAdminAuditEvents(w nethttp.ResponseWriter, r *nethttp.Reque
 	}
 
 	RespondJSON(w, nethttp.StatusOK, events)
+}
+
+func (h Handler) ListAdminIngestionRuns(w nethttp.ResponseWriter, r *nethttp.Request) {
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	runs, err := h.store.ListPilotIngestionRuns(r.Context(), adminReadOrganisationScope(principal), 50)
+	if err != nil {
+		respondStoreError(w, err, "failed to list pilot ingestion runs")
+		return
+	}
+	if runs == nil {
+		runs = []store.PilotIngestionRun{}
+	}
+
+	responseRuns := make([]adminIngestionRunResponse, 0, len(runs))
+	for _, run := range runs {
+		responseRuns = append(responseRuns, adminIngestionRunResponse{
+			ID:                   run.ID,
+			OrganisationID:       run.OrganisationID,
+			SourceName:           run.SourceName,
+			SourceReference:      run.SourceReference,
+			Status:               run.Status,
+			RecordsReceived:      run.RecordsReceived,
+			RecordsImported:      run.RecordsImported,
+			RecordsRejected:      run.RecordsRejected,
+			ValidationErrorCount: len(run.ValidationErrors),
+			ActorUserID:          run.ActorUserID,
+			StartedAt:            run.StartedAt,
+			CompletedAt:          run.CompletedAt,
+		})
+	}
+
+	RespondJSON(w, nethttp.StatusOK, adminIngestionRunsResponse{Runs: responseRuns})
 }
 
 func adminReadOrganisationScope(principal Principal) *int64 {
@@ -2199,6 +2237,25 @@ type updateAdminUserAccessResponse struct {
 
 type revokeAdminUserSessionsResponse struct {
 	RevokedSessions int64 `json:"revokedSessions"`
+}
+
+type adminIngestionRunsResponse struct {
+	Runs []adminIngestionRunResponse `json:"runs"`
+}
+
+type adminIngestionRunResponse struct {
+	ID                   string     `json:"id"`
+	OrganisationID       int64      `json:"organisationId"`
+	SourceName           string     `json:"sourceName"`
+	SourceReference      string     `json:"sourceReference"`
+	Status               string     `json:"status"`
+	RecordsReceived      int        `json:"recordsReceived"`
+	RecordsImported      int        `json:"recordsImported"`
+	RecordsRejected      int        `json:"recordsRejected"`
+	ValidationErrorCount int        `json:"validationErrorCount"`
+	ActorUserID          *int64     `json:"actorUserId,omitempty"`
+	StartedAt            time.Time  `json:"startedAt"`
+	CompletedAt          *time.Time `json:"completedAt,omitempty"`
 }
 
 type createPartnerAPIKeyRequest struct {

@@ -582,6 +582,77 @@ VALUES
 	}
 }
 
+func TestListPilotIngestionRunsScopesOrganisation(t *testing.T) {
+	databaseURL := os.Getenv("AUTH_STORE_TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("set AUTH_STORE_TEST_DATABASE_URL to run pilot ingestion store integration tests")
+	}
+
+	ctx := context.Background()
+	store := newIntegrationStore(t, ctx, databaseURL)
+	orgA := insertIntegrationOrganisation(t, ctx, store, "Pilot Org A", "pilot-org-a")
+	orgB := insertIntegrationOrganisation(t, ctx, store, "Pilot Org B", "pilot-org-b")
+	actorID := insertIntegrationUser(t, ctx, store, "ingestion-actor@example.test", "Ingestion Actor", nil, nil)
+	startedAt := time.Date(2026, 5, 16, 8, 0, 0, 0, time.UTC)
+	completedAt := startedAt.Add(2 * time.Second)
+
+	if _, err := store.pool.Exec(ctx, `
+INSERT INTO pilot_ingestion_runs (
+    id,
+    organisation_id,
+    source_name,
+    source_reference,
+    status,
+    records_received,
+    records_imported,
+    records_rejected,
+    validation_errors,
+    actor_user_id,
+    started_at,
+    completed_at
+)
+VALUES
+    ('ingest-org-a', $1, 'pilot CSV import', 'district-upload-a.csv', 'partial', 20, 18, 2, '["clinic code missing", "district invalid"]'::jsonb, $3, $4, $5),
+    ('ingest-org-b', $2, 'pilot CSV import', 'district-upload-b.csv', 'succeeded', 5, 5, 0, '[]'::jsonb, NULL, $4, $5)`,
+		orgA, orgB, actorID, startedAt, completedAt,
+	); err != nil {
+		t.Fatalf("insert pilot ingestion fixtures: %v", err)
+	}
+
+	runs, err := store.ListPilotIngestionRuns(ctx, &orgA, 10)
+	if err != nil {
+		t.Fatalf("ListPilotIngestionRuns returned error: %v", err)
+	}
+	if len(runs) != 1 {
+		t.Fatalf("expected one scoped ingestion run, got %+v", runs)
+	}
+	run := runs[0]
+	if run.ID != "ingest-org-a" ||
+		run.OrganisationID != orgA ||
+		run.SourceName != "pilot CSV import" ||
+		run.SourceReference != "district-upload-a.csv" ||
+		run.Status != "partial" ||
+		run.RecordsReceived != 20 ||
+		run.RecordsImported != 18 ||
+		run.RecordsRejected != 2 ||
+		run.ActorUserID == nil ||
+		*run.ActorUserID != actorID ||
+		run.CompletedAt == nil {
+		t.Fatalf("unexpected scoped ingestion run: %+v", run)
+	}
+	if len(run.ValidationErrors) != 2 || run.ValidationErrors[0] != "clinic code missing" {
+		t.Fatalf("expected validation errors to scan safely, got %+v", run.ValidationErrors)
+	}
+
+	allRuns, err := store.ListPilotIngestionRuns(ctx, nil, 10)
+	if err != nil {
+		t.Fatalf("ListPilotIngestionRuns global returned error: %v", err)
+	}
+	if len(allRuns) != 2 {
+		t.Fatalf("expected system scope to see both ingestion runs, got %+v", allRuns)
+	}
+}
+
 func TestCreateReportSyncAttemptAllowsValidationAttemptWithoutClinicID(t *testing.T) {
 	databaseURL := os.Getenv("AUTH_STORE_TEST_DATABASE_URL")
 	if databaseURL == "" {

@@ -93,12 +93,14 @@ Important session behavior:
 | Table | Purpose |
 | --- | --- |
 | `report_sync_attempts` | Records offline sync outcomes, duplicate/conflict handling, validation errors, and sync metadata |
+| `pilot_ingestion_runs` | Records pilot source ingestion runs, source references, import/rejection counts, validation errors, actor, and completion state |
 
 Important fields:
 
 - `external_id` tracks client-generated report IDs.
 - `result` is constrained to `created`, `duplicate`, `conflict`, `validation_error`, `forbidden`, or `server_error`.
 - `clinic_id` can be null after migration `0007_nullable_sync_attempt_clinic_id.sql`.
+- `pilot_ingestion_runs.validation_errors` stores an array of validation labels while the admin API exposes only the count.
 
 ## Partner Readiness, Webhooks, And Exports
 

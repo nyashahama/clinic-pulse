@@ -64,6 +64,7 @@ Admin routes require a session with `org_admin` or `system_admin`.
 | `PUT` | `/v1/admin/users/{userId}/access` | Replaces managed user role, organisation, and optional district scope |
 | `POST` | `/v1/admin/users/{userId}/sessions/revoke` | Revokes active sessions for a managed user |
 | `GET` | `/v1/admin/audit-events` | Lists recent admin-visible audit events |
+| `GET` | `/v1/admin/ingestion/runs` | Lists pilot ingestion runs with source, status, record counts, and validation error counts |
 | `POST` | `/v1/admin/api-keys` | Creates a partner API key and returns the one-time secret |
 | `GET` | `/v1/admin/api-keys` | Lists partner API keys |
 | `POST` | `/v1/admin/api-keys/{keyId}/revoke` | Revokes a partner API key |

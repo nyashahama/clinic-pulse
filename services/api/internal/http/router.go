@@ -95,6 +95,7 @@ func NewRouter(store ClinicStore, options ...RouterOption) nethttp.Handler {
 	router.With(requireAuth, orgAdminOrSystemAdmin).Put("/v1/admin/users/{userId}/access", handler.UpdateAdminUserAccess)
 	router.With(requireAuth, orgAdminOrSystemAdmin).Post("/v1/admin/users/{userId}/sessions/revoke", handler.RevokeAdminUserSessions)
 	router.With(requireAuth, orgAdminOrSystemAdmin).Get("/v1/admin/audit-events", handler.ListAdminAuditEvents)
+	router.With(requireAuth, orgAdminOrSystemAdmin).Get("/v1/admin/ingestion/runs", handler.ListAdminIngestionRuns)
 	router.With(requireAuth, orgAdminOrSystemAdmin).Post("/v1/admin/api-keys", handler.CreateAdminPartnerAPIKey)
 	router.With(requireAuth, orgAdminOrSystemAdmin).Get("/v1/admin/api-keys", handler.ListAdminPartnerAPIKeys)
 	router.With(requireAuth, orgAdminOrSystemAdmin).Post("/v1/admin/api-keys/{keyId}/revoke", handler.RevokeAdminPartnerAPIKey)

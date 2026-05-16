@@ -1086,6 +1086,16 @@ func TestAdminUsersAndAuditEventsRequireAdminRole(t *testing.T) {
 			role: "district_manager",
 			path: "/v1/admin/audit-events",
 		},
+		{
+			name: "reporter ingestion runs",
+			role: "reporter",
+			path: "/v1/admin/ingestion/runs",
+		},
+		{
+			name: "district manager ingestion runs",
+			role: "district_manager",
+			path: "/v1/admin/ingestion/runs",
+		},
 	}
 
 	for _, tt := range tests {
@@ -1552,6 +1562,90 @@ func TestAdminAuditEventsUsesGlobalScopeForSystemAdmins(t *testing.T) {
 	}
 	if gotOrgID != nil {
 		t.Fatalf("expected system admin audit events to use global scope, got %#v", gotOrgID)
+	}
+}
+
+func TestAdminIngestionRunsListsRuns(t *testing.T) {
+	now := time.Date(2026, 5, 16, 8, 0, 0, 0, time.UTC)
+	completedAt := now.Add(3 * time.Second)
+	actorID := int64(42)
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", 77, fakeStore{
+		pilotIngestionRuns: []store.PilotIngestionRun{{
+			ID:               "ingest-001",
+			OrganisationID:   77,
+			SourceName:       "pilot CSV import",
+			SourceReference:  "district-upload.csv",
+			Status:           "partial",
+			RecordsReceived:  20,
+			RecordsImported:  18,
+			RecordsRejected:  2,
+			ValidationErrors: []string{"clinic code missing", "district invalid"},
+			ActorUserID:      &actorID,
+			StartedAt:        now,
+			CompletedAt:      &completedAt,
+		}},
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/ingestion/runs", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+	for _, want := range []string{
+		`"runs"`,
+		`"id":"ingest-001"`,
+		`"sourceName":"pilot CSV import"`,
+		`"sourceReference":"district-upload.csv"`,
+		`"validationErrorCount":2`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("expected ingestion run response to contain %s, got %s", want, body)
+		}
+	}
+	if strings.Contains(body, "clinic code missing") {
+		t.Fatalf("expected response to expose validation error count without raw validation details, got %s", body)
+	}
+}
+
+func TestAdminIngestionRunsScopesOrganisationAdmins(t *testing.T) {
+	orgID := int64(77)
+	var gotOrgID *int64
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+		listPilotIngestionRunsOrgID: &gotOrgID,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/ingestion/runs", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if gotOrgID == nil || *gotOrgID != orgID {
+		t.Fatalf("expected org admin ingestion runs scoped to org %d, got %#v", orgID, gotOrgID)
+	}
+}
+
+func TestAdminIngestionRunsUsesGlobalScopeForSystemAdmins(t *testing.T) {
+	orgID := int64(77)
+	sentinelOrgID := int64(-1)
+	gotOrgID := &sentinelOrgID
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "system_admin", orgID, fakeStore{
+		listPilotIngestionRunsOrgID: &gotOrgID,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodGet, "/v1/admin/ingestion/runs", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if gotOrgID != nil {
+		t.Fatalf("expected system admin ingestion runs to use global scope, got %#v", gotOrgID)
 	}
 }
 
@@ -4465,6 +4559,7 @@ type fakeStore struct {
 	adminUsers                            []store.AdminUserAccessRow
 	adminUserAccess                       store.AdminUserAccessRow
 	adminAuditEvents                      []store.AdminAuditEventRow
+	pilotIngestionRuns                    []store.PilotIngestionRun
 	currentStatuses                       []store.CurrentStatus
 	createReport                          store.Report
 	createStatus                          store.CurrentStatus
@@ -4514,6 +4609,8 @@ type fakeStore struct {
 	listAdminUsersOrgID                   **int64
 	listAdminAuditEventsOrgID             **int64
 	listAdminAuditEventsLimit             *int
+	listPilotIngestionRunsOrgID           **int64
+	listPilotIngestionRunsLimit           *int
 	partnerReadinessOrgID                 *int64
 	getPartnerExportRunOrgID              *int64
 	getPartnerExportRunID                 *int64
@@ -4555,6 +4652,7 @@ type fakeStore struct {
 	adminUsersErr                         error
 	adminUserAccessErr                    error
 	adminAuditEventsErr                   error
+	pilotIngestionRunsErr                 error
 	currentStatusesErr                    error
 	createErr                             error
 	createUserErr                         error
@@ -4643,6 +4741,16 @@ func (f fakeStore) ListAdminAuditEvents(_ context.Context, organisationID *int64
 		*f.listAdminAuditEventsLimit = limit
 	}
 	return f.adminAuditEvents, f.adminAuditEventsErr
+}
+
+func (f fakeStore) ListPilotIngestionRuns(_ context.Context, organisationID *int64, limit int) ([]store.PilotIngestionRun, error) {
+	if f.listPilotIngestionRunsOrgID != nil {
+		*f.listPilotIngestionRunsOrgID = organisationID
+	}
+	if f.listPilotIngestionRunsLimit != nil {
+		*f.listPilotIngestionRunsLimit = limit
+	}
+	return f.pilotIngestionRuns, f.pilotIngestionRunsErr
 }
 
 func (f fakeStore) CreateUser(_ context.Context, input store.CreateUserInput) (store.User, error) {

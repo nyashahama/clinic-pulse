@@ -345,6 +345,25 @@ WHERE $1::bigint IS NULL OR organisation_id = $1
 ORDER BY created_at DESC, id DESC
 LIMIT $2`
 
+	listPilotIngestionRunsSQL = `
+SELECT
+    id,
+    organisation_id,
+    source_name,
+    source_reference,
+    status,
+    records_received,
+    records_imported,
+    records_rejected,
+    validation_errors,
+    actor_user_id,
+    started_at,
+    completed_at
+FROM pilot_ingestion_runs
+WHERE $1::bigint IS NULL OR organisation_id = $1
+ORDER BY started_at DESC, id DESC
+LIMIT $2`
+
 	verifyClinicExistsSQL = `SELECT id FROM clinics WHERE id = $1`
 
 	insertReportSQL = `
@@ -1665,6 +1684,55 @@ func (s Store) ListAdminAuditEvents(ctx context.Context, organisationID *int64, 
 	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (AdminAuditEventRow, error) {
 		return scanAuditEvent(row)
 	})
+}
+
+func (s Store) ListPilotIngestionRuns(ctx context.Context, organisationID *int64, limit int) ([]PilotIngestionRun, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	rows, err := s.pool.Query(ctx, listPilotIngestionRunsSQL, organisationID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return pgx.CollectRows(rows, scanPilotIngestionRun)
+}
+
+func scanPilotIngestionRun(row pgx.CollectableRow) (PilotIngestionRun, error) {
+	var run PilotIngestionRun
+	var validationErrors []byte
+	var actorUserID sql.NullInt64
+	var completedAt sql.NullTime
+
+	if err := row.Scan(
+		&run.ID,
+		&run.OrganisationID,
+		&run.SourceName,
+		&run.SourceReference,
+		&run.Status,
+		&run.RecordsReceived,
+		&run.RecordsImported,
+		&run.RecordsRejected,
+		&validationErrors,
+		&actorUserID,
+		&run.StartedAt,
+		&completedAt,
+	); err != nil {
+		return PilotIngestionRun{}, err
+	}
+
+	if len(validationErrors) > 0 {
+		if err := json.Unmarshal(validationErrors, &run.ValidationErrors); err != nil {
+			return PilotIngestionRun{}, err
+		}
+	}
+	if run.ValidationErrors == nil {
+		run.ValidationErrors = []string{}
+	}
+	run.ActorUserID = nullInt64Ptr(actorUserID)
+	run.CompletedAt = nullTimePtr(completedAt)
+	return run, nil
 }
 
 func (s Store) CreateAuditEvent(ctx context.Context, input CreateAuditEventInput) (AuditEvent, error) {

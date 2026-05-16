@@ -164,6 +164,26 @@ func TestPartnerReadinessMigrationAddsPartnerTables(t *testing.T) {
 	}
 }
 
+func TestPilotDataIntegrityMigrationAddsIngestionRuns(t *testing.T) {
+	t.Parallel()
+
+	migrationSQL := readMigrationFile(t, "0010_pilot_data_integrity.sql")
+	required := []string{
+		"CREATE TABLE IF NOT EXISTS pilot_ingestion_runs",
+		"organisation_id BIGINT NOT NULL REFERENCES organisations(id)",
+		"source_name TEXT NOT NULL",
+		"source_reference TEXT NOT NULL",
+		"status TEXT NOT NULL CHECK (status IN ('succeeded', 'failed', 'partial'))",
+		"validation_errors JSONB NOT NULL DEFAULT '[]'::jsonb",
+		"pilot_ingestion_runs_org_started_idx",
+	}
+	for _, value := range required {
+		if !strings.Contains(migrationSQL, value) {
+			t.Fatalf("expected pilot data integrity migration to contain %q", value)
+		}
+	}
+}
+
 func readIntegrationMigrationSQL(t *testing.T) string {
 	t.Helper()
 
