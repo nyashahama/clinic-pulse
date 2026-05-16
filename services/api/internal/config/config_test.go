@@ -19,6 +19,10 @@ func clearConfigEnv(t *testing.T) {
 		"CLINICPULSE_API_IDLE_TIMEOUT",
 		"CLINICPULSE_API_SHUTDOWN_TIMEOUT",
 		"CLINICPULSE_WEBHOOK_DELIVERY_ENABLED",
+		"CLINICPULSE_TRUSTED_ORIGINS",
+		"CLINICPULSE_LOGIN_RATE_LIMIT",
+		"CLINICPULSE_MUTATION_RATE_LIMIT",
+		"CLINICPULSE_RATE_LIMIT_WINDOW",
 	} {
 		t.Setenv(key, "")
 	}
@@ -98,6 +102,114 @@ func TestLoadRejectsUnsafeStagingConfig(t *testing.T) {
 		if !strings.Contains(errText, want) {
 			t.Fatalf("Load() error = %q, want mention %s", errText, want)
 		}
+	}
+}
+
+func TestLoadRequiresTrustedOriginsOutsideLocal(t *testing.T) {
+	clearConfigEnv(t)
+	t.Setenv("CLINICPULSE_DEPLOY_ENV", "staging")
+	t.Setenv("DATABASE_URL", "postgres://clinicpulse.example/staging")
+	t.Setenv("CLINICPULSE_API_KEY_PEPPER", strings.Repeat("p", 32))
+	t.Setenv("CLINICPULSE_TRUSTED_ORIGINS", "")
+
+	_, err := Load()
+	if err == nil || !strings.Contains(err.Error(), "CLINICPULSE_TRUSTED_ORIGINS") {
+		t.Fatalf("expected trusted origin validation error, got %v", err)
+	}
+}
+
+func TestLoadParsesTrustedOrigins(t *testing.T) {
+	clearConfigEnv(t)
+	t.Setenv("CLINICPULSE_DEPLOY_ENV", "local")
+	t.Setenv("CLINICPULSE_TRUSTED_ORIGINS", "http://localhost:3000, https://clinicpulse.example")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("expected config to load, got %v", err)
+	}
+	if len(cfg.TrustedOrigins) != 2 || cfg.TrustedOrigins[1] != "https://clinicpulse.example" {
+		t.Fatalf("unexpected trusted origins: %#v", cfg.TrustedOrigins)
+	}
+}
+
+func TestLoadRejectsInvalidTrustedOrigins(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		value string
+	}{
+		{
+			name:  "token",
+			value: "not-a-url",
+		},
+		{
+			name:  "path",
+			value: "https://app.example/path",
+		},
+		{
+			name:  "root path",
+			value: "https://app.example/",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			clearConfigEnv(t)
+			t.Setenv("CLINICPULSE_DEPLOY_ENV", string(DeployEnvStaging))
+			t.Setenv("DATABASE_URL", "postgres://clinicpulse.example/staging")
+			t.Setenv("CLINICPULSE_API_KEY_PEPPER", strings.Repeat("p", 32))
+			t.Setenv("CLINICPULSE_TRUSTED_ORIGINS", tt.value)
+
+			_, err := Load()
+			if err == nil || !strings.Contains(err.Error(), "CLINICPULSE_TRUSTED_ORIGINS") {
+				t.Fatalf("expected trusted origin validation error, got %v", err)
+			}
+		})
+	}
+}
+
+func TestLoadRejectsInvalidRateLimits(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		key   string
+		value string
+	}{
+		{
+			name:  "zero login limit",
+			key:   "CLINICPULSE_LOGIN_RATE_LIMIT",
+			value: "0",
+		},
+		{
+			name:  "negative mutation limit",
+			key:   "CLINICPULSE_MUTATION_RATE_LIMIT",
+			value: "-1",
+		},
+		{
+			name:  "non-integer login limit",
+			key:   "CLINICPULSE_LOGIN_RATE_LIMIT",
+			value: "abc",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			clearConfigEnv(t)
+			t.Setenv(tt.key, tt.value)
+
+			_, err := Load()
+			if err == nil {
+				t.Fatal("Load() error = nil, want validation error")
+			}
+
+			if !strings.Contains(err.Error(), tt.key) {
+				t.Fatalf("Load() error = %q, want mention %s", err.Error(), tt.key)
+			}
+		})
+	}
+}
+
+func TestLoadRejectsNonPositiveRateLimitWindow(t *testing.T) {
+	clearConfigEnv(t)
+	t.Setenv("CLINICPULSE_RATE_LIMIT_WINDOW", "0s")
+
+	_, err := Load()
+	if err == nil || !strings.Contains(err.Error(), "CLINICPULSE_RATE_LIMIT_WINDOW") {
+		t.Fatalf("expected rate limit window validation error, got %v", err)
 	}
 }
 

@@ -167,6 +167,7 @@ describe("field report submission", () => {
     expect(new Headers(options?.init?.headers).get("cookie")).toBe(
       "clinicpulse_session=session-token",
     );
+    expect(new Headers(options?.init?.headers).get("x-clinicpulse-server-mutation")).toBe("1");
   });
 
   it("exposes duplicate online report responses to the field UI action", async () => {
@@ -344,6 +345,11 @@ describe("field report submission", () => {
     expect(
       new Headers(syncOfflineReportsApiMock.mock.calls[0][1]?.init?.headers).get("cookie"),
     ).toBe("clinicpulse_session=session-token");
+    expect(
+      new Headers(syncOfflineReportsApiMock.mock.calls[0][1]?.init?.headers).get(
+        "x-clinicpulse-server-mutation",
+      ),
+    ).toBe("1");
   });
 
   it("maps queue items to offline sync API request items", async () => {

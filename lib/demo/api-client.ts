@@ -3,6 +3,8 @@ import type {
   AdminUserAccessApiResponse,
   AlternativeApiResponse,
   ApiErrorResponse,
+  CreateAdminUserApiInput,
+  CreateAdminUserApiResponse,
   CreatePartnerApiKeyApiInput,
   CreatePartnerApiKeyApiResponse,
   CreatePartnerExportApiInput,
@@ -21,9 +23,14 @@ import type {
   ReportApiResponse,
   ReviewReportApiInput,
   ReviewReportApiResponse,
+  RevokeAdminUserSessionsApiResponse,
   StalenessReconciliationApiResponse,
   SyncSummaryApiResponse,
   AuditEventApiResponse,
+  UpdateAdminUserAccessApiInput,
+  UpdateAdminUserAccessApiResponse,
+  UpdateAdminUserApiInput,
+  UpdateAdminUserApiResponse,
 } from "@/lib/demo/api-types";
 
 const DEFAULT_API_BASE_URL = "http://localhost:8080";
@@ -278,6 +285,57 @@ export function fetchPartnerReadiness(options?: ClinicPulseApiClientOptions) {
 
 export function fetchAdminUsers(options?: ClinicPulseApiClientOptions) {
   return requestClinicPulseApi<AdminUserAccessApiResponse[]>(["v1", "admin", "users"], options);
+}
+
+export function createAdminUser(
+  input: CreateAdminUserApiInput,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<CreateAdminUserApiResponse>(["v1", "admin", "users"], options, {
+    body: JSON.stringify(input),
+    method: "POST",
+  });
+}
+
+export function updateAdminUser(
+  userId: number | string,
+  input: UpdateAdminUserApiInput,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<UpdateAdminUserApiResponse>(
+    ["v1", "admin", "users", String(userId)],
+    options,
+    {
+      body: JSON.stringify(input),
+      method: "PATCH",
+    },
+  );
+}
+
+export function updateAdminUserAccess(
+  userId: number | string,
+  input: UpdateAdminUserAccessApiInput,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<UpdateAdminUserAccessApiResponse>(
+    ["v1", "admin", "users", String(userId), "access"],
+    options,
+    {
+      body: JSON.stringify(input),
+      method: "PUT",
+    },
+  );
+}
+
+export function revokeAdminUserSessions(
+  userId: number | string,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<RevokeAdminUserSessionsApiResponse>(
+    ["v1", "admin", "users", String(userId), "sessions", "revoke"],
+    options,
+    { method: "POST" },
+  );
 }
 
 export function fetchAdminAuditEvents(options?: ClinicPulseApiClientOptions) {

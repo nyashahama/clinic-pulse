@@ -9,6 +9,9 @@ const operationsAccount = {
   password: "ClinicPulseDemo123!",
 };
 const successMessage = "Waiting for district review.";
+const serverMutationHeaders = {
+  "x-clinicpulse-server-mutation": "1",
+};
 
 async function signInAsReporter(page: Page) {
   await page.goto("/login");
@@ -21,6 +24,7 @@ async function signInAsReporter(page: Page) {
 async function rejectPendingReportByNotes(page: Page, notes: string) {
   const loginResponse = await page.request.post("/api/clinicpulse/v1/auth/login", {
     data: operationsAccount,
+    headers: serverMutationHeaders,
   });
   if (!loginResponse.ok()) {
     throw new Error(`Cleanup login failed with ${loginResponse.status()}`);
@@ -45,6 +49,7 @@ async function rejectPendingReportByNotes(page: Page, notes: string) {
           decision: "rejected",
           notes: "Cleaned up by field pending review E2E test.",
         },
+        headers: serverMutationHeaders,
       },
     );
     if (!reviewResponse.ok()) {

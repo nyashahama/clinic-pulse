@@ -62,9 +62,10 @@ Important behavior:
 | Table | Purpose |
 | --- | --- |
 | `organisations` | Organisation identities and slugs |
-| `users` | User identity, display name, password hash, disabled state, and timestamps |
+| `users` | User identity, display name, password hash, disabled state, password lifecycle state, and timestamps |
 | `organisation_memberships` | Role assignments scoped to system, organisation, or district |
 | `sessions` | Hashed session tokens, expiry, revocation, user agent, IP, and last-seen state |
+| `admin_user_access` | View joining users, memberships, organisation scope, disabled state, and latest active session signal for admin review |
 
 Roles:
 
@@ -74,6 +75,18 @@ Roles:
 - `reporter`
 
 The membership constraints enforce valid combinations of role, organisation, and district.
+
+Important user lifecycle fields:
+
+- `users.password_changed_at` records when the current password hash became active. Existing local seeded users are backfilled from `updated_at`.
+- `users.password_reset_required` flags admin-provisioned accounts that should rotate their temporary password.
+- `users.disabled_at` gates authentication and supports admin disable/enable workflows.
+
+Important session behavior:
+
+- `sessions.token_hash` stores only the session-token hash.
+- `sessions.revoked_at` is set by logout and admin session revocation.
+- `admin_user_access.last_seen_at` only considers active, unexpired, unrevoked sessions.
 
 ## Offline Sync
 

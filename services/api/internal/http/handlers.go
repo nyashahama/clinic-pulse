@@ -19,8 +19,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"clinicpulse/services/api/internal/auth"
+	"clinicpulse/services/api/internal/security"
 	"clinicpulse/services/api/internal/service"
 	"clinicpulse/services/api/internal/store"
 )
@@ -52,6 +54,14 @@ type ClinicStore interface {
 	ListClinicAuditEvents(ctx context.Context, clinicID string) ([]store.AuditEvent, error)
 	ListAdminUserAccess(ctx context.Context, organisationID *int64) ([]store.AdminUserAccessRow, error)
 	ListAdminAuditEvents(ctx context.Context, organisationID *int64, limit int) ([]store.AdminAuditEventRow, error)
+	CreateAdminUserWithAccessTx(ctx context.Context, input store.CreateAdminUserWithAccessInput) (store.User, store.OrganisationMembership, store.AuditEvent, error)
+	GetUserByID(ctx context.Context, userID int64) (store.User, error)
+	GetAdminUserAccessByUserID(ctx context.Context, userID int64) (store.AdminUserAccessRow, error)
+	UpdateUserLifecycle(ctx context.Context, input store.UpdateUserLifecycleInput) (store.User, error)
+	UpdateUserPassword(ctx context.Context, userID int64, passwordHash string) (store.User, error)
+	UpsertOrganisationMembership(ctx context.Context, input store.UpsertMembershipInput) (store.OrganisationMembership, error)
+	RevokeActiveSessionsForUser(ctx context.Context, userID int64) (int64, error)
+	CreateAuditEvent(ctx context.Context, input store.CreateAuditEventInput) (store.AuditEvent, error)
 	CreateReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, store.CurrentStatus, store.AuditEvent, error)
 	CreatePendingReportTx(ctx context.Context, input store.CreateReportInput) (store.Report, error)
 	GetPendingReportByPayload(ctx context.Context, input store.CreateReportInput) (store.Report, error)
@@ -86,12 +96,14 @@ type ClinicStore interface {
 type HandlerConfig struct {
 	APIKeyPepper           string
 	WebhookDeliveryEnabled bool
+	LoginRateLimiter       *security.FixedWindowLimiter
 }
 
 type Handler struct {
 	store                  ClinicStore
 	apiKeyPepper           string
 	webhookDeliveryEnabled bool
+	loginRateLimiter       *security.FixedWindowLimiter
 }
 
 func NewHandler(store ClinicStore, config HandlerConfig) Handler {
@@ -99,6 +111,7 @@ func NewHandler(store ClinicStore, config HandlerConfig) Handler {
 		store:                  store,
 		apiKeyPepper:           config.APIKeyPepper,
 		webhookDeliveryEnabled: config.WebhookDeliveryEnabled,
+		loginRateLimiter:       config.LoginRateLimiter,
 	}
 }
 
@@ -515,6 +528,210 @@ func (h Handler) ListAdminUsers(w nethttp.ResponseWriter, r *nethttp.Request) {
 	RespondJSON(w, nethttp.StatusOK, users)
 }
 
+func (h Handler) CreateAdminUser(w nethttp.ResponseWriter, r *nethttp.Request) {
+	var payload createAdminUserRequest
+	if !decodeSingleJSON(w, r, &payload) {
+		return
+	}
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	change, fields := adminAccessChangeFromRequest(payload.Role, payload.OrganisationID, payload.District)
+	email := strings.ToLower(strings.TrimSpace(payload.Email))
+	displayName := strings.TrimSpace(payload.DisplayName)
+	if email == "" {
+		fields = append(fields, "email: email is required")
+	}
+	if displayName == "" {
+		fields = append(fields, "displayName: displayName is required")
+	}
+	if len(fields) > 0 {
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", fields...)
+		return
+	}
+	if !service.CanManageUserAccess(adminActorForPrincipal(principal), service.AdminUserAccess{}, change) {
+		RespondError(w, nethttp.StatusForbidden, "forbidden", "forbidden")
+		return
+	}
+
+	temporaryPassword, err := generateTemporaryPassword()
+	if err != nil {
+		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	passwordHash, err := auth.HashPassword(temporaryPassword)
+	if err != nil {
+		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+
+	auditInput := adminUserAuditEventInput(principal, "admin.user_created", "Admin user created.", 0, change.OrganisationID, map[string]any{
+		"email":          email,
+		"role":           change.Role,
+		"organisationId": change.OrganisationID,
+		"district":       change.District,
+	})
+	user, membership, _, err := h.store.CreateAdminUserWithAccessTx(r.Context(), store.CreateAdminUserWithAccessInput{
+		User: store.CreateUserInput{
+			Email:                 email,
+			DisplayName:           displayName,
+			PasswordHash:          &passwordHash,
+			PasswordResetRequired: true,
+		},
+		Access: store.UpsertMembershipInput{
+			OrganisationID: change.OrganisationID,
+			Role:           change.Role,
+			District:       change.District,
+		},
+		AuditEvent: auditInput,
+	})
+	if err != nil {
+		respondAdminUserCreateError(w, err)
+		return
+	}
+
+	if user.Email == "" {
+		user.Email = email
+	}
+	if user.DisplayName == "" {
+		user.DisplayName = displayName
+	}
+
+	RespondJSON(w, nethttp.StatusCreated, createAdminUserResponse{
+		User:              publicUser(user),
+		Access:            membership,
+		TemporaryPassword: temporaryPassword,
+	})
+}
+
+func (h Handler) UpdateAdminUser(w nethttp.ResponseWriter, r *nethttp.Request) {
+	userID, ok := parsePositiveInt64Param(w, r, "userId", "admin user not found")
+	if !ok {
+		return
+	}
+	var payload updateAdminUserRequest
+	if !decodeSingleJSON(w, r, &payload) {
+		return
+	}
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+	target, ok := h.authorizeAdminUserManagement(w, r, principal, userID, nil)
+	if !ok {
+		return
+	}
+
+	displayName, fields := optionalTrimmedAdminDisplayName(payload.DisplayName)
+	if len(fields) > 0 {
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", fields...)
+		return
+	}
+
+	updateInput := store.UpdateUserLifecycleInput{
+		UserID:      userID,
+		DisplayName: displayName,
+		Disabled:    payload.Disabled,
+		UpdatedAt:   time.Now().UTC(),
+	}
+	metadata := map[string]any{}
+	if displayName != nil {
+		metadata["displayNameChanged"] = true
+	}
+	if payload.Disabled != nil {
+		metadata["disabled"] = *payload.Disabled
+	}
+	auditInput := adminUserAuditEventInput(principal, "admin.user_updated", "Admin user lifecycle updated.", userID, target.OrganisationID, metadata)
+	user, err := h.updateUserLifecycleWithAudit(r.Context(), store.UpdateUserLifecycleWithAuditInput{
+		User:       updateInput,
+		AuditEvent: auditInput,
+	})
+	if err != nil {
+		respondStoreError(w, err, "admin user not found")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusOK, updateAdminUserResponse{User: publicUser(user)})
+}
+
+func (h Handler) UpdateAdminUserAccess(w nethttp.ResponseWriter, r *nethttp.Request) {
+	userID, ok := parsePositiveInt64Param(w, r, "userId", "admin user not found")
+	if !ok {
+		return
+	}
+	var payload updateAdminUserAccessRequest
+	if !decodeSingleJSON(w, r, &payload) {
+		return
+	}
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+	change, fields := adminAccessChangeFromRequest(payload.Role, payload.OrganisationID, payload.District)
+	if len(fields) > 0 {
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", fields...)
+		return
+	}
+	if _, ok := h.authorizeAdminUserManagement(w, r, principal, userID, &change); !ok {
+		return
+	}
+
+	membershipInput := store.UpsertMembershipInput{
+		UserID:         userID,
+		OrganisationID: change.OrganisationID,
+		Role:           change.Role,
+		District:       change.District,
+	}
+	auditInput := adminUserAuditEventInput(principal, "admin.user_access_updated", "Admin user access updated.", userID, change.OrganisationID, map[string]any{
+		"role":           change.Role,
+		"organisationId": change.OrganisationID,
+		"district":       change.District,
+	})
+	membership, err := h.upsertOrganisationMembershipWithAudit(r.Context(), store.UpsertMembershipWithAuditInput{
+		Membership: membershipInput,
+		AuditEvent: auditInput,
+	})
+	if err != nil {
+		respondStoreError(w, err, "admin user not found")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusOK, updateAdminUserAccessResponse{Access: membership})
+}
+
+func (h Handler) RevokeAdminUserSessions(w nethttp.ResponseWriter, r *nethttp.Request) {
+	userID, ok := parsePositiveInt64Param(w, r, "userId", "admin user not found")
+	if !ok {
+		return
+	}
+	principal, ok := PrincipalFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+	target, ok := h.authorizeAdminUserManagement(w, r, principal, userID, nil)
+	if !ok {
+		return
+	}
+
+	auditInput := adminUserAuditEventInput(principal, "admin.user_sessions_revoked", "Admin user sessions revoked.", userID, target.OrganisationID, nil)
+	revokedSessions, err := h.revokeActiveSessionsForUserWithAudit(r.Context(), store.RevokeActiveSessionsWithAuditInput{
+		UserID:     userID,
+		AuditEvent: auditInput,
+	})
+	if err != nil {
+		respondStoreError(w, err, "admin user not found")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusOK, revokeAdminUserSessionsResponse{RevokedSessions: revokedSessions})
+}
+
 func (h Handler) ListAdminAuditEvents(w nethttp.ResponseWriter, r *nethttp.Request) {
 	principal, ok := PrincipalFromContext(r.Context())
 	if !ok {
@@ -539,6 +756,200 @@ func adminReadOrganisationScope(principal Principal) *int64 {
 		return nil
 	}
 	return principal.OrganisationID
+}
+
+func adminActorForPrincipal(principal Principal) service.AdminActor {
+	return service.AdminActor{
+		UserID:         principal.UserID,
+		Role:           principal.Role,
+		OrganisationID: principal.OrganisationID,
+	}
+}
+
+func adminUserAccessFromRow(row store.AdminUserAccessRow) service.AdminUserAccess {
+	return service.AdminUserAccess{
+		UserID:         row.UserID,
+		Role:           row.Role,
+		OrganisationID: row.OrganisationID,
+		District:       row.District,
+	}
+}
+
+func (h Handler) authorizeAdminUserManagement(w nethttp.ResponseWriter, r *nethttp.Request, principal Principal, userID int64, requestedChange *service.AdminUserAccessChange) (service.AdminUserAccess, bool) {
+	row, err := h.store.GetAdminUserAccessByUserID(r.Context(), userID)
+	if err != nil {
+		respondStoreError(w, err, "admin user not found")
+		return service.AdminUserAccess{}, false
+	}
+	target := adminUserAccessFromRow(row)
+	change := service.AdminUserAccessChange{
+		Role:           target.Role,
+		OrganisationID: target.OrganisationID,
+		District:       target.District,
+	}
+	if requestedChange != nil {
+		change = *requestedChange
+	}
+	if !service.CanManageUserAccess(adminActorForPrincipal(principal), target, change) {
+		RespondError(w, nethttp.StatusForbidden, "forbidden", "forbidden")
+		return service.AdminUserAccess{}, false
+	}
+	return target, true
+}
+
+func adminAccessChangeFromRequest(role string, organisationID *int64, district *string) (service.AdminUserAccessChange, []string) {
+	normalizedRole := strings.ToLower(strings.TrimSpace(role))
+	normalizedDistrict := optionalTrimmedString(district)
+	change := service.AdminUserAccessChange{
+		Role:           normalizedRole,
+		OrganisationID: organisationID,
+		District:       normalizedDistrict,
+	}
+	return change, service.ValidateAdminUserAccessChange(change)
+}
+
+func optionalTrimmedAdminDisplayName(value *string) (*string, []string) {
+	if value == nil {
+		return nil, nil
+	}
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil, []string{"displayName: displayName is required"}
+	}
+	return &trimmed, nil
+}
+
+func optionalTrimmedString(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
+}
+
+func (h Handler) createAdminUserAuditEvent(ctx context.Context, principal Principal, eventType string, summary string, userID int64, organisationID *int64, metadata map[string]any) error {
+	_, err := h.store.CreateAuditEvent(ctx, adminUserAuditEventInput(principal, eventType, summary, userID, organisationID, metadata))
+	return err
+}
+
+type adminUserLifecycleAuditStore interface {
+	UpdateUserLifecycleWithAuditTx(context.Context, store.UpdateUserLifecycleWithAuditInput) (store.User, store.AuditEvent, error)
+	UpsertOrganisationMembershipWithAuditTx(context.Context, store.UpsertMembershipWithAuditInput) (store.OrganisationMembership, store.AuditEvent, error)
+	RevokeActiveSessionsForUserWithAuditTx(context.Context, store.RevokeActiveSessionsWithAuditInput) (int64, store.AuditEvent, error)
+}
+
+func (h Handler) updateUserLifecycleWithAudit(ctx context.Context, input store.UpdateUserLifecycleWithAuditInput) (store.User, error) {
+	if txStore, ok := h.store.(adminUserLifecycleAuditStore); ok {
+		user, _, err := txStore.UpdateUserLifecycleWithAuditTx(ctx, input)
+		return user, err
+	}
+
+	user, err := h.store.UpdateUserLifecycle(ctx, input.User)
+	if err != nil {
+		return store.User{}, err
+	}
+	if _, err := h.store.CreateAuditEvent(ctx, input.AuditEvent); err != nil {
+		return store.User{}, err
+	}
+	return user, nil
+}
+
+func (h Handler) upsertOrganisationMembershipWithAudit(ctx context.Context, input store.UpsertMembershipWithAuditInput) (store.OrganisationMembership, error) {
+	if txStore, ok := h.store.(adminUserLifecycleAuditStore); ok {
+		membership, _, err := txStore.UpsertOrganisationMembershipWithAuditTx(ctx, input)
+		return membership, err
+	}
+
+	membership, err := h.store.UpsertOrganisationMembership(ctx, input.Membership)
+	if err != nil {
+		return store.OrganisationMembership{}, err
+	}
+	if _, err := h.store.CreateAuditEvent(ctx, input.AuditEvent); err != nil {
+		return store.OrganisationMembership{}, err
+	}
+	return membership, nil
+}
+
+func (h Handler) revokeActiveSessionsForUserWithAudit(ctx context.Context, input store.RevokeActiveSessionsWithAuditInput) (int64, error) {
+	if txStore, ok := h.store.(adminUserLifecycleAuditStore); ok {
+		revokedSessions, _, err := txStore.RevokeActiveSessionsForUserWithAuditTx(ctx, input)
+		return revokedSessions, err
+	}
+
+	revokedSessions, err := h.store.RevokeActiveSessionsForUser(ctx, input.UserID)
+	if err != nil {
+		return 0, err
+	}
+	input.AuditEvent.Metadata = cloneHandlerMetadata(input.AuditEvent.Metadata)
+	input.AuditEvent.Metadata["revokedSessions"] = revokedSessions
+	if _, err := h.store.CreateAuditEvent(ctx, input.AuditEvent); err != nil {
+		return 0, err
+	}
+	return revokedSessions, nil
+}
+
+func adminUserAuditEventInput(principal Principal, eventType string, summary string, userID int64, organisationID *int64, metadata map[string]any) store.CreateAuditEventInput {
+	actorName := optionalTrimmedString(&principal.DisplayName)
+	actorRole := optionalTrimmedString(&principal.Role)
+	eventOrganisationID := organisationID
+	if eventOrganisationID == nil {
+		eventOrganisationID = principal.OrganisationID
+	}
+	input := store.CreateAuditEventInput{
+		EventType:      eventType,
+		Summary:        summary,
+		CreatedAt:      time.Now().UTC(),
+		ActorUserID:    &principal.UserID,
+		ActorName:      actorName,
+		ActorRole:      actorRole,
+		OrganisationID: eventOrganisationID,
+		Metadata:       compactAdminAuditMetadata(metadata),
+	}
+	if userID > 0 {
+		entityType := "user"
+		entityID := strconv.FormatInt(userID, 10)
+		input.EntityType = &entityType
+		input.EntityID = &entityID
+	}
+	return input
+}
+
+func compactAdminAuditMetadata(metadata map[string]any) map[string]any {
+	if metadata == nil {
+		return map[string]any{}
+	}
+	compacted := make(map[string]any, len(metadata))
+	for key, value := range metadata {
+		switch typed := value.(type) {
+		case *int64:
+			if typed != nil {
+				compacted[key] = *typed
+			}
+		case *string:
+			if typed != nil {
+				compacted[key] = *typed
+			}
+		default:
+			if value != nil {
+				compacted[key] = value
+			}
+		}
+	}
+	return compacted
+}
+
+func cloneHandlerMetadata(metadata map[string]any) map[string]any {
+	if metadata == nil {
+		return map[string]any{}
+	}
+	cloned := make(map[string]any, len(metadata))
+	for key, value := range metadata {
+		cloned[key] = value
+	}
+	return cloned
 }
 
 func (h Handler) RevokeAdminPartnerAPIKey(w nethttp.ResponseWriter, r *nethttp.Request) {
@@ -1151,6 +1562,13 @@ func (h Handler) Login(w nethttp.ResponseWriter, r *nethttp.Request) {
 		return
 	}
 
+	if h.loginRateLimiter != nil {
+		if !h.loginRateLimiter.Allow(loginRateLimitKey(r.RemoteAddr, email)) {
+			respondUnauthorized(w)
+			return
+		}
+	}
+
 	user, err := h.store.GetUserByEmail(r.Context(), email)
 	validLoginUser := false
 	passwordHash := dummyPasswordHash
@@ -1225,6 +1643,11 @@ func (h Handler) Login(w nethttp.ResponseWriter, r *nethttp.Request) {
 	})
 }
 
+func loginRateLimitKey(remoteAddr string, email string) string {
+	emailDigest := sha256.Sum256([]byte(email))
+	return "login:" + remoteIPAddressValue(remoteAddr) + ":" + hex.EncodeToString(emailDigest[:])
+}
+
 func (h Handler) Me(w nethttp.ResponseWriter, r *nethttp.Request) {
 	if details, ok := authDetailsFromContext(r.Context()); ok {
 		memberships := details.Memberships
@@ -1277,6 +1700,42 @@ func (h Handler) Me(w nethttp.ResponseWriter, r *nethttp.Request) {
 	})
 }
 
+func (h Handler) ChangePassword(w nethttp.ResponseWriter, r *nethttp.Request) {
+	details, ok := authDetailsFromContext(r.Context())
+	if !ok {
+		respondUnauthorized(w)
+		return
+	}
+
+	var payload changePasswordRequest
+	if !decodeSingleJSON(w, r, &payload) {
+		return
+	}
+	if payload.CurrentPassword == "" || len(payload.NewPassword) < 12 {
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "currentPassword and a 12+ character newPassword are required")
+		return
+	}
+	if details.User.PasswordHash == nil {
+		respondUnauthorized(w)
+		return
+	}
+	okPassword, err := auth.VerifyPassword(payload.CurrentPassword, *details.User.PasswordHash)
+	if err != nil || !okPassword {
+		respondUnauthorized(w)
+		return
+	}
+	hash, err := auth.HashPassword(payload.NewPassword)
+	if err != nil {
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "newPassword is invalid")
+		return
+	}
+	if _, err := h.store.UpdateUserPassword(r.Context(), details.User.ID, hash); err != nil {
+		RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	w.WriteHeader(nethttp.StatusNoContent)
+}
+
 func (h Handler) Logout(w nethttp.ResponseWriter, r *nethttp.Request) {
 	if cookie, err := r.Cookie(sessionCookieName); err == nil {
 		if tokenHash, err := auth.HashSessionToken(cookie.Value); err == nil {
@@ -1298,6 +1757,16 @@ func respondStoreError(w nethttp.ResponseWriter, err error, notFoundMessage stri
 	}
 
 	RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+}
+
+func respondAdminUserCreateError(w nethttp.ResponseWriter, err error) {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		RespondError(w, nethttp.StatusConflict, "conflict", "user already exists")
+		return
+	}
+
+	respondStoreError(w, err, "failed to create admin user")
 }
 
 func respondPartnerAdminMutationError(w nethttp.ResponseWriter, err error, notFoundMessage string) {
@@ -1410,6 +1879,14 @@ func generateWebhookSecret() (string, error) {
 		return "", err
 	}
 	return "cp_whsec_" + base64.RawURLEncoding.EncodeToString(randomBytes), nil
+}
+
+func generateTemporaryPassword() (string, error) {
+	randomBytes := make([]byte, 18)
+	if _, err := rand.Read(randomBytes); err != nil {
+		return "", err
+	}
+	return "cp_tmp_" + base64.RawURLEncoding.EncodeToString(randomBytes), nil
 }
 
 func hashWebhookSecret(secret string, pepper string) string {
@@ -1685,6 +2162,43 @@ type reviewReportResponse struct {
 	CurrentStatus *store.CurrentStatus `json:"currentStatus,omitempty"`
 }
 
+type createAdminUserRequest struct {
+	Email          string  `json:"email"`
+	DisplayName    string  `json:"displayName"`
+	Role           string  `json:"role"`
+	OrganisationID *int64  `json:"organisationId,omitempty"`
+	District       *string `json:"district,omitempty"`
+}
+
+type createAdminUserResponse struct {
+	User              store.User                   `json:"user"`
+	Access            store.OrganisationMembership `json:"access"`
+	TemporaryPassword string                       `json:"temporaryPassword"`
+}
+
+type updateAdminUserRequest struct {
+	DisplayName *string `json:"displayName,omitempty"`
+	Disabled    *bool   `json:"disabled,omitempty"`
+}
+
+type updateAdminUserResponse struct {
+	User store.User `json:"user"`
+}
+
+type updateAdminUserAccessRequest struct {
+	Role           string  `json:"role"`
+	OrganisationID *int64  `json:"organisationId,omitempty"`
+	District       *string `json:"district,omitempty"`
+}
+
+type updateAdminUserAccessResponse struct {
+	Access store.OrganisationMembership `json:"access"`
+}
+
+type revokeAdminUserSessionsResponse struct {
+	RevokedSessions int64 `json:"revokedSessions"`
+}
+
 type createPartnerAPIKeyRequest struct {
 	Name             string     `json:"name"`
 	Environment      string     `json:"environment"`
@@ -1786,6 +2300,11 @@ func parseOfflineSyncTimestamp(value string) (time.Time, bool) {
 type loginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+type changePasswordRequest struct {
+	CurrentPassword string `json:"currentPassword"`
+	NewPassword     string `json:"newPassword"`
 }
 
 type authLoginResponse struct {

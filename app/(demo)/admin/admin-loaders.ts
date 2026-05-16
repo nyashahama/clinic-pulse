@@ -27,6 +27,7 @@ export async function getAdminLoaderOptions(): Promise<ClinicPulseApiClientOptio
     init: {
       headers: {
         cookie: cookieHeader,
+        "x-clinicpulse-server-mutation": "1",
       },
     },
   };

@@ -12,6 +12,8 @@ Release tag status: Pending final verification and user approval.
 - `npm run lint` passes.
 - `make verify` passes.
 - `make test-e2e` passes before public demo handoff.
+- `make verify-security` passes before any staging or pilot handoff.
+- `make test-api-container` passes before promoting the Docker API image.
 - `git status --short` shows only intentional release changes.
 
 ## Verification Commands
@@ -20,13 +22,13 @@ Release tag status: Pending final verification and user approval.
 npm ci
 make verify
 make test-e2e
+make verify-security
 make test-api-container
-npm audit --audit-level=moderate
-cd services/api && govulncheck ./...
 git status --short
 ```
 
 For Phase 1 staging handoff, also confirm the Vercel frontend variables and Docker API variables in docs/deployment.md.
+For Phase 2 staging or pilot handoff, also confirm `CLINICPULSE_TRUSTED_ORIGINS`, rate-limit values, disabled public registration, and disabled demo fallback.
 
 ## Tag Commands
 
@@ -46,6 +48,7 @@ This alpha packages ClinicPulse as a full-stack clinic operations demo with:
 - Next.js frontend routes for landing, booking, district console, clinic detail, public finder, field reporting, admin, login, and registration.
 - Go API routes for public clinic data, authenticated operations, report review, offline sync, admin partner readiness, partner API keys, webhooks, exports, and partner read access.
 - Postgres schema for clinics, service availability, reports, current status, audit events, auth, sessions, sync attempts, partner keys, webhooks, exports, and integration checks.
+- Auth hardening for hidden demo credentials outside local fallback mode, login throttling, CSRF/origin checks, mutation rate limiting, password changes, and admin account lifecycle management.
 - Local demo credentials and a repeatable Makefile setup path.
 - Documentation for architecture, API, schema, screenshot capture, demo video, portfolio case study, engineering decisions, and release readiness.
 

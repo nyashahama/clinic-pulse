@@ -5,11 +5,17 @@ import (
 	nethttp "net/http"
 
 	"github.com/go-chi/chi/v5"
+
+	"clinicpulse/services/api/internal/security"
 )
 
 type RouterConfig struct {
 	APIKeyPepper           string
 	WebhookDeliveryEnabled bool
+	TrustedOrigins         []string
+	LoginRateLimiter       *security.FixedWindowLimiter
+	MutationRateLimiter    *security.FixedWindowLimiter
+	trustedOriginsSet      bool
 }
 
 type RouterOption func(*RouterConfig)
@@ -26,6 +32,25 @@ func WithWebhookDeliveryEnabled(value bool) RouterOption {
 	}
 }
 
+func WithTrustedOrigins(origins []string) RouterOption {
+	return func(config *RouterConfig) {
+		config.TrustedOrigins = append([]string(nil), origins...)
+		config.trustedOriginsSet = true
+	}
+}
+
+func WithLoginRateLimiter(limiter *security.FixedWindowLimiter) RouterOption {
+	return func(config *RouterConfig) {
+		config.LoginRateLimiter = limiter
+	}
+}
+
+func WithMutationRateLimiter(limiter *security.FixedWindowLimiter) RouterOption {
+	return func(config *RouterConfig) {
+		config.MutationRateLimiter = limiter
+	}
+}
+
 func NewRouter(store ClinicStore, options ...RouterOption) nethttp.Handler {
 	config := RouterConfig{}
 	for _, option := range options {
@@ -34,9 +59,14 @@ func NewRouter(store ClinicStore, options ...RouterOption) nethttp.Handler {
 
 	router := chi.NewRouter()
 	router.Use(RequestLogger(log.Default()))
+	if config.trustedOriginsSet {
+		router.Use(ProtectCookieMutations(config.TrustedOrigins))
+	}
+	router.Use(RateLimitMutations(config.MutationRateLimiter))
 	handler := NewHandler(store, HandlerConfig{
 		APIKeyPepper:           config.APIKeyPepper,
 		WebhookDeliveryEnabled: config.WebhookDeliveryEnabled,
+		LoginRateLimiter:       config.LoginRateLimiter,
 	})
 	requireAuth := RequireAuth(store)
 	partnerAuth := RequirePartnerAPIKey(store, config.APIKeyPepper)
@@ -49,6 +79,7 @@ func NewRouter(store ClinicStore, options ...RouterOption) nethttp.Handler {
 	router.Post("/v1/auth/login", handler.Login)
 	router.Post("/v1/auth/logout", handler.Logout)
 	router.With(requireAuth).Get("/v1/auth/me", handler.Me)
+	router.With(requireAuth).Post("/v1/auth/password", handler.ChangePassword)
 	router.Get("/v1/public/alternatives", handler.ListPublicAlternatives)
 	router.Get("/v1/public/clinics", handler.ListPublicClinics)
 	router.Get("/v1/public/clinics/{clinicId}", handler.GetPublicClinic)
@@ -59,6 +90,10 @@ func NewRouter(store ClinicStore, options ...RouterOption) nethttp.Handler {
 	router.With(partnerAuth, RequirePartnerScope("status:read")).Get("/v1/partner/integration-status", handler.GetPartnerIntegrationStatus)
 	router.With(requireAuth, orgAdminOrSystemAdmin).Get("/v1/admin/partner-readiness", handler.GetAdminPartnerReadiness)
 	router.With(requireAuth, orgAdminOrSystemAdmin).Get("/v1/admin/users", handler.ListAdminUsers)
+	router.With(requireAuth, orgAdminOrSystemAdmin).Post("/v1/admin/users", handler.CreateAdminUser)
+	router.With(requireAuth, orgAdminOrSystemAdmin).Patch("/v1/admin/users/{userId}", handler.UpdateAdminUser)
+	router.With(requireAuth, orgAdminOrSystemAdmin).Put("/v1/admin/users/{userId}/access", handler.UpdateAdminUserAccess)
+	router.With(requireAuth, orgAdminOrSystemAdmin).Post("/v1/admin/users/{userId}/sessions/revoke", handler.RevokeAdminUserSessions)
 	router.With(requireAuth, orgAdminOrSystemAdmin).Get("/v1/admin/audit-events", handler.ListAdminAuditEvents)
 	router.With(requireAuth, orgAdminOrSystemAdmin).Post("/v1/admin/api-keys", handler.CreateAdminPartnerAPIKey)
 	router.With(requireAuth, orgAdminOrSystemAdmin).Get("/v1/admin/api-keys", handler.ListAdminPartnerAPIKeys)

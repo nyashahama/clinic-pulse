@@ -1,10 +1,9 @@
 import {
-  AdminEvidenceTable,
-  AdminFilterBar,
   AdminMetricStrip,
   AdminModuleHeader,
   type AdminTone,
 } from "@/components/product/admin-module";
+import { AdminUserLifecycle } from "@/components/product/admin-user-lifecycle";
 import type { AuthRole } from "@/lib/auth/api";
 import type { AdminUserAccessApiResponse } from "@/lib/demo/api-types";
 import { classifyAccessRisk } from "@/lib/product/admin-governance";
@@ -12,11 +11,14 @@ import { requireDemoWorkflowAccess } from "../../workflow-guard";
 import { loadAdminUsers } from "../admin-loaders";
 import {
   formatCount,
-  formatDateTime,
-  formatLabel,
-  StatusBadge,
   toneForAttention,
 } from "../governance-formatters";
+import {
+  createPilotUserAction,
+  revokeUserSessionsAction,
+  setUserDisabledAction,
+  updateUserAccessAction,
+} from "./actions";
 
 const activeRoles = new Set<AuthRole>([
   "reporter",
@@ -46,15 +48,6 @@ function getRisk(user: AdminUserAccessApiResponse) {
   });
 }
 
-function getUserAccessRowKey(user: AdminUserAccessApiResponse) {
-  return [
-    user.userId,
-    user.role,
-    user.organisationId ?? "platform",
-    user.district ?? "all-districts",
-  ].join(":");
-}
-
 export default async function Page() {
   await requireDemoWorkflowAccess("admin");
 
@@ -71,7 +64,7 @@ export default async function Page() {
       <AdminModuleHeader
         eyebrow="Administration"
         title="Users and roles"
-        description="Read-only operating view of user access, scopes, disabled accounts, and review posture."
+        description="Pilot lifecycle management for user creation, access scopes, disabled accounts, and active sessions."
       />
       <AdminMetricStrip
         metrics={[
@@ -95,64 +88,12 @@ export default async function Page() {
           },
         ]}
       />
-      <AdminFilterBar>
-        <StatusBadge tone="info">Read only</StatusBadge>
-        <span className="text-sm text-muted-foreground">
-          Role and scope changes are recorded through audit evidence, not this module.
-        </span>
-      </AdminFilterBar>
-      <AdminEvidenceTable
-        label="User role review"
-        rows={rows}
-        getRowKey={getUserAccessRowKey}
-        columns={[
-          {
-            key: "user",
-            header: "User",
-            render: (row) => (
-              <div className="min-w-0">
-                <p className="font-medium text-foreground">{row.displayName}</p>
-                <p className="break-all text-xs text-muted-foreground">{row.email}</p>
-              </div>
-            ),
-          },
-          {
-            key: "role",
-            header: "Role",
-            render: (row) => <StatusBadge tone="info">{formatLabel(row.role)}</StatusBadge>,
-          },
-          {
-            key: "scope",
-            header: "Scope",
-            render: (row) => row.district ?? row.organisationId ?? "Organisation",
-          },
-          {
-            key: "state",
-            header: "State",
-            render: (row) => (
-              <StatusBadge tone={row.disabledAt ? "blocked" : "clear"}>
-                {row.disabledAt ? "Disabled" : "Active"}
-              </StatusBadge>
-            ),
-          },
-          {
-            key: "lastSeen",
-            header: "Last seen",
-            render: (row) => formatDateTime(row.lastSeenAt),
-          },
-          {
-            key: "review",
-            header: "Review status",
-            render: (row) => (
-              <div className="space-y-1">
-                <StatusBadge tone={row.risk.tone}>{row.risk.label}</StatusBadge>
-                <p className="max-w-xs text-xs text-muted-foreground">
-                  {row.risk.reasons.length ? row.risk.reasons.join("; ") : "No review flags"}
-                </p>
-              </div>
-            ),
-          },
-        ]}
+      <AdminUserLifecycle
+        users={users}
+        createUserAction={createPilotUserAction}
+        updateUserAction={setUserDisabledAction}
+        updateAccessAction={updateUserAccessAction}
+        revokeSessionsAction={revokeUserSessionsAction}
       />
     </div>
   );

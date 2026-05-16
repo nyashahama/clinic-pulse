@@ -35,8 +35,17 @@ function FieldLabel({
   );
 }
 
-export function SignupForm({ action }: { action: SignupAction }) {
+export function SignupForm({
+  action,
+  allowPublicRegistration,
+}: {
+  action: SignupAction;
+  allowPublicRegistration: boolean;
+}) {
   const [state, formAction, pending] = useActionState(action, {});
+  const submitLabel = allowPublicRegistration
+    ? "Request account"
+    : "Request access review";
 
   return (
     <form action={formAction} className="grid gap-4">
@@ -103,33 +112,35 @@ export function SignupForm({ action }: { action: SignupAction }) {
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <FieldLabel htmlFor="password">Password</FieldLabel>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            minLength={12}
-            required
-            className={cn(inputClassName)}
-          />
-        </div>
+      {allowPublicRegistration ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <FieldLabel htmlFor="password">Password</FieldLabel>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              minLength={12}
+              required
+              className={cn(inputClassName)}
+            />
+          </div>
 
-        <div>
-          <FieldLabel htmlFor="confirmPassword">Confirm password</FieldLabel>
-          <input
-            id="confirmPassword"
-            name="confirmPassword"
-            type="password"
-            autoComplete="new-password"
-            minLength={12}
-            required
-            className={cn(inputClassName)}
-          />
+          <div>
+            <FieldLabel htmlFor="confirmPassword">Confirm password</FieldLabel>
+            <input
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              autoComplete="new-password"
+              minLength={12}
+              required
+              className={cn(inputClassName)}
+            />
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {state.error ? (
         <p
@@ -145,7 +156,7 @@ export function SignupForm({ action }: { action: SignupAction }) {
         disabled={pending}
         className="inline-flex w-full shrink-0 items-center justify-center rounded-xl border border-neutral-950 bg-neutral-950 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/10 transition hover:-translate-y-0.5 hover:bg-neutral-800 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70 dark:border-primary dark:bg-primary dark:text-primary-foreground dark:shadow-black/30 dark:hover:bg-primary/90"
       >
-        {pending ? "Reviewing request..." : "Request account"}
+        {pending ? "Reviewing request..." : submitLabel}
       </button>
     </form>
   );

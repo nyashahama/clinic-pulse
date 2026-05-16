@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -37,6 +38,10 @@ type Config struct {
 	IdleTimeout            time.Duration
 	ShutdownTimeout        time.Duration
 	WebhookDeliveryEnabled bool
+	TrustedOrigins         []string
+	LoginRateLimit         int
+	MutationRateLimit      int
+	RateLimitWindow        time.Duration
 }
 
 func Load() (Config, error) {
@@ -75,6 +80,19 @@ func Load() (Config, error) {
 
 	apiKeyPepper := os.Getenv("CLINICPULSE_API_KEY_PEPPER")
 	webhookDeliveryEnabled := os.Getenv("CLINICPULSE_WEBHOOK_DELIVERY_ENABLED") == "true"
+	trustedOrigins := splitCSV(os.Getenv("CLINICPULSE_TRUSTED_ORIGINS"))
+	rateLimitWindow, err := durationFromEnv("CLINICPULSE_RATE_LIMIT_WINDOW", time.Minute)
+	if err != nil {
+		return Config{}, err
+	}
+	loginRateLimit, err := intEnv("CLINICPULSE_LOGIN_RATE_LIMIT", 8)
+	if err != nil {
+		return Config{}, err
+	}
+	mutationRateLimit, err := intEnv("CLINICPULSE_MUTATION_RATE_LIMIT", 60)
+	if err != nil {
+		return Config{}, err
+	}
 
 	cfg := Config{
 		DeployEnv:              deployEnv,
@@ -86,6 +104,10 @@ func Load() (Config, error) {
 		IdleTimeout:            idleTimeout,
 		ShutdownTimeout:        shutdownTimeout,
 		WebhookDeliveryEnabled: webhookDeliveryEnabled,
+		TrustedOrigins:         trustedOrigins,
+		LoginRateLimit:         loginRateLimit,
+		MutationRateLimit:      mutationRateLimit,
+		RateLimitWindow:        rateLimitWindow,
 	}
 
 	if err := cfg.Validate(); err != nil {
@@ -114,6 +136,21 @@ func (c Config) Validate() error {
 		if len(c.APIKeyPepper) < minAPIKeyPepperLength {
 			problems = append(problems, fmt.Sprintf("CLINICPULSE_API_KEY_PEPPER must be at least %d characters outside local deploy env", minAPIKeyPepperLength))
 		}
+
+		if len(c.TrustedOrigins) == 0 {
+			problems = append(problems, "CLINICPULSE_TRUSTED_ORIGINS is required outside local deploy env")
+		}
+	}
+
+	for _, origin := range c.TrustedOrigins {
+		if !isValidTrustedOrigin(origin) {
+			problems = append(problems, "CLINICPULSE_TRUSTED_ORIGINS must contain only http:// or https:// origins without paths, queries, or fragments")
+			break
+		}
+	}
+
+	if c.LoginRateLimit <= 0 || c.MutationRateLimit <= 0 || c.RateLimitWindow <= 0 {
+		problems = append(problems, "rate limit settings must be positive")
 	}
 
 	for _, timeout := range []struct {
@@ -144,6 +181,35 @@ func envOrDefault(key, fallback string) string {
 	return fallback
 }
 
+func splitCSV(value string) []string {
+	parts := strings.Split(value, ",")
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			result = append(result, part)
+		}
+	}
+	return result
+}
+
+func intEnv(key string, fallback int) (int, error) {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback, nil
+	}
+
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("%s must be a positive integer: %w", key, err)
+	}
+	if parsed <= 0 {
+		return 0, fmt.Errorf("%s must be positive", key)
+	}
+
+	return parsed, nil
+}
+
 func durationFromEnv(key string, fallback time.Duration) (time.Duration, error) {
 	value := strings.TrimSpace(os.Getenv(key))
 	if value == "" {
@@ -154,8 +220,30 @@ func durationFromEnv(key string, fallback time.Duration) (time.Duration, error) 
 	if err != nil {
 		return 0, fmt.Errorf("%s must be a valid duration: %w", key, err)
 	}
+	if duration <= 0 {
+		return 0, fmt.Errorf("%s must be positive", key)
+	}
 
 	return duration, nil
+}
+
+func isValidTrustedOrigin(origin string) bool {
+	parsed, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return false
+	}
+	if parsed.Host == "" || parsed.User != nil {
+		return false
+	}
+	if parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" || parsed.RawPath != "" {
+		return false
+	}
+
+	return true
 }
 
 func isLocalDatabaseURL(databaseURL string) bool {

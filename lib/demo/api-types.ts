@@ -7,7 +7,7 @@ import type {
   StockPressure,
 } from "@/lib/demo/types";
 import type { OfflineSyncApiResult } from "@/lib/demo/offline-sync-types";
-import type { AuthRole } from "@/lib/auth/api";
+import type { AuthMembership, AuthRole } from "@/lib/auth/api";
 
 export type ApiNullable<T> = T | null | undefined;
 
@@ -106,6 +106,54 @@ export type AdminUserAccessApiResponse = {
   organisationId?: ApiNullable<number>;
   district?: ApiNullable<string>;
   lastSeenAt?: ApiNullable<string>;
+};
+
+export type AdminUserApiResponse = {
+  id: number;
+  email: string;
+  displayName: string;
+  disabledAt?: ApiNullable<string>;
+  passwordChangedAt?: ApiNullable<string>;
+  passwordResetRequired: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateAdminUserApiInput = {
+  email: string;
+  displayName: string;
+  role: AuthRole;
+  organisationId?: ApiNullable<number>;
+  district?: ApiNullable<string>;
+};
+
+export type CreateAdminUserApiResponse = {
+  user: AdminUserApiResponse;
+  access: AuthMembership;
+  temporaryPassword: string;
+};
+
+export type UpdateAdminUserApiInput = {
+  displayName?: string;
+  disabled?: boolean;
+};
+
+export type UpdateAdminUserApiResponse = {
+  user: AdminUserApiResponse;
+};
+
+export type UpdateAdminUserAccessApiInput = {
+  role: AuthRole;
+  organisationId?: ApiNullable<number>;
+  district?: ApiNullable<string>;
+};
+
+export type UpdateAdminUserAccessApiResponse = {
+  access: AuthMembership;
+};
+
+export type RevokeAdminUserSessionsApiResponse = {
+  revokedSessions: number;
 };
 
 export type AdminAuditEventApiResponse = AuditEventApiResponse & {

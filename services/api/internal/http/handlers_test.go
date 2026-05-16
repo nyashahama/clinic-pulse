@@ -18,6 +18,7 @@ import (
 
 	"clinicpulse/services/api/internal/auth"
 	apihttp "clinicpulse/services/api/internal/http"
+	"clinicpulse/services/api/internal/security"
 	"clinicpulse/services/api/internal/store"
 )
 
@@ -1164,6 +1165,312 @@ func TestAdminUsersUsesGlobalScopeForSystemAdmins(t *testing.T) {
 	}
 	if gotOrgID != nil {
 		t.Fatalf("expected system admin users list to use global scope, got %#v", gotOrgID)
+	}
+}
+
+func TestAdminCanCreateUserWithoutLeakingHash(t *testing.T) {
+	orgID := int64(1)
+	var txInput store.CreateAdminUserWithAccessInput
+	txCalls := 0
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+		createAdminUserWithAccessInput: &txInput,
+		createAdminUserWithAccessCalls: &txCalls,
+	}))
+	req := httptest.NewRequest(http.MethodPost, "/v1/admin/users", strings.NewReader(`{"email":"pilot@example.test","displayName":"Pilot User","role":"reporter","organisationId":1}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "http://localhost:3000")
+	req.AddCookie(&http.Cookie{Name: "clinicpulse_session", Value: sessionTokenForTest(t)})
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected created, got %d with body %s", rec.Code, rec.Body.String())
+	}
+	if txCalls != 1 {
+		t.Fatalf("expected transactional admin create to be called once, got %d", txCalls)
+	}
+	if txInput.User.PasswordHash == nil || strings.Contains(rec.Body.String(), *txInput.User.PasswordHash) {
+		t.Fatalf("response leaked password hash")
+	}
+	if !strings.Contains(rec.Body.String(), "temporaryPassword") {
+		t.Fatalf("expected one-time temporary password in response, got %s", rec.Body.String())
+	}
+	var got struct {
+		TemporaryPassword string `json:"temporaryPassword"`
+	}
+	decodeJSON(t, rec, &got)
+	auditMetadata, err := json.Marshal(txInput.AuditEvent.Metadata)
+	if err != nil {
+		t.Fatalf("failed to marshal audit metadata: %v", err)
+	}
+	if strings.Contains(string(auditMetadata), got.TemporaryPassword) || strings.Contains(string(auditMetadata), *txInput.User.PasswordHash) {
+		t.Fatalf("audit metadata leaked password material: %s", string(auditMetadata))
+	}
+}
+
+func TestAdminCreateUserTransactionErrorDoesNotLeakPasswordMaterial(t *testing.T) {
+	orgID := int64(1)
+	storeErr := errors.New("database password leaked")
+	var txInput store.CreateAdminUserWithAccessInput
+	txCalls := 0
+	var created store.CreateUserInput
+	var membershipInput store.UpsertMembershipInput
+	var auditInput store.CreateAuditEventInput
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+		createAdminUserWithAccessInput: &txInput,
+		createAdminUserWithAccessCalls: &txCalls,
+		createAdminUserWithAccessErr:   storeErr,
+		createUserInput:                &created,
+		upsertMembershipInput:          &membershipInput,
+		auditInput:                     &auditInput,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/users", strings.NewReader(`{"email":"pilot-error@example.test","displayName":"Pilot User","role":"reporter","organisationId":1}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assertInternalError(t, rec, storeErr)
+	if txCalls != 1 {
+		t.Fatalf("expected transactional admin create to be called once, got %d", txCalls)
+	}
+	if created.Email != "" {
+		t.Fatalf("expected standalone CreateUser not to be called, got %#v", created)
+	}
+	if membershipInput.UserID != 0 {
+		t.Fatalf("expected standalone membership upsert not to be called, got %#v", membershipInput)
+	}
+	if auditInput.EventType != "" {
+		t.Fatalf("expected standalone audit insert not to be called, got %#v", auditInput)
+	}
+	if strings.Contains(rec.Body.String(), "temporaryPassword") {
+		t.Fatalf("expected error response not to return temporary password, got %s", rec.Body.String())
+	}
+	if txInput.User.PasswordHash != nil && strings.Contains(rec.Body.String(), *txInput.User.PasswordHash) {
+		t.Fatalf("response leaked password hash")
+	}
+}
+
+func TestAdminCreateUserRejectsDistrictManagerWithoutDistrictBeforeCreateUser(t *testing.T) {
+	orgID := int64(1)
+	var created store.CreateUserInput
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{createUserInput: &created}))
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/users", strings.NewReader(`{"email":"dm@example.test","displayName":"District Manager","role":"district_manager","organisationId":1}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected validation error, got %d with body %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"code":"validation_error"`) {
+		t.Fatalf("expected validation_error response, got %s", rec.Body.String())
+	}
+	if created.Email != "" {
+		t.Fatalf("expected CreateUser not to be called, got %#v", created)
+	}
+}
+
+func TestAdminCreateUserRejectsOrgScopedRolesWithDistrictBeforeCreateUser(t *testing.T) {
+	tests := []struct {
+		name string
+		role string
+	}{
+		{name: "reporter", role: "reporter"},
+		{name: "org admin", role: "org_admin"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			orgID := int64(1)
+			var created store.CreateUserInput
+			router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{createUserInput: &created}))
+			body := `{"email":"scoped@example.test","displayName":"Scoped User","role":"` + tt.role + `","organisationId":1,"district":"Tshwane"}`
+			req := newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/users", strings.NewReader(body))
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("expected validation error, got %d with body %s", rec.Code, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), `"code":"validation_error"`) {
+				t.Fatalf("expected validation_error response, got %s", rec.Body.String())
+			}
+			if created.Email != "" {
+				t.Fatalf("expected CreateUser not to be called, got %#v", created)
+			}
+		})
+	}
+}
+
+func TestAdminCanRevokeManagedUserSessions(t *testing.T) {
+	orgID := int64(1)
+	revokedUserID := int64(0)
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+		adminUserAccess:       store.AdminUserAccessRow{UserID: 42, Role: "reporter", OrganisationID: &orgID},
+		revokedSessionsUserID: &revokedUserID,
+	}))
+	req := httptest.NewRequest(http.MethodPost, "/v1/admin/users/42/sessions/revoke", strings.NewReader(`{}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "http://localhost:3000")
+	req.AddCookie(&http.Cookie{Name: "clinicpulse_session", Value: sessionTokenForTest(t)})
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected ok, got %d with body %s", rec.Code, rec.Body.String())
+	}
+	if revokedUserID != 42 {
+		t.Fatalf("expected revoked sessions for user 42, got %d", revokedUserID)
+	}
+}
+
+func TestAdminCanUpdateManagedUserLifecycle(t *testing.T) {
+	orgID := int64(1)
+	var lifecycleInput store.UpdateUserLifecycleInput
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+		adminUserAccess:          store.AdminUserAccessRow{UserID: 42, Role: "reporter", OrganisationID: &orgID},
+		updateUserLifecycleInput: &lifecycleInput,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodPatch, "/v1/admin/users/42", strings.NewReader(`{"displayName":" Pilot Lead ","disabled":true}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected ok, got %d with body %s", rec.Code, rec.Body.String())
+	}
+	if lifecycleInput.UserID != 42 {
+		t.Fatalf("expected lifecycle update for user 42, got %#v", lifecycleInput)
+	}
+	if lifecycleInput.DisplayName == nil || *lifecycleInput.DisplayName != "Pilot Lead" {
+		t.Fatalf("expected trimmed display name, got %#v", lifecycleInput.DisplayName)
+	}
+	if lifecycleInput.Disabled == nil || !*lifecycleInput.Disabled {
+		t.Fatalf("expected disabled=true, got %#v", lifecycleInput.Disabled)
+	}
+}
+
+func TestAdminCanUpdateManagedUserAccess(t *testing.T) {
+	orgID := int64(1)
+	district := "Tshwane"
+	var membershipInput store.UpsertMembershipInput
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+		adminUserAccess:       store.AdminUserAccessRow{UserID: 42, Role: "reporter", OrganisationID: &orgID},
+		upsertMembershipInput: &membershipInput,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodPut, "/v1/admin/users/42/access", strings.NewReader(`{"role":"district_manager","organisationId":1,"district":" Tshwane "}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected ok, got %d with body %s", rec.Code, rec.Body.String())
+	}
+	if membershipInput.UserID != 42 || membershipInput.Role != "district_manager" {
+		t.Fatalf("unexpected membership input: %#v", membershipInput)
+	}
+	if membershipInput.OrganisationID == nil || *membershipInput.OrganisationID != orgID {
+		t.Fatalf("expected membership org %d, got %#v", orgID, membershipInput.OrganisationID)
+	}
+	if membershipInput.District == nil || *membershipInput.District != district {
+		t.Fatalf("expected district %q, got %#v", district, membershipInput.District)
+	}
+}
+
+func TestAdminUpdateUserAccessRejectsInvalidRoleScopeBeforeMembershipUpsert(t *testing.T) {
+	orgID := int64(1)
+	tests := []struct {
+		name string
+		body string
+	}{
+		{
+			name: "district manager without district",
+			body: `{"role":"district_manager","organisationId":1}`,
+		},
+		{
+			name: "reporter with district",
+			body: `{"role":"reporter","organisationId":1,"district":"Tshwane"}`,
+		},
+		{
+			name: "org admin with district",
+			body: `{"role":"org_admin","organisationId":1,"district":"Tshwane"}`,
+		},
+		{
+			name: "system admin with organisation",
+			body: `{"role":"system_admin","organisationId":1}`,
+		},
+		{
+			name: "system admin with district",
+			body: `{"role":"system_admin","district":"Tshwane"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var membershipInput store.UpsertMembershipInput
+			router := apihttp.NewRouter(authenticatedAdminStore(t, "system_admin", orgID, fakeStore{
+				adminUserAccess:       store.AdminUserAccessRow{UserID: 42, Role: "reporter", OrganisationID: &orgID},
+				upsertMembershipInput: &membershipInput,
+			}))
+			req := newAuthenticatedRequest(t, http.MethodPut, "/v1/admin/users/42/access", strings.NewReader(tt.body))
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("expected validation error, got %d with body %s", rec.Code, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), `"code":"validation_error"`) {
+				t.Fatalf("expected validation_error response, got %s", rec.Body.String())
+			}
+			if membershipInput.UserID != 0 {
+				t.Fatalf("expected membership not to be upserted, got %#v", membershipInput)
+			}
+		})
+	}
+}
+
+func TestOrgAdminCannotRevokeSystemAdminSessions(t *testing.T) {
+	orgID := int64(1)
+	revokedUserID := int64(0)
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{
+		adminUserAccess:       store.AdminUserAccessRow{UserID: 42, Role: "system_admin"},
+		revokedSessionsUserID: &revokedUserID,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/users/42/sessions/revoke", strings.NewReader(`{}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected forbidden, got %d with body %s", rec.Code, rec.Body.String())
+	}
+	if revokedUserID != 0 {
+		t.Fatalf("expected no sessions revoked, got user ID %d", revokedUserID)
+	}
+}
+
+func TestOrgAdminCannotMoveUserOutsideOrganisation(t *testing.T) {
+	actorOrgID := int64(1)
+	otherOrgID := int64(2)
+	var membershipInput store.UpsertMembershipInput
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", actorOrgID, fakeStore{
+		adminUserAccess:       store.AdminUserAccessRow{UserID: 42, Role: "reporter", OrganisationID: &otherOrgID},
+		upsertMembershipInput: &membershipInput,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodPut, "/v1/admin/users/42/access", strings.NewReader(`{"role":"reporter","organisationId":2}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected forbidden, got %d with body %s", rec.Code, rec.Body.String())
+	}
+	if membershipInput.UserID != 0 {
+		t.Fatalf("expected membership not to be upserted, got %#v", membershipInput)
 	}
 }
 
@@ -3763,6 +4070,56 @@ func TestLoginReturnsGenericUnauthorizedForInvalidCredentials(t *testing.T) {
 	}
 }
 
+func TestLoginRateLimitReturnsGenericUnauthorized(t *testing.T) {
+	getUserCalls := 0
+	loginStore := successfulLoginStore(t)
+	loginStore.getUserCalls = &getUserCalls
+	router := apihttp.NewRouter(loginStore,
+		apihttp.WithLoginRateLimiter(security.NewFixedWindowLimiter(1, time.Minute, time.Now)),
+		apihttp.WithMutationRateLimiter(security.NewFixedWindowLimiter(1, time.Minute, time.Now)),
+	)
+
+	for attempt := 0; attempt < 2; attempt++ {
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", strings.NewReader(`{"email":"manager@example.test","password":"wrong-password"}`))
+		req.RemoteAddr = "203.0.113.10:41234"
+		rec := httptest.NewRecorder()
+
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("expected generic unauthorized, got %d with body %s", rec.Code, rec.Body.String())
+		}
+		if strings.Contains(rec.Body.String(), "rate") || strings.Contains(rec.Body.String(), "throttle") {
+			t.Fatalf("login throttle response leaked throttle state: %s", rec.Body.String())
+		}
+	}
+	if getUserCalls != 1 {
+		t.Fatalf("expected throttled login to skip user lookup after first attempt, got %d lookups", getUserCalls)
+	}
+}
+
+func TestLoginMutationRateLimitStillReturnsGenericUnauthorizedForRotatingEmails(t *testing.T) {
+	router := apihttp.NewRouter(successfulLoginStore(t),
+		apihttp.WithLoginRateLimiter(security.NewFixedWindowLimiter(1, time.Minute, time.Now)),
+		apihttp.WithMutationRateLimiter(security.NewFixedWindowLimiter(1, time.Minute, time.Now)),
+	)
+
+	for _, email := range []string{"manager+1@example.test", "manager+2@example.test", "manager+3@example.test"} {
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", strings.NewReader(`{"email":"`+email+`","password":"wrong-password"}`))
+		req.RemoteAddr = "203.0.113.10:41234"
+		rec := httptest.NewRecorder()
+
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("expected generic unauthorized for %s, got %d with body %s", email, rec.Code, rec.Body.String())
+		}
+		if strings.Contains(rec.Body.String(), "rate_limited") || strings.Contains(rec.Body.String(), "rate") || strings.Contains(rec.Body.String(), "throttle") {
+			t.Fatalf("login response leaked rate-limit state for %s: %s", email, rec.Body.String())
+		}
+	}
+}
+
 func TestLoginMembershipFailureReturnsInternalErrorWithoutCreatingSession(t *testing.T) {
 	storeErr := errors.New("membership lookup failed")
 	createSessionCalls := 0
@@ -3916,6 +4273,76 @@ func TestAuthMeUnknownExpiredRevokedOrDisabledSessionReturnsUnauthorized(t *test
 	}
 }
 
+func TestAuthenticatedUserCanChangeOwnPassword(t *testing.T) {
+	oldHash := hashPasswordForTest(t, "old-password")
+	var updatedHash string
+	router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{
+		userPasswordHash:    &oldHash,
+		updatedPasswordHash: &updatedHash,
+	}))
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/password", strings.NewReader(`{"currentPassword":"old-password","newPassword":"new-secure-password-123"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "http://localhost:3000")
+	req.AddCookie(&http.Cookie{Name: "clinicpulse_session", Value: sessionTokenForTest(t)})
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected no content, got %d with body %s", rec.Code, rec.Body.String())
+	}
+	if updatedHash == "" || strings.Contains(updatedHash, "new-secure-password-123") {
+		t.Fatalf("expected hashed password update")
+	}
+}
+
+func TestChangeOwnPasswordRejectsWrongCurrentPasswordWithoutUpdatingHash(t *testing.T) {
+	oldHash := hashPasswordForTest(t, "old-password")
+	var updatedHash string
+	router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{
+		userPasswordHash:    &oldHash,
+		updatedPasswordHash: &updatedHash,
+	}))
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/password", strings.NewReader(`{"currentPassword":"wrong-password","newPassword":"new-secure-password-123"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "http://localhost:3000")
+	req.AddCookie(&http.Cookie{Name: "clinicpulse_session", Value: sessionTokenForTest(t)})
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assertGenericUnauthorized(t, rec)
+	if updatedHash != "" {
+		t.Fatalf("expected wrong current password not to update hash, got %q", updatedHash)
+	}
+	if strings.Contains(rec.Body.String(), "wrong-password") || strings.Contains(rec.Body.String(), "new-secure-password-123") {
+		t.Fatalf("expected password material not to appear in response, got %s", rec.Body.String())
+	}
+}
+
+func TestChangeOwnPasswordAllowsTrustedOriginWithCSRFMiddleware(t *testing.T) {
+	oldHash := hashPasswordForTest(t, "old-password")
+	var updatedHash string
+	router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{
+		userPasswordHash:    &oldHash,
+		updatedPasswordHash: &updatedHash,
+	}), apihttp.WithTrustedOrigins([]string{"http://localhost:3000"}))
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/password", strings.NewReader(`{"currentPassword":"old-password","newPassword":"new-secure-password-123"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "http://localhost:3000")
+	req.AddCookie(&http.Cookie{Name: "clinicpulse_session", Value: sessionTokenForTest(t)})
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected trusted-origin password change not to be blocked, got %d with body %s", rec.Code, rec.Body.String())
+	}
+	if updatedHash == "" {
+		t.Fatal("expected trusted-origin password change to update hash")
+	}
+}
+
 func TestLogoutRevokesValidCookieHashAndClearsCookie(t *testing.T) {
 	token := sessionTokenForTest(t)
 	tokenHash := hashSessionTokenForTest(t, token)
@@ -4011,11 +4438,15 @@ type fakeStore struct {
 	pendingReports                        []store.Report
 	auditEvents                           []store.AuditEvent
 	adminUsers                            []store.AdminUserAccessRow
+	adminUserAccess                       store.AdminUserAccessRow
 	adminAuditEvents                      []store.AdminAuditEventRow
 	currentStatuses                       []store.CurrentStatus
 	createReport                          store.Report
 	createStatus                          store.CurrentStatus
 	createAuditEvent                      store.AuditEvent
+	createdUser                           store.User
+	updatedUser                           store.User
+	upsertMembership                      store.OrganisationMembership
 	reviewReport                          store.Report
 	reviewStatus                          *store.CurrentStatus
 	user                                  store.User
@@ -4039,6 +4470,10 @@ type fakeStore struct {
 	upsertIntegrationStatusCheckInputs    *[]store.UpsertIntegrationStatusCheckInput
 	upsertIntegrationStatusChecks         *[]store.IntegrationStatusCheck
 	createInput                           *store.CreateReportInput
+	createUserInput                       *store.CreateUserInput
+	createAdminUserWithAccessInput        *store.CreateAdminUserWithAccessInput
+	updateUserLifecycleInput              *store.UpdateUserLifecycleInput
+	upsertMembershipInput                 *store.UpsertMembershipInput
 	createPartnerAPIKeyInput              *store.CreatePartnerAPIKeyInput
 	createPartnerWebhookSubscriptionInput *store.CreatePartnerWebhookSubscriptionInput
 	createPartnerWebhookEventInput        *store.CreatePartnerWebhookEventInput
@@ -4063,12 +4498,19 @@ type fakeStore struct {
 	syncSummaryScope                      *store.ReportReviewScope
 	summarySince                          *time.Time
 	getUserEmail                          *string
+	getUserByIDUserID                     *int64
+	getUserCalls                          *int
 	createSessionInput                    *store.CreateSessionInput
 	sessionAuditInput                     *store.CreateSessionWithAuditInput
 	auditInput                            *store.CreateAuditEventInput
 	getSessionTokenHash                   *string
+	userPasswordHash                      *string
+	updatedPasswordHash                   *string
+	updatePasswordUserID                  *int64
 	revokedTokenHash                      *string
+	revokedSessionsUserID                 *int64
 	createCalls                           *int
+	createAdminUserWithAccessCalls        *int
 	createPartnerAPIKeyCalls              *int
 	createPartnerWebhookEventCalls        *int
 	createSessionCalls                    *int
@@ -4086,12 +4528,19 @@ type fakeStore struct {
 	pendingReportsErr                     error
 	auditEventsErr                        error
 	adminUsersErr                         error
+	adminUserAccessErr                    error
 	adminAuditEventsErr                   error
 	currentStatusesErr                    error
 	createErr                             error
+	createUserErr                         error
+	createAdminUserWithAccessErr          error
+	updateUserLifecycleErr                error
+	upsertMembershipErr                   error
 	updateFreshnessErr                    error
 	reviewErr                             error
 	getUserErr                            error
+	getUserByIDErr                        error
+	updatePasswordErr                     error
 	createSessionErr                      error
 	createSessionWithAuditErr             error
 	auditErr                              error
@@ -4101,6 +4550,7 @@ type fakeStore struct {
 	syncSummaryErr                        error
 	getSessionErr                         error
 	revokeErr                             error
+	revokeSessionsErr                     error
 	membershipsErr                        error
 	partnerKeyErr                         error
 	createPartnerAPIKeyErr                error
@@ -4168,6 +4618,239 @@ func (f fakeStore) ListAdminAuditEvents(_ context.Context, organisationID *int64
 		*f.listAdminAuditEventsLimit = limit
 	}
 	return f.adminAuditEvents, f.adminAuditEventsErr
+}
+
+func (f fakeStore) CreateUser(_ context.Context, input store.CreateUserInput) (store.User, error) {
+	if f.createUserInput != nil {
+		*f.createUserInput = input
+	}
+	if f.createUserErr != nil {
+		return store.User{}, f.createUserErr
+	}
+	now := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
+	user := f.createdUser
+	if user.ID == 0 {
+		user.ID = 101
+	}
+	if user.Email == "" {
+		user.Email = input.Email
+	}
+	if user.DisplayName == "" {
+		user.DisplayName = input.DisplayName
+	}
+	user.PasswordHash = input.PasswordHash
+	user.PasswordResetRequired = input.PasswordResetRequired
+	if user.CreatedAt.IsZero() {
+		user.CreatedAt = now
+	}
+	if user.UpdatedAt.IsZero() {
+		user.UpdatedAt = now
+	}
+	return user, nil
+}
+
+func (f fakeStore) CreateAdminUserWithAccessTx(_ context.Context, input store.CreateAdminUserWithAccessInput) (store.User, store.OrganisationMembership, store.AuditEvent, error) {
+	if f.createAdminUserWithAccessCalls != nil {
+		*f.createAdminUserWithAccessCalls++
+	}
+	if f.createAdminUserWithAccessInput != nil {
+		*f.createAdminUserWithAccessInput = input
+	}
+	if f.createAdminUserWithAccessErr != nil {
+		return store.User{}, store.OrganisationMembership{}, store.AuditEvent{}, f.createAdminUserWithAccessErr
+	}
+	now := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
+	user := f.createdUser
+	if user.ID == 0 {
+		user.ID = 101
+	}
+	if user.Email == "" {
+		user.Email = input.User.Email
+	}
+	if user.DisplayName == "" {
+		user.DisplayName = input.User.DisplayName
+	}
+	user.PasswordHash = input.User.PasswordHash
+	user.PasswordResetRequired = input.User.PasswordResetRequired
+	if user.CreatedAt.IsZero() {
+		user.CreatedAt = now
+	}
+	if user.UpdatedAt.IsZero() {
+		user.UpdatedAt = now
+	}
+
+	membership := f.upsertMembership
+	if membership.ID == 0 {
+		membership.ID = 1
+	}
+	membership.UserID = user.ID
+	membership.OrganisationID = input.Access.OrganisationID
+	membership.Role = input.Access.Role
+	membership.District = input.Access.District
+	if membership.CreatedAt.IsZero() {
+		membership.CreatedAt = now
+	}
+
+	auditEvent := f.createAuditEvent
+	if auditEvent.ID == 0 {
+		auditEvent.ID = 1
+	}
+	auditEvent.EventType = input.AuditEvent.EventType
+	auditEvent.Summary = input.AuditEvent.Summary
+	auditEvent.ActorUserID = input.AuditEvent.ActorUserID
+	auditEvent.ActorRole = input.AuditEvent.ActorRole
+	auditEvent.OrganisationID = input.AuditEvent.OrganisationID
+	auditEvent.EntityType = input.AuditEvent.EntityType
+	if auditEvent.EntityType == nil {
+		entityType := "user"
+		auditEvent.EntityType = &entityType
+	}
+	auditEvent.EntityID = input.AuditEvent.EntityID
+	if auditEvent.EntityID == nil {
+		entityID := strconv.FormatInt(user.ID, 10)
+		auditEvent.EntityID = &entityID
+	}
+	auditEvent.Metadata = input.AuditEvent.Metadata
+	if auditEvent.CreatedAt.IsZero() {
+		auditEvent.CreatedAt = now
+	}
+	return user, membership, auditEvent, nil
+}
+
+func (f fakeStore) GetUserByID(_ context.Context, userID int64) (store.User, error) {
+	if f.getUserByIDUserID != nil {
+		*f.getUserByIDUserID = userID
+	}
+	if f.getUserByIDErr != nil {
+		return store.User{}, f.getUserByIDErr
+	}
+	if f.user.ID != 0 {
+		return f.user, nil
+	}
+	if f.adminUserAccess.UserID != 0 {
+		now := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
+		return store.User{
+			ID:          f.adminUserAccess.UserID,
+			Email:       f.adminUserAccess.Email,
+			DisplayName: f.adminUserAccess.DisplayName,
+			DisabledAt:  f.adminUserAccess.DisabledAt,
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		}, nil
+	}
+	return store.User{}, pgx.ErrNoRows
+}
+
+func (f fakeStore) GetAdminUserAccessByUserID(_ context.Context, userID int64) (store.AdminUserAccessRow, error) {
+	if f.adminUserAccessErr != nil {
+		return store.AdminUserAccessRow{}, f.adminUserAccessErr
+	}
+	if f.adminUserAccess.UserID == 0 {
+		return store.AdminUserAccessRow{}, pgx.ErrNoRows
+	}
+	if f.adminUserAccess.UserID != userID {
+		return store.AdminUserAccessRow{}, pgx.ErrNoRows
+	}
+	return f.adminUserAccess, nil
+}
+
+func (f fakeStore) UpdateUserLifecycle(_ context.Context, input store.UpdateUserLifecycleInput) (store.User, error) {
+	if f.updateUserLifecycleInput != nil {
+		*f.updateUserLifecycleInput = input
+	}
+	if f.updateUserLifecycleErr != nil {
+		return store.User{}, f.updateUserLifecycleErr
+	}
+	user := f.updatedUser
+	if user.ID == 0 {
+		user.ID = input.UserID
+	}
+	if user.Email == "" {
+		user.Email = f.adminUserAccess.Email
+	}
+	if user.DisplayName == "" {
+		user.DisplayName = f.adminUserAccess.DisplayName
+	}
+	if input.DisplayName != nil {
+		user.DisplayName = *input.DisplayName
+	}
+	if input.Disabled != nil && *input.Disabled {
+		user.DisabledAt = &input.UpdatedAt
+	}
+	if input.Disabled != nil && !*input.Disabled {
+		user.DisabledAt = nil
+	}
+	if user.CreatedAt.IsZero() {
+		user.CreatedAt = time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
+	}
+	user.UpdatedAt = input.UpdatedAt
+	return user, nil
+}
+
+func (f fakeStore) UpdateUserPassword(_ context.Context, userID int64, passwordHash string) (store.User, error) {
+	if f.updatePasswordUserID != nil {
+		*f.updatePasswordUserID = userID
+	}
+	if f.updatedPasswordHash != nil {
+		*f.updatedPasswordHash = passwordHash
+	}
+	if f.updatePasswordErr != nil {
+		return store.User{}, f.updatePasswordErr
+	}
+	now := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
+	user := f.updatedUser
+	if user.ID == 0 {
+		user.ID = userID
+	}
+	if user.Email == "" {
+		user.Email = f.sessionUser.Email
+	}
+	if user.DisplayName == "" {
+		user.DisplayName = f.sessionUser.DisplayName
+	}
+	user.PasswordHash = &passwordHash
+	user.PasswordResetRequired = false
+	if user.PasswordChangedAt == nil {
+		user.PasswordChangedAt = &now
+	}
+	if user.CreatedAt.IsZero() {
+		user.CreatedAt = now
+	}
+	if user.UpdatedAt.IsZero() {
+		user.UpdatedAt = now
+	}
+	return user, nil
+}
+
+func (f fakeStore) UpsertOrganisationMembership(_ context.Context, input store.UpsertMembershipInput) (store.OrganisationMembership, error) {
+	if f.upsertMembershipInput != nil {
+		*f.upsertMembershipInput = input
+	}
+	if f.upsertMembershipErr != nil {
+		return store.OrganisationMembership{}, f.upsertMembershipErr
+	}
+	membership := f.upsertMembership
+	if membership.ID == 0 {
+		membership.ID = 1
+	}
+	membership.UserID = input.UserID
+	membership.OrganisationID = input.OrganisationID
+	membership.Role = input.Role
+	membership.District = input.District
+	if membership.CreatedAt.IsZero() {
+		membership.CreatedAt = time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
+	}
+	return membership, nil
+}
+
+func (f fakeStore) RevokeActiveSessionsForUser(_ context.Context, userID int64) (int64, error) {
+	if f.revokedSessionsUserID != nil {
+		*f.revokedSessionsUserID = userID
+	}
+	if f.revokeSessionsErr != nil {
+		return 0, f.revokeSessionsErr
+	}
+	return 1, nil
 }
 
 func (f fakeStore) ListCurrentStatuses(context.Context) ([]store.CurrentStatus, error) {
@@ -4274,6 +4957,9 @@ func (f fakeStore) ReviewReportTx(_ context.Context, input store.ReviewReportInp
 }
 
 func (f fakeStore) GetUserByEmail(_ context.Context, email string) (store.User, error) {
+	if f.getUserCalls != nil {
+		*f.getUserCalls++
+	}
 	if f.getUserEmail != nil {
 		*f.getUserEmail = email
 	}
@@ -4350,7 +5036,11 @@ func (f fakeStore) GetSessionByTokenHash(_ context.Context, tokenHash string) (s
 	if f.getSessionTokenHash != nil {
 		*f.getSessionTokenHash = tokenHash
 	}
-	return f.session, f.sessionUser, f.getSessionErr
+	user := f.sessionUser
+	if f.userPasswordHash != nil {
+		user.PasswordHash = f.userPasswordHash
+	}
+	return f.session, user, f.getSessionErr
 }
 
 func (f fakeStore) RevokeSession(_ context.Context, tokenHash string) error {

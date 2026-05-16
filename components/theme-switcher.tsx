@@ -36,15 +36,7 @@ export function ThemeSwitcher() {
     getClientSnapshot,
     getServerSnapshot,
   )
-
-  if (!mounted) {
-    return (
-      <div
-        aria-hidden="true"
-        className="block h-8 w-[6.75rem] shrink-0 rounded-lg border border-border bg-muted"
-      />
-    )
-  }
+  const activeTheme = mounted ? theme : "system"
 
   return (
     <div
@@ -54,7 +46,7 @@ export function ThemeSwitcher() {
     >
       {THEME_OPTIONS.map((option) => {
         const Icon = option.icon
-        const active = theme === option.value
+        const active = activeTheme === option.value
 
         return (
           <Button
@@ -64,7 +56,13 @@ export function ThemeSwitcher() {
             size="icon-sm"
             aria-label={option.ariaLabel}
             aria-pressed={active}
-            onClick={() => setTheme(option.value)}
+            aria-disabled={!mounted}
+            tabIndex={mounted ? undefined : -1}
+            onClick={() => {
+              if (mounted) {
+                setTheme(option.value)
+              }
+            }}
             className={cn(
               "size-7 rounded-md text-muted-foreground hover:text-foreground",
               active && "bg-background text-foreground shadow-sm",

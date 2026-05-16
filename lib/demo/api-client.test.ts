@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ClinicPulseApiError,
   type ClinicPulseFetch,
+  createAdminUser,
   createReport,
   createPartnerApiKey,
   createPartnerExport,
@@ -22,15 +23,21 @@ import {
   requestClinicPulseApi,
   reconcileStatusStaleness,
   reviewReport,
+  revokeAdminUserSessions,
   revokePartnerApiKey,
   syncOfflineReportsApi,
   testPartnerWebhook,
+  updateAdminUser,
+  updateAdminUserAccess,
 } from "@/lib/demo/api-client";
 import type {
+  CreateAdminUserApiInput,
   CreatePartnerApiKeyApiInput,
   CreatePartnerExportApiInput,
   CreatePartnerWebhookApiInput,
   CreateReportApiInput,
+  UpdateAdminUserAccessApiInput,
+  UpdateAdminUserApiInput,
 } from "@/lib/demo/api-types";
 
 function jsonResponse(body: unknown, init: ResponseInit = {}) {
@@ -280,6 +287,59 @@ describe("ClinicPulse API client", () => {
     const fetchImpl = mockFetch([]);
     await fetchAdminUsers({ baseUrl: "https://api.example.test", fetch: fetchImpl });
     expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://api.example.test/v1/admin/users");
+  });
+
+  it("posts admin lifecycle mutations to admin user endpoints", async () => {
+    const fetchImpl = mockFetch({ user: {}, access: {}, temporaryPassword: "cp_tmp_test" });
+    const createInput: CreateAdminUserApiInput = {
+      email: "pilot@example.test",
+      displayName: "Pilot User",
+      role: "reporter",
+      organisationId: 1,
+    };
+    const lifecycleInput: UpdateAdminUserApiInput = {
+      disabled: true,
+      displayName: "Pilot Lead",
+    };
+    const accessInput: UpdateAdminUserAccessApiInput = {
+      role: "district_manager",
+      organisationId: 1,
+      district: "Tshwane",
+    };
+
+    await createAdminUser(createInput, { baseUrl: "https://api.example.test", fetch: fetchImpl });
+    await updateAdminUser(42, lifecycleInput, {
+      baseUrl: "https://api.example.test",
+      fetch: fetchImpl,
+    });
+    await updateAdminUserAccess(42, accessInput, {
+      baseUrl: "https://api.example.test",
+      fetch: fetchImpl,
+    });
+    await revokeAdminUserSessions(42, {
+      baseUrl: "https://api.example.test",
+      fetch: fetchImpl,
+    });
+
+    expect(fetchImpl.mock.calls[0][0]).toBe("https://api.example.test/v1/admin/users");
+    expect(fetchImpl.mock.calls[0][1]).toMatchObject({
+      body: JSON.stringify(createInput),
+      method: "POST",
+    });
+    expect(fetchImpl.mock.calls[1][0]).toBe("https://api.example.test/v1/admin/users/42");
+    expect(fetchImpl.mock.calls[1][1]).toMatchObject({
+      body: JSON.stringify(lifecycleInput),
+      method: "PATCH",
+    });
+    expect(fetchImpl.mock.calls[2][0]).toBe("https://api.example.test/v1/admin/users/42/access");
+    expect(fetchImpl.mock.calls[2][1]).toMatchObject({
+      body: JSON.stringify(accessInput),
+      method: "PUT",
+    });
+    expect(fetchImpl.mock.calls[3][0]).toBe(
+      "https://api.example.test/v1/admin/users/42/sessions/revoke",
+    );
+    expect(fetchImpl.mock.calls[3][1]).toMatchObject({ method: "POST" });
   });
 
   it("fetches admin audit events", async () => {

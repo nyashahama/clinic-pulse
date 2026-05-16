@@ -30,6 +30,7 @@ func TestStorePublicAPICompiles(t *testing.T) {
 	var _ func(Store, context.Context, ReportReviewScope) ([]Report, error) = Store.ListPendingReports
 	var _ func(Store, context.Context, ReviewReportInput) (Report, *CurrentStatus, error) = Store.ReviewReportTx
 	var _ func(Store, context.Context, string) (User, error) = Store.GetUserByEmail
+	var _ func(Store, context.Context, CreateAdminUserWithAccessInput) (User, OrganisationMembership, AuditEvent, error) = Store.CreateAdminUserWithAccessTx
 	var _ func(Store, context.Context, CreateSessionInput) (Session, error) = Store.CreateSession
 	var _ func(Store, context.Context, CreateSessionWithAuditInput) (Session, AuditEvent, error) = Store.CreateSessionWithAuditTx
 	var _ func(Store, context.Context, string) (Session, User, error) = Store.GetSessionByTokenHash

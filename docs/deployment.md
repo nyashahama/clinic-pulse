@@ -12,6 +12,7 @@ Configure the Vercel project with the repository root as the project root. The p
 | `CLINICPULSE_API_BASE_URL` | HTTPS URL for the deployed Docker API |
 | `NEXT_PUBLIC_CLINICPULSE_API_BASE_URL` | `/api/clinicpulse` |
 | `CLINICPULSE_ALLOW_DEMO_FALLBACK` | `false` |
+| `CLINICPULSE_ALLOW_PUBLIC_REGISTRATION` | `false` |
 
 Browsers should call `/api/clinicpulse/*`. The Next.js rewrite forwards those requests to `CLINICPULSE_API_BASE_URL`, keeping the deployed API origin out of client code.
 
@@ -25,6 +26,10 @@ Run the Go API as a Docker web service using the API image.
 | `DATABASE_URL` | Managed Postgres connection URL |
 | `CLINICPULSE_API_KEY_PEPPER` | At least 32 characters |
 | `CLINICPULSE_WEBHOOK_DELIVERY_ENABLED` | `false` until intentionally enabled |
+| `CLINICPULSE_TRUSTED_ORIGINS` | Comma-separated frontend origins, for example `https://staging.clinicpulse.example` |
+| `CLINICPULSE_LOGIN_RATE_LIMIT` | Positive integer, default `8` attempts per window |
+| `CLINICPULSE_MUTATION_RATE_LIMIT` | Positive integer, default `60` unsafe mutations per window |
+| `CLINICPULSE_RATE_LIMIT_WINDOW` | Go duration, default `1m` |
 | `PORT` | Supplied by Render, Railway, or the Docker host |
 
 Start command:
@@ -42,6 +47,8 @@ Migration command:
 Run migrations before starting a new API image against staging.
 
 Phase 1 staging should use a fresh managed DB or one that already includes `schema_migrations`; do not expect the migrator to auto-adopt pre-ledger schemas.
+
+`CLINICPULSE_TRUSTED_ORIGINS` must contain origins only, without paths, queries, or fragments. Unsafe cookie-authenticated requests with an untrusted `Origin` or `Referer` return `403 csrf_rejected`. Partner API-key requests are authenticated separately and do not use the browser CSRF path.
 
 ## Render Notes
 

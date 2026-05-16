@@ -25,8 +25,8 @@ WITH seed_users (email, display_name, password_hash) AS (
         ('district-manager@clinicpulse.local', 'District Manager', '$2b$10$Wb1y1.FnS/YJ7TINBCsJCuysK7qDRweyevzs46UjsZV/hzy8P/JeG'),
         ('reporter@clinicpulse.local', 'Reporter', '$2b$10$Wb1y1.FnS/YJ7TINBCsJCuysK7qDRweyevzs46UjsZV/hzy8P/JeG')
 ), inserted_users AS (
-    INSERT INTO users (email, display_name, password_hash)
-    SELECT seed_users.email, seed_users.display_name, seed_users.password_hash
+    INSERT INTO users (email, display_name, password_hash, password_changed_at, password_reset_required)
+    SELECT seed_users.email, seed_users.display_name, seed_users.password_hash, now(), false
     FROM seed_users
     WHERE NOT EXISTS (
         SELECT 1
@@ -41,6 +41,8 @@ SET
     display_name = seed_users.display_name,
     password_hash = seed_users.password_hash,
     disabled_at = NULL,
+    password_changed_at = now(),
+    password_reset_required = false,
     updated_at = now()
 FROM seed_users
 WHERE lower(users.email) = lower(seed_users.email);
