@@ -420,7 +420,7 @@ export default async function Page() {
         columns={[
           {
             key: "checksum",
-            header: "Export package evidence",
+            header: "Export checksum",
             render: (row) => (
               <span className="break-all font-mono text-xs text-muted-foreground">
                 {row.checksum}

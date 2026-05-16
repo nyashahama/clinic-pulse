@@ -50,7 +50,7 @@ function buildSyncQueueMetrics(summary: SyncSummaryApiResponse) {
     {
       label: "Failed",
       value: failedCount,
-      detail: "Conflicts and validation failures that need operator action.",
+      detail: "Rejected payloads and conflicts that need operator action.",
     },
     {
       label: "Duplicates",

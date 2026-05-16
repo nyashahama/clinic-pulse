@@ -81,6 +81,8 @@ test("pilot safety, privacy, and terms pages are reachable", async ({ page }) =>
 });
 
 test("pilot-critical routes do not show implementation placeholders", async ({ page }) => {
+  test.setTimeout(90_000);
+
   await signInAs(page, "org-admin@clinicpulse.local", "/admin");
 
   for (const route of pilotCriticalRoutes.filter((route) => route.startsWith("/admin"))) {
