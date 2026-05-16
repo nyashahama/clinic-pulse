@@ -3324,7 +3324,7 @@ func TestOfflineSyncRejectsInvalidJSON(t *testing.T) {
 	}
 }
 
-func TestSyncSummaryRequiresDistrictManagerOrHigher(t *testing.T) {
+func TestSyncSummaryRequiresAuthenticatedReporterOrHigher(t *testing.T) {
 	summary := store.SyncSummary{
 		OfflineReportsReceived:    3,
 		DuplicateSyncsHandled:     1,
@@ -3340,7 +3340,7 @@ func TestSyncSummaryRequiresDistrictManagerOrHigher(t *testing.T) {
 		{name: "district manager", role: "district_manager", wantCode: http.StatusOK},
 		{name: "org admin", role: "org_admin", wantCode: http.StatusOK},
 		{name: "system admin", role: "system_admin", wantCode: http.StatusOK},
-		{name: "reporter", role: "reporter", wantCode: http.StatusForbidden},
+		{name: "reporter", role: "reporter", wantCode: http.StatusOK},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			var since time.Time

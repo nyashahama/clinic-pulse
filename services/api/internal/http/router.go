@@ -114,7 +114,7 @@ func NewRouter(store ClinicStore, options ...RouterOption) nethttp.Handler {
 	router.With(requireAuth, reporterOrHigher).Post("/v1/reports", handler.CreateReport)
 	router.With(requireAuth, reporterOrHigher).Post("/v1/reports/offline-sync", handler.SyncOfflineReports)
 	router.With(requireAuth, districtManagerOrHigher).Post("/v1/reports/{reportId}/review", handler.ReviewReport)
-	router.With(requireAuth, districtManagerOrHigher).Get("/v1/sync/summary", handler.GetSyncSummary)
+	router.With(requireAuth, reporterOrHigher).Get("/v1/sync/summary", handler.GetSyncSummary)
 
 	return router
 }
