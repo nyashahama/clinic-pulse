@@ -282,7 +282,7 @@
 }
 
 @keyframes clinic-soft-blink {
-  0%, 100% { opacity: 0.62; transform: scale(1); }
+  0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.08); }
 }
 

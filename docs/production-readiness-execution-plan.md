@@ -44,7 +44,7 @@ Phase 0 makes these commands reliable and enforceable. Later phases may add stri
 | Phase 2 - Security And Auth Hardening | Complete | Production-safe auth, sessions, secrets, rate limits, and account lifecycle | 1 week |
 | Phase 3 - Pilot Data And Product Integrity | Complete | Real data provenance, completed pilot workflows, and legal/safety surfaces | 1-2 weeks |
 | Phase 4 - Observability And Operations | Implementation complete | Logs, metrics, tracing, alerts, runbooks, and incident process | 1 week |
-| Phase 5 - Pilot Launch Readiness | In progress | Release candidate, stakeholder docs, operational signoff, and launch checklist | 1-2 weeks |
+| Phase 5 - Pilot Launch Readiness | Implementation complete | Release candidate, stakeholder docs, operational signoff, and launch checklist | 1-2 weeks |
 
 ## Phase 0 - Release Gate Stabilization
 
@@ -174,6 +174,8 @@ Status: Implementation complete. The closeout records delivered observability/op
 Spec: `docs/phase-5-pilot-launch-readiness-spec.md`
 Plan: `docs/phase-5-pilot-launch-readiness-implementation-plan.md`
 Closeout: `docs/phase-5-pilot-launch-readiness-closeout.md`
+
+Status: Implementation complete. The closeout records OpenAPI verification, accessibility/performance smoke coverage, pilot launch handoff artifacts, final release-gate evidence, residual risks, and release tag approval state.
 
 Goal:
 

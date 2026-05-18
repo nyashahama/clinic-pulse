@@ -2,7 +2,7 @@
 
 Target tag: `v0.1.0-alpha`
 
-Release tag status: Pending final verification and user approval.
+Release tag status: Pending explicit approval after Phase 5 closeout review.
 
 ## Pre-Release Checklist
 
