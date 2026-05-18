@@ -33,6 +33,11 @@ jobs:
       - name: Audit dependencies
         run: npm audit --audit-level=moderate
 
+      - name: Validate smoke scripts
+        run: |
+          node --check scripts/smoke/clinicpulse-smoke.mjs
+          node --check scripts/load/core-journeys.mjs
+
       - name: Test
         run: npm run test
 

@@ -1,11 +1,12 @@
 package http
 
 import (
-	"log"
+	"io"
 	nethttp "net/http"
 
 	"github.com/go-chi/chi/v5"
 
+	"clinicpulse/services/api/internal/observability"
 	"clinicpulse/services/api/internal/security"
 )
 
@@ -15,6 +16,10 @@ type RouterConfig struct {
 	TrustedOrigins         []string
 	LoginRateLimiter       *security.FixedWindowLimiter
 	MutationRateLimiter    *security.FixedWindowLimiter
+	Logger                 *observability.JSONLogger
+	Metrics                *observability.Registry
+	MetricsEnabled         bool
+	MetricsToken           string
 	trustedOriginsSet      bool
 }
 
@@ -51,14 +56,34 @@ func WithMutationRateLimiter(limiter *security.FixedWindowLimiter) RouterOption 
 	}
 }
 
+func WithObservability(logger *observability.JSONLogger, metrics *observability.Registry) RouterOption {
+	return func(config *RouterConfig) {
+		config.Logger = logger
+		config.Metrics = metrics
+	}
+}
+
+func WithMetricsEndpoint(enabled bool, token string) RouterOption {
+	return func(config *RouterConfig) {
+		config.MetricsEnabled = enabled
+		config.MetricsToken = token
+	}
+}
+
 func NewRouter(store ClinicStore, options ...RouterOption) nethttp.Handler {
 	config := RouterConfig{}
 	for _, option := range options {
 		option(&config)
 	}
+	if config.Logger == nil {
+		config.Logger = observability.NewJSONLogger(io.Discard, observability.Fields{"service": "clinicpulse-api"})
+	}
+	if config.Metrics == nil {
+		config.Metrics = observability.NewRegistry()
+	}
 
 	router := chi.NewRouter()
-	router.Use(RequestLogger(log.Default()))
+	router.Use(RequestLogger(config.Logger, config.Metrics))
 	if config.trustedOriginsSet {
 		router.Use(ProtectCookieMutations(config.TrustedOrigins))
 	}
@@ -67,6 +92,8 @@ func NewRouter(store ClinicStore, options ...RouterOption) nethttp.Handler {
 		APIKeyPepper:           config.APIKeyPepper,
 		WebhookDeliveryEnabled: config.WebhookDeliveryEnabled,
 		LoginRateLimiter:       config.LoginRateLimiter,
+		Metrics:                config.Metrics,
+		MetricsToken:           config.MetricsToken,
 	})
 	requireAuth := RequireAuth(store)
 	partnerAuth := RequirePartnerAPIKey(store, config.APIKeyPepper)
@@ -75,6 +102,9 @@ func NewRouter(store ClinicStore, options ...RouterOption) nethttp.Handler {
 	orgAdminOrSystemAdmin := RequireRole("org_admin", "system_admin")
 
 	router.Get("/healthz", Healthz)
+	if config.MetricsEnabled {
+		router.Get("/metrics", handler.Metrics)
+	}
 	router.Get("/readyz", handler.Readyz)
 	router.Post("/v1/auth/login", handler.Login)
 	router.Post("/v1/auth/logout", handler.Logout)

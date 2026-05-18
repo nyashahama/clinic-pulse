@@ -131,6 +131,35 @@ describe("auth API client", () => {
     );
     const headers = new Headers(fetchImpl.mock.calls[0][1]?.headers);
     expect(headers.get("cookie")).toBe("clinicpulse_session=session-token");
+    expect(headers.get("x-request-id")).toMatch(/^[A-Za-z0-9._:-]{1,128}$/);
+    expect(headers.get("traceparent")).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/);
+  });
+
+  it("preserves explicit observability headers for auth API calls", async () => {
+    const fetchImpl = vi.fn<AuthApiFetch>().mockResolvedValue(
+      jsonResponse({
+        user: authUser(),
+        memberships: [membership("district_manager")],
+      }),
+    );
+
+    await login("manager@example.test", "correct-password", {
+      baseUrl: "https://api.example.test/root/",
+      fetch: fetchImpl,
+      init: {
+        headers: {
+          traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+          "x-request-id": "auth-login-req-1",
+        },
+      },
+    });
+
+    const headers = new Headers(fetchImpl.mock.calls[0][1]?.headers);
+    expect(headers.get("content-type")).toBe("application/json");
+    expect(headers.get("traceparent")).toBe(
+      "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+    );
+    expect(headers.get("x-request-id")).toBe("auth-login-req-1");
   });
 
   it("logout calls the backend logout endpoint", async () => {
@@ -184,6 +213,40 @@ describe("auth API client", () => {
       "https://server-api.example.test/root/v1/auth/me",
       expect.objectContaining({ method: "GET" }),
     );
+  });
+
+  it("supports relative public API base URLs for browser auth calls with observability headers", async () => {
+    const previousBaseUrl = process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL;
+    process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL = "/api/clinicpulse";
+    vi.stubGlobal("window", {});
+    const fetchImpl = vi.fn<AuthApiFetch>().mockResolvedValue(
+      jsonResponse({
+        user: authUser(),
+        session: {
+          id: 100,
+          userId: 42,
+          createdAt: "2026-05-01T08:00:00.000Z",
+          expiresAt: "2026-05-08T08:00:00.000Z",
+        },
+        memberships: [membership("district_manager")],
+      }),
+    );
+
+    try {
+      await me({ fetch: fetchImpl });
+    } finally {
+      vi.unstubAllGlobals();
+      if (previousBaseUrl === undefined) {
+        delete process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL;
+      } else {
+        process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL = previousBaseUrl;
+      }
+    }
+
+    expect(fetchImpl.mock.calls[0][0]).toBe("/api/clinicpulse/v1/auth/me");
+    const headers = new Headers(fetchImpl.mock.calls[0][1]?.headers);
+    expect(headers.get("x-request-id")).toMatch(/^[A-Za-z0-9._:-]{1,128}$/);
+    expect(headers.get("traceparent")).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/);
   });
 });
 

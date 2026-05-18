@@ -2,13 +2,13 @@
 
 Date: 2026-05-12
 Status: Active roadmap
-Current phase: Phase 4 - Observability And Operations
+Current phase: Phase 5 - Pilot Launch Readiness
 
 ## Purpose
 
 This document is the persistent production-readiness map for ClinicPulse. Keep it updated after every phase so the next phase is always obvious.
 
-ClinicPulse is currently a production-shaped alpha. It has the core product loop, real API/database foundations, hardened auth, roles, audit evidence, admin governance surfaces, pilot data integrity evidence, and stable release gates, but it still needs observability, operational runbooks, and pilot governance before it can be treated as production software.
+ClinicPulse is currently a production-shaped alpha. It has the core product loop, real API/database foundations, hardened auth, roles, audit evidence, admin governance surfaces, pilot data integrity evidence, stable release gates, and implementation-complete observability/operations foundations, but it still needs pilot governance, release-candidate verification, and stakeholder launch signoff before it can be treated as production software.
 
 ## Phase Status Key
 
@@ -16,6 +16,7 @@ ClinicPulse is currently a production-shaped alpha. It has the core product loop
 - `Planned`: spec and implementation plan exist.
 - `Spec in review`: spec exists and is awaiting approval before implementation planning.
 - `In progress`: implementation branch is active.
+- `Implementation complete`: implementation and slice-level review are complete, but full release-gate verification or launch signoff remains pending.
 - `Blocked`: implementation is waiting on a decision, dependency, or external setup.
 - `Complete`: phase acceptance criteria passed and closeout is documented.
 
@@ -42,7 +43,7 @@ Phase 0 makes these commands reliable and enforceable. Later phases may add stri
 | Phase 1 - Production Runtime And Deployment | Complete | Repeatable staging deployment with production runtime controls | 3-5 days |
 | Phase 2 - Security And Auth Hardening | Complete | Production-safe auth, sessions, secrets, rate limits, and account lifecycle | 1 week |
 | Phase 3 - Pilot Data And Product Integrity | Complete | Real data provenance, completed pilot workflows, and legal/safety surfaces | 1-2 weeks |
-| Phase 4 - Observability And Operations | Not started | Logs, metrics, tracing, alerts, runbooks, and incident process | 1 week |
+| Phase 4 - Observability And Operations | Implementation complete | Logs, metrics, tracing, alerts, runbooks, and incident process | 1 week |
 | Phase 5 - Pilot Launch Readiness | Not started | Release candidate, stakeholder docs, operational signoff, and launch checklist | 1-2 weeks |
 
 ## Phase 0 - Release Gate Stabilization
@@ -145,6 +146,10 @@ Status: Complete. The closeout records verification evidence and residual risk. 
 
 ## Phase 4 - Observability And Operations
 
+Spec: `docs/phase-4-observability-and-operations-spec.md`
+Plan: `docs/phase-4-observability-and-operations-implementation-plan.md`
+Closeout: `docs/phase-4-observability-and-operations-closeout.md`
+
 Goal:
 
 Make ClinicPulse operable by a real team.
@@ -161,6 +166,8 @@ Scope:
 Exit rule:
 
 Phase 4 is complete when an operator can detect, triage, and communicate incidents without reading source code.
+
+Status: Implementation complete. The closeout records delivered observability/operations behavior, targeted slice validation, fresh local release-gate evidence, residual risks, and Phase 5 handoff notes. `git status --short` still needs explicit confirmation before a pilot release candidate.
 
 ## Phase 5 - Pilot Launch Readiness
 

@@ -23,6 +23,9 @@ func clearConfigEnv(t *testing.T) {
 		"CLINICPULSE_LOGIN_RATE_LIMIT",
 		"CLINICPULSE_MUTATION_RATE_LIMIT",
 		"CLINICPULSE_RATE_LIMIT_WINDOW",
+		"CLINICPULSE_METRICS_ENABLED",
+		"CLINICPULSE_METRICS_TOKEN",
+		"CLINICPULSE_OBSERVABILITY_SERVICE_NAME",
 	} {
 		t.Setenv(key, "")
 	}
@@ -42,6 +45,15 @@ func TestLoadAllowsLocalDefaults(t *testing.T) {
 
 	if cfg.Addr != ":8080" {
 		t.Fatalf("Addr = %q, want :8080", cfg.Addr)
+	}
+	if cfg.MetricsEnabled {
+		t.Fatal("MetricsEnabled = true, want false")
+	}
+	if cfg.MetricsToken != "" {
+		t.Fatalf("MetricsToken = %q, want empty local default", cfg.MetricsToken)
+	}
+	if cfg.ObservabilityServiceName != "clinicpulse-api" {
+		t.Fatalf("ObservabilityServiceName = %q, want clinicpulse-api", cfg.ObservabilityServiceName)
 	}
 }
 
@@ -102,6 +114,74 @@ func TestLoadRejectsUnsafeStagingConfig(t *testing.T) {
 		if !strings.Contains(errText, want) {
 			t.Fatalf("Load() error = %q, want mention %s", errText, want)
 		}
+	}
+}
+
+func TestLoadDisablesMetrics(t *testing.T) {
+	clearConfigEnv(t)
+	t.Setenv("CLINICPULSE_METRICS_ENABLED", "false")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	if cfg.MetricsEnabled {
+		t.Fatal("MetricsEnabled = true, want false")
+	}
+}
+
+func TestLoadRequiresMetricsTokenOutsideLocalWhenEnabled(t *testing.T) {
+	clearConfigEnv(t)
+	t.Setenv("CLINICPULSE_DEPLOY_ENV", string(DeployEnvStaging))
+	t.Setenv("DATABASE_URL", "postgres://clinicpulse.example/staging")
+	t.Setenv("CLINICPULSE_API_KEY_PEPPER", strings.Repeat("p", 32))
+	t.Setenv("CLINICPULSE_TRUSTED_ORIGINS", "https://clinicpulse.example")
+	t.Setenv("CLINICPULSE_METRICS_ENABLED", "true")
+
+	_, err := Load()
+	if err == nil || !strings.Contains(err.Error(), "CLINICPULSE_METRICS_TOKEN") {
+		t.Fatalf("expected metrics token validation error, got %v", err)
+	}
+}
+
+func TestLoadAllowsMetricsDisabledOutsideLocalWithoutToken(t *testing.T) {
+	clearConfigEnv(t)
+	t.Setenv("CLINICPULSE_DEPLOY_ENV", string(DeployEnvProduction))
+	t.Setenv("DATABASE_URL", "postgres://clinicpulse.example/production")
+	t.Setenv("CLINICPULSE_API_KEY_PEPPER", strings.Repeat("p", 32))
+	t.Setenv("CLINICPULSE_TRUSTED_ORIGINS", "https://clinicpulse.example")
+	t.Setenv("CLINICPULSE_METRICS_ENABLED", "false")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.MetricsEnabled {
+		t.Fatal("MetricsEnabled = true, want false")
+	}
+}
+
+func TestLoadRejectsShortMetricsTokenOutsideLocal(t *testing.T) {
+	clearConfigEnv(t)
+	t.Setenv("CLINICPULSE_DEPLOY_ENV", string(DeployEnvStaging))
+	t.Setenv("DATABASE_URL", "postgres://clinicpulse.example/staging")
+	t.Setenv("CLINICPULSE_API_KEY_PEPPER", strings.Repeat("p", 32))
+	t.Setenv("CLINICPULSE_TRUSTED_ORIGINS", "https://clinicpulse.example")
+	t.Setenv("CLINICPULSE_METRICS_ENABLED", "true")
+	t.Setenv("CLINICPULSE_METRICS_TOKEN", "short")
+
+	_, err := Load()
+	if err == nil || !strings.Contains(err.Error(), "at least 24 characters") {
+		t.Fatalf("expected metrics token length validation error, got %v", err)
+	}
+}
+
+func TestLoadRejectsEmptyObservabilityServiceName(t *testing.T) {
+	cfg := Config{DeployEnv: DeployEnvLocal}
+	err := cfg.Validate()
+	if err == nil || !strings.Contains(err.Error(), "CLINICPULSE_OBSERVABILITY_SERVICE_NAME") {
+		t.Fatalf("expected observability service name validation error, got %v", err)
 	}
 }
 

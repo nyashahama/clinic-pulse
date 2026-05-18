@@ -501,7 +501,7 @@ CROSS JOIN (
             'partner.webhook_test_recorded',
             'partner_webhook_event',
             'clinicpulse.webhook_test',
-            'Local review webhook test evidence recorded without exposing secrets.',
+            'Local review webhook preview recorded without exposing secrets.',
             '{"source":"local_phase3_review_evidence","secretExposed":false}',
             '2026-05-01T08:48:00.000Z'
         ),

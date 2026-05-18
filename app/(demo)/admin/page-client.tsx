@@ -418,7 +418,15 @@ export default function AdminPage({
         </div>
 
         <div id="readiness">
-          {syncSummary ? <PilotReadinessPanel summary={syncSummary} /> : null}
+          {syncSummary ? (
+            isSystemAdmin ? (
+              <div id="reporting-coverage">
+                <PilotReadinessPanel summary={syncSummary} />
+              </div>
+            ) : (
+              <PilotReadinessPanel summary={syncSummary} />
+            )
+          ) : null}
         </div>
         <div id="partner-readiness">
           {isSystemAdmin ? <span id="partner-readiness-panel" className="sr-only" /> : null}

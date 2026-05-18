@@ -66,5 +66,13 @@ docs/*
 !docs/phase-2-security-and-auth-hardening-spec.md
 !docs/phase-2-security-and-auth-hardening-implementation-plan.md
 !docs/phase-2-security-and-auth-hardening-closeout.md
+!docs/phase-3-pilot-data-product-integrity-spec.md
+!docs/phase-3-pilot-data-product-integrity-implementation-plan.md
+!docs/phase-3-pilot-data-product-integrity-closeout.md
+!docs/phase-4-observability-and-operations-spec.md
+!docs/phase-4-observability-and-operations-implementation-plan.md
+!docs/phase-4-observability-and-operations-closeout.md
+!docs/operations/
+!docs/operations/*.md
 !docs/deployment.md
 reference-projects/

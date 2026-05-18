@@ -40,35 +40,35 @@ func RequireAuth(clinicStore ClinicStore) func(nethttp.Handler) nethttp.Handler 
 		return nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
 			cookie, err := r.Cookie(sessionCookieName)
 			if err != nil || cookie.Value == "" {
-				respondUnauthorized(w)
+				respondRequestUnauthorized(w, r)
 				return
 			}
 
 			tokenHash, err := auth.HashSessionToken(cookie.Value)
 			if err != nil {
-				respondUnauthorized(w)
+				respondRequestUnauthorized(w, r)
 				return
 			}
 
 			session, user, err := clinicStore.GetSessionByTokenHash(r.Context(), tokenHash)
 			if err != nil {
 				if errors.Is(err, pgx.ErrNoRows) {
-					respondUnauthorized(w)
+					respondRequestUnauthorized(w, r)
 					return
 				}
-				RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+				respondRequestError(w, r, nethttp.StatusInternalServerError, "store", "internal_error", "internal server error")
 				return
 			}
 
 			memberships, err := clinicStore.ListMembershipsForUser(r.Context(), user.ID)
 			if err != nil {
-				RespondError(w, nethttp.StatusInternalServerError, "internal_error", "internal server error")
+				respondRequestError(w, r, nethttp.StatusInternalServerError, "store", "internal_error", "internal server error")
 				return
 			}
 
 			principal, ok := PrincipalForMemberships(user, session, memberships)
 			if !ok {
-				respondUnauthorized(w)
+				respondRequestUnauthorized(w, r)
 				return
 			}
 
@@ -93,11 +93,11 @@ func RequireRole(roles ...string) func(nethttp.Handler) nethttp.Handler {
 		return nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
 			principal, ok := PrincipalFromContext(r.Context())
 			if !ok {
-				respondUnauthorized(w)
+				respondRequestUnauthorized(w, r)
 				return
 			}
 			if _, ok := allowed[principal.Role]; !ok {
-				RespondError(w, nethttp.StatusForbidden, "forbidden", "forbidden")
+				respondRequestError(w, r, nethttp.StatusForbidden, "auth", "forbidden", "forbidden")
 				return
 			}
 			next.ServeHTTP(w, r)

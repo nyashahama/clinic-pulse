@@ -10,9 +10,10 @@ type errorResponse struct {
 }
 
 type responseError struct {
-	Code    string   `json:"code"`
-	Message string   `json:"message"`
-	Fields  []string `json:"fields,omitempty"`
+	Code      string   `json:"code"`
+	Message   string   `json:"message"`
+	Fields    []string `json:"fields,omitempty"`
+	RequestID string   `json:"requestId,omitempty"`
 }
 
 func RespondJSON(w nethttp.ResponseWriter, status int, body any) {
@@ -22,11 +23,16 @@ func RespondJSON(w nethttp.ResponseWriter, status int, body any) {
 }
 
 func RespondError(w nethttp.ResponseWriter, status int, code string, message string, fields ...string) {
+	RespondErrorWithRequestID(w, status, code, message, "", fields...)
+}
+
+func RespondErrorWithRequestID(w nethttp.ResponseWriter, status int, code string, message string, requestID string, fields ...string) {
 	RespondJSON(w, status, errorResponse{
 		Error: responseError{
-			Code:    code,
-			Message: message,
-			Fields:  fields,
+			Code:      code,
+			Message:   message,
+			Fields:    fields,
+			RequestID: requestID,
 		},
 	})
 }

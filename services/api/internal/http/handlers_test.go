@@ -19,6 +19,7 @@ import (
 
 	"clinicpulse/services/api/internal/auth"
 	apihttp "clinicpulse/services/api/internal/http"
+	"clinicpulse/services/api/internal/observability"
 	"clinicpulse/services/api/internal/security"
 	"clinicpulse/services/api/internal/store"
 )
@@ -43,7 +44,8 @@ func TestHealthzReturnsOK(t *testing.T) {
 }
 
 func TestReadyzChecksDatabase(t *testing.T) {
-	router := apihttp.NewRouter(fakeStore{})
+	metrics := observability.NewRegistry()
+	router := apihttp.NewRouter(fakeStore{}, apihttp.WithObservability(observability.NewJSONLogger(io.Discard, nil), metrics))
 
 	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
 	rec := httptest.NewRecorder()
@@ -58,10 +60,15 @@ func TestReadyzChecksDatabase(t *testing.T) {
 	if got["database"] != "ok" {
 		t.Fatalf("expected database ok readiness response, got %#v", got)
 	}
+	gotMetrics := metrics.RenderPrometheus()
+	if !strings.Contains(gotMetrics, `clinicpulse_readiness_checks_total{result="success"} 1`) {
+		t.Fatalf("expected successful readiness metric, got:\n%s", gotMetrics)
+	}
 }
 
 func TestReadyzReturnsUnavailableWhenDatabaseCheckFails(t *testing.T) {
-	router := apihttp.NewRouter(fakeStore{readyErr: errors.New("database down")})
+	metrics := observability.NewRegistry()
+	router := apihttp.NewRouter(fakeStore{readyErr: errors.New("database down")}, apihttp.WithObservability(observability.NewJSONLogger(io.Discard, nil), metrics))
 
 	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
 	rec := httptest.NewRecorder()
@@ -79,16 +86,184 @@ func TestReadyzReturnsUnavailableWhenDatabaseCheckFails(t *testing.T) {
 	if strings.Contains(rec.Body.String(), "database down") {
 		t.Fatalf("expected readiness response not to leak store error, got %s", rec.Body.String())
 	}
+	gotMetrics := metrics.RenderPrometheus()
+	if !strings.Contains(gotMetrics, `clinicpulse_readiness_checks_total{result="failure"} 1`) {
+		t.Fatalf("expected failed readiness metric, got:\n%s", gotMetrics)
+	}
+}
+
+func TestMetricsEndpointRendersPrometheusMetrics(t *testing.T) {
+	metrics := observability.NewRegistry()
+	router := apihttp.NewRouter(fakeStore{}, apihttp.WithObservability(observability.NewJSONLogger(io.Discard, nil), metrics), apihttp.WithMetricsEndpoint(true, ""))
+
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if got := rec.Header().Get("Content-Type"); !strings.HasPrefix(got, "text/plain; version=0.0.4") && !strings.HasPrefix(got, "text/plain") {
+		t.Fatalf("expected Prometheus text content type, got %q", got)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "# HELP clinicpulse_http_requests_total") {
+		t.Fatalf("expected Prometheus metrics body, got:\n%s", body)
+	}
+	gotMetrics := metrics.RenderPrometheus()
+	if !strings.Contains(gotMetrics, `clinicpulse_http_requests_total{method="GET",route="/metrics",status_class="2xx",principal_type="anonymous"} 1`) {
+		t.Fatalf("expected request logger to record metrics endpoint, got:\n%s", gotMetrics)
+	}
+}
+
+func TestMetricsEndpointIsNotExposedByBareRouter(t *testing.T) {
+	router := apihttp.NewRouter(fakeStore{})
+
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusNotFound, rec.Code, rec.Body.String())
+	}
+}
+
+func TestMetricsEndpointRequiresBearerTokenWhenConfigured(t *testing.T) {
+	const token = "abcdefghijklmnopqrstuvwxyz"
+	router := apihttp.NewRouter(fakeStore{}, apihttp.WithMetricsEndpoint(true, token))
+
+	for _, tt := range []struct {
+		name          string
+		authorization string
+		wantStatus    int
+	}{
+		{name: "missing", wantStatus: http.StatusUnauthorized},
+		{name: "invalid", authorization: "Bearer wrong-token", wantStatus: http.StatusUnauthorized},
+		{name: "prefix only", authorization: "Bearer ", wantStatus: http.StatusUnauthorized},
+		{name: "extra credential", authorization: "Bearer " + token + " extra", wantStatus: http.StatusUnauthorized},
+		{name: "wrong scheme", authorization: "Basic " + token, wantStatus: http.StatusUnauthorized},
+		{name: "valid", authorization: "Bearer " + token, wantStatus: http.StatusOK},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+			if tt.authorization != "" {
+				req.Header.Set("Authorization", tt.authorization)
+			}
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != tt.wantStatus {
+				t.Fatalf("expected status %d, got %d with body %s", tt.wantStatus, rec.Code, rec.Body.String())
+			}
+			if rec.Code == http.StatusUnauthorized && strings.Contains(rec.Body.String(), token) {
+				t.Fatalf("expected unauthorized response not to leak token, got %s", rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestMetricsEndpointUnauthorizedLogsStructuredErrorFields(t *testing.T) {
+	const token = "abcdefghijklmnopqrstuvwxyz"
+	var logOutput bytes.Buffer
+	router := apihttp.NewRouter(
+		fakeStore{},
+		apihttp.WithObservability(observability.NewJSONLogger(&logOutput, nil), observability.NewRegistry()),
+		apihttp.WithMetricsEndpoint(true, token),
+	)
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	req.Header.Set("X-Request-Id", "request-structured-123")
+	req.Header.Set("traceparent", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01")
+	req.Header.Set("Authorization", "Bearer wrong-token")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusUnauthorized, rec.Code, rec.Body.String())
+	}
+	logLine := decodeFirstLogLine(t, &logOutput)
+	assertLogField(t, logLine, "event", "http_request_error")
+	assertLogField(t, logLine, "component", "auth")
+	assertLogField(t, logLine, "error_kind", "auth")
+	assertLogField(t, logLine, "error_code", "unauthorized")
+	assertLogField(t, logLine, "request_id", "request-structured-123")
+	assertLogField(t, logLine, "trace_id", "4bf92f3577b34da6a3ce929d0e0e4736")
+	assertLogField(t, logLine, "method", "GET")
+	assertLogField(t, logLine, "route", "/metrics")
+	assertLogField(t, logLine, "status", float64(http.StatusUnauthorized))
+	assertLogField(t, logLine, "status_class", "4xx")
+	if strings.Contains(logOutput.String(), token) || strings.Contains(logOutput.String(), "wrong-token") {
+		t.Fatalf("expected structured error log not to contain metrics tokens, got %q", logOutput.String())
+	}
+}
+
+func TestMetricsEndpointRejectsDuplicateAuthorizationHeaders(t *testing.T) {
+	const token = "abcdefghijklmnopqrstuvwxyz"
+	router := apihttp.NewRouter(fakeStore{}, apihttp.WithMetricsEndpoint(true, token))
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusUnauthorized, rec.Code, rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), token) {
+		t.Fatalf("expected unauthorized response not to leak token, got %s", rec.Body.String())
+	}
+}
+
+func TestMetricsHandlerHandlesNilRegistry(t *testing.T) {
+	handler := apihttp.NewHandler(fakeStore{}, apihttp.HandlerConfig{})
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	rec := httptest.NewRecorder()
+
+	handler.Metrics(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "# HELP clinicpulse_http_requests_total") {
+		t.Fatalf("expected Prometheus metrics body, got:\n%s", rec.Body.String())
+	}
+}
+
+func TestMetricsEndpointReturnsNotFoundWhenDisabled(t *testing.T) {
+	router := apihttp.NewRouter(fakeStore{}, apihttp.WithMetricsEndpoint(false, ""))
+
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusNotFound, rec.Code, rec.Body.String())
+	}
 }
 
 func TestRequestLoggerCapturesStatusAndRequestID(t *testing.T) {
 	var logOutput bytes.Buffer
-	logger := log.New(&logOutput, "", 0)
-	handler := apihttp.RequestLogger(logger)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	logger := observability.NewJSONLogger(&logOutput, observability.Fields{"service": "clinicpulse-api", "deploy_env": "test"})
+	metrics := observability.NewRegistry()
+	traceparent := "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+	handler := apihttp.RequestLogger(logger, metrics)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if requestID, ok := apihttp.RequestIDFromContext(r.Context()); !ok || requestID != "request-123" {
+			t.Fatalf("expected request id in context, got %q ok=%v", requestID, ok)
+		}
+		traceContext, ok := apihttp.TraceContextFromContext(r.Context())
+		if !ok || traceContext.Header() != traceparent {
+			t.Fatalf("expected trace context in context, got %#v ok=%v", traceContext, ok)
+		}
 		w.WriteHeader(http.StatusTeapot)
 	}))
 	req := httptest.NewRequest(http.MethodGet, "/logged", nil)
 	req.Header.Set("X-Request-Id", "request-123")
+	req.Header.Set("traceparent", traceparent)
 	rec := httptest.NewRecorder()
 
 	handler.ServeHTTP(rec, req)
@@ -99,25 +274,34 @@ func TestRequestLoggerCapturesStatusAndRequestID(t *testing.T) {
 	if rec.Header().Get("X-Request-Id") != "request-123" {
 		t.Fatalf("expected response request id request-123, got %q", rec.Header().Get("X-Request-Id"))
 	}
-	logLine := logOutput.String()
-	for _, want := range []string{
-		"method=GET",
-		"path=/logged",
-		"status=418",
-		"principal_type=anonymous",
-		"request_id=request-123",
-		"duration_ms=",
-	} {
-		if !strings.Contains(logLine, want) {
-			t.Fatalf("expected log to contain %q, got %q", want, logLine)
-		}
+	if rec.Header().Get("traceparent") != traceparent {
+		t.Fatalf("expected response traceparent %q, got %q", traceparent, rec.Header().Get("traceparent"))
+	}
+	logLine := decodeLogLine(t, &logOutput)
+	assertLogField(t, logLine, "event", "http_request_completed")
+	assertLogField(t, logLine, "service", "clinicpulse-api")
+	assertLogField(t, logLine, "deploy_env", "test")
+	assertLogField(t, logLine, "method", "GET")
+	assertLogField(t, logLine, "route", "/logged")
+	assertLogField(t, logLine, "status", float64(http.StatusTeapot))
+	assertLogField(t, logLine, "status_class", "4xx")
+	assertLogField(t, logLine, "principal_type", "anonymous")
+	assertLogField(t, logLine, "request_id", "request-123")
+	assertLogField(t, logLine, "trace_id", "4bf92f3577b34da6a3ce929d0e0e4736")
+	assertLogField(t, logLine, "span_id", "00f067aa0ba902b7")
+	if _, ok := logLine["duration_ms"].(float64); !ok {
+		t.Fatalf("expected numeric duration_ms, got %#v", logLine["duration_ms"])
+	}
+	gotMetrics := metrics.RenderPrometheus()
+	if !strings.Contains(gotMetrics, `clinicpulse_http_requests_total{method="GET",route="/logged",status_class="4xx",principal_type="anonymous"} 1`) {
+		t.Fatalf("expected request metrics for logged request, got:\n%s", gotMetrics)
 	}
 }
 
 func TestRequestLoggerGeneratesRequestID(t *testing.T) {
 	var logOutput bytes.Buffer
-	logger := log.New(&logOutput, "", 0)
-	handler := apihttp.RequestLogger(logger)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	logger := observability.NewJSONLogger(&logOutput, nil)
+	handler := apihttp.RequestLogger(logger, observability.NewRegistry())(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	req := httptest.NewRequest(http.MethodGet, "/logged", nil)
@@ -129,9 +313,125 @@ func TestRequestLoggerGeneratesRequestID(t *testing.T) {
 	if requestID == "" {
 		t.Fatal("expected generated request id response header")
 	}
-	if !strings.Contains(logOutput.String(), "request_id="+requestID) {
-		t.Fatalf("expected log to include generated request id %q, got %q", requestID, logOutput.String())
+	traceparent := rec.Header().Get("traceparent")
+	if !isValidTraceparentForTest(traceparent) {
+		t.Fatalf("expected valid generated traceparent, got %q", traceparent)
 	}
+	logLine := decodeLogLine(t, &logOutput)
+	assertLogField(t, logLine, "request_id", requestID)
+	parts := strings.Split(traceparent, "-")
+	assertLogField(t, logLine, "trace_id", parts[1])
+	assertLogField(t, logLine, "span_id", parts[2])
+}
+
+func TestRequestLoggerRejectsUnsafeTraceparentHeaders(t *testing.T) {
+	var logOutput bytes.Buffer
+	logger := observability.NewJSONLogger(&logOutput, nil)
+	handler := apihttp.RequestLogger(logger, observability.NewRegistry())(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/logged", nil)
+	req.Header.Set("traceparent", "abc status=500")
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	traceparent := rec.Header().Get("traceparent")
+	if !isValidTraceparentForTest(traceparent) {
+		t.Fatalf("expected safe replacement traceparent, got %q", traceparent)
+	}
+	if traceparent == "abc status=500" {
+		t.Fatal("expected unsafe traceparent to be replaced")
+	}
+	logLine := decodeLogLine(t, &logOutput)
+	parts := strings.Split(traceparent, "-")
+	assertLogField(t, logLine, "trace_id", parts[1])
+	assertLogField(t, logLine, "span_id", parts[2])
+	if strings.Contains(logOutput.String(), "abc status=500") {
+		t.Fatalf("expected log not to contain unsafe traceparent, got %q", logOutput.String())
+	}
+}
+
+func TestRequestLoggerRecordsAndReraisesPanics(t *testing.T) {
+	var logOutput bytes.Buffer
+	logger := observability.NewJSONLogger(&logOutput, nil)
+	metrics := observability.NewRegistry()
+	handler := apihttp.RequestLogger(logger, metrics)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		panic("boom")
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/panic", nil)
+	rec := httptest.NewRecorder()
+
+	didPanic := false
+	func() {
+		defer func() {
+			recovered := recover()
+			if recovered == nil {
+				return
+			}
+			didPanic = true
+			if recovered != "boom" {
+				t.Fatalf("expected panic to be re-raised unchanged, got %#v", recovered)
+			}
+		}()
+		handler.ServeHTTP(rec, req)
+	}()
+
+	if !didPanic {
+		t.Fatal("expected handler panic to be re-raised")
+	}
+	logLine := decodeLogLine(t, &logOutput)
+	assertLogField(t, logLine, "event", "http_request_completed")
+	assertLogField(t, logLine, "route", "/panic")
+	assertLogField(t, logLine, "status", float64(http.StatusInternalServerError))
+	assertLogField(t, logLine, "status_class", "5xx")
+	gotMetrics := metrics.RenderPrometheus()
+	if !strings.Contains(gotMetrics, `clinicpulse_http_requests_total{method="GET",route="/panic",status_class="5xx",principal_type="anonymous"} 1`) {
+		t.Fatalf("expected panic request metric, got:\n%s", gotMetrics)
+	}
+}
+
+func TestRequestLoggerSupportsResponseControllerFlush(t *testing.T) {
+	var logOutput bytes.Buffer
+	logger := observability.NewJSONLogger(&logOutput, nil)
+	handler := apihttp.RequestLogger(logger, observability.NewRegistry())(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := http.NewResponseController(w).Flush(); err != nil {
+			t.Fatalf("expected response controller flush to work: %v", err)
+		}
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/flush-route", nil)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
+	}
+	if !rec.Flushed {
+		t.Fatal("expected underlying response recorder to be flushed")
+	}
+	assertLogField(t, decodeLogLine(t, &logOutput), "status", float64(http.StatusOK))
+}
+
+func TestRequestLoggerResponseControllerFlushReportsUnsupported(t *testing.T) {
+	var logOutput bytes.Buffer
+	logger := observability.NewJSONLogger(&logOutput, nil)
+	handler := apihttp.RequestLogger(logger, observability.NewRegistry())(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		err := http.NewResponseController(w).Flush()
+		if !errors.Is(err, http.ErrNotSupported) {
+			t.Fatalf("expected unsupported flush error, got %v", err)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/flush-unsupported", nil)
+	rec := newBasicResponseWriter()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.status != http.StatusNoContent {
+		t.Fatalf("expected status %d, got %d", http.StatusNoContent, rec.status)
+	}
+	assertLogField(t, decodeLogLine(t, &logOutput), "status", float64(http.StatusNoContent))
 }
 
 func TestRequestLoggerRejectsUnsafeRequestIDHeaders(t *testing.T) {
@@ -173,8 +473,8 @@ func TestRequestLoggerRejectsUnsafeRequestIDHeaders(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var logOutput bytes.Buffer
-			logger := log.New(&logOutput, "", 0)
-			handler := apihttp.RequestLogger(logger)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			logger := observability.NewJSONLogger(&logOutput, nil)
+			handler := apihttp.RequestLogger(logger, observability.NewRegistry())(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusNoContent)
 			}))
 			req := httptest.NewRequest(http.MethodGet, "/logged", nil)
@@ -191,9 +491,7 @@ func TestRequestLoggerRejectsUnsafeRequestIDHeaders(t *testing.T) {
 				t.Fatalf("expected unsafe request id %q to be replaced", tt.requestID)
 			}
 			logLine := logOutput.String()
-			if !strings.Contains(logLine, "request_id="+gotRequestID) {
-				t.Fatalf("expected log to include replacement request id %q, got %q", gotRequestID, logLine)
-			}
+			assertLogField(t, decodeLogLine(t, &logOutput), "request_id", gotRequestID)
 			for _, forbidden := range tt.notInLog {
 				if strings.Contains(logLine, forbidden) {
 					t.Fatalf("expected log not to contain %q, got %q", forbidden, logLine)
@@ -233,8 +531,8 @@ func TestRequestLoggerLogsPrincipalTypeAssignedDownstream(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var logOutput bytes.Buffer
-			logger := log.New(&logOutput, "", 0)
-			handler := apihttp.RequestLogger(logger)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			logger := observability.NewJSONLogger(&logOutput, nil)
+			handler := apihttp.RequestLogger(logger, observability.NewRegistry())(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				r = r.WithContext(tt.assign(r.Context()))
 				w.WriteHeader(http.StatusNoContent)
 			}))
@@ -246,19 +544,18 @@ func TestRequestLoggerLogsPrincipalTypeAssignedDownstream(t *testing.T) {
 			if rec.Code != http.StatusNoContent {
 				t.Fatalf("expected status %d, got %d", http.StatusNoContent, rec.Code)
 			}
-			if !strings.Contains(logOutput.String(), tt.want) {
-				t.Fatalf("expected log to contain %q, got %q", tt.want, logOutput.String())
-			}
+			assertLogField(t, decodeLogLine(t, &logOutput), "principal_type", strings.TrimPrefix(tt.want, "principal_type="))
 		})
 	}
 }
 
 func TestRequestLoggerRouterMountedPrincipalType(t *testing.T) {
 	t.Run("session", func(t *testing.T) {
-		logOutput := captureDefaultLogger(t)
-		router := newAuthenticatedTestRouter(t, fakeStore{
+		var logOutput bytes.Buffer
+		metrics := observability.NewRegistry()
+		router := apihttp.NewRouter(authenticatedStore(t, "district_manager", fakeStore{
 			clinics: []store.ClinicDetail{{Clinic: store.Clinic{ID: "clinic-1", District: defaultTestDistrict}}},
-		})
+		}), apihttp.WithObservability(observability.NewJSONLogger(&logOutput, nil), metrics))
 		req := newAuthenticatedRequest(t, http.MethodGet, "/v1/clinics", nil)
 		rec := httptest.NewRecorder()
 
@@ -267,13 +564,18 @@ func TestRequestLoggerRouterMountedPrincipalType(t *testing.T) {
 		if rec.Code != http.StatusOK {
 			t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
 		}
-		if !strings.Contains(logOutput.String(), "principal_type=session") {
-			t.Fatalf("expected authenticated session request log, got %q", logOutput.String())
+		logLine := decodeLogLine(t, &logOutput)
+		assertLogField(t, logLine, "principal_type", "session")
+		assertLogField(t, logLine, "route", "/v1/clinics")
+		gotMetrics := metrics.RenderPrometheus()
+		if !strings.Contains(gotMetrics, `clinicpulse_http_requests_total{method="GET",route="/v1/clinics",status_class="2xx",principal_type="session"} 1`) {
+			t.Fatalf("expected session request metric, got:\n%s", gotMetrics)
 		}
 	})
 
 	t.Run("partner", func(t *testing.T) {
-		logOutput := captureDefaultLogger(t)
+		var logOutput bytes.Buffer
+		metrics := observability.NewRegistry()
 		secret, _, err := auth.GenerateAPIKey("demo")
 		if err != nil {
 			t.Fatalf("GenerateAPIKey returned error: %v", err)
@@ -285,7 +587,7 @@ func TestRequestLoggerRouterMountedPrincipalType(t *testing.T) {
 		router := apihttp.NewRouter(fakeStore{
 			partnerAPIKey: validPartnerAPIKey(hash, []string{"clinics:read"}, nil),
 			clinics:       []store.ClinicDetail{{Clinic: store.Clinic{ID: "clinic-1", District: defaultTestDistrict}}},
-		})
+		}, apihttp.WithObservability(observability.NewJSONLogger(&logOutput, nil), metrics))
 		req := httptest.NewRequest(http.MethodGet, "/v1/partner/clinics", nil)
 		req.Header.Set("Authorization", "Bearer "+secret)
 		rec := httptest.NewRecorder()
@@ -295,16 +597,19 @@ func TestRequestLoggerRouterMountedPrincipalType(t *testing.T) {
 		if rec.Code != http.StatusOK {
 			t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
 		}
-		if !strings.Contains(logOutput.String(), "principal_type=partner") {
-			t.Fatalf("expected authenticated partner request log, got %q", logOutput.String())
+		logLine := decodeLogLine(t, &logOutput)
+		assertLogField(t, logLine, "principal_type", "partner")
+		gotMetrics := metrics.RenderPrometheus()
+		if !strings.Contains(gotMetrics, `clinicpulse_http_requests_total{method="GET",route="/v1/partner/clinics",status_class="2xx",principal_type="partner"} 1`) {
+			t.Fatalf("expected partner request metric, got:\n%s", gotMetrics)
 		}
 	})
 }
 
 func TestRequestLoggerInvalidCredentialsRemainAnonymous(t *testing.T) {
 	t.Run("invalid cookie", func(t *testing.T) {
-		logOutput := captureDefaultLogger(t)
-		router := apihttp.NewRouter(fakeStore{})
+		var logOutput bytes.Buffer
+		router := apihttp.NewRouter(fakeStore{}, apihttp.WithObservability(observability.NewJSONLogger(&logOutput, nil), observability.NewRegistry()))
 		req := httptest.NewRequest(http.MethodGet, "/v1/clinics", nil)
 		req.AddCookie(&http.Cookie{Name: "clinicpulse_session", Value: "not-a-valid-token"})
 		rec := httptest.NewRecorder()
@@ -312,21 +617,16 @@ func TestRequestLoggerInvalidCredentialsRemainAnonymous(t *testing.T) {
 		router.ServeHTTP(rec, req)
 
 		assertGenericUnauthorized(t, rec)
-		if !strings.Contains(logOutput.String(), "principal_type=anonymous") {
-			t.Fatalf("expected invalid cookie to log anonymous, got %q", logOutput.String())
-		}
-		if strings.Contains(logOutput.String(), "principal_type=session") {
-			t.Fatalf("expected invalid cookie not to log session, got %q", logOutput.String())
-		}
+		assertLogField(t, decodeLogLine(t, &logOutput), "principal_type", "anonymous")
 	})
 
 	t.Run("invalid bearer", func(t *testing.T) {
-		logOutput := captureDefaultLogger(t)
+		var logOutput bytes.Buffer
 		secret, _, err := auth.GenerateAPIKey("demo")
 		if err != nil {
 			t.Fatalf("GenerateAPIKey returned error: %v", err)
 		}
-		router := apihttp.NewRouter(fakeStore{})
+		router := apihttp.NewRouter(fakeStore{}, apihttp.WithObservability(observability.NewJSONLogger(&logOutput, nil), observability.NewRegistry()))
 		req := httptest.NewRequest(http.MethodGet, "/v1/partner/clinics", nil)
 		req.Header.Set("Authorization", "Bearer "+secret)
 		rec := httptest.NewRecorder()
@@ -334,12 +634,7 @@ func TestRequestLoggerInvalidCredentialsRemainAnonymous(t *testing.T) {
 		router.ServeHTTP(rec, req)
 
 		assertGenericUnauthorized(t, rec)
-		if !strings.Contains(logOutput.String(), "principal_type=anonymous") {
-			t.Fatalf("expected invalid bearer to log anonymous, got %q", logOutput.String())
-		}
-		if strings.Contains(logOutput.String(), "principal_type=partner") {
-			t.Fatalf("expected invalid bearer not to log partner, got %q", logOutput.String())
-		}
+		assertLogField(t, decodeLogLine(t, &logOutput), "principal_type", "anonymous")
 	})
 }
 
@@ -1889,6 +2184,7 @@ func TestAdminPartnerWebhookRejectsUnsafeTargetURLs(t *testing.T) {
 func TestAdminPartnerWebhookTestDeliveryEnabledIsExplicitlyNotImplemented(t *testing.T) {
 	orgID := int64(77)
 	secretHash := "stored-webhook-secret-hash"
+	metrics := observability.NewRegistry()
 	subscriptions := []store.PartnerWebhookSubscription{{
 		ID:             5,
 		OrganisationID: &orgID,
@@ -1904,7 +2200,7 @@ func TestAdminPartnerWebhookTestDeliveryEnabledIsExplicitlyNotImplemented(t *tes
 		partnerWebhookSubscriptions:    &subscriptions,
 		partnerWebhookEvents:           &events,
 		createPartnerWebhookEventInput: &eventInput,
-	}), apihttp.WithWebhookDeliveryEnabled(true))
+	}), apihttp.WithWebhookDeliveryEnabled(true), apihttp.WithObservability(observability.NewJSONLogger(io.Discard, nil), metrics))
 	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/webhooks/5/test", nil)
 	rec := httptest.NewRecorder()
 
@@ -1927,6 +2223,10 @@ func TestAdminPartnerWebhookTestDeliveryEnabledIsExplicitlyNotImplemented(t *tes
 	}
 	if strings.Contains(rec.Body.String(), secretHash) || strings.Contains(fmt.Sprint(eventInput.Payload), secretHash) || strings.Contains(fmt.Sprint(eventInput.Metadata), secretHash) {
 		t.Fatalf("expected webhook failure evidence not to expose secrets, response=%s input=%#v", rec.Body.String(), eventInput)
+	}
+	gotMetrics := metrics.RenderPrometheus()
+	if !strings.Contains(gotMetrics, `clinicpulse_domain_operations_total{operation="partner.webhook_test",result="failed"} 1`) {
+		t.Fatalf("expected webhook test failure operation metric, got:\n%s", gotMetrics)
 	}
 }
 
@@ -2110,6 +2410,38 @@ func TestAdminPartnerInvalidIDsAndBodiesReturnExpectedStatus(t *testing.T) {
 	}
 }
 
+func TestAdminPartnerInvalidIDsIncludeRequestIDAndValidationMetric(t *testing.T) {
+	orgID := int64(77)
+	metrics := observability.NewRegistry()
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", orgID, fakeStore{}),
+		apihttp.WithObservability(observability.NewJSONLogger(io.Discard, nil), metrics),
+	)
+
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/webhooks/not-a-number/test", nil)
+	req.Header.Set("X-Request-Id", "invalid-id-request-123")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusNotFound, rec.Code, rec.Body.String())
+	}
+	var got struct {
+		Error struct {
+			Code      string `json:"code"`
+			RequestID string `json:"requestId"`
+		} `json:"error"`
+	}
+	decodeJSON(t, rec, &got)
+	if got.Error.Code != "not_found" || got.Error.RequestID != "invalid-id-request-123" {
+		t.Fatalf("expected not_found with requestId, got %#v", got)
+	}
+	gotMetrics := metrics.RenderPrometheus()
+	if !strings.Contains(gotMetrics, `clinicpulse_http_errors_total{error_kind="validation"} 1`) {
+		t.Fatalf("expected validation error metric for invalid id, got:\n%s", gotMetrics)
+	}
+}
+
 func TestPartnerAlternativesFiltersCandidatesToAllowedDistricts(t *testing.T) {
 	secret, _, err := auth.GenerateAPIKey("demo")
 	if err != nil {
@@ -2216,6 +2548,110 @@ func TestUnexpectedStoreErrorsReturnInternalError(t *testing.T) {
 
 			assertInternalError(t, rec, storeErr)
 		})
+	}
+}
+
+func TestStoreBackedErrorsLogStructuredHTTPErrorFields(t *testing.T) {
+	storeErr := errors.New("database password leaked")
+	tests := []struct {
+		name             string
+		storeErr         error
+		wantStatus       int
+		wantResponseCode string
+		wantLogCode      string
+	}{
+		{
+			name:             "not found",
+			storeErr:         pgx.ErrNoRows,
+			wantStatus:       http.StatusNotFound,
+			wantResponseCode: "not_found",
+			wantLogCode:      "not_found",
+		},
+		{
+			name:             "store error",
+			storeErr:         storeErr,
+			wantStatus:       http.StatusInternalServerError,
+			wantResponseCode: "internal_error",
+			wantLogCode:      "store_error",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var logOutput bytes.Buffer
+			router := apihttp.NewRouter(
+				authenticatedStore(t, "district_manager", fakeStore{getClinicErr: tt.storeErr}),
+				apihttp.WithObservability(observability.NewJSONLogger(&logOutput, nil), observability.NewRegistry()),
+			)
+			req := newAuthenticatedRequest(t, http.MethodGet, "/v1/clinics/clinic-1", nil)
+			req.Header.Set("X-Request-Id", "store-structured-123")
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != tt.wantStatus {
+				t.Fatalf("expected status %d, got %d with body %s", tt.wantStatus, rec.Code, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), `"code":"`+tt.wantResponseCode+`"`) {
+				t.Fatalf("expected response code %q, got %q", tt.wantResponseCode, rec.Body.String())
+			}
+			logLine := decodeFirstLogLine(t, &logOutput)
+			assertLogField(t, logLine, "event", "http_request_error")
+			assertLogField(t, logLine, "component", "store")
+			assertLogField(t, logLine, "error_kind", "store")
+			assertLogField(t, logLine, "error_code", tt.wantLogCode)
+			assertLogField(t, logLine, "request_id", "store-structured-123")
+			assertLogField(t, logLine, "route", "/v1/clinics/{clinicId}")
+			assertLogField(t, logLine, "status", float64(tt.wantStatus))
+			if strings.Contains(logOutput.String(), storeErr.Error()) {
+				t.Fatalf("expected structured store error log not to contain raw store error, got %q", logOutput.String())
+			}
+		})
+	}
+}
+
+func TestStoreErrorRecordsHTTPErrorMetricAndRequestID(t *testing.T) {
+	metrics := observability.NewRegistry()
+	storeErr := errors.New("database password leaked")
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", 77, fakeStore{
+		createPartnerExportRunErr: storeErr,
+	}), apihttp.WithObservability(observability.NewJSONLogger(io.Discard, nil), metrics))
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/admin/exports", strings.NewReader(`{"format":"json","scope":{}}`))
+	req.Header.Set("X-Request-Id", "support-request-123")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assertInternalError(t, rec, storeErr)
+	gotMetrics := metrics.RenderPrometheus()
+	if !strings.Contains(gotMetrics, `clinicpulse_http_errors_total{error_kind="store"} 1`) {
+		t.Fatalf("expected store error metric, got:\n%s", gotMetrics)
+	}
+	var got struct {
+		Error struct {
+			RequestID string `json:"requestId"`
+		} `json:"error"`
+	}
+	decodeJSON(t, rec, &got)
+	if got.Error.RequestID != "support-request-123" {
+		t.Fatalf("expected requestId in error response, got %#v", got)
+	}
+}
+
+func TestValidationErrorRecordsHTTPErrorMetric(t *testing.T) {
+	metrics := observability.NewRegistry()
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "reporter", 77, fakeStore{}), apihttp.WithObservability(observability.NewJSONLogger(io.Discard, nil), metrics))
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports", strings.NewReader(`{"clinicId":"","status":"limited"}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusBadRequest, rec.Code, rec.Body.String())
+	}
+	gotMetrics := metrics.RenderPrometheus()
+	if !strings.Contains(gotMetrics, `clinicpulse_http_errors_total{error_kind="validation"} 1`) {
+		t.Fatalf("expected validation error metric, got:\n%s", gotMetrics)
 	}
 }
 
@@ -3403,7 +3839,7 @@ func TestOfflineSyncTimestampValidationAllowsBlankClinicIDAttempt(t *testing.T) 
 	}
 }
 
-func TestOfflineSyncRejectsInvalidJSON(t *testing.T) {
+func TestOfflineSyncInvalidJSONRecordsOperationError(t *testing.T) {
 	for _, tt := range []struct {
 		name string
 		body string
@@ -3413,7 +3849,10 @@ func TestOfflineSyncRejectsInvalidJSON(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			createCalls := 0
-			router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{createCalls: &createCalls}))
+			metrics := observability.NewRegistry()
+			router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{createCalls: &createCalls}),
+				apihttp.WithObservability(observability.NewJSONLogger(io.Discard, nil), metrics),
+			)
 			req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports/offline-sync", strings.NewReader(tt.body))
 			rec := httptest.NewRecorder()
 
@@ -3427,6 +3866,10 @@ func TestOfflineSyncRejectsInvalidJSON(t *testing.T) {
 			}
 			if createCalls != 0 {
 				t.Fatalf("expected invalid JSON not to call store, got %d calls", createCalls)
+			}
+			gotMetrics := metrics.RenderPrometheus()
+			if !strings.Contains(gotMetrics, `clinicpulse_domain_operations_total{operation="offline_sync",result="error"} 1`) {
+				t.Fatalf("expected offline sync error operation metric, got:\n%s", gotMetrics)
 			}
 		})
 	}
@@ -3763,7 +4206,7 @@ func TestReviewReportReturnsConflictForAlreadyReviewed(t *testing.T) {
 	}
 }
 
-func TestReviewReportReturnsBadRequestForInvalidJSONAndDecision(t *testing.T) {
+func TestReviewReportInvalidJSONAndDecisionRecordsOperationError(t *testing.T) {
 	for _, tt := range []struct {
 		name string
 		body string
@@ -3774,7 +4217,10 @@ func TestReviewReportReturnsBadRequestForInvalidJSONAndDecision(t *testing.T) {
 		{name: "invalid decision", body: `{"decision":"maybe"}`, code: "validation_error"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			router := newAuthenticatedTestRouter(t, fakeStore{})
+			metrics := observability.NewRegistry()
+			router := apihttp.NewRouter(authenticatedStore(t, "org_admin", fakeStore{}),
+				apihttp.WithObservability(observability.NewJSONLogger(io.Discard, nil), metrics),
+			)
 			req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports/100/review", strings.NewReader(tt.body))
 			rec := httptest.NewRecorder()
 
@@ -3785,6 +4231,10 @@ func TestReviewReportReturnsBadRequestForInvalidJSONAndDecision(t *testing.T) {
 			}
 			if !strings.Contains(rec.Body.String(), `"code":"`+tt.code+`"`) {
 				t.Fatalf("expected %s error code, got %q", tt.code, rec.Body.String())
+			}
+			gotMetrics := metrics.RenderPrometheus()
+			if !strings.Contains(gotMetrics, `clinicpulse_domain_operations_total{operation="report.review",result="error"} 1`) {
+				t.Fatalf("expected review error operation metric, got:\n%s", gotMetrics)
 			}
 		})
 	}
@@ -4203,13 +4653,119 @@ func TestLoginReturnsGenericUnauthorizedForInvalidCredentials(t *testing.T) {
 	}
 }
 
+func TestLoginInvalidCredentialsLogsStructuredAuthErrorCode(t *testing.T) {
+	var logOutput bytes.Buffer
+	router := apihttp.NewRouter(
+		fakeStore{getUserErr: pgx.ErrNoRows},
+		apihttp.WithObservability(observability.NewJSONLogger(&logOutput, nil), observability.NewRegistry()),
+	)
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", strings.NewReader(`{"email":"missing@example.test","password":"wrong-password"}`))
+	req.Header.Set("X-Request-Id", "login-invalid-structured-123")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assertGenericUnauthorized(t, rec)
+	if strings.Contains(rec.Body.String(), "invalid_credentials") {
+		t.Fatalf("expected login response not to expose internal credential code, got %s", rec.Body.String())
+	}
+	logLine := decodeFirstLogLine(t, &logOutput)
+	assertLogField(t, logLine, "event", "http_request_error")
+	assertLogField(t, logLine, "component", "auth")
+	assertLogField(t, logLine, "error_kind", "auth")
+	assertLogField(t, logLine, "error_code", "invalid_credentials")
+	assertLogField(t, logLine, "request_id", "login-invalid-structured-123")
+	assertLogField(t, logLine, "route", "/v1/auth/login")
+	assertLogField(t, logLine, "status", float64(http.StatusUnauthorized))
+	if strings.Contains(logOutput.String(), "missing@example.test") || strings.Contains(logOutput.String(), "wrong-password") {
+		t.Fatalf("expected structured login error log not to contain credentials, got %q", logOutput.String())
+	}
+}
+
+func TestLoginRateLimitLogsStructuredAuthErrorCode(t *testing.T) {
+	var logOutput bytes.Buffer
+	router := apihttp.NewRouter(
+		successfulLoginStore(t),
+		apihttp.WithLoginRateLimiter(security.NewFixedWindowLimiter(1, time.Minute, time.Now)),
+		apihttp.WithObservability(observability.NewJSONLogger(&logOutput, nil), observability.NewRegistry()),
+	)
+
+	firstReq := httptest.NewRequest(http.MethodPost, "/v1/auth/login", strings.NewReader(`{"email":"manager@example.test","password":"correct-password"}`))
+	firstReq.RemoteAddr = "203.0.113.10:41234"
+	firstRec := httptest.NewRecorder()
+	router.ServeHTTP(firstRec, firstReq)
+	if firstRec.Code != http.StatusOK {
+		t.Fatalf("expected warmup login status %d, got %d with body %s", http.StatusOK, firstRec.Code, firstRec.Body.String())
+	}
+	logOutput.Reset()
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", strings.NewReader(`{"email":"manager@example.test","password":"correct-password"}`))
+	req.RemoteAddr = "203.0.113.10:41234"
+	req.Header.Set("X-Request-Id", "login-denial-structured-123")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assertGenericUnauthorized(t, rec)
+	if strings.Contains(rec.Body.String(), "rate_limited") || strings.Contains(rec.Body.String(), "rate") || strings.Contains(rec.Body.String(), "throttle") {
+		t.Fatalf("expected login rate-limit response not to expose throttle state, got %s", rec.Body.String())
+	}
+	logLine := decodeFirstLogLine(t, &logOutput)
+	assertLogField(t, logLine, "event", "http_request_error")
+	assertLogField(t, logLine, "component", "auth")
+	assertLogField(t, logLine, "error_kind", "auth")
+	assertLogField(t, logLine, "error_code", "rate_limited")
+	assertLogField(t, logLine, "request_id", "login-denial-structured-123")
+	assertLogField(t, logLine, "route", "/v1/auth/login")
+	assertLogField(t, logLine, "status", float64(http.StatusUnauthorized))
+	if strings.Contains(logOutput.String(), "manager@example.test") || strings.Contains(logOutput.String(), "correct-password") {
+		t.Fatalf("expected structured login rate-limit log not to contain credentials, got %q", logOutput.String())
+	}
+}
+
+func TestLoginSystemErrorsLogStructuredAuthErrorCode(t *testing.T) {
+	var logOutput bytes.Buffer
+	storeErr := errors.New("membership lookup failed")
+	loginStore := successfulLoginStore(t)
+	loginStore.membershipsErr = storeErr
+	router := apihttp.NewRouter(
+		loginStore,
+		apihttp.WithObservability(observability.NewJSONLogger(&logOutput, nil), observability.NewRegistry()),
+	)
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", strings.NewReader(`{"email":"manager@example.test","password":"correct-password"}`))
+	req.Header.Set("X-Request-Id", "login-error-structured-123")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusInternalServerError, rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"code":"internal_error"`) {
+		t.Fatalf("expected public internal_error response, got %q", rec.Body.String())
+	}
+	logLine := decodeFirstLogLine(t, &logOutput)
+	assertLogField(t, logLine, "event", "http_request_error")
+	assertLogField(t, logLine, "component", "auth")
+	assertLogField(t, logLine, "error_kind", "auth")
+	assertLogField(t, logLine, "error_code", "auth_error")
+	assertLogField(t, logLine, "request_id", "login-error-structured-123")
+	assertLogField(t, logLine, "route", "/v1/auth/login")
+	assertLogField(t, logLine, "status", float64(http.StatusInternalServerError))
+	if strings.Contains(logOutput.String(), storeErr.Error()) || strings.Contains(logOutput.String(), "correct-password") {
+		t.Fatalf("expected structured login system error log not to contain raw errors or credentials, got %q", logOutput.String())
+	}
+}
+
 func TestLoginRateLimitReturnsGenericUnauthorized(t *testing.T) {
 	getUserCalls := 0
+	metrics := observability.NewRegistry()
 	loginStore := successfulLoginStore(t)
 	loginStore.getUserCalls = &getUserCalls
 	router := apihttp.NewRouter(loginStore,
 		apihttp.WithLoginRateLimiter(security.NewFixedWindowLimiter(1, time.Minute, time.Now)),
 		apihttp.WithMutationRateLimiter(security.NewFixedWindowLimiter(1, time.Minute, time.Now)),
+		apihttp.WithObservability(observability.NewJSONLogger(io.Discard, nil), metrics),
 	)
 
 	for attempt := 0; attempt < 2; attempt++ {
@@ -4228,6 +4784,34 @@ func TestLoginRateLimitReturnsGenericUnauthorized(t *testing.T) {
 	}
 	if getUserCalls != 1 {
 		t.Fatalf("expected throttled login to skip user lookup after first attempt, got %d lookups", getUserCalls)
+	}
+	gotMetrics := metrics.RenderPrometheus()
+	if !strings.Contains(gotMetrics, `clinicpulse_rate_limit_denials_total{result="denied"} 1`) {
+		t.Fatalf("expected login rate limit denial metric, got:\n%s", gotMetrics)
+	}
+	if !strings.Contains(gotMetrics, `clinicpulse_domain_operations_total{operation="auth.login",result="rate_limited"} 1`) {
+		t.Fatalf("expected login rate_limited operation metric, got:\n%s", gotMetrics)
+	}
+}
+
+func TestCSRFRejectionRecordsMetric(t *testing.T) {
+	metrics := observability.NewRegistry()
+	router := apihttp.NewRouter(authenticatedAdminStore(t, "org_admin", 77, fakeStore{}),
+		apihttp.WithTrustedOrigins([]string{"https://app.example.test"}),
+		apihttp.WithObservability(observability.NewJSONLogger(io.Discard, nil), metrics),
+	)
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/auth/logout", nil)
+	req.Header.Set("Origin", "https://evil.example.test")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusForbidden, rec.Code, rec.Body.String())
+	}
+	gotMetrics := metrics.RenderPrometheus()
+	if !strings.Contains(gotMetrics, `clinicpulse_csrf_denials_total{result="denied"} 1`) {
+		t.Fatalf("expected CSRF denial metric, got:\n%s", gotMetrics)
 	}
 }
 
@@ -5508,6 +6092,45 @@ func decodeJSON(t *testing.T, rec *httptest.ResponseRecorder, target any) {
 	}
 }
 
+func decodeLogLine(t *testing.T, output *bytes.Buffer) map[string]any {
+	t.Helper()
+	return decodeLogLineAt(t, output, len(logLines(output))-1)
+}
+
+func decodeFirstLogLine(t *testing.T, output *bytes.Buffer) map[string]any {
+	t.Helper()
+	return decodeLogLineAt(t, output, 0)
+}
+
+func decodeLogLineAt(t *testing.T, output *bytes.Buffer, index int) map[string]any {
+	t.Helper()
+	var got map[string]any
+	lines := logLines(output)
+	if index < 0 || index >= len(lines) {
+		t.Fatalf("expected log line %d, got %d lines in %q", index, len(lines), output.String())
+	}
+	line := lines[index]
+	if err := json.Unmarshal(line, &got); err != nil {
+		t.Fatalf("failed to decode log line %q: %v", string(line), err)
+	}
+	return got
+}
+
+func logLines(output *bytes.Buffer) [][]byte {
+	trimmed := bytes.TrimSpace(output.Bytes())
+	if len(trimmed) == 0 {
+		return nil
+	}
+	return bytes.Split(trimmed, []byte("\n"))
+}
+
+func assertLogField(t *testing.T, logLine map[string]any, key string, want any) {
+	t.Helper()
+	if got := logLine[key]; got != want {
+		t.Fatalf("expected log field %s=%#v, got %#v in %#v", key, want, got, logLine)
+	}
+}
+
 func captureDefaultLogger(t *testing.T) *bytes.Buffer {
 	t.Helper()
 	var output bytes.Buffer
@@ -5524,6 +6147,60 @@ func captureDefaultLogger(t *testing.T) *bytes.Buffer {
 		logger.SetPrefix(previousPrefix)
 	})
 	return &output
+}
+
+func isValidTraceparentForTest(value string) bool {
+	parts := strings.Split(value, "-")
+	return len(parts) == 4 &&
+		parts[0] == "00" &&
+		isLowerHexForTest(parts[1], 32) &&
+		isLowerHexForTest(parts[2], 16) &&
+		isLowerHexForTest(parts[3], 2) &&
+		!allZeroForTest(parts[1]) &&
+		!allZeroForTest(parts[2])
+}
+
+func isLowerHexForTest(value string, length int) bool {
+	if len(value) != length {
+		return false
+	}
+	for _, char := range value {
+		if (char < '0' || char > '9') && (char < 'a' || char > 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+func allZeroForTest(value string) bool {
+	for _, char := range value {
+		if char != '0' {
+			return false
+		}
+	}
+	return true
+}
+
+type basicResponseWriter struct {
+	header http.Header
+	status int
+	body   bytes.Buffer
+}
+
+func newBasicResponseWriter() *basicResponseWriter {
+	return &basicResponseWriter{header: make(http.Header), status: http.StatusOK}
+}
+
+func (w *basicResponseWriter) Header() http.Header {
+	return w.header
+}
+
+func (w *basicResponseWriter) Write(payload []byte) (int, error) {
+	return w.body.Write(payload)
+}
+
+func (w *basicResponseWriter) WriteHeader(status int) {
+	w.status = status
 }
 
 func isSafeRequestIDForTest(value string) bool {

@@ -1,3 +1,5 @@
+import { withObservabilityHeaders } from "@/lib/observability/request-context";
+
 const DEFAULT_API_BASE_URL = "http://localhost:8080";
 const DEFAULT_BROWSER_API_BASE_URL = "/api/clinicpulse";
 
@@ -169,17 +171,18 @@ function buildRequestInit(options: AuthApiClientOptions, requestInit: RequestIni
   const headers = new Headers();
   copyHeaders(headers, options.init?.headers);
   copyHeaders(headers, requestInit.headers);
+  const observabilityHeaders = withObservabilityHeaders(headers);
 
   const init = {
     cache: "no-store",
     method: "GET",
     ...options.init,
     ...requestInit,
-    headers,
+    headers: observabilityHeaders,
   } satisfies RequestInit;
 
-  if (shouldDefaultJsonContentType(init.body) && !headers.has("content-type")) {
-    headers.set("content-type", "application/json");
+  if (shouldDefaultJsonContentType(init.body) && !observabilityHeaders.has("content-type")) {
+    observabilityHeaders.set("content-type", "application/json");
   }
 
   return init;

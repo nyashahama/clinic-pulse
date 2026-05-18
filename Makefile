@@ -14,7 +14,7 @@ API_DIR := services/api
 AUTH_SEED := $(API_DIR)/seeds/local_phase3_auth_users.sql
 REVIEW_SEED := $(API_DIR)/seeds/local_phase3_review_evidence.sql
 
-.PHONY: db-up db-up-e2e db-wait db-wait-e2e db-migrate db-seed-auth db-seed-review db-bootstrap db-create-e2e db-reset-e2e-empty db-reset-e2e db-reset-review dev-api dev-api-review dev-web dev-web-review test-api test-web test-e2e lint build verify audit-web audit-api verify-security build-api-container migrate-api-container test-api-container
+.PHONY: db-up db-up-e2e db-wait db-wait-e2e db-migrate db-seed-auth db-seed-review db-bootstrap db-create-e2e db-reset-e2e-empty db-reset-e2e db-reset-review dev-api dev-api-review dev-web dev-web-review test-api test-web test-e2e smoke load-smoke lint build verify audit-web audit-api verify-security build-api-container migrate-api-container test-api-container
 
 db-up:
 	CLINICPULSE_POSTGRES_PORT="$(POSTGRES_PORT)" docker compose up -d postgres
@@ -89,8 +89,14 @@ audit-web:
 audit-api:
 	cd "$(API_DIR)" && govulncheck ./...
 
-test-e2e: db-up-e2e db-reset-e2e
+test-e2e: db-up-e2e db-reset-review
 	E2E_DATABASE_URL="$(E2E_DATABASE_URL)" npm run test:e2e
+
+smoke:
+	CLINICPULSE_API_BASE_URL="$(CLINICPULSE_API_BASE_URL)" npm run smoke
+
+load-smoke:
+	CLINICPULSE_LOAD_BASE_URL="$(CLINICPULSE_API_BASE_URL)" npm run load:smoke
 
 build-api-container:
 	@for attempt in $$(seq 1 "$(DOCKER_BUILD_ATTEMPTS)"); do \

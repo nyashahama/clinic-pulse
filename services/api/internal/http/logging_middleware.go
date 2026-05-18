@@ -2,65 +2,138 @@ package http
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
-	"log"
+	"io"
 	nethttp "net/http"
-	"strings"
 	"time"
+
+	"github.com/go-chi/chi/v5"
+
+	"clinicpulse/services/api/internal/observability"
 )
 
 const (
-	requestIDHeader    = "X-Request-Id"
-	minRequestIDLength = 8
-	maxRequestIDLength = 128
+	requestIDHeader   = "X-Request-Id"
+	traceparentHeader = "traceparent"
 )
 
 type requestIDContextKeyType string
+type traceContextContextKeyType string
 type requestLogStateContextKeyType string
+type requestLoggerContextKeyType string
+type metricsRegistryContextKeyType string
 
 const requestIDContextKey requestIDContextKeyType = "requestID"
+const traceContextContextKey traceContextContextKeyType = "traceContext"
 const requestLogStateContextKey requestLogStateContextKeyType = "requestLogState"
+const requestLoggerContextKey requestLoggerContextKeyType = "requestLogger"
+const metricsRegistryContextKey metricsRegistryContextKeyType = "metricsRegistry"
 
 type requestLogState struct {
 	principalType string
 }
 
-func RequestLogger(logger *log.Logger) func(nethttp.Handler) nethttp.Handler {
+func RequestLogger(logger *observability.JSONLogger, registry *observability.Registry) func(nethttp.Handler) nethttp.Handler {
 	if logger == nil {
-		logger = log.Default()
+		logger = observability.NewJSONLogger(io.Discard, observability.Fields{"service": "clinicpulse-api"})
+	}
+	if registry == nil {
+		registry = observability.NewRegistry()
 	}
 	return func(next nethttp.Handler) nethttp.Handler {
 		return nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
-			requestID := requestIDFromHeader(r.Header.Get(requestIDHeader))
+			requestID := observability.RequestIDFromHeader(r.Header.Get(requestIDHeader))
 			if requestID == "" {
-				requestID = generateRequestID()
+				requestID = observability.NewRequestID()
 			}
+			traceContext := observability.TraceContextFromHeader(r.Header.Get(traceparentHeader))
 			w.Header().Set(requestIDHeader, requestID)
+			w.Header().Set(traceparentHeader, traceContext.Header())
 
 			startedAt := time.Now()
 			recorder := &statusRecorder{ResponseWriter: w, status: nethttp.StatusOK}
 			logState := &requestLogState{principalType: "anonymous"}
 			ctx := context.WithValue(r.Context(), requestIDContextKey, requestID)
+			ctx = context.WithValue(ctx, traceContextContextKey, traceContext)
 			ctx = context.WithValue(ctx, requestLogStateContextKey, logState)
-			next.ServeHTTP(recorder, r.WithContext(ctx))
+			ctx = context.WithValue(ctx, requestLoggerContextKey, logger)
+			ctx = context.WithValue(ctx, metricsRegistryContextKey, registry)
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					if !recorder.wrote {
+						recorder.status = nethttp.StatusInternalServerError
+					}
+					recordRequestCompletion(logger, registry, r, recorder, logState, traceContext, requestID, time.Since(startedAt))
+					panic(recovered)
+				}
+				recordRequestCompletion(logger, registry, r, recorder, logState, traceContext, requestID, time.Since(startedAt))
+			}()
 
-			logger.Printf(
-				"method=%s path=%s status=%d duration_ms=%d principal_type=%s request_id=%s",
-				r.Method,
-				r.URL.Path,
-				recorder.status,
-				time.Since(startedAt).Milliseconds(),
-				logState.principalType,
-				requestID,
-			)
+			next.ServeHTTP(recorder, r.WithContext(ctx))
 		})
 	}
+}
+
+func logRequestHTTPError(r *nethttp.Request, status int, kind string, code string) {
+	logger, ok := r.Context().Value(requestLoggerContextKey).(*observability.JSONLogger)
+	if !ok || logger == nil {
+		return
+	}
+
+	requestID, _ := RequestIDFromContext(r.Context())
+	traceContext, _ := TraceContextFromContext(r.Context())
+	fields := observability.Fields{
+		"component":    kind,
+		"error_kind":   kind,
+		"error_code":   code,
+		"request_id":   requestID,
+		"trace_id":     traceContext.TraceID,
+		"method":       r.Method,
+		"route":        requestRoute(r),
+		"status":       status,
+		"status_class": statusClass(status),
+	}
+	if status >= nethttp.StatusInternalServerError {
+		logger.Error("http_request_error", fields)
+		return
+	}
+	logger.Warn("http_request_error", fields)
+}
+
+func recordRequestCompletion(logger *observability.JSONLogger, registry *observability.Registry, r *nethttp.Request, recorder *statusRecorder, logState *requestLogState, traceContext observability.TraceContext, requestID string, duration time.Duration) {
+	route := requestRoute(r)
+	registry.RecordHTTPRequest(observability.HTTPRequestMetric{
+		Method:        r.Method,
+		Route:         route,
+		Status:        recorder.status,
+		PrincipalType: logState.principalType,
+		Duration:      duration,
+	})
+	logger.Info("http_request_completed", observability.Fields{
+		"method":         r.Method,
+		"route":          route,
+		"status":         recorder.status,
+		"status_class":   statusClass(recorder.status),
+		"duration_ms":    duration.Milliseconds(),
+		"principal_type": logState.principalType,
+		"request_id":     requestID,
+		"trace_id":       traceContext.TraceID,
+		"span_id":        traceContext.SpanID,
+	})
 }
 
 func RequestIDFromContext(ctx context.Context) (string, bool) {
 	requestID, ok := ctx.Value(requestIDContextKey).(string)
 	return requestID, ok
+}
+
+func TraceContextFromContext(ctx context.Context) (observability.TraceContext, bool) {
+	traceContext, ok := ctx.Value(traceContextContextKey).(observability.TraceContext)
+	return traceContext, ok
+}
+
+func metricsRegistryFromContext(ctx context.Context) (*observability.Registry, bool) {
+	registry, ok := ctx.Value(metricsRegistryContextKey).(*observability.Registry)
+	return registry, ok && registry != nil
 }
 
 type statusRecorder struct {
@@ -85,47 +158,28 @@ func (r *statusRecorder) Write(payload []byte) (int, error) {
 	return r.ResponseWriter.Write(payload)
 }
 
+func (r *statusRecorder) Unwrap() nethttp.ResponseWriter {
+	return r.ResponseWriter
+}
+
 func markRequestPrincipalType(ctx context.Context, principalType string) {
 	if state, ok := ctx.Value(requestLogStateContextKey).(*requestLogState); ok && state != nil {
 		state.principalType = principalType
 	}
 }
 
-func requestIDFromHeader(value string) string {
-	requestID := strings.TrimSpace(value)
-	if !validRequestID(requestID) {
-		return ""
+func requestRoute(r *nethttp.Request) string {
+	if routeContext := chi.RouteContext(r.Context()); routeContext != nil {
+		if pattern := routeContext.RoutePattern(); pattern != "" {
+			return pattern
+		}
 	}
-	return requestID
+	return observability.BoundRoute(r.URL.Path)
 }
 
-func validRequestID(value string) bool {
-	if len(value) < minRequestIDLength || len(value) > maxRequestIDLength {
-		return false
+func statusClass(status int) string {
+	if status < 100 || status > 999 {
+		return "unknown"
 	}
-	for index := 0; index < len(value); index++ {
-		char := value[index]
-		if char >= 'a' && char <= 'z' {
-			continue
-		}
-		if char >= 'A' && char <= 'Z' {
-			continue
-		}
-		if char >= '0' && char <= '9' {
-			continue
-		}
-		if char == '.' || char == '_' || char == '-' {
-			continue
-		}
-		return false
-	}
-	return true
-}
-
-func generateRequestID() string {
-	var bytes [16]byte
-	if _, err := rand.Read(bytes[:]); err != nil {
-		return hex.EncodeToString([]byte(time.Now().UTC().Format(time.RFC3339Nano)))
-	}
-	return hex.EncodeToString(bytes[:])
+	return string(rune('0'+status/100)) + "xx"
 }
