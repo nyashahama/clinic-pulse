@@ -11,6 +11,8 @@ Phase 5 packages ClinicPulse as a controlled pilot release candidate by adding O
 
 - Branch: `feature/phase-5-pilot-launch-readiness`
 - Candidate SHA before closeout commit: `c031efb3781328de623e683b03cad1de8ee31ff3`
+- Mainline SHA after PR #44 merge and before release-fix refresh: `931e96e879838ed2936d781d6d2533dc8e4b8c06`
+- Release-fix refresh branch: `feature/release-readiness-fixes`
 - Target tag: `v0.1.0-alpha`, pending explicit approval.
 
 ## Verification Evidence
@@ -23,6 +25,18 @@ Phase 5 packages ClinicPulse as a controlled pilot release candidate by adding O
 | `make verify-security` | Passed | `npm audit --audit-level=moderate` found 0 vulnerabilities after pruning extraneous optional native packages from `node_modules`; `govulncheck ./...` found no called vulnerabilities. |
 | `make test-api-container` | Passed | Ran with `E2E_POSTGRES_PORT=55433`; Docker built `clinicpulse-api:local`, containerized migrations applied from `/app/migrations`, and the smoke container reached both `/healthz` and `/readyz` on `localhost:18080` before cleanup. |
 | `git status --short` | Passed | Verified clean after the closeout content commit and before PR prep; command produced no output. |
+
+## Release-Readiness Refresh
+
+After PR #44 merged, a fresh security audit reported `GHSA-jxxr-4gwj-5jf2` through `brace-expansion@5.0.5`. The release-fix branch updates the lockfile to `brace-expansion@5.0.6`, adds a regression check for the above-fold clinic hero image loading mode, and records the refreshed gates below.
+
+| Gate | Result | Notes |
+| --- | --- | --- |
+| `npm ci` | Passed | Added 479 packages, audited 480 packages, and found 0 vulnerabilities. |
+| `make verify` | Passed | OpenAPI verification passed for 43 routes; Vitest passed 54 files and 368 tests; ESLint passed; Go tests passed for all API packages; Next.js production build compiled and generated 31 static pages. |
+| `CLINICPULSE_E2E_API_PORT=18081 CLINICPULSE_E2E_WEB_PORT=13000 make test-e2e` | Passed | Used alternate ports because this workstation already had other local services on `:8080` and `:3000`; Playwright passed 124 tests with 10 skipped. The previous clinic hero LCP loading warning did not reappear after the image-loading fix. |
+| `make verify-security` | Passed | `npm audit --audit-level=moderate` found 0 vulnerabilities; `govulncheck ./...` found no called vulnerabilities. |
+| `make test-api-container` | Passed | Docker built `clinicpulse-api:local`, containerized migrations applied from `/app/migrations`, and the smoke container reached both `/healthz` and `/readyz` on `localhost:18080` before cleanup. |
 
 ## Launch Artifacts
 

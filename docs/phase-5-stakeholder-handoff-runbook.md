@@ -1,7 +1,7 @@
 # Phase 5 Stakeholder Handoff Runbook
 
 Date: 2026-05-18
-Status: Pilot handoff draft until Phase 5 closeout
+Status: Ready for pilot-owner review; launch owners and support window must be assigned before handoff
 
 ## Pilot Support Model
 

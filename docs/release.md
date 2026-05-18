@@ -41,6 +41,12 @@ make test-api-container
 git status --short
 ```
 
+If local `:8080` or `:3000` are already occupied, keep the same E2E database flow and run the browser gate with alternate Playwright server ports:
+
+```bash
+CLINICPULSE_E2E_API_PORT=18081 CLINICPULSE_E2E_WEB_PORT=13000 make test-e2e
+```
+
 For Phase 1 staging handoff, also confirm the Vercel frontend variables and Docker API variables in docs/deployment.md.
 For Phase 2 staging or pilot handoff, also confirm `CLINICPULSE_TRUSTED_ORIGINS`, rate-limit values, disabled public registration, and disabled demo fallback.
 For Phase 3 pilot data handoff, also confirm pilot-critical routes have no implementation-placeholder copy, operational data exposes source/freshness/review state, and safety/privacy/terms links are reachable.

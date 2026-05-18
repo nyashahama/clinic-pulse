@@ -1,12 +1,12 @@
 # Phase 5 Pilot Launch Checklist
 
 Date: 2026-05-18
-Status: In progress until closeout records final evidence
+Status: Closeout recorded; release tag pending final gate refresh and explicit approval
 
 ## Release Candidate
 
-- Candidate branch: `feature/phase-5-pilot-launch-readiness`
-- Candidate SHA: record the exact output of `git rev-parse HEAD` during closeout.
+- Candidate branch: `feature/phase-5-pilot-launch-readiness`, followed by `feature/release-readiness-fixes` for the final audit and release-doc refresh.
+- Candidate SHA: record the exact output of `git rev-parse HEAD` after the final release-readiness fix branch merges.
 - Candidate tag: `v0.1.0-alpha`, only after explicit approval.
 - Release gate owner: repository maintainer running the final Phase 5 closeout.
 
@@ -14,12 +14,12 @@ Status: In progress until closeout records final evidence
 
 | Gate | Required command | Evidence location |
 | --- | --- | --- |
-| Clean install | `npm ci` | Phase 5 closeout |
-| Unit, lint, Go test, build, OpenAPI | `make verify` | Phase 5 closeout |
-| Browser E2E | `make test-e2e` | Phase 5 closeout |
-| Security scans | `make verify-security` | Phase 5 closeout |
-| API container smoke | `make test-api-container` | Phase 5 closeout |
-| Git cleanliness | `git status --short` | Phase 5 closeout |
+| Clean install | `npm ci` | Phase 5 closeout and release-fix PR verification |
+| Unit, lint, Go test, build, OpenAPI | `make verify` | Phase 5 closeout and release-fix PR verification |
+| Browser E2E | `make test-e2e` | Phase 5 closeout and release-fix PR verification |
+| Security scans | `make verify-security` | Phase 5 closeout and release-fix PR verification |
+| API container smoke | `make test-api-container` | Phase 5 closeout and release-fix PR verification |
+| Git cleanliness | `git status --short` | Phase 5 closeout and release-fix PR verification |
 
 ## Pilot Environment
 
