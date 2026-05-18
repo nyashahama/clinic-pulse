@@ -13,6 +13,7 @@
     "capture:showcase": "playwright test --config=playwright.showcase.config.ts",
     "smoke": "node scripts/smoke/clinicpulse-smoke.mjs",
     "load:smoke": "node scripts/load/core-journeys.mjs",
+    "verify:openapi": "node scripts/verify-openapi.mjs",
     "test:watch": "vitest"
   },
   "dependencies": {
