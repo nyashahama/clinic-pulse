@@ -103,7 +103,7 @@
 
   --content-inverted: 255 255 255;
   --content-muted: 163 163 163;
-  --content-subtle: 115 115 115;
+  --content-subtle: 82 82 82;
   --content-default: 64 64 64;
   --content-emphasis: 23 23 23;
 
@@ -111,7 +111,7 @@
   --input: #d4d4d4;
   --ring: #0D7A6B;
   --muted: #f1f6f5;
-  --muted-foreground: #737373;
+  --muted-foreground: #525252;
   --accent: #eef3f2;
   --accent-foreground: #171717;
   --popover: #ffffff;
@@ -282,7 +282,7 @@
 }
 
 @keyframes clinic-soft-blink {
-  0%, 100% { opacity: 0.62; transform: scale(1); }
+  0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.08); }
 }
 

@@ -48,7 +48,7 @@ export function ProductSurfacePreview({
 function PreviewRowContent({ row }: { row: PreviewRow }) {
   return (
     <div className="flex min-w-0 flex-col items-start gap-1 lg:flex-row lg:items-center lg:justify-between lg:gap-3">
-      <span className="min-w-0 break-words text-neutral-500 dark:text-muted-foreground">{row.label}</span>
+      <span className="min-w-0 break-words text-neutral-700 dark:text-muted-foreground">{row.label}</span>
       <StatusPill tone={toneMap[row.tone]}>{row.value}</StatusPill>
     </div>
   );

@@ -14,7 +14,7 @@ API_DIR := services/api
 AUTH_SEED := $(API_DIR)/seeds/local_phase3_auth_users.sql
 REVIEW_SEED := $(API_DIR)/seeds/local_phase3_review_evidence.sql
 
-.PHONY: db-up db-up-e2e db-wait db-wait-e2e db-migrate db-seed-auth db-seed-review db-bootstrap db-create-e2e db-reset-e2e-empty db-reset-e2e db-reset-review dev-api dev-api-review dev-web dev-web-review test-api test-web test-e2e smoke load-smoke lint build verify audit-web audit-api verify-security build-api-container migrate-api-container test-api-container
+.PHONY: db-up db-up-e2e db-wait db-wait-e2e db-migrate db-seed-auth db-seed-review db-bootstrap db-create-e2e db-reset-e2e-empty db-reset-e2e db-reset-review dev-api dev-api-review dev-web dev-web-review test-api test-web test-e2e smoke load-smoke lint build verify verify-openapi audit-web audit-api verify-security build-api-container migrate-api-container test-api-container
 
 db-up:
 	CLINICPULSE_POSTGRES_PORT="$(POSTGRES_PORT)" docker compose up -d postgres
@@ -143,6 +143,9 @@ lint:
 build:
 	npm run build
 
-verify: test-web lint test-api build
+verify-openapi:
+	npm run verify:openapi
+
+verify: verify-openapi test-web lint test-api build
 
 verify-security: audit-web audit-api

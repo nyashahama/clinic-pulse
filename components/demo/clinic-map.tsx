@@ -82,6 +82,10 @@ function getPriorityScore(clinic: ClinicRow) {
   return statusScore * 10 + freshnessScore;
 }
 
+function formatStatus(status: ClinicRow["status"]) {
+  return status.replace("_", " ");
+}
+
 export function ClinicMap({
   clinics,
   referenceClinics,
@@ -136,6 +140,7 @@ export function ClinicMap({
               <button
                 key={clinic.id}
                 type="button"
+                aria-label={`Select ${clinic.name} (${clinic.facilityCode}) on the district map. Status: ${formatStatus(clinic.status)}.`}
                 onClick={() => onSelectClinic(clinic.id)}
                 className="group absolute -translate-x-1/2 -translate-y-1/2 text-left"
                 style={placePin(clinic)}

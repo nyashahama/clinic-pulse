@@ -190,7 +190,7 @@ export function AdminEvidenceTable<Row>({
                 <TableHead
                   key={column.key}
                   className={cn(
-                    "h-11 whitespace-normal break-words px-3 align-top text-xs font-semibold uppercase tracking-normal text-content-subtle",
+                    "h-11 whitespace-normal break-words px-3 align-top text-xs font-semibold uppercase tracking-normal text-content-default",
                     column.className,
                   )}
                 >

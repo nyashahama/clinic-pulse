@@ -115,6 +115,18 @@ Common security responses:
 
 Unsafe cookie-authenticated methods are `POST`, `PUT`, `PATCH`, and `DELETE`. Trusted browser origins are configured with `CLINICPULSE_TRUSTED_ORIGINS`; partner API-key routes use their own authentication path and are not part of the browser CSRF flow.
 
-## Future OpenAPI Path
+## OpenAPI Contract
 
-This document is a human-readable route reference. A later release can add an OpenAPI document if ClinicPulse needs generated clients, schema validation, or public partner onboarding artifacts.
+The machine-readable pilot API contract lives at `docs/openapi/clinicpulse.v0.1.json`.
+
+Keep this file aligned with `services/api/internal/http/router.go` by running:
+
+```bash
+npm run verify:openapi
+```
+
+Security schemes:
+
+- `sessionCookie`: browser/session-authenticated routes.
+- `partnerBearer`: partner API-key routes under `/v1/partner`.
+- `metricsBearer`: protected metrics endpoint when metrics are enabled.

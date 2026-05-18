@@ -18,13 +18,13 @@ const toneClasses = {
   },
   warning: {
     card: "border-amber-200 bg-amber-50/80 dark:border-amber-900/60 dark:bg-amber-950/30",
-    marker: "border-amber-300 bg-amber-500 text-white",
+    marker: "border-amber-800 bg-amber-800 text-white",
     state: "border-amber-200 bg-white text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/45 dark:text-amber-200",
     rail: "bg-amber-200 dark:bg-amber-900/60",
   },
   healthy: {
     card: "border-emerald-200 bg-emerald-50/80 dark:border-emerald-900/60 dark:bg-emerald-950/30",
-    marker: "border-emerald-300 bg-emerald-600 text-white",
+    marker: "border-emerald-800 bg-emerald-800 text-white",
     state: "border-emerald-200 bg-white text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/45 dark:text-emerald-200",
     rail: "bg-emerald-200 dark:bg-emerald-900/60",
   },
@@ -143,7 +143,7 @@ export function IncidentFlowStoryboard() {
                     </div>
 
                     <div className="mt-8 min-w-0 flex-1">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500 dark:text-muted-foreground">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-700 dark:text-muted-foreground">
                         {step.surface}
                       </p>
                       <h3 className="mt-2 text-lg font-semibold leading-6 text-neutral-950 dark:text-foreground">
