@@ -308,7 +308,7 @@ export default async function Page() {
             key: "smoke",
             header: "Smoke test",
             render: (row) => (
-              <code className="block max-w-md break-all rounded-md bg-bg-muted px-2 py-1 font-mono text-xs text-content-subtle">
+              <code className="block max-w-md break-all rounded-md bg-bg-muted px-2 py-1 font-mono text-xs text-content-default">
                 {smokeCommand(row.path)}
               </code>
             ),

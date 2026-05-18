@@ -154,7 +154,10 @@ export function ExportPreview({ payload, onOpen }: ExportPreviewProps) {
       </div>
 
       <div className="mt-4 rounded-lg border border-border-subtle bg-bg-muted p-2">
-        <pre className="max-h-80 min-w-0 max-w-full whitespace-pre-wrap break-words overflow-auto rounded-lg bg-bg-subtle p-3 text-xs leading-6 text-content-default">
+        <pre
+          className="max-h-80 min-w-0 max-w-full whitespace-pre-wrap break-words overflow-auto rounded-lg bg-bg-subtle p-3 text-xs leading-6 text-content-default"
+          tabIndex={0}
+        >
           {previewText}
         </pre>
       </div>

@@ -38,14 +38,14 @@ export function WorkspaceShell({
           renderCommandPalette={renderCommandPalette}
         />
         <div className="flex min-h-0 flex-1">
-          <main className="min-w-0 flex-1 overflow-y-auto">
+          <main className="min-w-0 flex-1 overflow-y-auto" tabIndex={0}>
             <div className="mx-auto flex min-h-full w-full max-w-screen-2xl flex-col px-3 py-4 lg:px-6">
               {children}
             </div>
           </main>
 
           {detail ? (
-            <aside className="hidden w-[24rem] shrink-0 overflow-y-auto border-l border-border bg-card text-card-foreground xl:block">
+            <aside className="hidden w-[24rem] shrink-0 overflow-y-auto border-l border-border bg-card text-card-foreground xl:block" tabIndex={0}>
               <div className="min-h-full px-4 py-4">{detail}</div>
             </aside>
           ) : null}

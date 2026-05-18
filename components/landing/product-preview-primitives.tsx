@@ -37,7 +37,7 @@ export function BrowserFrame({
 
 const toneClasses = {
   critical: "border-red-200 bg-red-50 text-red-800 dark:border-red-900/60 dark:bg-red-950/35 dark:text-red-200",
-  warning: "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-200",
+  warning: "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-200",
   healthy: "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/35 dark:text-emerald-200",
   neutral: "border-neutral-200 bg-neutral-50 text-neutral-700 dark:border-border dark:bg-muted dark:text-muted-foreground",
 } as const;
@@ -79,7 +79,7 @@ export function MetricTile({
 }) {
   return (
     <div className="rounded-lg border border-neutral-200 bg-white p-2 dark:border-border dark:bg-card sm:p-3">
-      <p className="text-[9px] font-semibold uppercase leading-4 tracking-[0.12em] text-neutral-400 dark:text-muted-foreground sm:text-[11px]">
+      <p className="text-[9px] font-semibold uppercase leading-4 tracking-[0.12em] text-neutral-600 dark:text-muted-foreground sm:text-[11px]">
         {label}
       </p>
       <p className="mt-1 text-lg font-semibold text-neutral-950 dark:text-card-foreground sm:text-xl">{value}</p>
