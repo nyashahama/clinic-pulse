@@ -2,7 +2,7 @@
 
 Date: 2026-05-12
 Status: Active roadmap
-Current phase: Phase 5 - Pilot Launch Readiness
+Current phase: Release gate refresh before v0.1.0-alpha tag
 
 ## Purpose
 
@@ -44,7 +44,7 @@ Phase 0 makes these commands reliable and enforceable. Later phases may add stri
 | Phase 2 - Security And Auth Hardening | Complete | Production-safe auth, sessions, secrets, rate limits, and account lifecycle | 1 week |
 | Phase 3 - Pilot Data And Product Integrity | Complete | Real data provenance, completed pilot workflows, and legal/safety surfaces | 1-2 weeks |
 | Phase 4 - Observability And Operations | Implementation complete | Logs, metrics, tracing, alerts, runbooks, and incident process | 1 week |
-| Phase 5 - Pilot Launch Readiness | Implementation complete | Release candidate, stakeholder docs, operational signoff, and launch checklist | 1-2 weeks |
+| Phase 5 - Pilot Launch Readiness | Implementation complete; release gate refresh in progress | Release candidate, stakeholder docs, operational signoff, and launch checklist | 1-2 weeks |
 
 ## Phase 0 - Release Gate Stabilization
 
@@ -167,7 +167,7 @@ Exit rule:
 
 Phase 4 is complete when an operator can detect, triage, and communicate incidents without reading source code.
 
-Status: Implementation complete. The closeout records delivered observability/operations behavior, targeted slice validation, fresh local release-gate evidence, residual risks, and Phase 5 handoff notes. `git status --short` still needs explicit confirmation before a pilot release candidate.
+Status: Implementation complete. The closeout records delivered observability/operations behavior, targeted slice validation, fresh local release-gate evidence, residual risks, and Phase 5 handoff notes.
 
 ## Phase 5 - Pilot Launch Readiness
 
@@ -175,7 +175,7 @@ Spec: `docs/phase-5-pilot-launch-readiness-spec.md`
 Plan: `docs/phase-5-pilot-launch-readiness-implementation-plan.md`
 Closeout: `docs/phase-5-pilot-launch-readiness-closeout.md`
 
-Status: Implementation complete. The closeout records OpenAPI verification, accessibility/performance smoke coverage, pilot launch handoff artifacts, final release-gate evidence, residual risks, and release tag approval state.
+Status: Implementation complete; release gate refresh in progress. The closeout records OpenAPI verification, accessibility/performance smoke coverage, pilot launch handoff artifacts, release-gate evidence, residual risks, and release tag approval state. The final tag remains blocked until the refreshed gates are green and pilot signoff is accepted.
 
 Goal:
 
