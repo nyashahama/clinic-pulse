@@ -11,7 +11,7 @@ Structured API logs should be forwarded as JSON when the host supports it. Treat
 | `timestamp` | Event time in UTC | Use host timestamp if the app field is unavailable. |
 | `level` | `debug`, `info`, `warn`, or `error` | Alert only from `warn`/`error` signals or metrics. |
 | `service` | Service name | Set with `CLINICPULSE_OBSERVABILITY_SERVICE_NAME`. |
-| `env` | Deployment environment | Example: `staging`, `pilot`. |
+| `deploy_env` | Deployment environment | Example: `staging`, `pilot`. |
 | `request_id` | Request correlation ID | Return this to support when users report failures. |
 | `trace_id` | Distributed trace/correlation ID when present | Use with provider tracing if enabled. |
 | `method` | HTTP method | Example: `GET`, `POST`. |

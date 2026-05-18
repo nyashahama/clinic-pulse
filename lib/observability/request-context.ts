@@ -1,7 +1,8 @@
 const REQUEST_ID_HEADER = "x-request-id";
 const TRACEPARENT_HEADER = "traceparent";
+const REQUEST_ID_MIN_LENGTH = 8;
 const REQUEST_ID_MAX_LENGTH = 128;
-const SAFE_REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]+$/;
+const SAFE_REQUEST_ID_PATTERN = /^[A-Za-z0-9._-]+$/;
 const TRACEPARENT_PATTERN =
   /^00-([0-9a-f]{32})-([0-9a-f]{16})-([0-9a-f]{2})$/;
 
@@ -44,6 +45,7 @@ export function safeRequestId(value?: string | null): string | null {
 
   if (
     trimmed.length === 0 ||
+    trimmed.length < REQUEST_ID_MIN_LENGTH ||
     trimmed.length > REQUEST_ID_MAX_LENGTH ||
     !SAFE_REQUEST_ID_PATTERN.test(trimmed)
   ) {
