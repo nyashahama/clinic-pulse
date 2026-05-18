@@ -137,3 +137,5 @@ Prefer roll-forward corrective migrations when data shape changes can be repaire
 - Frontend: promote the previous Vercel deployment.
 - API: redeploy the previous Docker image tag.
 - Database: restore the latest known-good managed Postgres backup, or apply a roll-forward corrective migration when restoration would lose desired data.
+
+For pilot launch decisions, use docs/phase-5-pilot-launch-checklist.md to confirm the release candidate, owner, support window, and signoff state before promotion or rollback.

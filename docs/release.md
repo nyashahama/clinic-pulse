@@ -20,6 +20,11 @@ Release tag status: Pending final verification and user approval.
 - Alert routes are configured for API health, readiness/database, 5xx rate, p95 latency, HTTP categorized errors, login failures/throttling, CSRF denials, report create/review errors, offline sync failures, webhook failures, export failures, and stale clinic operational checks.
 - Logs are forwarded only through a privacy-safe path that redacts secrets, tokens, patient identifiers, request bodies, and free-text clinical notes.
 - Pilot SLOs are documented as internal alpha objectives and are not presented as contractual SLAs.
+- Phase 5 OpenAPI verification passes with `npm run verify:openapi`.
+- Phase 5 accessibility smoke passes before pilot handoff.
+- Phase 5 performance smoke passes before pilot handoff.
+- Pilot launch checklist and stakeholder handoff runbook are present.
+- Technical, operational, data/legal, and stakeholder signoff status is recorded in the Phase 5 closeout before tagging.
 - `git status --short` shows only intentional release changes.
 
 ## Verification Commands
@@ -27,7 +32,10 @@ Release tag status: Pending final verification and user approval.
 ```bash
 npm ci
 make verify
+npm run verify:openapi
 make test-e2e
+npx playwright test tests/e2e/phase-5-accessibility.spec.ts --project=desktop-chrome
+npx playwright test tests/e2e/phase-5-performance.spec.ts --project=desktop-chrome
 make verify-security
 make test-api-container
 git status --short
