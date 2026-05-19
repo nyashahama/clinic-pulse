@@ -79,7 +79,7 @@ export function InterventionRail({
 
         {replayDisabled && (
           <p id="intervention-replay-disabled" className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-200">
-            Replay-sensitive actions are paused until the demo replay state is ready.
+            Replay-sensitive actions are paused until the scenario replay state is ready.
           </p>
         )}
 

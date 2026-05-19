@@ -10,7 +10,7 @@ export default async function Page() {
       eyebrow="Platform operations"
       nextSteps={[
     "Move reset and scenario controls out of the admin overview.",
-    "Add seeded scenario presets for demos.",
+    "Add seeded scenario presets for operations rehearsal.",
     "Record every reset and scenario action in audit evidence.",
       ]}
       title="Scenario controls"

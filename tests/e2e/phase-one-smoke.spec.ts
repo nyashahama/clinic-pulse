@@ -108,6 +108,10 @@ test.describe("phase-one demo route checklist", () => {
     await expect(page.getByRole("heading", { name: "Operations admin deck" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Stakeholder activity queue" })).toBeVisible();
 
+    await page.goto("/admin/demo-controls");
+    await expectNoStagedProductLanguage(page);
+    await expect(page.getByRole("heading", { name: "Scenario controls" })).toBeVisible();
+
     await page.goto("/demo");
     await expectNoStagedProductLanguage(page);
     const supportingOperations = page

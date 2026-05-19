@@ -15,7 +15,7 @@ type SystemResponseTone = {
 
 const systemResponseByType: Record<AuditEvent["eventType"], SystemResponseTone> = {
   "demo.reset": {
-    title: "Demo reset",
+    title: "Scenario reset",
     action: "All clinics, alerts, and pending reports were restored to seeded baseline.",
     icon: RefreshCw,
   },
@@ -81,13 +81,13 @@ const systemResponseByType: Record<AuditEvent["eventType"], SystemResponseTone> 
     icon: Webhook,
   },
   "lead.demo_requested": {
-    title: "Demo lead event",
-    action: "Lead queue captured for founder/admin follow-up; no clinic state mutation occurred.",
+    title: "Lead event",
+    action: "Lead queue captured for operations follow-up; no clinic state mutation occurred.",
     icon: Workflow,
   },
   "export.preview_opened": {
     title: "Export preview",
-    action: "Demo export payload generated for review only; underlying state remains unchanged.",
+    action: "Operations export payload generated for review only; underlying state remains unchanged.",
     icon: Workflow,
   },
   "api.preview_opened": {

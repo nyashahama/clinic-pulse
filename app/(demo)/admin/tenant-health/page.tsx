@@ -101,7 +101,7 @@ export default async function Page() {
       <AdminModuleHeader
         eyebrow="Platform operations"
         title="Current tenant estate"
-        description="Read-only platform health for the active demo organisation across clinic coverage, access pressure, ingestion pressure, and partner readiness evidence."
+        description="Read-only platform health for the active organisation across clinic coverage, access pressure, ingestion pressure, and partner readiness evidence."
       />
       <AdminMetricStrip
         metrics={[
@@ -140,7 +140,7 @@ export default async function Page() {
           Partner readiness evidence
         </StatusBadge>
         <span className="text-sm text-muted-foreground">
-          The demo has one tenant organisation, so this view presents the current tenant estate
+          This workspace has one tenant organisation, so this view presents the current tenant estate
           rather than synthetic tenant rows.
         </span>
       </AdminFilterBar>

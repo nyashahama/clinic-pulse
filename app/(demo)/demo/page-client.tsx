@@ -646,7 +646,7 @@ export default function DistrictConsolePage({
               <h2 className="text-lg font-semibold">Source, freshness, and review state</h2>
             </div>
             <p className="max-w-xl text-sm text-muted-foreground">
-              District users can distinguish demo-seeded, stale, and pending-review data before
+              District users can distinguish scenario-seeded, stale, and pending-review data before
               acting on clinic status.
             </p>
           </div>

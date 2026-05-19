@@ -37,7 +37,41 @@ describe("district operations scenario", () => {
 
   it("covers authenticated product phrases that should not return", () => {
     expect(PRODUCT_LANGUAGE_BAN_LIST).toEqual(
-      expect.arrayContaining(["Demo controls", "Controlled demo reset"]),
+      expect.arrayContaining([
+        "Demo controls",
+        "Controlled demo reset",
+        "Add seeded scenario presets for demos",
+        "Demo tenant estate",
+        "demo-seeded",
+        "Reset demo",
+        "Demo actions",
+        "mock state",
+        "Reset walkthrough data",
+        "YC demo-critical",
+        "demo booking intake",
+        "Mock partner API surface",
+        "founder demos",
+        "demo endpoints",
+        "demo API docs",
+        "demo_token",
+        "Quick actions for the founder-led demo flow",
+        "Clear local demo changes",
+        "Demo reset",
+        "Demo lead event",
+        "Demo export payload",
+        "Demo data",
+        "Seeded demo data",
+        "demo organisation",
+        "The demo has",
+        "demo replay state",
+        "founder pitch",
+        "Demo leads",
+        "demo booking submissions",
+        "demo requests",
+        "Founder package",
+        "founder pipeline",
+        "YC-ready",
+      ]),
     );
   });
 
