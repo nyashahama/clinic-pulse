@@ -9,27 +9,27 @@ type DemoRouteChecklistEntry = {
 export const phaseOneDemoRouteChecklist: DemoRouteChecklistEntry[] = [
   {
     path: "/",
-    proofMoment: "Landing page explains ClinicPulse and routes the viewer into booking or demo workspace.",
+    proofMoment: "Landing page introduces the operations workflow and routes users into booking or sign-in.",
     viewports: ["desktop", "mobile"],
   },
   {
     path: "/book-demo",
-    proofMoment: "Booking flow captures a lead without requiring a backend.",
+    proofMoment: "Booking flow captures an operations walkthrough request.",
     viewports: ["desktop", "mobile"],
   },
   {
     path: "/book-demo/thanks",
-    proofMoment: "Confirmation page gives clear next navigation into demo, admin, or finder.",
+    proofMoment: "Confirmation page gives clear next navigation into district, finder, field, and admin work.",
     viewports: ["desktop", "mobile"],
   },
   {
     path: "/demo",
-    proofMoment: "District console shows clinic status, incidents, routing, and live scenario controls.",
+    proofMoment: "District command center opens the Mabopane Station incident from severity queue to action.",
     viewports: ["desktop", "mobile"],
   },
   {
     path: "/demo/clinics/clinic-mamelodi-east",
-    proofMoment: "Clinic detail explains status evidence and can escalate context into admin.",
+    proofMoment: "Clinic detail shows the incident evidence, patient routing impact, report history, and escalation path.",
     viewports: ["desktop", "mobile"],
   },
   {
@@ -39,12 +39,12 @@ export const phaseOneDemoRouteChecklist: DemoRouteChecklistEntry[] = [
   },
   {
     path: "/field",
-    proofMoment: "Field report flow demonstrates offline-friendly reporting and sync.",
+    proofMoment: "Field report flow captures assigned-clinic updates and offline sync state.",
     viewports: ["desktop", "mobile"],
   },
   {
     path: "/admin",
-    proofMoment: "Admin shows lead pipeline, export proof, API preview, roadmap, and notes in one vertical workflow.",
+    proofMoment: "Admin shows review pressure, governance actions, partner evidence, and readiness blockers.",
     viewports: ["desktop", "mobile"],
   },
 ];
