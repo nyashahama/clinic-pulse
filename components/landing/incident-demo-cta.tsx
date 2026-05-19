@@ -2,10 +2,7 @@ import { ArrowRight, ClipboardCheck, ExternalLink } from "lucide-react";
 
 import { ButtonLink } from "@/components/landing/button-link";
 import { AuditSealStream } from "@/components/landing/motion/audit-seal-stream";
-import {
-  incidentDemoCta,
-  liveIncidentHero,
-} from "@/lib/landing/openpanel-refactor-content";
+import { incidentDemoCta } from "@/lib/landing/openpanel-refactor-content";
 import { auditSealEvents } from "@/lib/landing/landing-motion-content";
 
 const ctaAuditSealEvents = auditSealEvents.filter(
@@ -14,9 +11,9 @@ const ctaAuditSealEvents = auditSealEvents.filter(
 
 export function IncidentDemoCTA() {
   const incidentSummary = [
-    { label: "Source clinic", value: liveIncidentHero.incident.clinic },
-    { label: "Reroute", value: liveIncidentHero.incident.recommendedRoute },
-    { label: "Audit record", value: liveIncidentHero.incident.auditId },
+    { label: "Source clinic", value: incidentDemoCta.incident.sourceClinic },
+    { label: "Reroute", value: incidentDemoCta.incident.reroute },
+    { label: "Audit record", value: incidentDemoCta.incident.auditRecord },
   ] as const;
 
   return (

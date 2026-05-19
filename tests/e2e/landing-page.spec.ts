@@ -248,9 +248,9 @@ test.describe("landing page 2026", () => {
     await expect(
       cta.getByRole("heading", { name: "Walk through the Mabopane Station incident." }),
     ).toBeVisible();
-    await expect(cta.getByText("Mamelodi East Community Clinic")).toBeVisible();
+    await expect(cta.getByText("Mabopane Station Clinic")).toBeVisible();
     await expect(cta.getByText("Akasia Hills Clinic")).toBeVisible();
-    await expect(cta.getByText("AUD-2026-0504-017")).toBeVisible();
+    await expect(cta.getByText("AUD-OPS-MAB-001")).toBeVisible();
     await expect(
       cta.getByRole("link", { name: "Sign in to operations workspace" }),
     ).toHaveAttribute("href", "/login");

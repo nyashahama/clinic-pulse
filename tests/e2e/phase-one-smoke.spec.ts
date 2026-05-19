@@ -67,6 +67,15 @@ test.describe("phase-one demo route checklist", () => {
     await expectNoStagedProductLanguage(page);
   });
 
+  test("renders public clinic detail without staged framing", async ({ page }) => {
+    await page.goto("/clinics/clinic-mabopane-station");
+    await expect(page.getByRole("heading", { name: "Mabopane Station Clinic" })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Request operations walkthrough" }),
+    ).toBeVisible();
+    await expectNoStagedProductLanguage(page);
+  });
+
   test("renders protected district, clinic detail, field, and admin routes after login", async ({
     page,
   }) => {

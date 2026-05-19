@@ -81,6 +81,15 @@ describe("landing page 2026 content", () => {
     });
   });
 
+  it("keeps the incident walkthrough CTA anchored to the Mabopane scenario", () => {
+    expect(incidentDemoCta.title).toBe("Walk through the Mabopane Station incident.");
+    expect(incidentDemoCta.incident).toEqual({
+      sourceClinic: "Mabopane Station Clinic",
+      reroute: "Akasia Hills Clinic",
+      auditRecord: "AUD-OPS-MAB-001",
+    });
+  });
+
   it("keeps public landing content away from staged product wording", () => {
     const serialized = JSON.stringify({
       incidentDemoCta,

@@ -539,5 +539,10 @@ export const incidentDemoCta = {
     "Follow one clinic disruption from district triage through field confirmation, public routing, admin review, and monitoring.",
   primaryCta: { label: "Book walkthrough", href: "/?booking=1" },
   secondaryCta: { label: "Sign in to operations workspace", href: "/login" },
+  incident: {
+    sourceClinic: "Mabopane Station Clinic",
+    reroute: "Akasia Hills Clinic",
+    auditRecord: "AUD-OPS-MAB-001",
+  },
   note: "Scenario data is local to the walkthrough and mirrors the operating model clearly.",
 } as const;
