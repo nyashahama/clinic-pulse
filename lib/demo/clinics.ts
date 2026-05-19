@@ -1,7 +1,11 @@
 import type { Clinic } from "@/lib/demo/types";
+import {
+  DISTRICT_OPERATIONS_DISTRICT,
+  DISTRICT_OPERATIONS_PROVINCE,
+} from "@/lib/demo/operations-scenario";
 
-export const DEMO_PROVINCE = "Gauteng";
-export const DEMO_DISTRICT = "Tshwane North Demo District";
+export const DEMO_PROVINCE = DISTRICT_OPERATIONS_PROVINCE;
+export const DEMO_DISTRICT = DISTRICT_OPERATIONS_DISTRICT;
 
 export const STOCKOUT_TRIGGER_CLINIC_ID = "clinic-mamelodi-east";
 export const STAFFING_TRIGGER_CLINIC_ID = "clinic-soshanguve-block-f";
