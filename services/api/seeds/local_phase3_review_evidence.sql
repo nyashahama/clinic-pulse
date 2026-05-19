@@ -4,7 +4,7 @@
 WITH demo_org AS (
     SELECT id
     FROM organisations
-    WHERE lower(slug) = 'tshwane-north-demo-district'
+    WHERE lower(slug) = 'tshwane-north-district'
 ), org_admin AS (
     SELECT users.id
     FROM users
@@ -101,7 +101,7 @@ ON CONFLICT (id) DO UPDATE SET
 WITH demo_org AS (
     SELECT id
     FROM organisations
-    WHERE lower(slug) = 'tshwane-north-demo-district'
+    WHERE lower(slug) = 'tshwane-north-district'
 ), org_admin AS (
     SELECT users.id
     FROM users
@@ -181,7 +181,7 @@ WHERE reports.id = report_reviews.report_id
 WITH demo_org AS (
     SELECT id
     FROM organisations
-    WHERE lower(slug) = 'tshwane-north-demo-district'
+    WHERE lower(slug) = 'tshwane-north-district'
 ), reporter AS (
     SELECT users.id
     FROM users
@@ -283,7 +283,7 @@ WHERE NOT EXISTS (
 WITH demo_org AS (
     SELECT id
     FROM organisations
-    WHERE lower(slug) = 'tshwane-north-demo-district'
+    WHERE lower(slug) = 'tshwane-north-district'
 ), org_admin AS (
     SELECT users.id
     FROM users
@@ -311,7 +311,7 @@ SELECT
     'cp_demo_review',
     'sha256:local-review-partner-api-key',
     '["clinics:read","status:read","alternatives:read","exports:read"]'::jsonb,
-    '["Tshwane North Demo District"]'::jsonb,
+    '["Tshwane North District"]'::jsonb,
     '2026-12-31T23:59:59.000Z'::timestamptz,
     '2026-05-01T08:41:00.000Z'::timestamptz,
     '127.0.0.1'::inet,
@@ -329,7 +329,7 @@ WHERE NOT EXISTS (
 WITH demo_org AS (
     SELECT id
     FROM organisations
-    WHERE lower(slug) = 'tshwane-north-demo-district'
+    WHERE lower(slug) = 'tshwane-north-district'
 ), org_admin AS (
     SELECT users.id
     FROM users
@@ -412,7 +412,7 @@ WHERE NOT EXISTS (
 WITH demo_org AS (
     SELECT id
     FROM organisations
-    WHERE lower(slug) = 'tshwane-north-demo-district'
+    WHERE lower(slug) = 'tshwane-north-district'
 ), org_admin AS (
     SELECT users.id
     FROM users
@@ -432,7 +432,7 @@ SELECT
     demo_org.id,
     org_admin.id,
     'json',
-    '{"district":"Tshwane North Demo District","mode":"local_review"}'::jsonb,
+    '{"district":"Tshwane North District","mode":"local_review"}'::jsonb,
     '{"clinics":8,"statuses":8,"integrationChecks":6}'::jsonb,
     'sha256:local-review-partner-export',
     '{"generatedBy":"local_phase3_review_evidence","containsPatientData":false}'::jsonb,
@@ -448,7 +448,7 @@ WHERE NOT EXISTS (
 WITH demo_org AS (
     SELECT id
     FROM organisations
-    WHERE lower(slug) = 'tshwane-north-demo-district'
+    WHERE lower(slug) = 'tshwane-north-district'
 ), system_admin AS (
     SELECT users.id
     FROM users

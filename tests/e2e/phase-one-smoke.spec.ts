@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { PRODUCT_LANGUAGE_BAN_LIST } from "../../lib/demo/operations-scenario";
 import { phaseOneDemoRouteChecklist } from "../../lib/demo/demo-runbook";
 
 const demoAccount = {
@@ -17,10 +18,11 @@ async function signIn(page: Page) {
 
 async function expectNoStagedProductLanguage(page: Page) {
   const visibleText = await page.locator("body").innerText();
-
-  expect(visibleText).not.toMatch(
-    /Live demo|Demo District|demo workspace|demo environment|No-login public flow|Book founder walkthrough|Tshwane North Demo/i,
+  const escapedBanList = PRODUCT_LANGUAGE_BAN_LIST.map((phrase) =>
+    phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
   );
+
+  expect(visibleText).not.toMatch(new RegExp(escapedBanList.join("|"), "i"));
 }
 
 test.describe("phase-one demo route checklist", () => {

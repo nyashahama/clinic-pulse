@@ -68,6 +68,62 @@ func TestLocalPhase3AuthSeedExistsOutsideMigrations(t *testing.T) {
 	}
 }
 
+func TestLocalPhase3AuthSeedMigratesLegacyDistrictOrganisation(t *testing.T) {
+	t.Parallel()
+
+	seedSQL := readSeedFile(t, "local_phase3_auth_users.sql")
+	legacySlug := "tshwane-north-demo-district"
+	currentSlug := "tshwane-north-district"
+	legacyName := "Tshwane North Demo District"
+	currentName := "Tshwane North District"
+
+	legacySlugIndex := strings.Index(seedSQL, legacySlug)
+	seedOrganisationIndex := strings.Index(seedSQL, "WITH seed_organisation AS")
+	if legacySlugIndex == -1 {
+		t.Fatalf("expected local auth seed to reference legacy organisation slug %q", legacySlug)
+	}
+	if !strings.Contains(seedSQL, currentSlug) {
+		t.Fatalf("expected local auth seed to reference current organisation slug %q", currentSlug)
+	}
+	if seedOrganisationIndex == -1 {
+		t.Fatal("expected local auth seed to define seed_organisation insert block")
+	}
+	if legacySlugIndex > seedOrganisationIndex {
+		t.Fatalf("expected local auth seed to migrate legacy slug before seed_organisation insert block")
+	}
+
+	for _, value := range []string{legacyName, currentName, "UPDATE organisations"} {
+		if !strings.Contains(seedSQL, value) {
+			t.Fatalf("expected local auth seed to contain %q", value)
+		}
+	}
+}
+
+func TestLocalPhase3ReviewEvidenceSeedUsesCurrentDistrictOrganisation(t *testing.T) {
+	t.Parallel()
+
+	seedSQL := readSeedFile(t, "local_phase3_review_evidence.sql")
+	forbidden := []string{
+		"tshwane-north-demo-district",
+		"Tshwane North Demo District",
+	}
+	for _, value := range forbidden {
+		if strings.Contains(seedSQL, value) {
+			t.Fatalf("expected local review evidence seed not to contain legacy value %q", value)
+		}
+	}
+
+	required := []string{
+		"tshwane-north-district",
+		"Tshwane North District",
+	}
+	for _, value := range required {
+		if !strings.Contains(seedSQL, value) {
+			t.Fatalf("expected local review evidence seed to contain %q", value)
+		}
+	}
+}
+
 func TestLocalPhase3ReviewEvidenceSeedExistsOutsideMigrations(t *testing.T) {
 	t.Parallel()
 

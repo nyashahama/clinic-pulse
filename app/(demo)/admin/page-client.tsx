@@ -578,7 +578,7 @@ export default function AdminPage({
           data-admin-section={adminWorkspaceSections[4]}
         >
           <SectionHeader
-            eyebrow="Demo controls"
+            eyebrow="Scenario controls"
             title="Reset and runbook"
             description="Controls stay out of the primary admin workflow so operators focus on readiness first."
             actions={

@@ -1,6 +1,82 @@
 -- Local-only Phase 3 auth demo users.
 -- This file is intentionally outside services/api/migrations and is not run automatically.
 -- Password hashes correspond to the local demo password shared out-of-band.
+UPDATE organisations
+SET
+    name = 'Tshwane North District',
+    slug = 'tshwane-north-district',
+    updated_at = now()
+WHERE lower(slug) = 'tshwane-north-demo-district'
+    AND NOT EXISTS (
+        SELECT 1
+        FROM organisations existing
+        WHERE lower(existing.slug) = 'tshwane-north-district'
+    );
+
+WITH current_organisation AS (
+    SELECT id
+    FROM organisations
+    WHERE lower(slug) = 'tshwane-north-district'
+), legacy_organisation AS (
+    SELECT id
+    FROM organisations
+    WHERE lower(slug) = 'tshwane-north-demo-district'
+), moved_memberships AS (
+    UPDATE organisation_memberships
+    SET
+        organisation_id = current_organisation.id,
+        district = CASE
+            WHEN organisation_memberships.district = 'Tshwane North Demo District'
+                THEN 'Tshwane North District'
+            ELSE organisation_memberships.district
+        END
+    FROM current_organisation, legacy_organisation
+    WHERE organisation_memberships.organisation_id = legacy_organisation.id
+        AND NOT EXISTS (
+            SELECT 1
+            FROM organisation_memberships existing
+            WHERE existing.user_id = organisation_memberships.user_id
+                AND existing.role = organisation_memberships.role
+                AND COALESCE(existing.organisation_id, 0) =
+                    COALESCE(current_organisation.id, 0)
+                AND COALESCE(existing.district, '') =
+                    COALESCE(
+                        CASE
+                            WHEN organisation_memberships.district = 'Tshwane North Demo District'
+                                THEN 'Tshwane North District'
+                            ELSE organisation_memberships.district
+                        END,
+                        ''
+                    )
+        )
+    RETURNING organisation_memberships.id
+), pruned_memberships AS (
+    DELETE FROM organisation_memberships
+    USING current_organisation, legacy_organisation
+    WHERE organisation_memberships.organisation_id = legacy_organisation.id
+        AND EXISTS (
+            SELECT 1
+            FROM organisation_memberships existing
+            WHERE existing.user_id = organisation_memberships.user_id
+                AND existing.role = organisation_memberships.role
+                AND COALESCE(existing.organisation_id, 0) =
+                    COALESCE(current_organisation.id, 0)
+                AND COALESCE(existing.district, '') =
+                    COALESCE(
+                        CASE
+                            WHEN organisation_memberships.district = 'Tshwane North Demo District'
+                                THEN 'Tshwane North District'
+                            ELSE organisation_memberships.district
+                        END,
+                        ''
+                    )
+        )
+    RETURNING organisation_memberships.id
+)
+DELETE FROM organisations
+USING current_organisation
+WHERE lower(organisations.slug) = 'tshwane-north-demo-district';
+
 WITH seed_organisation AS (
     INSERT INTO organisations (name, slug)
     SELECT 'Tshwane North District', 'tshwane-north-district'

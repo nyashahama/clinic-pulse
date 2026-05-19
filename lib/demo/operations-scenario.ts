@@ -40,6 +40,8 @@ export const PRODUCT_LANGUAGE_BAN_LIST = [
   "Book founder walkthrough",
   "Demo data is seeded",
   "Tshwane North Demo",
+  "Demo controls",
+  "Controlled demo reset",
 ] as const;
 
 export const OPERATIONS_INCIDENT = {

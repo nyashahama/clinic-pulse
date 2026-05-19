@@ -35,6 +35,12 @@ describe("district operations scenario", () => {
     }
   });
 
+  it("covers authenticated product phrases that should not return", () => {
+    expect(PRODUCT_LANGUAGE_BAN_LIST).toEqual(
+      expect.arrayContaining(["Demo controls", "Controlled demo reset"]),
+    );
+  });
+
   it("keeps legacy clinic constants aligned to the district operations scenario", () => {
     expect(DEMO_PROVINCE).toBe(DISTRICT_OPERATIONS_PROVINCE);
     expect(DEMO_DISTRICT).toBe(DISTRICT_OPERATIONS_DISTRICT);
