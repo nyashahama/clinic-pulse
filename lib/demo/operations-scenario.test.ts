@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import { DEMO_DISTRICT, DEMO_PROVINCE } from "@/lib/demo/clinics";
 import {
   DISTRICT_OPERATIONS_DISTRICT,
+  DISTRICT_OPERATIONS_PROVINCE,
   OPERATIONS_INCIDENT,
   PRODUCT_LANGUAGE_BAN_LIST,
 } from "@/lib/demo/operations-scenario";
@@ -31,5 +33,10 @@ describe("district operations scenario", () => {
     for (const banned of PRODUCT_LANGUAGE_BAN_LIST) {
       expect(serialized).not.toContain(banned.toLowerCase());
     }
+  });
+
+  it("keeps legacy clinic constants aligned to the district operations scenario", () => {
+    expect(DEMO_PROVINCE).toBe(DISTRICT_OPERATIONS_PROVINCE);
+    expect(DEMO_DISTRICT).toBe(DISTRICT_OPERATIONS_DISTRICT);
   });
 });

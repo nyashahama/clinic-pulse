@@ -1,6 +1,36 @@
 export const DISTRICT_OPERATIONS_PROVINCE = "Gauteng";
 export const DISTRICT_OPERATIONS_DISTRICT = "Tshwane North District";
 
+export type OperationsIncidentLifecycleId =
+  | "signal_received"
+  | "district_triage"
+  | "field_update"
+  | "admin_review"
+  | "monitoring";
+
+export type OperationsIncidentStatus = "non_functional";
+export type OperationsIncidentFreshness = "fresh";
+
+export type OperationsIncidentScenario = {
+  readonly sourceClinicId: string;
+  readonly sourceClinicName: string;
+  readonly affectedService: string;
+  readonly affectedServices: readonly string[];
+  readonly recommendedAlternativeId: string;
+  readonly recommendedAlternativeName: string;
+  readonly districtOwner: string;
+  readonly fieldReporter: string;
+  readonly adminReviewer: string;
+  readonly status: OperationsIncidentStatus;
+  readonly freshness: OperationsIncidentFreshness;
+  readonly signalSummary: string;
+  readonly fieldUpdateSummary: string;
+  readonly adminReviewSummary: string;
+  readonly monitoringSummary: string;
+  readonly auditId: string;
+  readonly lifecycle: readonly OperationsIncidentLifecycleId[];
+};
+
 export const PRODUCT_LANGUAGE_BAN_LIST = [
   "Live demo",
   "Demo District",
@@ -39,4 +69,4 @@ export const OPERATIONS_INCIDENT = {
     "admin_review",
     "monitoring",
   ],
-} as const;
+} as const satisfies OperationsIncidentScenario;
