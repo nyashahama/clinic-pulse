@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AdminEvidenceLinkedRow } from "@/components/product/admin-evidence-linked-row";
 import { cn } from "@/lib/utils";
 
 export type AdminTone = "clear" | "attention" | "blocked" | "info";
@@ -161,6 +162,8 @@ export type AdminEvidenceTableProps<Row> = {
   columns: AdminEvidenceColumn<Row>[];
   rows: Row[];
   getRowKey: (row: Row, index: number) => string;
+  getRowAriaLabel?: (row: Row, index: number) => string;
+  getRowHref?: (row: Row, index: number) => string | undefined;
   emptyState?: ReactNode;
   className?: string;
 };
@@ -170,6 +173,8 @@ export function AdminEvidenceTable<Row>({
   columns,
   rows,
   getRowKey,
+  getRowAriaLabel,
+  getRowHref,
   emptyState,
   className,
 }: AdminEvidenceTableProps<Row>) {
@@ -200,24 +205,38 @@ export function AdminEvidenceTable<Row>({
             </TableRow>
           </TableHeader>
           <TableBody className="divide-y divide-border-subtle [&_tr]:border-0">
-            {rows.map((row, rowIndex) => (
-              <TableRow
-                key={getRowKey(row, rowIndex)}
-                className="hover:bg-bg-muted/60"
-              >
-                {columns.map((column) => (
-                  <TableCell
-                    key={column.key}
-                    className={cn(
-                      "whitespace-normal break-words px-3 py-3 align-top text-content-default",
-                      column.className,
-                    )}
-                  >
-                    {column.render(row)}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
+            {rows.map((row, rowIndex) => {
+              const rowCells = columns.map((column) => (
+                <TableCell
+                  key={column.key}
+                  className={cn(
+                    "whitespace-normal break-words px-3 py-3 align-top text-content-default",
+                    column.className,
+                  )}
+                >
+                  {column.render(row)}
+                </TableCell>
+              ));
+              const rowHref = getRowHref?.(row, rowIndex);
+
+              return rowHref ? (
+                <AdminEvidenceLinkedRow
+                  key={getRowKey(row, rowIndex)}
+                  ariaLabel={getRowAriaLabel?.(row, rowIndex)}
+                  className="hover:bg-bg-muted/60"
+                  href={rowHref}
+                >
+                  {rowCells}
+                </AdminEvidenceLinkedRow>
+              ) : (
+                <TableRow
+                  key={getRowKey(row, rowIndex)}
+                  className="hover:bg-bg-muted/60"
+                >
+                  {rowCells}
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       ) : (

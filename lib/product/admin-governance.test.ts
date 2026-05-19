@@ -195,3 +195,10 @@ it("exports the shared admin module primitives", () => {
   expect(source).toContain("export type AdminAction");
   expect(source).toContain("break-words");
 });
+
+it("links reporting coverage clinic rows to operational clinic detail", () => {
+  const source = readFileSync("app/(demo)/admin/reporting-coverage/page.tsx", "utf8");
+
+  expect(source).toContain("next/link");
+  expect(source).toContain('href={`/district/clinics/${encodeURIComponent(row.clinic.id)}`}');
+});
