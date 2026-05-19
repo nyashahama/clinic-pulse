@@ -71,6 +71,10 @@ describe("district operations scenario", () => {
         "Founder package",
         "founder pipeline",
         "YC-ready",
+        "current demo state",
+        "Demo partner integration",
+        "Demo partner webhook",
+        "Refresh the demo surface",
       ]),
     );
   });

@@ -7,7 +7,7 @@ const errorStateCopy: Record<DemoSurface, { title: string; description: string }
     "clinic-table": {
       title: "Clinic table unavailable",
       description:
-        "Clinic rows could not be prepared for this district view. Refresh the demo surface and try again.",
+        "Clinic rows could not be prepared for this district view. Refresh the district surface and try again.",
     },
     "report-stream": {
       title: "Report stream unavailable",

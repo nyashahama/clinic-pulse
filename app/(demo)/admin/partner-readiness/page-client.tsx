@@ -87,7 +87,7 @@ export function PartnerReadinessPageClient({
       "create-key",
       () =>
         createPartnerApiKeyAction({
-          name: "Demo partner integration",
+          name: "Operations partner integration",
           environment: "demo",
           scopes: ["clinics:read", "status:read", "alternatives:read", "exports:read"],
           allowedDistricts: [state.district],
@@ -106,7 +106,7 @@ export function PartnerReadinessPageClient({
       "create-webhook",
       () =>
         createPartnerWebhookAction({
-          name: "Demo partner webhook",
+          name: "Operations partner webhook",
           targetUrl: "https://partner.example.test/webhooks/clinicpulse",
           eventTypes: ["clinic.status_changed"],
         }),

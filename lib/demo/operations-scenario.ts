@@ -73,6 +73,10 @@ export const PRODUCT_LANGUAGE_BAN_LIST = [
   "Founder package",
   "founder pipeline",
   "YC-ready",
+  "current demo state",
+  "Demo partner integration",
+  "Demo partner webhook",
+  "Refresh the demo surface",
 ] as const;
 
 export const OPERATIONS_INCIDENT = {
