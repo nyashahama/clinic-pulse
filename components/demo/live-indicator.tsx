@@ -7,7 +7,7 @@ import { getActiveAlerts } from "@/lib/demo/selectors";
 
 function formatTimestamp(value: string | null) {
   if (!value) {
-    return "Seed data";
+    return "Awaiting sync";
   }
 
   return new Intl.DateTimeFormat("en-ZA", {
@@ -30,7 +30,7 @@ export function LiveIndicator() {
       <div className="min-w-0 leading-tight">
         <div className="flex items-center gap-2 text-card-foreground">
           <Activity className="size-4 text-emerald-600" />
-          <span className="font-medium">Live demo</span>
+          <span className="font-medium">Live operations</span>
         </div>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1">

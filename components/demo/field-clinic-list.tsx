@@ -49,7 +49,7 @@ export function FieldClinicList({
       <SectionHeader
         eyebrow="Field queue"
         title="Assigned clinics"
-        description="Select a clinic to submit an update from your mobile workflow."
+        description="Select the clinic you are updating from today’s assigned route."
       />
 
       <div className="mt-4 space-y-2">

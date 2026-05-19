@@ -15,6 +15,14 @@ async function signIn(page: Page) {
   await expect(page).toHaveURL(/\/admin$/);
 }
 
+async function expectNoStagedProductLanguage(page: Page) {
+  const visibleText = await page.locator("body").innerText();
+
+  expect(visibleText).not.toMatch(
+    /Live demo|Demo District|demo workspace|demo environment|No-login public flow|Book founder walkthrough|Tshwane North Demo/i,
+  );
+}
+
 test.describe("phase-one demo route checklist", () => {
   test("keeps the smoke suite aligned with the runbook route order", async () => {
     expect(phaseOneDemoRouteChecklist.map((entry) => entry.path)).toEqual([
@@ -67,6 +75,7 @@ test.describe("phase-one demo route checklist", () => {
 
     await signIn(page);
     await page.goto("/demo");
+    await expectNoStagedProductLanguage(page);
 
     await expect(
       page.getByRole("heading", { name: "Unified severity queue" }),
@@ -82,21 +91,23 @@ test.describe("phase-one demo route checklist", () => {
     await expect(page.getByRole("heading", { name: "Clinic table" })).toBeVisible();
     await expect(page.getByText("Report stream")).toBeVisible();
 
-    await page.goto("/demo/clinics/clinic-mamelodi-east");
+    await page.goto("/demo/clinics/clinic-mabopane-station");
+    await expectNoStagedProductLanguage(page);
     await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: "Mamelodi East Community Clinic" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Mabopane Station Clinic" })).toBeVisible();
 
     await page.goto("/field");
+    await expectNoStagedProductLanguage(page);
     await expect(page.getByRole("heading", { name: "Field workbench" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Submit clinic status" })).toBeVisible();
 
     await page.goto("/admin");
+    await expectNoStagedProductLanguage(page);
     await expect(page.getByRole("heading", { name: "Operations admin deck" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Stakeholder activity queue" })).toBeVisible();
 
     await page.goto("/demo");
+    await expectNoStagedProductLanguage(page);
     const supportingOperations = page
       .getByText("Supporting operations", { exact: true })
       .filter({ visible: true })

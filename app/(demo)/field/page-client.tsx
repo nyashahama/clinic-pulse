@@ -545,7 +545,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
             value: String(clinics.length),
             badge: "Route",
             trend: "up",
-            footer: `${session.displayName || session.email} has this route`,
+            footer: "Today’s field route is loaded",
             detail: "The list, report form, and queue use the same assigned clinics.",
           },
           {
@@ -577,7 +577,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
 
       <ReferencePanel
         title="Field workbench"
-        description="The field flow is ordered around the actual visit sequence: route, report, queue, and sync."
+        description="The field flow is ordered around the actual visit sequence: assigned route, status report, device queue, and sync."
         actions={
           <Button
             variant="outline"
@@ -599,7 +599,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
             Clinic status stream is currently {isOnline ? "online" : "offline"}.
           </p>
           <p className="text-xs text-content-subtle">
-            Pilot safety: confirm stale or pending data before operational decisions.{" "}
+            Confirm stale or pending data before operational decisions.{" "}
             <Link href="/legal/safety" className="underline">
               Read safety notes
             </Link>

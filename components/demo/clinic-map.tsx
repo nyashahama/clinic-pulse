@@ -103,8 +103,8 @@ export function ClinicMap({
       <div className="px-4 pt-4">
         <SectionHeader
           eyebrow="District overview"
-          title="Demo district map"
-          description="Live facility signal plotted over a polished mock district surface, with high-risk clinics pinned for quick intervention."
+          title="District operations map"
+          description="Live facility signal plotted over the district surface, with high-risk clinics pinned for quick intervention."
         />
       </div>
 
@@ -179,7 +179,7 @@ export function ClinicMap({
 
           <div className="absolute bottom-3 left-3 inline-flex items-center gap-2 rounded-md border border-border-subtle bg-bg-default/90 px-3 py-2 text-xs text-content-default shadow-sm">
             <MapPinned className="size-3.5 text-primary" />
-            District labels and clinic signal are demo-positioned from fixture coordinates.
+            District labels and clinic signal use configured fixture coordinates.
           </div>
         </div>
 

@@ -243,7 +243,7 @@ export default function ClinicDetailPage({ consoleHref = "/demo" }: ClinicDetail
               <p className="text-sm font-medium text-content-emphasis">Clinic not found</p>
               <p className="mt-1 max-w-xl">
                 The requested clinic id {clinicId ? `"${clinicId}"` : "was not provided"} could not be
-                matched to the current mock district roster.
+                matched to the current district clinic roster.
               </p>
             </div>
           </div>

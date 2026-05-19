@@ -3,20 +3,20 @@
 -- Password hashes correspond to the local demo password shared out-of-band.
 WITH seed_organisation AS (
     INSERT INTO organisations (name, slug)
-    SELECT 'Tshwane North Demo District', 'tshwane-north-demo-district'
+    SELECT 'Tshwane North District', 'tshwane-north-district'
     WHERE NOT EXISTS (
         SELECT 1
         FROM organisations
-        WHERE lower(slug) = 'tshwane-north-demo-district'
+        WHERE lower(slug) = 'tshwane-north-district'
     )
     RETURNING id
 )
 UPDATE organisations
 SET
-    name = 'Tshwane North Demo District',
-    slug = 'tshwane-north-demo-district',
+    name = 'Tshwane North District',
+    slug = 'tshwane-north-district',
     updated_at = now()
-WHERE lower(slug) = 'tshwane-north-demo-district';
+WHERE lower(slug) = 'tshwane-north-district';
 
 WITH seed_users (email, display_name, password_hash) AS (
     VALUES
@@ -51,12 +51,12 @@ WITH seed_memberships (email, role, district) AS (
     VALUES
         ('system-admin@clinicpulse.local', 'system_admin', NULL),
         ('org-admin@clinicpulse.local', 'org_admin', NULL),
-        ('district-manager@clinicpulse.local', 'district_manager', 'Tshwane North Demo District'),
+        ('district-manager@clinicpulse.local', 'district_manager', 'Tshwane North District'),
         ('reporter@clinicpulse.local', 'reporter', NULL)
 ), demo_organisation AS (
     SELECT id
     FROM organisations
-    WHERE lower(slug) = 'tshwane-north-demo-district'
+    WHERE lower(slug) = 'tshwane-north-district'
 ), resolved_memberships AS (
     SELECT
         users.id AS user_id,

@@ -64,7 +64,7 @@ const expectedSidebarLabels = {
     "Security",
     "Partner readiness",
     "Integrations",
-    "Demo controls",
+    "Scenario controls",
     "Audit evidence",
   ],
 } satisfies Record<AuthRole, string[]>;
