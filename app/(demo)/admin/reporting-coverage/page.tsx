@@ -4,6 +4,7 @@ import {
   AdminMetricStrip,
   AdminModuleHeader,
 } from "@/components/product/admin-module";
+import Link from "next/link";
 import {
   fetchOperationalClinics,
   fetchPendingReports,
@@ -181,6 +182,8 @@ export default async function Page() {
       <AdminEvidenceTable
         label="Clinic reporting coverage"
         rows={clinics}
+        getRowAriaLabel={(row) => `Open ${row.clinic.name} clinic detail`}
+        getRowHref={(row) => `/district/clinics/${encodeURIComponent(row.clinic.id)}`}
         getRowKey={(row) => row.clinic.id}
         columns={[
           {
@@ -188,8 +191,15 @@ export default async function Page() {
             header: "Clinic",
             render: (row) => (
               <div className="min-w-0">
-                <p className="font-medium text-foreground">{row.clinic.name}</p>
-                <p className="text-xs text-muted-foreground">{row.clinic.facilityCode}</p>
+                <Link
+                  href={`/district/clinics/${encodeURIComponent(row.clinic.id)}`}
+                  className="group/link inline-flex min-w-0 flex-col rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                >
+                  <span className="font-medium text-primary underline-offset-4 group-hover/link:underline group-focus-visible/link:underline">
+                    {row.clinic.name}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{row.clinic.facilityCode}</span>
+                </Link>
               </div>
             ),
           },

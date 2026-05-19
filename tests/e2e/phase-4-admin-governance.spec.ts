@@ -31,6 +31,43 @@ test("organisation admin sees real governance modules", async ({ page }) => {
   }
 });
 
+test("reporting coverage clinic names open operational detail", async ({ page }) => {
+  await signIn(page, "org-admin@clinicpulse.local");
+  await page.goto("/admin/reporting-coverage");
+
+  const coverageTable = page.getByLabel("Clinic reporting coverage");
+  const clinicLink = coverageTable.getByRole("link", {
+    name: /Mabopane Station Clinic/i,
+  });
+
+  await expect(clinicLink).toHaveAttribute(
+    "href",
+    "/district/clinics/clinic-mabopane-station",
+  );
+  await Promise.all([
+    page.waitForURL(/\/district\/clinics\/clinic-mabopane-station$/),
+    clinicLink.click(),
+  ]);
+  await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
+});
+
+test("reporting coverage rows open operational detail", async ({ page }) => {
+  await signIn(page, "org-admin@clinicpulse.local");
+  await page.goto("/admin/reporting-coverage");
+
+  const coverageTable = page.getByLabel("Clinic reporting coverage");
+  const clinicRow = coverageTable.getByRole("row", {
+    name: /Open Mabopane Station Clinic clinic detail/i,
+  });
+
+  await expect(clinicRow).toBeVisible();
+  await Promise.all([
+    page.waitForURL(/\/district\/clinics\/clinic-mabopane-station$/),
+    clinicRow.getByText("non functional", { exact: true }).click(),
+  ]);
+  await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
+});
+
 test("desktop admin navigation opens standalone governance modules", async ({
   page,
 }, testInfo) => {
