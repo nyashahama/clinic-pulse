@@ -28,8 +28,9 @@ export const phaseOneDemoRouteChecklist: DemoRouteChecklistEntry[] = [
     viewports: ["desktop", "mobile"],
   },
   {
-    path: "/demo/clinics/clinic-mamelodi-east",
-    proofMoment: "Clinic detail shows the incident evidence, patient routing impact, report history, and escalation path.",
+    path: "/demo/clinics/clinic-mabopane-station",
+    proofMoment:
+      "Clinic detail shows Mabopane Station incident evidence, patient routing impact, report history, and escalation path.",
     viewports: ["desktop", "mobile"],
   },
   {

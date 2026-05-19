@@ -68,10 +68,12 @@ async function captureScreenshots(page: Page) {
 
   await gotoStable(page, "/book-demo");
   await expect(page.getByRole("dialog", { name: "Book a Clinic Pulse demo" })).toBeVisible();
+  await expectNoStagedProductLanguage(page);
   await capture(page, "booking-flow-desktop.png");
 
   await gotoStable(page, "/book-demo/thanks?name=Smoke&organization=E2E%20District");
   await expect(page.getByRole("heading", { name: "Thanks, Smoke" })).toBeVisible();
+  await expectNoStagedProductLanguage(page);
   await capture(page, "booking-thanks-desktop.png");
 
   await signIn(page);

@@ -17,7 +17,7 @@ describe("isDashboardNavUrlActive", () => {
     expect(
       isDashboardNavUrlActive(
         "/demo",
-        "/demo/clinics/clinic-mamelodi-east",
+        "/demo/clinics/clinic-mabopane-station",
         searchParams(),
       ),
     ).toBe(true);
@@ -41,7 +41,7 @@ describe("isDashboardNavUrlActive", () => {
     expect(
       isDashboardNavUrlActive(
         "/demo?status=non_functional",
-        "/demo/clinics/clinic-mamelodi-east",
+        "/demo/clinics/clinic-mabopane-station",
         searchParams("status=non_functional"),
       ),
     ).toBe(false);

@@ -16,9 +16,9 @@ Showcase screenshots are generated locally into `public/showcase/screenshots/` a
 | --- | --- | --- | --- | --- |
 | `landing-desktop.png` | `/` | Desktop | Logged out | ClinicPulse positioning and booking entry are clear |
 | `booking-flow-desktop.png` | `/book-demo` | Desktop | Logged out | Lead capture path is credible and focused |
-| `booking-thanks-desktop.png` | `/book-demo/thanks` | Desktop | After booking flow | Handoff routes to demo/admin/finder are visible |
+| `booking-thanks-desktop.png` | `/book-demo/thanks` | Desktop | After booking flow | Handoff routes to district, admin, and finder work are visible |
 | `district-console-desktop.png` | `/demo` | Desktop | Logged in as org admin | Status summary, map, alerts, and scenario controls are visible |
-| `clinic-evidence-desktop.png` | `/demo/clinics/clinic-mamelodi-east` | Desktop | Logged in as org admin | Clinic profile, service availability, reports, and audit context are visible |
+| `clinic-evidence-desktop.png` | `/demo/clinics/clinic-mabopane-station` | Desktop | Logged in as org admin | Mabopane Station incident evidence, patient routing impact, report history, and escalation context are visible |
 | `finder-mobile.png` | `/finder` | Mobile | Logged out | Public availability search works on mobile |
 | `field-report-mobile.png` | `/field` | Mobile | Logged in as org admin | Offline-friendly report flow is usable on mobile |
 | `admin-readiness-desktop.png` | `/admin` | Desktop | Logged in as org admin | Lead pipeline, API preview, partner readiness, and pilot readiness are visible |
@@ -36,4 +36,4 @@ E2E_DATABASE_URL='postgres://clinicpulse:clinicpulse@localhost:55432/clinicpulse
   npm run capture:showcase
 ```
 
-The capture suite records the screenshots above and writes the local walkthrough video to `public/showcase/videos/clinicpulse-demo-walkthrough.webm`.
+The capture suite records the screenshots above and writes the local operations walkthrough video to `public/showcase/videos/clinicpulse-operations-walkthrough.webm`.

@@ -7,7 +7,7 @@ ClinicPulse is a full-stack clinic operations demo for district teams that need 
 - Local demo URL: `http://localhost:3000` after running the local setup below
 - Demo API URL: `http://localhost:8080` after running the Go API locally
 - Local workflow screenshots: `public/showcase/screenshots/` after running `npm run capture:showcase`
-- Local recorded walkthrough: `public/showcase/videos/clinicpulse-demo-walkthrough.webm` after running `npm run capture:showcase`
+- Local operations walkthrough: `public/showcase/videos/clinicpulse-operations-walkthrough.webm` after running `npm run capture:showcase`
 
 ### Demo Credentials
 
@@ -72,9 +72,9 @@ Open `http://localhost:3000`. The review API runs on `http://localhost:18080` an
 | Workflow | Route | What it shows |
 | --- | --- | --- |
 | Landing and booking entry | `/` | Product positioning, operating gap, workflows, and booking entry |
-| Booking flow | `/book-demo` and `/book-demo/thanks` | Lead capture flow and handoff into demo routes |
+| Booking flow | `/book-demo` and `/book-demo/thanks` | Operations walkthrough request flow and handoff into district routes |
 | District console | `/demo` | Clinic status map, incidents, rerouting context, offline sync, and scenario controls |
-| Clinic evidence | `/demo/clinics/clinic-mamelodi-east` | Clinic-specific service, report, and audit context |
+| Clinic evidence | `/demo/clinics/clinic-mabopane-station` | Mabopane Station incident evidence, patient routing impact, reports, and escalation context |
 | Public finder | `/finder` | Public clinic availability search and alternatives |
 | Field reporting | `/field` | Offline-friendly report submission and sync path |
 | Admin workspace | `/admin` | Lead pipeline, export preview, API preview, partner readiness, and pilot readiness |
@@ -95,7 +95,7 @@ Open `http://localhost:3000`. The review API runs on `http://localhost:18080` an
 Showcase screenshots and videos are generated local artifacts and are intentionally ignored by git.
 
 - Workflow screenshots: `public/showcase/screenshots/`
-- Short demo walkthrough: `public/showcase/videos/clinicpulse-demo-walkthrough.webm`
+- Short operations walkthrough: `public/showcase/videos/clinicpulse-operations-walkthrough.webm`
 - Regenerate them with `npm run capture:showcase` after resetting the isolated e2e database.
 
 ## Architecture Snapshot
