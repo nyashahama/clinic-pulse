@@ -15,6 +15,28 @@ import {
 import type { Alert } from "@/lib/demo/types";
 
 describe("triggerStockoutScenario", () => {
+  it("starts from a district operations incident instead of a demo proof state", () => {
+    const state = createInitialDemoState();
+    const incidentClinic = state.clinics.find((clinic) => clinic.id === "clinic-mabopane-station");
+    const incidentState = state.clinicStates.find(
+      (clinicState) => clinicState.clinicId === "clinic-mabopane-station",
+    );
+    const incidentReport = state.reports.find(
+      (report) => report.clinicId === "clinic-mabopane-station",
+    );
+    const incidentAlert = state.alerts.find(
+      (alert) => alert.clinicId === "clinic-mabopane-station",
+    );
+
+    expect(state.district).toBe("Tshwane North District");
+    expect(incidentClinic?.name).toBe("Mabopane Station Clinic");
+    expect(incidentState?.reason).toContain("Generator failure paused dispensing");
+    expect(incidentReport?.reporterName).toBe("Mpho Ndlovu");
+    expect(incidentReport?.source).toBe("field_worker");
+    expect(incidentAlert?.recommendedAction).toContain("Akasia Hills Clinic");
+    expect(JSON.stringify(state).toLowerCase()).not.toContain("demo control");
+  });
+
   it("creates a stockout report, alert, status update, and audit event at the fixed time", () => {
     const now = "2026-05-02T08:00:00.000Z";
     const state = triggerStockoutScenario(
@@ -31,20 +53,22 @@ describe("triggerStockoutScenario", () => {
       clinicId: STOCKOUT_TRIGGER_CLINIC_ID,
       status: "degraded",
       lastReportedAt: now,
-      reporterName: "Demo control",
-      source: "demo_control",
+      reporterName: "Operations desk",
+      source: "clinic_coordinator",
       stockPressure: "stockout",
     });
 
     expect(state.reports[0]).toMatchObject({
       clinicId: STOCKOUT_TRIGGER_CLINIC_ID,
-      reporterName: "Demo control",
-      source: "demo_control",
+      reporterName: "Operations desk",
+      source: "clinic_coordinator",
       offlineCreated: false,
       submittedAt: now,
       receivedAt: now,
       status: "degraded",
       stockPressure: "stockout",
+      notes:
+        "Tshwane North operations desk logged a same-day medicine availability change for operations review.",
     });
 
     expect(state.alerts[0]).toMatchObject({
@@ -57,8 +81,9 @@ describe("triggerStockoutScenario", () => {
     expect(state.auditEvents).toContainEqual(
       expect.objectContaining({
         clinicId: STOCKOUT_TRIGGER_CLINIC_ID,
-        actorName: "Demo control",
+        actorName: "Operations desk",
         eventType: "clinic.status_changed",
+        summary: "Stock availability update changed the clinic operating state.",
         createdAt: now,
       }),
     );
@@ -82,7 +107,8 @@ describe("triggerStaffingShortageScenario", () => {
       clinicId: STAFFING_TRIGGER_CLINIC_ID,
       status: "degraded",
       lastReportedAt: now,
-      source: "demo_control",
+      reporterName: "Operations desk",
+      source: "clinic_coordinator",
       staffPressure: "critical",
       queuePressure: "high",
     });
@@ -93,6 +119,9 @@ describe("triggerStaffingShortageScenario", () => {
       status: "degraded",
       staffPressure: "critical",
       queuePressure: "high",
+      reporterName: "Operations desk",
+      source: "clinic_coordinator",
+      notes: "Operations desk logged an acute staffing shortage for district follow-up.",
     });
     expect(state.alerts[0]).toMatchObject({
       clinicId: STAFFING_TRIGGER_CLINIC_ID,
@@ -218,8 +247,9 @@ describe("syncOfflineReportsScenario", () => {
     });
     expect(state.auditEvents[0]).toMatchObject({
       clinicId: firstClinic.id,
-      actorName: "Demo control",
+      actorName: "Operations desk",
       eventType: "demo.offline_sync_triggered",
+      summary: "Operations sync processed 1 offline report.",
       createdAt: now,
     });
   });
