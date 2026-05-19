@@ -32,7 +32,7 @@ test.describe("phase-one demo route checklist", () => {
       "/book-demo",
       "/book-demo/thanks",
       "/demo",
-      "/demo/clinics/clinic-mamelodi-east",
+      "/demo/clinics/clinic-mabopane-station",
       "/finder",
       "/field",
       "/admin",

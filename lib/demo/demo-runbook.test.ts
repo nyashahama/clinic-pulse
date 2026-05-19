@@ -5,6 +5,13 @@ import { describe, expect, it } from "vitest";
 import { phaseOneDemoRouteChecklist } from "@/lib/demo/demo-runbook";
 import { PRODUCT_LANGUAGE_BAN_LIST } from "@/lib/demo/operations-scenario";
 
+const RUNBOOK_LANGUAGE_BAN_LIST = [
+  ...PRODUCT_LANGUAGE_BAN_LIST,
+  "demonstrates",
+  "feature tour",
+  "founder demo",
+] as const;
+
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -25,7 +32,7 @@ describe("phaseOneDemoRouteChecklist", () => {
 
   it("defines operations proof moments without staged demo wording", () => {
     const serialized = JSON.stringify(phaseOneDemoRouteChecklist);
-    const escapedBanList = PRODUCT_LANGUAGE_BAN_LIST.map(escapeRegExp);
+    const escapedBanList = RUNBOOK_LANGUAGE_BAN_LIST.map(escapeRegExp);
 
     expect(serialized).not.toMatch(new RegExp(escapedBanList.join("|"), "i"));
 
