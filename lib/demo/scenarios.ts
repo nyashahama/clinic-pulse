@@ -290,7 +290,7 @@ export function triggerStaffingShortageScenario(
     clinicId,
     OPERATIONS_DESK_NAME,
     "alert.created",
-    "Staffing shortage alert created from demo trigger.",
+    "Staffing shortage alert created from district operations action.",
     now,
   );
 
