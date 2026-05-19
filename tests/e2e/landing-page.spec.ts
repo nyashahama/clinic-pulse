@@ -232,7 +232,7 @@ test.describe("landing page 2026", () => {
 
     const trust = page.locator("#trust");
     const cta = page.locator("section").filter({
-      has: page.getByRole("heading", { name: "Walk through a live clinic status incident." }),
+      has: page.getByRole("heading", { name: "Walk through the Mabopane Station incident." }),
     });
 
     await expect(
@@ -246,16 +246,15 @@ test.describe("landing page 2026", () => {
     await expect(trust.getByText("Webhook preview")).toBeVisible();
 
     await expect(
-      cta.getByRole("heading", { name: "Walk through a live clinic status incident." }),
+      cta.getByRole("heading", { name: "Walk through the Mabopane Station incident." }),
     ).toBeVisible();
     await expect(cta.getByText("Mamelodi East Community Clinic")).toBeVisible();
     await expect(cta.getByText("Akasia Hills Clinic")).toBeVisible();
     await expect(cta.getByText("AUD-2026-0504-017")).toBeVisible();
-    await expect(cta.getByRole("link", { name: "Sign in to demo workspace" })).toHaveAttribute(
-      "href",
-      "/login",
-    );
-    await cta.getByRole("link", { name: "Book demo" }).click();
+    await expect(
+      cta.getByRole("link", { name: "Sign in to operations workspace" }),
+    ).toHaveAttribute("href", "/login");
+    await cta.getByRole("link", { name: "Book walkthrough" }).click();
     await expect(page.getByRole("dialog", { name: "Book a Clinic Pulse demo" })).toBeVisible();
   });
 });
