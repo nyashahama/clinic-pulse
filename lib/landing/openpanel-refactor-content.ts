@@ -47,7 +47,7 @@ export const heroClinicRows = [
 ] as const;
 
 export const heroStats = [
-  { value: "42", label: "demo clinics" },
+  { value: "42", label: "clinics monitored" },
   { value: "17", label: "offline syncs" },
   { value: "3 min", label: "freshness target" },
 ] as const;
@@ -60,7 +60,7 @@ export const heroConsoleNavItems = [
 ] as const;
 
 export const heroConsoleMetrics = [
-  { label: "Clinics monitored", value: "42", detail: "Tshwane North demo" },
+  { label: "Clinics monitored", value: "42", detail: "Tshwane North" },
   { label: "Reports synced", value: "17", detail: "since 07:00" },
   { label: "Freshness target", value: "3m", detail: "median status age" },
 ] as const;
@@ -315,7 +315,7 @@ export const trustSystemPanels = [
     label: "CSV ready",
     lines: [
       "report=incident_summary",
-      "district=Tshwane North Demo",
+      "district=Tshwane North",
       "freshness_window=3m",
       "rows=42 clinics",
     ],
@@ -343,7 +343,7 @@ export const trustSystemPanels = [
 ] as const;
 
 export const demoCta = {
-  label: "Pilot walkthrough",
+  label: "Operations walkthrough",
   title: "Book a Clinic Pulse demo.",
   description:
     "Walk through district visibility, offline field reports, patient rerouting, audit history, exports, and partner readiness with seeded demo data.",
@@ -351,7 +351,7 @@ export const demoCta = {
     label: "Book demo",
     href: "/?booking=1",
   },
-  note: "Demo data is seeded to show the operating model clearly.",
+  note: "Scenario data is local to the walkthrough and mirrors the operating model clearly.",
 } as const;
 
 export const liveIncidentHero = {
@@ -362,7 +362,7 @@ export const liveIncidentHero = {
   primaryCta: { label: "Book demo", href: "/?booking=1" },
   secondaryCta: { label: "Watch the incident flow", href: "#flow" },
   metrics: [
-    { value: "42", label: "demo clinics monitored", detail: "Tshwane North workspace" },
+    { value: "42", label: "clinics monitored", detail: "Tshwane North workspace" },
     { value: "17", label: "reports synced", detail: "field updates since 07:00" },
     { value: "3m", label: "freshness target", detail: "median status age" },
   ],
@@ -518,7 +518,7 @@ export const trustEvidencePanels = [
   {
     title: "District export",
     label: "CSV ready",
-    lines: ["report=incident_summary", "district=Tshwane North Demo", "rows=42 clinics"],
+    lines: ["report=incident_summary", "district=Tshwane North", "rows=42 clinics"],
   },
   {
     title: "API/status endpoint",
@@ -533,11 +533,11 @@ export const trustEvidencePanels = [
 ] as const;
 
 export const incidentDemoCta = {
-  eyebrow: "Pilot walkthrough",
-  title: "Walk through a live clinic status incident.",
+  eyebrow: "Operations walkthrough",
+  title: "Walk through the Mabopane Station incident.",
   description:
-    "Follow the same incident through district visibility, offline field reporting, patient rerouting, audit history, exports, and partner readiness.",
-  primaryCta: { label: "Book demo", href: "/?booking=1" },
-  secondaryCta: { label: "Sign in to demo workspace", href: "/login" },
-  note: "Demo data is seeded to show the operating model clearly.",
+    "Follow one clinic disruption from district triage through field confirmation, public routing, admin review, and monitoring.",
+  primaryCta: { label: "Book walkthrough", href: "/?booking=1" },
+  secondaryCta: { label: "Sign in to operations workspace", href: "/login" },
+  note: "Scenario data is local to the walkthrough and mirrors the operating model clearly.",
 } as const;

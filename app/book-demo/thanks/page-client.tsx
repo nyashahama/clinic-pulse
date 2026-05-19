@@ -24,7 +24,7 @@ export default function BookDemoThanksPage() {
         <SectionHeader
           eyebrow="Request received"
           title={greeting}
-          description="Your founder walkthrough request has been captured in this demo environment."
+          description="Your walkthrough request has been captured for operations follow-up."
         />
 
         <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
@@ -32,7 +32,7 @@ export default function BookDemoThanksPage() {
             <CheckCircle2 className="mt-0.5 size-5" />
             <div>
               <p className="font-medium">
-                Demo booking created successfully.
+                Request captured successfully.
                 {organization ? ` Your team from ${organization} will be routed to admin lead follow-up.` : ""}
               </p>
               <p className="mt-2 text-sm leading-6">

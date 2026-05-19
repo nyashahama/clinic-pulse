@@ -74,11 +74,26 @@ describe("landing page 2026 content", () => {
     expect(serialized).not.toContain("customer logo");
   });
 
-  it("routes public demo workspace access through sign in", () => {
+  it("routes public operations workspace access through sign in", () => {
     expect(incidentDemoCta.secondaryCta).toEqual({
-      label: "Sign in to demo workspace",
+      label: "Sign in to operations workspace",
       href: "/login",
     });
+  });
+
+  it("keeps public landing content away from staged product wording", () => {
+    const serialized = JSON.stringify({
+      incidentDemoCta,
+      landingHero,
+      liveIncidentHero,
+      productSurfacePreviewRows,
+      trustEvidencePanels,
+      trustObjects,
+    });
+
+    expect(serialized).not.toMatch(
+      /demo workspace|demo environment|demo clinics|Tshwane North demo|Demo data is seeded|Pilot walkthrough/i,
+    );
   });
 
   it("keeps current landing content available during migration", () => {

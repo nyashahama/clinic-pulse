@@ -48,7 +48,7 @@ export function Nav() {
                   <span className="animate-pulse-dot absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
                   <span className="inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
                 </span>
-                Demo workspace
+                Operations workspace
               </span>
             </div>
 
@@ -98,7 +98,7 @@ export function Nav() {
                 <span className="animate-pulse-dot absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
                 <span className="inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
               </span>
-              Live demo
+              Live operations
             </span>
           </nav>
         </div>

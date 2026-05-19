@@ -47,6 +47,7 @@ test.describe("phase-one demo route checklist", () => {
       }),
     ).toBeVisible();
     await expect(page.getByRole("button", { name: "Book demo" })).toBeVisible();
+    await expectNoStagedProductLanguage(page);
 
     await page.goto("/book-demo");
     await expect(page).toHaveURL(/\/\?booking=1$/);
@@ -54,14 +55,16 @@ test.describe("phase-one demo route checklist", () => {
 
     await page.goto("/book-demo/thanks?name=Smoke&organization=E2E%20District");
     await expect(page.getByRole("heading", { name: "Thanks, Smoke" })).toBeVisible();
-    await expect(page.getByText("Demo booking created successfully.")).toBeVisible();
+    await expect(page.getByText("Request captured successfully.")).toBeVisible();
+    await expectNoStagedProductLanguage(page);
   });
 
   test("renders public finder against the seeded API", async ({ page }) => {
     await page.goto("/finder");
     await expect(page.getByRole("heading", { name: "Clinic finder" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "No-login public flow" })).toBeVisible();
-    await expect(page.getByText("Mamelodi East Community Clinic")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Public routing view" })).toBeVisible();
+    await expect(page.getByText("Mabopane Station Clinic")).toBeVisible();
+    await expectNoStagedProductLanguage(page);
   });
 
   test("renders protected district, clinic detail, field, and admin routes after login", async ({

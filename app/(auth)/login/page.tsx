@@ -113,7 +113,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             <div className="mt-6 rounded-2xl border border-[#0D7A6B]/15 bg-[#ecf7f4] p-4 dark:border-primary/30 dark:bg-primary/10">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-semibold text-neutral-950 dark:text-card-foreground">
-                  Local demo credentials
+                  Local seeded credentials
                 </p>
                 <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[#0D7A6B] dark:bg-card dark:text-emerald-300">
                   Seeded

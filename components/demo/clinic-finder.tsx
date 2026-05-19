@@ -140,8 +140,8 @@ export function ClinicFinder({
       <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
         <SectionHeader
           eyebrow="Clinic finder"
-          title="No-login public flow"
-          description="Search by clinic name, district, service, or status to find a nearby clinic."
+          title="Public routing view"
+          description="Search by clinic name, district, service, or status to find the safest nearby care option."
         />
 
         <div className="mt-4 grid gap-2">
@@ -219,7 +219,7 @@ export function ClinicFinder({
             <SectionHeader
               eyebrow="Selected clinic"
               title={selectedClinicRow.name}
-              description="Open publicly for patients; no login required."
+              description="Public operating context for patients and coordinators."
             />
             <p className="mt-2 text-sm text-content-default">{selectedClinicRow.reason}</p>
             <div className="mt-3 flex items-center gap-2">
