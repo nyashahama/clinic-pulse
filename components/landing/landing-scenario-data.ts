@@ -1,11 +1,11 @@
 export const heroIncident = {
-  eyebrow: "Demo workspace",
+  eyebrow: "Operations workspace",
   headline: "Live clinic availability for districts that cannot afford blind spots.",
   subhead:
     "ClinicPulse shows which clinics can serve patients right now, verifies report freshness, and reroutes patients before wasted trips happen.",
-  primaryCta: "Book Demo",
+  primaryCta: "Book walkthrough",
   secondaryCta: "See Product Flow",
-  proofLabel: "Demo data shown for YC walkthrough",
+  proofLabel: "Scenario data shown for operations walkthrough",
   clinic: "Mamelodi East Community Clinic",
   status: "Non-functional",
   reason: "Pharmacy stockout reported by field worker",
@@ -18,13 +18,13 @@ export const heroIncident = {
 export const proofMetrics = [
   {
     value: "42",
-    label: "demo clinics monitored",
+    label: "clinics monitored",
     note: "seeded district workspace",
   },
   {
     value: "3",
     label: "districts modeled",
-    note: "Gauteng demo scenario",
+    note: "Gauteng operations scenario",
   },
   {
     value: "128",
@@ -39,7 +39,7 @@ export const proofMetrics = [
   {
     value: "3 min",
     label: "simulated update latency",
-    note: "demo timing target",
+    note: "operations timing target",
   },
 ] as const;
 

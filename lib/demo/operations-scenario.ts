@@ -52,6 +52,7 @@ export const PRODUCT_LANGUAGE_BAN_LIST = [
   "YC demo-critical",
   "demo booking intake",
   "Mock partner API surface",
+  "founder demo",
   "founder demos",
   "demo endpoints",
   "demo API docs",

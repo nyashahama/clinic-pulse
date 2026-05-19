@@ -68,10 +68,10 @@ export function ProofStrip() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold uppercase text-emerald-300">
-                      Live demo signal
+                      Live operations signal
                     </p>
                     <p className="mt-1 text-sm text-white/60">
-                      Demo data, real workflow objects
+                      Scenario data, real workflow objects
                     </p>
                   </div>
                   <Radio className="size-5 text-emerald-300" />

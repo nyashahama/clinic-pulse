@@ -50,6 +50,7 @@ describe("district operations scenario", () => {
         "YC demo-critical",
         "demo booking intake",
         "Mock partner API surface",
+        "founder demo",
         "founder demos",
         "demo endpoints",
         "demo API docs",

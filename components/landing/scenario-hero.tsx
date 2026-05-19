@@ -136,7 +136,7 @@ export function ScenarioHero() {
         staffPressure: "strained",
         stockPressure: "low",
         queuePressure: "high",
-        notes: "Queued from the landing preview to demonstrate offline reporting.",
+        notes: "Queued from the landing preview to show offline reporting.",
       });
       return;
     }
@@ -151,14 +151,14 @@ export function ScenarioHero() {
         <div className="grid gap-5 pt-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div className="max-w-3xl">
             <p className="text-xs font-semibold uppercase text-emerald-800">
-              Demo data / Tshwane North Demo District
+              Scenario data / Tshwane North District
             </p>
             <h1 className="mt-3 font-display text-5xl font-medium leading-none text-neutral-950 sm:text-6xl lg:text-7xl">
               ClinicPulse
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-neutral-600 sm:text-lg">
               Live clinic availability and patient rerouting for district health teams.
-              The surface below uses the same seeded data and operating objects as the live demo.
+              The surface below uses the same seeded data and operating objects as the operations scenario.
             </p>
             <div className="mt-5 grid max-w-2xl grid-cols-3 gap-2">
               {[
@@ -205,7 +205,7 @@ export function ScenarioHero() {
               href="/demo"
               className="inline-flex h-9 items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-900 shadow-sm transition hover:bg-neutral-50"
             >
-              Open live demo
+              Open operations console
               <ArrowUpRight className="size-4" />
             </Link>
           </div>
@@ -337,7 +337,7 @@ export function ScenarioHero() {
 
                   <div className="absolute bottom-3 left-3 inline-flex items-center gap-2 rounded-md border border-neutral-200 bg-white/90 px-3 py-2 text-xs text-neutral-700 shadow-sm">
                     <MapPinned className="size-3.5 text-primary" />
-                    Fixture coordinates from the demo district
+                    Fixture coordinates from the operations district
                   </div>
 
                   {latestReport ? (
