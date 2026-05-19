@@ -138,7 +138,7 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
           className="fixed inset-0 z-50 grid place-items-start overflow-y-auto bg-neutral-950/52 px-4 py-8 backdrop-blur-[2px] sm:place-items-center"
           role="dialog"
           aria-modal="true"
-          aria-label="Book a Clinic Pulse demo"
+          aria-label="Book a Clinic Pulse walkthrough"
         >
           <BookingPanel
             duration={duration}
@@ -203,10 +203,10 @@ function BookingPanel({
     <section
       id="booking"
       className="mx-auto w-[340px] min-w-0 max-w-[calc(100vw-32px)] overflow-hidden rounded-xl bg-white text-neutral-950 shadow-2xl ring-1 ring-black/10 dark:bg-card dark:text-card-foreground dark:ring-border sm:w-full sm:max-w-[540px]"
-      aria-label="Book a Clinic Pulse demo"
+      aria-label="Book a Clinic Pulse walkthrough"
     >
       <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-4 dark:border-border">
-        <h2 className="text-xl font-semibold">Book a demo</h2>
+        <h2 className="text-xl font-semibold">Book a walkthrough</h2>
         <button
           type="button"
           onClick={onClose}
@@ -224,7 +224,7 @@ function BookingPanel({
           </div>
           <div>
             <p className="text-sm font-semibold text-neutral-500 dark:text-muted-foreground">Clinic Pulse team</p>
-            <h3 className="mt-3 text-2xl font-semibold tracking-tight">Demo with Clinic Pulse</h3>
+            <h3 className="mt-3 text-2xl font-semibold tracking-tight">Operations walkthrough with Clinic Pulse</h3>
           </div>
         </div>
 
@@ -382,7 +382,7 @@ function BookingPanel({
           className="mt-5 h-11 w-full rounded-lg bg-neutral-950 text-white hover:bg-neutral-800 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
           disabled={isSubmitDisabled}
         >
-          {isSubmitting ? "Scheduling..." : "Confirm demo"}
+          {isSubmitting ? "Scheduling..." : "Confirm walkthrough"}
           {!isSubmitting ? <Check className="size-4" /> : null}
         </Button>
       </form>

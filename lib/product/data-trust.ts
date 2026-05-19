@@ -35,7 +35,7 @@ export type DataTrustState = {
 };
 
 const sourceLabels: Record<DataSource, string> = {
-  seeded_demo: "Demo data",
+  seeded_demo: "Scenario data",
   pilot_import: "Imported data",
   field_report: "Field data",
   system_reconciliation: "System reconciliation data",
@@ -103,8 +103,8 @@ export function buildDataTrustState(input: DataTrustInput): DataTrustState {
       ...base,
       tone: "attention",
       confidence: "low",
-      label: "Demo data",
-      description: "Seeded demo data is useful for walkthroughs, not pilot decisions.",
+      label: "Scenario data",
+      description: "Scenario-seeded data supports local operations rehearsal, not pilot decisions.",
     };
   }
 

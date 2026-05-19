@@ -13,7 +13,7 @@ const roadmap: RoadmapEntry[] = [
   {
     module: "District console and map operations",
     status: "done",
-    value: "YC demo-critical for founder pitch credibility",
+    value: "Critical for command credibility",
     description:
       "Real-time status, alert triage, report stream, and reroute recommendations for district operators.",
   },
@@ -32,11 +32,11 @@ const roadmap: RoadmapEntry[] = [
       "Mobile-first form with queueing and delayed sync once connectivity is restored.",
   },
   {
-    module: "Lead ops + founder pipeline",
+    module: "Lead ops + operations pipeline",
     status: "running",
     value: "Needs polished admin handoff",
     description:
-      "Lead statuses, demo booking intake, and exportable founder packets.",
+      "Lead statuses, booking intake, and exportable operations packets.",
   },
   {
     module: "Partner API + webhook layer",
@@ -92,7 +92,7 @@ export function RoadmapModules() {
       <SectionHeader
         eyebrow="Build direction"
         title="Roadmap modules"
-        description="What is in scope for YC-ready growth before backend handoff."
+        description="What is in scope for release-ready growth before backend handoff."
       />
 
       <div className="mt-4 grid gap-3">
@@ -113,7 +113,7 @@ export function RoadmapModules() {
                   </div>
                   <p className="text-sm leading-6 text-content-default">{entry.description}</p>
                   <p className="text-xs text-content-subtle">
-                    <span className="font-medium text-content-emphasis">Founding signal:</span>{" "}
+                    <span className="font-medium text-content-emphasis">Operating signal:</span>{" "}
                     {entry.value}
                   </p>
                 </div>

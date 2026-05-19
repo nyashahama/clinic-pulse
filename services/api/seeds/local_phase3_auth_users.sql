@@ -1,22 +1,153 @@
--- Local-only Phase 3 auth demo users.
+-- Local-only Phase 3 auth users.
 -- This file is intentionally outside services/api/migrations and is not run automatically.
--- Password hashes correspond to the local demo password shared out-of-band.
+-- Password hashes correspond to the local walkthrough password shared out-of-band.
+BEGIN;
+
+CREATE TEMP TABLE local_phase3_org_merge ON COMMIT DROP AS
+SELECT
+    legacy.id AS legacy_org_id,
+    COALESCE(current_org.id, legacy.id) AS target_org_id,
+    current_org.id IS NOT NULL AS has_current_org
+FROM organisations legacy
+LEFT JOIN organisations current_org
+    ON lower(current_org.slug) = 'tshwane-north-district'
+WHERE lower(legacy.slug) = 'tshwane-north-demo-district';
+
+ALTER TABLE report_reviews DISABLE TRIGGER report_reviews_immutable_after_insert_trg;
+ALTER TABLE audit_events DISABLE TRIGGER audit_events_immutable_after_insert_trg;
+
+DELETE FROM organisation_memberships legacy_memberships
+USING local_phase3_org_merge merge
+WHERE merge.has_current_org
+    AND legacy_memberships.organisation_id = merge.legacy_org_id
+    AND EXISTS (
+        SELECT 1
+        FROM organisation_memberships existing
+        WHERE existing.user_id = legacy_memberships.user_id
+            AND existing.role = legacy_memberships.role
+            AND COALESCE(existing.organisation_id, 0) = COALESCE(merge.target_org_id, 0)
+            AND COALESCE(existing.district, '') = COALESCE(
+                CASE
+                    WHEN legacy_memberships.district = 'Tshwane North Demo District'
+                        THEN 'Tshwane North District'
+                    ELSE legacy_memberships.district
+                END,
+                ''
+            )
+    );
+
+UPDATE organisation_memberships legacy_memberships
+SET
+    organisation_id = merge.target_org_id,
+    district = CASE
+        WHEN legacy_memberships.district = 'Tshwane North Demo District'
+            THEN 'Tshwane North District'
+        ELSE legacy_memberships.district
+    END
+FROM local_phase3_org_merge merge
+WHERE legacy_memberships.organisation_id = merge.legacy_org_id;
+
+UPDATE report_reviews
+SET organisation_id = merge.target_org_id
+FROM local_phase3_org_merge merge
+WHERE report_reviews.organisation_id = merge.legacy_org_id;
+
+UPDATE audit_events
+SET organisation_id = merge.target_org_id
+FROM local_phase3_org_merge merge
+WHERE audit_events.organisation_id = merge.legacy_org_id;
+
+UPDATE report_sync_attempts
+SET organisation_id = merge.target_org_id
+FROM local_phase3_org_merge merge
+WHERE report_sync_attempts.organisation_id = merge.legacy_org_id;
+
+UPDATE pilot_ingestion_runs
+SET organisation_id = merge.target_org_id
+FROM local_phase3_org_merge merge
+WHERE pilot_ingestion_runs.organisation_id = merge.legacy_org_id;
+
+UPDATE partner_api_keys
+SET
+    organisation_id = merge.target_org_id,
+    allowed_districts = CASE
+        WHEN allowed_districts = '["Tshwane North Demo District"]'::jsonb
+            THEN '["Tshwane North District"]'::jsonb
+        ELSE allowed_districts
+    END,
+    updated_at = now()
+FROM local_phase3_org_merge merge
+WHERE partner_api_keys.organisation_id = merge.legacy_org_id;
+
+UPDATE partner_webhook_subscriptions
+SET
+    organisation_id = merge.target_org_id,
+    updated_at = now()
+FROM local_phase3_org_merge merge
+WHERE partner_webhook_subscriptions.organisation_id = merge.legacy_org_id;
+
+UPDATE partner_export_runs
+SET
+    organisation_id = merge.target_org_id,
+    scope = CASE
+        WHEN scope->>'district' = 'Tshwane North Demo District'
+            THEN jsonb_set(scope, '{district}', '"Tshwane North District"', true)
+        ELSE scope
+    END
+FROM local_phase3_org_merge merge
+WHERE partner_export_runs.organisation_id = merge.legacy_org_id;
+
+DELETE FROM integration_status_checks legacy_checks
+USING local_phase3_org_merge merge
+WHERE merge.has_current_org
+    AND legacy_checks.organisation_id = merge.legacy_org_id
+    AND EXISTS (
+        SELECT 1
+        FROM integration_status_checks existing
+        WHERE existing.organisation_id = merge.target_org_id
+            AND existing.check_name = legacy_checks.check_name
+    );
+
+UPDATE integration_status_checks
+SET organisation_id = merge.target_org_id
+FROM local_phase3_org_merge merge
+WHERE integration_status_checks.organisation_id = merge.legacy_org_id;
+
+DELETE FROM organisations legacy
+USING local_phase3_org_merge merge
+WHERE merge.has_current_org
+    AND legacy.id = merge.legacy_org_id;
+
+UPDATE organisations legacy
+SET
+    name = 'Tshwane North District',
+    slug = 'tshwane-north-district',
+    updated_at = now()
+FROM local_phase3_org_merge merge
+WHERE NOT merge.has_current_org
+    AND legacy.id = merge.legacy_org_id;
+
+ALTER TABLE audit_events ENABLE TRIGGER audit_events_immutable_after_insert_trg;
+ALTER TABLE report_reviews ENABLE TRIGGER report_reviews_immutable_after_insert_trg;
+
+COMMIT;
+
 WITH seed_organisation AS (
     INSERT INTO organisations (name, slug)
-    SELECT 'Tshwane North Demo District', 'tshwane-north-demo-district'
+    SELECT 'Tshwane North District', 'tshwane-north-district'
     WHERE NOT EXISTS (
         SELECT 1
         FROM organisations
-        WHERE lower(slug) = 'tshwane-north-demo-district'
+        WHERE lower(slug) = 'tshwane-north-district'
     )
     RETURNING id
 )
 UPDATE organisations
 SET
-    name = 'Tshwane North Demo District',
-    slug = 'tshwane-north-demo-district',
+    name = 'Tshwane North District',
+    slug = 'tshwane-north-district',
     updated_at = now()
-WHERE lower(slug) = 'tshwane-north-demo-district';
+WHERE lower(slug) = 'tshwane-north-district';
 
 WITH seed_users (email, display_name, password_hash) AS (
     VALUES
@@ -51,12 +182,12 @@ WITH seed_memberships (email, role, district) AS (
     VALUES
         ('system-admin@clinicpulse.local', 'system_admin', NULL),
         ('org-admin@clinicpulse.local', 'org_admin', NULL),
-        ('district-manager@clinicpulse.local', 'district_manager', 'Tshwane North Demo District'),
+        ('district-manager@clinicpulse.local', 'district_manager', 'Tshwane North District'),
         ('reporter@clinicpulse.local', 'reporter', NULL)
 ), demo_organisation AS (
     SELECT id
     FROM organisations
-    WHERE lower(slug) = 'tshwane-north-demo-district'
+    WHERE lower(slug) = 'tshwane-north-district'
 ), resolved_memberships AS (
     SELECT
         users.id AS user_id,

@@ -12,7 +12,7 @@ const REQUEST_EXAMPLES = [
     method: "GET",
     path: "/v1/clinics?province=gauteng&status=operational",
     headers: [
-      "Authorization: Bearer demo_token",
+      "Authorization: Bearer operations_token",
       "Accept: application/json",
     ],
     body: "",
@@ -24,7 +24,7 @@ const REQUEST_EXAMPLES = [
     method: "POST",
     path: "/v1/reports",
     headers: [
-      "Authorization: Bearer demo_token",
+      "Authorization: Bearer operations_token",
       "Content-Type: application/json",
     ],
     body: `{\n  "clinicId": "clinic-mamelodi-east",\n  "status": "operational",\n  "reason": "Clinic re-opened after maintenance check.",\n  "source": "clinic_coordinator",\n  "submittedAt": "2026-05-01T07:03:00.000Z"\n}`,
@@ -35,7 +35,7 @@ const REQUEST_EXAMPLES = [
     title: "GET reroute recommendations",
     method: "GET",
     path: "/v1/recommendations?clinicId=clinic-mamelodi-east&service=primary care",
-    headers: ["Authorization: Bearer demo_token", "Accept: application/json"],
+    headers: ["Authorization: Bearer operations_token", "Accept: application/json"],
     body: "",
     response:
       '{ "recommendations": [{ "clinicId": "clinic-akasia-hills", "distanceKm": 3.4, "estimatedMinutes": 11, "services": ["Primary care", "Pharmacy"] }], "source": "policy-engine-v1" }',
@@ -64,7 +64,7 @@ export function APIPreview({ clinicCount, onOpen }: APIPreviewProps) {
       <SectionHeader
         eyebrow="Builder interface"
         title="API preview"
-        description={`Mock partner API surface used by founder demos with ${clinicMetric}.`}
+        description={`Reference partner API surface used by operations teams with ${clinicMetric}.`}
       />
 
       <div className="mt-4 grid gap-3">
@@ -73,7 +73,7 @@ export function APIPreview({ clinicCount, onOpen }: APIPreviewProps) {
             Available endpoint count: {endpointCount}
           </p>
           <p className="mt-1 text-sm text-content-subtle">
-            Read-only / write-safe demo endpoints with deterministic local fixtures.
+            Read-only / write-safe operations endpoints with deterministic local fixtures.
           </p>
           <Button
             size="sm"
@@ -82,7 +82,7 @@ export function APIPreview({ clinicCount, onOpen }: APIPreviewProps) {
             onClick={() => onOpen?.()}
           >
             <BookCheck className="size-4" />
-            Mark demo API docs as reviewed
+            Mark API docs as reviewed
             <Copy className="size-3.5" />
           </Button>
         </div>

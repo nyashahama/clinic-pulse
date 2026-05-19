@@ -131,8 +131,8 @@ export function CommandPalette({
         run: () => router.push("/admin?panel=api-preview"),
       },
       {
-        label: "Reset demo",
-        hint: "Clear local demo changes",
+        label: "Reset scenario",
+        hint: "Clear local scenario changes",
         icon: RotateCcw,
         run: () => resetDemo(),
       },
@@ -152,7 +152,7 @@ export function CommandPalette({
   return (
     <WorkspaceCommandPalette
       actions={actions}
-      footerText="Quick actions for the founder-led demo flow."
+      footerText="Quick actions for the operations workflow."
       onOpenChange={(nextOpen) => {
         if (nextOpen) {
           onOpenChange(true);

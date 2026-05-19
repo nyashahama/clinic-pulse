@@ -4,11 +4,11 @@ export const landingHero = {
   description:
     "Live clinic availability, field reporting, patient rerouting, and audit-ready records in one operations workspace.",
   primaryCta: {
-    label: "Book demo",
+    label: "Book walkthrough",
     href: "/?booking=1",
   },
   secondaryCta: {
-    label: "View demo flow",
+    label: "View operations flow",
     href: "#flow",
   },
   perks: [
@@ -21,10 +21,10 @@ export const landingHero = {
 
 export const heroClinicRows = [
   {
-    clinic: "Mamelodi East Community Clinic",
+    clinic: "Mabopane Station Clinic",
     status: "Non-functional",
     tone: "critical",
-    reason: "Pharmacy stockout reported by field worker",
+    reason: "Generator failure paused dispensing and chronic care pickup services",
     freshness: "2 min ago",
     action: "Reroute",
   },
@@ -40,14 +40,14 @@ export const heroClinicRows = [
     clinic: "Akasia Hills Clinic",
     status: "Operational",
     tone: "healthy",
-    reason: "Primary care and ARV pickup available",
+    reason: "Pharmacy services accepting rerouted pickups",
     freshness: "Now",
     action: "Accepting",
   },
 ] as const;
 
 export const heroStats = [
-  { value: "42", label: "demo clinics" },
+  { value: "42", label: "clinics monitored" },
   { value: "17", label: "offline syncs" },
   { value: "3 min", label: "freshness target" },
 ] as const;
@@ -60,21 +60,21 @@ export const heroConsoleNavItems = [
 ] as const;
 
 export const heroConsoleMetrics = [
-  { label: "Clinics monitored", value: "42", detail: "Tshwane North demo" },
+  { label: "Clinics monitored", value: "42", detail: "Tshwane North" },
   { label: "Reports synced", value: "17", detail: "since 07:00" },
   { label: "Freshness target", value: "3m", detail: "median status age" },
 ] as const;
 
 export const heroIncident = {
-  clinic: "Mamelodi East Community Clinic",
+  clinic: "Mabopane Station Clinic",
   status: "Non-functional",
   source: "Offline field report",
-  service: "ARV pickup",
-  reason: "Pharmacy stockout",
+  service: "Pharmacy",
+  reason: "Generator failure paused dispensing",
   age: "Fresh - 2 min ago",
   recommendedRoute: "Akasia Hills Clinic",
   routeDetail: "18 min wasted travel avoided / best nearby compatible",
-  auditId: "AUD-2026-0504-017",
+  auditId: "AUD-OPS-MAB-001",
 } as const;
 
 export const stakeholderProofItems = [
@@ -131,7 +131,7 @@ export const workflowSteps = [
     title: "Status update",
     description:
       "The district console changes the clinic from operational to non-functional.",
-    detail: "Reason: pharmacy stockout",
+    detail: "Reason: generator failure",
   },
   {
     title: "Coordinator review",
@@ -157,7 +157,7 @@ export const workflowIncidentStages = [
   {
     surface: "Field report",
     title: "Offline report queued",
-    detail: "Mamelodi East / ARV pickup / pharmacy stockout",
+    detail: "Mabopane Station / Pharmacy / generator failure",
     state: "Queued locally",
     tone: "warning",
   },
@@ -171,7 +171,7 @@ export const workflowIncidentStages = [
   {
     surface: "Public finder",
     title: "Wasted trip avoided",
-    detail: "Akasia Hills Clinic is best nearby compatible for ARV pickup",
+    detail: "Akasia Hills Clinic is best nearby compatible for pharmacy services",
     state: "18 min avoided",
     tone: "healthy",
   },
@@ -179,7 +179,7 @@ export const workflowIncidentStages = [
     surface: "Audit ledger",
     title: "Operating record sealed",
     detail: "Source, sync, status change, and reroute linked",
-    state: "AUD-2026-0504-017",
+    state: "AUD-OPS-MAB-001",
     tone: "neutral",
   },
 ] as const;
@@ -195,9 +195,9 @@ export const featureCards = [
       label: "Mobile report",
       badge: "queued",
       rows: [
-        "Clinic: Mamelodi East",
-        "Service: ARV pickup",
-        "Stock pressure: Pharmacy stockout",
+        "Clinic: Mabopane Station",
+        "Service: Pharmacy",
+        "Disruption: Generator failure",
         "Sync state: Queued offline",
       ],
     },
@@ -231,7 +231,7 @@ export const featureCards = [
       rows: [
         "Impact: 18 min avoided",
         "Clinic: Best nearby compatible",
-        "Service: ARV pickup accepting",
+        "Service: Pharmacy accepting",
       ],
     },
   },
@@ -239,9 +239,9 @@ export const featureCards = [
 
 export const productSurfacePreviewRows = {
   "field-report": [
-    { label: "Clinic", value: "Mamelodi East", tone: "neutral" },
-    { label: "Service", value: "ARV pickup", tone: "neutral" },
-    { label: "Stock pressure", value: "Pharmacy stockout", tone: "critical" },
+    { label: "Clinic", value: "Mabopane Station", tone: "neutral" },
+    { label: "Service", value: "Pharmacy", tone: "neutral" },
+    { label: "Disruption", value: "Generator failure", tone: "critical" },
     { label: "Sync state", value: "Queued offline", tone: "warning" },
   ],
   "district-console": [
@@ -253,7 +253,7 @@ export const productSurfacePreviewRows = {
   "patient-reroute": [
     { label: "Impact", value: "18 min avoided", tone: "healthy" },
     { label: "Clinic", value: "Best nearby compatible", tone: "healthy" },
-    { label: "Service", value: "ARV pickup accepting", tone: "healthy" },
+    { label: "Service", value: "Pharmacy accepting", tone: "healthy" },
   ],
   "audit-ledger": [
     { label: "Source", value: "Offline field report", tone: "neutral" },
@@ -302,7 +302,7 @@ export const trustObjects = [
 export const trustSystemPanels = [
   {
     title: "Audit event",
-    label: "AUD-2026-0504-017",
+    label: "AUD-OPS-MAB-001",
     lines: [
       "actor=field_worker",
       "source=offline_sync",
@@ -315,7 +315,7 @@ export const trustSystemPanels = [
     label: "CSV ready",
     lines: [
       "report=incident_summary",
-      "district=Tshwane North Demo",
+      "district=Tshwane North",
       "freshness_window=3m",
       "rows=42 clinics",
     ],
@@ -324,7 +324,7 @@ export const trustSystemPanels = [
     title: "API response",
     label: "200 OK",
     lines: [
-      "GET /v1/clinics/mamelodi-east/status",
+      "GET /v1/clinics/mabopane-station/status",
       "status: non_functional",
       "source: field_worker",
       "updatedAgo: 2m",
@@ -343,15 +343,15 @@ export const trustSystemPanels = [
 ] as const;
 
 export const demoCta = {
-  label: "Pilot walkthrough",
-  title: "Book a Clinic Pulse demo.",
+  label: "Operations walkthrough",
+  title: "Book a Clinic Pulse walkthrough.",
   description:
-    "Walk through district visibility, offline field reports, patient rerouting, audit history, exports, and partner readiness with seeded demo data.",
+    "Walk through district visibility, offline field reports, patient rerouting, audit history, exports, and partner readiness with scenario data.",
   cta: {
-    label: "Book demo",
+    label: "Book walkthrough",
     href: "/?booking=1",
   },
-  note: "Demo data is seeded to show the operating model clearly.",
+  note: "Scenario data is local to the walkthrough and mirrors the operating model clearly.",
 } as const;
 
 export const liveIncidentHero = {
@@ -359,23 +359,23 @@ export const liveIncidentHero = {
   title: "Know which clinics can help before patients travel.",
   description:
     "Clinic Pulse turns field reports, clinic availability, patient rerouting, and audit-ready records into one live operating view for district teams.",
-  primaryCta: { label: "Book demo", href: "/?booking=1" },
+  primaryCta: { label: "Book walkthrough", href: "/?booking=1" },
   secondaryCta: { label: "Watch the incident flow", href: "#flow" },
   metrics: [
-    { value: "42", label: "demo clinics monitored", detail: "Tshwane North workspace" },
+    { value: "42", label: "clinics monitored", detail: "Tshwane North workspace" },
     { value: "17", label: "reports synced", detail: "field updates since 07:00" },
     { value: "3m", label: "freshness target", detail: "median status age" },
   ],
   incident: {
-    clinic: "Mamelodi East Community Clinic",
+    clinic: "Mabopane Station Clinic",
     status: "Non-functional",
-    service: "ARV pickup",
+    service: "Pharmacy",
     source: "Offline field report",
-    reason: "Pharmacy stockout reported by field worker",
+    reason: "Generator failure paused dispensing and chronic care pickup services.",
     freshness: "Fresh - 2 min ago",
     recommendedRoute: "Akasia Hills Clinic",
     routeDetail: "18 min wasted travel avoided",
-    auditId: "AUD-2026-0504-017",
+    auditId: "AUD-OPS-MAB-001",
   },
 } as const;
 
@@ -410,7 +410,7 @@ export const statusGapTimeline = [
   {
     label: "08:07",
     title: "Service pressure starts locally",
-    detail: "ARV pickup stock pressure is known at the clinic before the district view changes.",
+    detail: "Pharmacy disruption is known at the clinic before the district view changes.",
     tone: "warning",
   },
   {
@@ -438,7 +438,7 @@ export const incidentFlowSteps = [
     step: "01",
     surface: "Field report",
     title: "Offline report queued",
-    detail: "Mamelodi East / ARV pickup / pharmacy stockout",
+    detail: "Mabopane Station / Pharmacy / generator failure",
     state: "Queued offline",
     tone: "warning",
   },
@@ -454,7 +454,7 @@ export const incidentFlowSteps = [
     step: "03",
     surface: "Public finder",
     title: "Wasted trip avoided",
-    detail: "Akasia Hills Clinic is best nearby compatible for ARV pickup",
+    detail: "Akasia Hills Clinic is best nearby compatible for pharmacy services",
     state: "18 min avoided",
     tone: "healthy",
   },
@@ -463,7 +463,7 @@ export const incidentFlowSteps = [
     surface: "Audit ledger",
     title: "Operating record sealed",
     detail: "Source, sync, status change, and reroute linked",
-    state: "AUD-2026-0504-017",
+    state: "AUD-OPS-MAB-001",
     tone: "neutral",
   },
 ] as const;
@@ -507,7 +507,7 @@ export const trustEvidencePanels = [
   },
   {
     title: "Freshness and audit",
-    label: "AUD-2026-0504-017",
+    label: "AUD-OPS-MAB-001",
     lines: ["status=non_functional", "freshness=2m", "route=Akasia Hills Clinic"],
   },
   {
@@ -518,12 +518,12 @@ export const trustEvidencePanels = [
   {
     title: "District export",
     label: "CSV ready",
-    lines: ["report=incident_summary", "district=Tshwane North Demo", "rows=42 clinics"],
+    lines: ["report=incident_summary", "district=Tshwane North", "rows=42 clinics"],
   },
   {
     title: "API/status endpoint",
     label: "200 OK",
-    lines: ["GET /v1/clinics/mamelodi-east/status", "payload=status_incident", "freshness=2m"],
+    lines: ["GET /v1/clinics/mabopane-station/status", "payload=status_incident", "freshness=2m"],
   },
   {
     title: "Webhook preview",
@@ -533,11 +533,16 @@ export const trustEvidencePanels = [
 ] as const;
 
 export const incidentDemoCta = {
-  eyebrow: "Pilot walkthrough",
-  title: "Walk through a live clinic status incident.",
+  eyebrow: "Operations walkthrough",
+  title: "Walk through the Mabopane Station incident.",
   description:
-    "Follow the same incident through district visibility, offline field reporting, patient rerouting, audit history, exports, and partner readiness.",
-  primaryCta: { label: "Book demo", href: "/?booking=1" },
-  secondaryCta: { label: "Sign in to demo workspace", href: "/login" },
-  note: "Demo data is seeded to show the operating model clearly.",
+    "Follow one clinic disruption from district triage through field confirmation, public routing, admin review, and monitoring.",
+  primaryCta: { label: "Book walkthrough", href: "/?booking=1" },
+  secondaryCta: { label: "Sign in to operations workspace", href: "/login" },
+  incident: {
+    sourceClinic: "Mabopane Station Clinic",
+    reroute: "Akasia Hills Clinic",
+    auditRecord: "AUD-OPS-MAB-001",
+  },
+  note: "Scenario data is local to the walkthrough and mirrors the operating model clearly.",
 } as const;

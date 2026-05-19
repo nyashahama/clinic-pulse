@@ -193,7 +193,7 @@ const ROLE_WORKSPACES: Record<AuthRole, DashboardWorkspace> = {
               { title: "Security", url: "/admin/security" },
               { title: "Partner readiness", url: "/admin/partner-readiness" },
               { title: "Integrations", url: "/admin/integrations" },
-              { title: "Demo controls", url: "/admin#demo-controls" },
+              { title: "Scenario controls", url: "/admin#demo-controls" },
               { title: "Audit evidence", url: "/admin/audit-evidence" },
             ],
           },

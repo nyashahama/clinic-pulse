@@ -41,7 +41,7 @@ export const demoLeads: DemoLead[] = [
     organization: "Northstar Ventures",
     role: "Partner",
     interest: "investor",
-    note: "Asked for a founder demo focused on expansion readiness and API story.",
+    note: "Asked for an operations walkthrough focused on expansion readiness and API story.",
     createdAt: "2026-04-27T17:40:00.000Z",
     status: "completed",
   },

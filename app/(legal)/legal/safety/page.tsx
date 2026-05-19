@@ -29,7 +29,7 @@ export default function SafetyPage() {
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Data trust states matter</h2>
         <p className="text-sm text-muted-foreground">
-          Data marked as pending review, stale, needs confirmation, demo-seeded, or
+          Data marked as pending review, stale, needs confirmation, scenario-seeded, or
           failed sync should not be treated as reviewed current operating truth.
         </p>
       </section>

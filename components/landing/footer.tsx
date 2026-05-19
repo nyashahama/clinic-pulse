@@ -6,7 +6,7 @@ const navigation = {
     { name: "District Console", href: "/demo" },
     { name: "Field Reports", href: "/field" },
     { name: "Clinic Finder", href: "/finder" },
-    { name: "Book Demo", href: "/book-demo" },
+    { name: "Book Walkthrough", href: "/book-demo" },
   ],
   proof: [
     { name: "Operating Gap", href: "/#problem" },
@@ -74,7 +74,7 @@ export function Footer() {
               <span className="text-xs text-neutral-500 dark:text-muted-foreground">All systems operational</span>
             </div>
             <p className="max-w-72 text-xs text-neutral-500 dark:text-muted-foreground sm:text-right">
-              Demo data is seeded to show the Clinic Pulse operating model.
+              Scenario data is local to the walkthrough and mirrors the Clinic Pulse operating model.
             </p>
           </div>
         </div>

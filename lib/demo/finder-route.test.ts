@@ -109,8 +109,8 @@ describe("public finder route boundary", () => {
     const runbookSource = readFileSync(demoRunbook, "utf8");
 
     expect(clientSource).toContain("router.push(`/clinics/${clinicId}`)");
-    expect(runbookSource).toContain('path: "/demo/clinics/clinic-mamelodi-east"');
-    expect(runbookSource).not.toContain('path: "/clinics/clinic-mamelodi-east"');
+    expect(runbookSource).toContain('path: "/demo/clinics/clinic-mabopane-station"');
+    expect(runbookSource).not.toContain('path: "/clinics/clinic-mabopane-station"');
   });
 
   it("uses a real map link for finder directions instead of inert row copy", () => {

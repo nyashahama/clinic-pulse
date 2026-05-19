@@ -60,13 +60,13 @@ export function DemoLeadTable({ leads, onLeadStatusChange }: DemoLeadTableProps)
     return (
       <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
         <SectionHeader
-          eyebrow="Founder pipeline"
-          title="Demo leads"
-          description="No demo booking submissions yet. Share `/book-demo` and leads will appear here live."
+          eyebrow="Operations pipeline"
+          title="Operations leads"
+          description="No booking submissions yet. Share `/book-demo` and leads will appear here live."
         />
 
         <div className="mt-4 rounded-lg border border-dashed border-border-subtle bg-bg-subtle px-4 py-8 text-sm text-content-subtle">
-          Capture demo requests and tag them to the right next-step status.
+          Capture booking requests and tag them to the right next-step status.
         </div>
       </section>
     );
@@ -76,13 +76,13 @@ export function DemoLeadTable({ leads, onLeadStatusChange }: DemoLeadTableProps)
     <section className="rounded-lg border border-border-subtle bg-bg-default shadow-sm">
       <div className="px-4 pt-4">
         <SectionHeader
-          eyebrow="Founder pipeline"
-          title="Demo leads"
+          eyebrow="Operations pipeline"
+          title="Operations leads"
           description="Inbound booking interest from /book-demo with quick status controls."
         />
       </div>
 
-      <div className="grid gap-3 px-4 pb-4 md:hidden" aria-label="Demo leads mobile work queue">
+      <div className="grid gap-3 px-4 pb-4 md:hidden" aria-label="Operations leads mobile work queue">
         {leads.map((lead) => {
           const tone = statusStyles[lead.status];
 

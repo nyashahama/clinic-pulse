@@ -241,7 +241,7 @@ export default async function Page() {
         emptyState={
           <AdminEmptyState
             title="No pending report evidence"
-            description="Field reports have no pending review pressure in the current demo state."
+            description="Field reports have no pending review pressure in the current scenario state."
           />
         }
         columns={[

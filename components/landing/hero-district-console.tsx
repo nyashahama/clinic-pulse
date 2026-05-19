@@ -38,7 +38,7 @@ export function HeroDistrictConsole({ className }: { className?: string }) {
       data-hero-console="true"
       className={cn("relative min-w-0 max-w-full", className)}
     >
-      <BrowserFrame title="clinicpulse.demo/district-console">
+      <BrowserFrame title="clinicpulse.ops/district-console">
         <div className="grid min-h-0 min-w-0 grid-cols-1 bg-white dark:bg-card sm:min-h-[560px] lg:grid-cols-[9rem_minmax(0,1fr)] 2xl:grid-cols-[10rem_minmax(0,1fr)]">
           <aside className="hidden border-r border-neutral-200 bg-neutral-50/80 p-3 dark:border-border dark:bg-sidebar lg:block">
             <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-600 dark:text-sidebar-foreground">
@@ -73,7 +73,7 @@ export function HeroDistrictConsole({ className }: { className?: string }) {
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 pb-3 dark:border-border">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-600 dark:text-muted-foreground">
-                  Tshwane North Demo
+                  Tshwane North
                 </p>
                 <h2 className="mt-1 text-lg font-semibold text-neutral-950 dark:text-card-foreground">
                   District command center
@@ -151,7 +151,7 @@ export function HeroDistrictConsole({ className }: { className?: string }) {
                   <p className="text-[10px] uppercase tracking-[0.16em] text-white/45">
                     Selected clinic
                   </p>
-                  <p className="mt-1 text-sm font-semibold">Mamelodi East</p>
+                  <p className="mt-1 text-sm font-semibold">Mabopane Station</p>
                 </div>
               </div>
 

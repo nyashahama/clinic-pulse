@@ -78,7 +78,7 @@ const roleScenarios: Array<{
       "Security",
       "Partner readiness",
       "Integrations",
-      "Demo controls",
+      "Scenario controls",
       "Audit evidence",
     ],
     landmarks: [

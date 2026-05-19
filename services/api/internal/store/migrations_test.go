@@ -1,8 +1,10 @@
 package store
 
 import (
+	"context"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -56,7 +58,7 @@ func TestLocalPhase3AuthSeedExistsOutsideMigrations(t *testing.T) {
 		"org-admin@clinicpulse.local",
 		"district-manager@clinicpulse.local",
 		"reporter@clinicpulse.local",
-		"Password hashes correspond to the local demo password shared out-of-band.",
+		"Password hashes correspond to the local walkthrough password shared out-of-band.",
 		"$2b$",
 		"password_changed_at",
 		"password_reset_required",
@@ -66,6 +68,167 @@ func TestLocalPhase3AuthSeedExistsOutsideMigrations(t *testing.T) {
 			t.Fatalf("expected local auth seed to contain %q", value)
 		}
 	}
+}
+
+func TestLocalPhase3AuthSeedMigratesLegacyDistrictOrganisation(t *testing.T) {
+	t.Parallel()
+
+	seedSQL := readSeedFile(t, "local_phase3_auth_users.sql")
+	legacySlug := "tshwane-north-demo-district"
+	currentSlug := "tshwane-north-district"
+	legacyName := "Tshwane North Demo District"
+	currentName := "Tshwane North District"
+
+	legacySlugIndex := strings.Index(seedSQL, legacySlug)
+	seedOrganisationIndex := strings.Index(seedSQL, "WITH seed_organisation AS")
+	if legacySlugIndex == -1 {
+		t.Fatalf("expected local auth seed to reference legacy organisation slug %q", legacySlug)
+	}
+	if !strings.Contains(seedSQL, currentSlug) {
+		t.Fatalf("expected local auth seed to reference current organisation slug %q", currentSlug)
+	}
+	if seedOrganisationIndex == -1 {
+		t.Fatal("expected local auth seed to define seed_organisation insert block")
+	}
+	if legacySlugIndex > seedOrganisationIndex {
+		t.Fatalf("expected local auth seed to migrate legacy slug before seed_organisation insert block")
+	}
+
+	for _, value := range []string{legacyName, currentName, "UPDATE organisations"} {
+		if !strings.Contains(seedSQL, value) {
+			t.Fatalf("expected local auth seed to contain %q", value)
+		}
+	}
+}
+
+func TestLocalPhase3ReviewEvidenceSeedUsesCurrentDistrictOrganisation(t *testing.T) {
+	t.Parallel()
+
+	seedSQL := readSeedFile(t, "local_phase3_review_evidence.sql")
+	forbidden := []string{
+		"tshwane-north-demo-district",
+		"Tshwane North Demo District",
+	}
+	for _, value := range forbidden {
+		if strings.Contains(seedSQL, value) {
+			t.Fatalf("expected local review evidence seed not to contain legacy value %q", value)
+		}
+	}
+
+	required := []string{
+		"tshwane-north-district",
+		"Tshwane North District",
+	}
+	for _, value := range required {
+		if !strings.Contains(seedSQL, value) {
+			t.Fatalf("expected local review evidence seed to contain %q", value)
+		}
+	}
+}
+
+func TestLocalPhase3AuthSeedMergesLegacyOrganisationEvidence(t *testing.T) {
+	databaseURL := os.Getenv("AUTH_STORE_TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("set AUTH_STORE_TEST_DATABASE_URL to run local auth seed integration tests")
+	}
+
+	ctx := context.Background()
+	store := newIntegrationStore(t, ctx, databaseURL)
+
+	currentOrgID := insertIntegrationOrganisation(t, ctx, store, "Tshwane North District", "tshwane-north-district")
+	legacyOrgID := insertIntegrationOrganisation(t, ctx, store, "Tshwane North Demo District", "tshwane-north-demo-district")
+	reviewerID := insertIntegrationUser(t, ctx, store, "legacy-reviewer@example.test", "Legacy Reviewer", nil, nil)
+	reporterID := insertIntegrationUser(t, ctx, store, "legacy-reporter@example.test", "Legacy Reporter", nil, nil)
+	insertIntegrationClinicInDistrict(t, ctx, store, "clinic-legacy-seed", "Legacy Seed Clinic", "Tshwane North District")
+	reportID := insertLocalSeedCompatibilityReport(t, ctx, store, reporterID)
+	subscriptionID := insertLocalSeedCompatibilityEvidence(t, ctx, store, currentOrgID, legacyOrgID, reviewerID, reporterID, reportID)
+
+	runLocalAuthSeed(t, ctx, store)
+
+	var legacyCount int
+	if err := store.pool.QueryRow(ctx, `
+SELECT count(*)
+FROM organisations
+WHERE lower(slug) = 'tshwane-north-demo-district'`).Scan(&legacyCount); err != nil {
+		t.Fatalf("count legacy organisations: %v", err)
+	}
+	if legacyCount != 0 {
+		t.Fatalf("expected legacy organisation to be removed, got %d", legacyCount)
+	}
+
+	assertOrgScopedCount(t, ctx, store, "organisation_memberships", currentOrgID, 4)
+	assertOrgScopedCount(t, ctx, store, "report_reviews", currentOrgID, 1)
+	assertOrgScopedCount(t, ctx, store, "audit_events", currentOrgID, 1)
+	assertOrgScopedCount(t, ctx, store, "report_sync_attempts", currentOrgID, 1)
+	assertOrgScopedCount(t, ctx, store, "pilot_ingestion_runs", currentOrgID, 1)
+	assertOrgScopedCount(t, ctx, store, "partner_api_keys", currentOrgID, 1)
+	assertOrgScopedCount(t, ctx, store, "partner_webhook_subscriptions", currentOrgID, 1)
+	assertOrgScopedCount(t, ctx, store, "partner_export_runs", currentOrgID, 1)
+	assertOrgScopedCount(t, ctx, store, "integration_status_checks", currentOrgID, 2)
+
+	for _, table := range []string{
+		"organisation_memberships",
+		"report_reviews",
+		"audit_events",
+		"report_sync_attempts",
+		"pilot_ingestion_runs",
+		"partner_api_keys",
+		"partner_webhook_subscriptions",
+		"partner_export_runs",
+		"integration_status_checks",
+	} {
+		assertOrgScopedCount(t, ctx, store, table, legacyOrgID, 0)
+	}
+
+	var webhookEventCount int
+	if err := store.pool.QueryRow(ctx, `
+SELECT count(*)
+FROM partner_webhook_events
+WHERE subscription_id = $1`, subscriptionID).Scan(&webhookEventCount); err != nil {
+		t.Fatalf("count webhook events: %v", err)
+	}
+	if webhookEventCount != 1 {
+		t.Fatalf("expected legacy webhook event to remain attached to moved subscription, got %d", webhookEventCount)
+	}
+}
+
+func TestLocalPhase3AuthSeedRenamesLegacyOnlyOrganisationEvidence(t *testing.T) {
+	databaseURL := os.Getenv("AUTH_STORE_TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("set AUTH_STORE_TEST_DATABASE_URL to run local auth seed integration tests")
+	}
+
+	ctx := context.Background()
+	store := newIntegrationStore(t, ctx, databaseURL)
+
+	legacyOrgID := insertIntegrationOrganisation(t, ctx, store, "Tshwane North Demo District", "tshwane-north-demo-district")
+	reviewerID := insertIntegrationUser(t, ctx, store, "legacy-only-reviewer@example.test", "Legacy Only Reviewer", nil, nil)
+	reporterID := insertIntegrationUser(t, ctx, store, "legacy-only-reporter@example.test", "Legacy Only Reporter", nil, nil)
+	insertIntegrationClinicInDistrict(t, ctx, store, "clinic-legacy-seed", "Legacy Seed Clinic", "Tshwane North District")
+	reportID := insertLocalSeedCompatibilityReport(t, ctx, store, reporterID)
+	insertLocalSeedCompatibilityEvidence(t, ctx, store, legacyOrgID, legacyOrgID, reviewerID, reporterID, reportID)
+
+	runLocalAuthSeed(t, ctx, store)
+
+	var currentOrgID int64
+	if err := store.pool.QueryRow(ctx, `
+SELECT id
+FROM organisations
+WHERE lower(slug) = 'tshwane-north-district'`).Scan(&currentOrgID); err != nil {
+		t.Fatalf("select renamed organisation: %v", err)
+	}
+	if currentOrgID != legacyOrgID {
+		t.Fatalf("expected legacy organisation id %d to be renamed in place, got %d", legacyOrgID, currentOrgID)
+	}
+
+	assertOrgScopedCount(t, ctx, store, "organisation_memberships", currentOrgID, 4)
+	assertOrgScopedCount(t, ctx, store, "report_reviews", currentOrgID, 1)
+	assertOrgScopedCount(t, ctx, store, "partner_api_keys", currentOrgID, 1)
+	assertOrgScopedCount(t, ctx, store, "partner_export_runs", currentOrgID, 1)
+
+	assertNoLegacyDistrictValue(t, ctx, store, "organisation_memberships", "district")
+	assertNoLegacyDistrictValue(t, ctx, store, "partner_api_keys", "allowed_districts::text")
+	assertNoLegacyDistrictValue(t, ctx, store, "partner_export_runs", "scope::text")
 }
 
 func TestLocalPhase3ReviewEvidenceSeedExistsOutsideMigrations(t *testing.T) {
@@ -185,6 +348,320 @@ func TestPartnerReadinessMigrationAddsPartnerTables(t *testing.T) {
 		if !strings.Contains(migrationSQL, value) {
 			t.Fatalf("expected partner readiness migration to contain %q", value)
 		}
+	}
+}
+
+func insertLocalSeedCompatibilityReport(
+	t *testing.T,
+	ctx context.Context,
+	store Store,
+	reporterID int64,
+) int64 {
+	t.Helper()
+
+	var reportID int64
+	if err := store.pool.QueryRow(ctx, `
+INSERT INTO reports (
+    clinic_id,
+    reporter_name,
+    source,
+    submitted_at,
+    status,
+    reason,
+    submitted_by_user_id,
+    review_state
+)
+VALUES (
+    'clinic-legacy-seed',
+    'Legacy Reporter',
+    'field_worker',
+    now(),
+    'degraded',
+    'Legacy seed compatibility report.',
+    $1,
+    'accepted'
+)
+RETURNING id`, reporterID).Scan(&reportID); err != nil {
+		t.Fatalf("insert local seed compatibility report: %v", err)
+	}
+
+	return reportID
+}
+
+func insertLocalSeedCompatibilityEvidence(
+	t *testing.T,
+	ctx context.Context,
+	store Store,
+	currentOrgID int64,
+	legacyOrgID int64,
+	reviewerID int64,
+	reporterID int64,
+	reportID int64,
+) int64 {
+	t.Helper()
+
+	if _, err := store.pool.Exec(ctx, `
+INSERT INTO organisation_memberships (organisation_id, user_id, role, district)
+VALUES ($1, $2, 'district_manager', 'Tshwane North Demo District')`, legacyOrgID, reporterID); err != nil {
+		t.Fatalf("insert legacy membership evidence: %v", err)
+	}
+
+	if _, err := store.pool.Exec(ctx, `
+INSERT INTO report_reviews (report_id, reviewer_user_id, organisation_id, decision, notes)
+VALUES ($1, $2, $3, 'accepted', 'Legacy review evidence.')`, reportID, reviewerID, legacyOrgID); err != nil {
+		t.Fatalf("insert legacy review evidence: %v", err)
+	}
+
+	if _, err := store.pool.Exec(ctx, `
+INSERT INTO audit_events (
+    external_id,
+    clinic_id,
+    actor_name,
+    event_type,
+    summary,
+    actor_user_id,
+    actor_role,
+    organisation_id,
+    entity_type,
+    entity_id
+)
+VALUES (
+    'legacy-audit-seed-compat',
+    'clinic-legacy-seed',
+    'Legacy Reviewer',
+    'report.reviewed',
+    'Legacy audit evidence.',
+    $1,
+    'org_admin',
+    $2,
+    'report',
+    $3
+)`, reviewerID, legacyOrgID, strconv.FormatInt(reportID, 10)); err != nil {
+		t.Fatalf("insert legacy audit evidence: %v", err)
+	}
+
+	if _, err := store.pool.Exec(ctx, `
+INSERT INTO report_sync_attempts (
+    external_id,
+    report_id,
+    submitted_by_user_id,
+    organisation_id,
+    clinic_id,
+    result,
+    submitted_at
+)
+VALUES (
+    'legacy-sync-seed-compat',
+    $1,
+    $2,
+    $3,
+    'clinic-legacy-seed',
+    'created',
+    now()
+)`, reportID, reporterID, legacyOrgID); err != nil {
+		t.Fatalf("insert legacy sync evidence: %v", err)
+	}
+
+	if _, err := store.pool.Exec(ctx, `
+INSERT INTO pilot_ingestion_runs (
+    id,
+    organisation_id,
+    source_name,
+    source_reference,
+    status,
+    records_received,
+    records_imported
+)
+VALUES (
+    'legacy-ingestion-seed-compat',
+    $1,
+    'Legacy import',
+    'legacy-import-ref',
+    'succeeded',
+    1,
+    1
+)`, legacyOrgID); err != nil {
+		t.Fatalf("insert legacy ingestion evidence: %v", err)
+	}
+
+	if _, err := store.pool.Exec(ctx, `
+INSERT INTO partner_api_keys (
+    organisation_id,
+    name,
+    environment,
+    key_prefix,
+    key_hash,
+    scopes,
+    allowed_districts
+)
+VALUES (
+    $1,
+    'Legacy API key',
+    'demo',
+    'cp_legacy',
+    'sha256:legacy-seed-compat',
+    '["clinics:read"]'::jsonb,
+    '["Tshwane North Demo District"]'::jsonb
+)`, legacyOrgID); err != nil {
+		t.Fatalf("insert legacy API key evidence: %v", err)
+	}
+
+	if _, err := store.pool.Exec(ctx, `
+INSERT INTO partner_webhook_subscriptions (
+    organisation_id,
+    name,
+    target_url,
+    event_types,
+    secret_hash,
+    status
+)
+VALUES (
+    $1,
+    'Legacy webhook',
+    'https://example.test/webhook',
+    '["clinic.status"]'::jsonb,
+    'sha256:legacy-webhook',
+    'active'
+)`, legacyOrgID); err != nil {
+		t.Fatalf("insert legacy webhook subscription evidence: %v", err)
+	}
+
+	if _, err := store.pool.Exec(ctx, `
+INSERT INTO partner_export_runs (
+    organisation_id,
+    requested_by_user_id,
+    format,
+    scope,
+    record_counts,
+    checksum,
+    payload
+)
+VALUES (
+    $1,
+    $2,
+    'json',
+    '{"district":"Tshwane North Demo District"}'::jsonb,
+    '{"clinics":1}'::jsonb,
+    'sha256:legacy-export-seed-compat',
+    '{"containsPatientData":false}'::jsonb
+)`, legacyOrgID, reviewerID); err != nil {
+		t.Fatalf("insert legacy export evidence: %v", err)
+	}
+
+	if currentOrgID == legacyOrgID {
+		if _, err := store.pool.Exec(ctx, `
+INSERT INTO integration_status_checks (organisation_id, check_name, status, summary)
+VALUES ($1, 'shared-check', 'attention', 'Legacy shared check.'),
+       ($1, 'legacy-only-check', 'attention', 'Legacy-only check.')`, legacyOrgID); err != nil {
+			t.Fatalf("insert legacy-only integration check evidence: %v", err)
+		}
+	} else if _, err := store.pool.Exec(ctx, `
+INSERT INTO integration_status_checks (organisation_id, check_name, status, summary)
+VALUES ($1, 'shared-check', 'passing', 'Current duplicate check.'),
+       ($2, 'shared-check', 'attention', 'Legacy duplicate check.'),
+       ($2, 'legacy-only-check', 'attention', 'Legacy-only check.')`, currentOrgID, legacyOrgID); err != nil {
+		t.Fatalf("insert legacy integration check evidence: %v", err)
+	}
+
+	var subscriptionID int64
+	if err := store.pool.QueryRow(ctx, `
+SELECT id
+FROM partner_webhook_subscriptions
+WHERE organisation_id = $1
+    AND name = 'Legacy webhook'`, legacyOrgID).Scan(&subscriptionID); err != nil {
+		t.Fatalf("select legacy webhook subscription: %v", err)
+	}
+
+	if _, err := store.pool.Exec(ctx, `
+INSERT INTO partner_webhook_events (
+    subscription_id,
+    event_type,
+    payload,
+    metadata,
+    status
+)
+VALUES (
+    $1,
+    'clinic.status',
+    '{"clinicId":"clinic-legacy-seed"}'::jsonb,
+    '{}'::jsonb,
+    'delivered'
+)`, subscriptionID); err != nil {
+		t.Fatalf("insert legacy webhook event: %v", err)
+	}
+
+	return subscriptionID
+}
+
+func runLocalAuthSeed(t *testing.T, ctx context.Context, store Store) {
+	t.Helper()
+
+	seedSQL := readSeedFile(t, "local_phase3_auth_users.sql")
+	if _, err := store.pool.Exec(ctx, seedSQL); err != nil {
+		t.Fatalf("run local auth seed: %v", err)
+	}
+}
+
+func assertOrgScopedCount(
+	t *testing.T,
+	ctx context.Context,
+	store Store,
+	table string,
+	orgID int64,
+	want int,
+) {
+	t.Helper()
+
+	switch table {
+	case "organisation_memberships",
+		"report_reviews",
+		"audit_events",
+		"report_sync_attempts",
+		"pilot_ingestion_runs",
+		"partner_api_keys",
+		"partner_webhook_subscriptions",
+		"partner_export_runs",
+		"integration_status_checks":
+	default:
+		t.Fatalf("unexpected org-scoped table %q", table)
+	}
+
+	var got int
+	if err := store.pool.QueryRow(ctx, `
+SELECT count(*)
+FROM `+table+`
+WHERE organisation_id = $1`, orgID).Scan(&got); err != nil {
+		t.Fatalf("count %s rows for org %d: %v", table, orgID, err)
+	}
+	if got != want {
+		t.Fatalf("expected %s rows for org %d = %d, got %d", table, orgID, want, got)
+	}
+}
+
+func assertNoLegacyDistrictValue(
+	t *testing.T,
+	ctx context.Context,
+	store Store,
+	table string,
+	columnExpression string,
+) {
+	t.Helper()
+
+	switch table {
+	case "organisation_memberships", "partner_api_keys", "partner_export_runs":
+	default:
+		t.Fatalf("unexpected legacy district table %q", table)
+	}
+
+	var got int
+	if err := store.pool.QueryRow(ctx, `
+SELECT count(*)
+FROM `+table+`
+WHERE `+columnExpression+` LIKE '%Tshwane North Demo District%'`).Scan(&got); err != nil {
+		t.Fatalf("count legacy district values in %s.%s: %v", table, columnExpression, err)
+	}
+	if got != 0 {
+		t.Fatalf("expected no legacy district values in %s.%s, got %d", table, columnExpression, got)
 	}
 }
 

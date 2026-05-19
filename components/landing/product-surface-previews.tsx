@@ -137,7 +137,7 @@ function PatientReroutePreview() {
       <div className="rounded-lg border border-neutral-200 bg-white p-3 dark:border-border dark:bg-card">
         <div className="flex items-center gap-2 rounded-lg border border-neutral-200 px-2.5 py-2 text-xs text-neutral-500 dark:border-border dark:text-muted-foreground">
           <Search className="size-3.5" />
-          Mamelodi ARV pickup
+          Mabopane pharmacy pickup
         </div>
         <div className="mt-3 grid gap-2">
           {productSurfacePreviewRows["patient-reroute"].map((row, index) => {

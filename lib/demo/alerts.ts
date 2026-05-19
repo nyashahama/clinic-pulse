@@ -7,7 +7,8 @@ export const demoAlerts: Alert[] = [
     type: "clinic_down",
     severity: "critical",
     status: "open",
-    recommendedAction: "Route dispensing and chronic care pickups to Akasia Hills Clinic immediately.",
+    recommendedAction:
+      "Route dispensing and chronic care pickups to Akasia Hills Clinic, request field confirmation, and keep Mabopane Station under monitoring.",
     createdAt: "2026-05-01T06:13:00.000Z",
   },
   {

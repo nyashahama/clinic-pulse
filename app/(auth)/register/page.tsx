@@ -64,7 +64,7 @@ async function signupAction(
   return {
     fields,
     error:
-      "Account creation is not enabled in this environment yet. Use the seeded demo credentials on the sign in page, or ask an administrator to provision your account.",
+      "Account creation is not enabled in this environment yet. Use the local seeded credentials on the sign in page, or ask an administrator to provision your account.",
   };
 }
 
@@ -101,7 +101,7 @@ export default function RegisterPage() {
           <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-200">
             New accounts are currently provisioned by administrators.
             {frontendEnv.showDemoCredentials
-              ? " The local demo includes seeded users you can use from the sign in page."
+              ? " The local scenario includes seeded users you can use from the sign in page."
               : null}
           </div>
 

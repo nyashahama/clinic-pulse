@@ -240,7 +240,7 @@ export default function AdminPage({
                 ? "Platform console is scoped"
                 : "Organisation workspace is scoped",
               detail: isSystemAdmin
-                ? "Demo tenant estate represented in this platform console."
+                ? "Tenant estate represented in this platform console."
                 : "Clinic records included in this admin surface.",
             },
             {
@@ -578,13 +578,13 @@ export default function AdminPage({
           data-admin-section={adminWorkspaceSections[4]}
         >
           <SectionHeader
-            eyebrow="Demo controls"
+            eyebrow="Scenario controls"
             title="Reset and runbook"
             description="Controls stay out of the primary admin workflow so operators focus on readiness first."
             actions={
               <Button size="sm" variant="outline" onClick={resetDemo}>
                 <RefreshCcw className="size-3.5" />
-                Reset walkthrough data
+                Reset scenario data
               </Button>
             }
           />

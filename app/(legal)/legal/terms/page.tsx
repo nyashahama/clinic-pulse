@@ -27,7 +27,7 @@ export default function TermsPage() {
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Pilot use</h2>
         <p className="text-sm text-muted-foreground">
-          Do not use demo-seeded, stale, pending, or failed-sync data as final
+          Do not use scenario-seeded, stale, pending, or failed-sync data as final
           operational truth without review and human confirmation.
         </p>
       </section>

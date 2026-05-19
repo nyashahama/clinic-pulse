@@ -79,6 +79,23 @@ describe("data trust view models", () => {
   });
 
   it("formats compact trust labels", () => {
-    expect(formatTrustLabel("seeded_demo", "unknown", "unknown")).toBe("Demo data / unknown freshness / unknown review");
+    expect(formatTrustLabel("seeded_demo", "unknown", "unknown")).toBe("Scenario data / unknown freshness / unknown review");
+  });
+
+  it("describes seeded internal data without visible demo framing", () => {
+    const state = buildDataTrustState({
+      ...baseInput,
+      source: "seeded_demo",
+      freshness: "fresh",
+      reviewState: "reviewed",
+    });
+
+    expect(state).toMatchObject({
+      tone: "attention",
+      confidence: "low",
+      label: "Scenario data",
+      description: "Scenario-seeded data supports local operations rehearsal, not pilot decisions.",
+    });
+    expect(`${state.label} ${state.description}`).not.toMatch(/demo/i);
   });
 });

@@ -6,6 +6,7 @@ import {
 import { demoAlerts } from "@/lib/demo/alerts";
 import { getFreshnessFromTimestamp } from "@/lib/demo/freshness";
 import { demoLeads } from "@/lib/demo/leads";
+import { OPERATIONS_INCIDENT } from "@/lib/demo/operations-scenario";
 import { demoAuditEvents, demoClinicStates, demoReports } from "@/lib/demo/reports";
 import type {
   Alert,
@@ -18,7 +19,7 @@ import type {
   SubmitFieldReportInput,
 } from "@/lib/demo/types";
 
-const DEMO_CONTROL_NAME = "Demo control";
+const OPERATIONS_DESK_NAME = "Operations desk";
 
 function buildId(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
@@ -147,8 +148,8 @@ export function triggerStockoutScenario(
     reason: nextReason,
     freshness: getFreshnessFromTimestamp(now, new Date(now)),
     lastReportedAt: now,
-    reporterName: DEMO_CONTROL_NAME,
-    source: "demo_control",
+    reporterName: OPERATIONS_DESK_NAME,
+    source: "clinic_coordinator",
     stockPressure: "stockout",
     queuePressure: currentState.queuePressure === "unknown" ? "moderate" : currentState.queuePressure,
   };
@@ -156,8 +157,8 @@ export function triggerStockoutScenario(
   const report: ReportEvent = {
     id: buildId("report"),
     clinicId,
-    reporterName: DEMO_CONTROL_NAME,
-    source: "demo_control",
+    reporterName: OPERATIONS_DESK_NAME,
+    source: "clinic_coordinator",
     offlineCreated: false,
     submittedAt: now,
     receivedAt: now,
@@ -166,7 +167,7 @@ export function triggerStockoutScenario(
     staffPressure: nextClinicState.staffPressure,
     stockPressure: nextClinicState.stockPressure,
     queuePressure: nextClinicState.queuePressure,
-    notes: "Triggered from demo controls to simulate a same-day medicine stockout.",
+    notes: `${OPERATIONS_INCIDENT.districtOwner} logged a same-day medicine availability change for operations review.`,
   };
 
   const alert: Alert = {
@@ -183,27 +184,27 @@ export function triggerStockoutScenario(
   let nextAuditEvents = addAuditEvent(
     state.auditEvents,
     clinicId,
-    DEMO_CONTROL_NAME,
+    OPERATIONS_DESK_NAME,
     "demo.stockout_triggered",
-    "Demo control triggered a stockout scenario for the clinic.",
+    "Operations desk recorded a stock availability change for the clinic.",
     now,
   );
 
   nextAuditEvents = addAuditEvent(
     nextAuditEvents,
     clinicId,
-    DEMO_CONTROL_NAME,
+    OPERATIONS_DESK_NAME,
     "clinic.status_changed",
-    `${nextStatus === "non_functional" ? "Clinic marked non-functional" : "Clinic marked degraded"} after stockout update.`,
+    "Stock availability update changed the clinic operating state.",
     now,
   );
 
   nextAuditEvents = addAuditEvent(
     nextAuditEvents,
     clinicId,
-    DEMO_CONTROL_NAME,
+    OPERATIONS_DESK_NAME,
     "alert.created",
-    "Stockout alert created from demo trigger.",
+    "Stockout alert created from district operations action.",
     now,
   );
 
@@ -233,8 +234,8 @@ export function triggerStaffingShortageScenario(
     reason: "Critical nurse shortage is constraining throughput and priority services.",
     freshness: getFreshnessFromTimestamp(now, new Date(now)),
     lastReportedAt: now,
-    reporterName: DEMO_CONTROL_NAME,
-    source: "demo_control",
+    reporterName: OPERATIONS_DESK_NAME,
+    source: "clinic_coordinator",
     staffPressure: "critical",
     queuePressure: "high",
   };
@@ -242,8 +243,8 @@ export function triggerStaffingShortageScenario(
   const report: ReportEvent = {
     id: buildId("report"),
     clinicId,
-    reporterName: DEMO_CONTROL_NAME,
-    source: "demo_control",
+    reporterName: OPERATIONS_DESK_NAME,
+    source: "clinic_coordinator",
     offlineCreated: false,
     submittedAt: now,
     receivedAt: now,
@@ -252,7 +253,7 @@ export function triggerStaffingShortageScenario(
     staffPressure: "critical",
     stockPressure: nextClinicState.stockPressure,
     queuePressure: "high",
-    notes: "Triggered from demo controls to simulate an acute staffing shortage.",
+    notes: "Operations desk logged an acute staffing shortage for district follow-up.",
   };
 
   const alert: Alert = {
@@ -269,16 +270,16 @@ export function triggerStaffingShortageScenario(
   let nextAuditEvents = addAuditEvent(
     state.auditEvents,
     clinicId,
-    DEMO_CONTROL_NAME,
+    OPERATIONS_DESK_NAME,
     "demo.staffing_shortage_triggered",
-    "Demo control triggered a staffing shortage scenario for the clinic.",
+    "Operations desk triggered a staffing shortage scenario for the clinic.",
     now,
   );
 
   nextAuditEvents = addAuditEvent(
     nextAuditEvents,
     clinicId,
-    DEMO_CONTROL_NAME,
+    OPERATIONS_DESK_NAME,
     "clinic.status_changed",
     "Clinic marked degraded after staffing shortage update.",
     now,
@@ -287,9 +288,9 @@ export function triggerStaffingShortageScenario(
   nextAuditEvents = addAuditEvent(
     nextAuditEvents,
     clinicId,
-    DEMO_CONTROL_NAME,
+    OPERATIONS_DESK_NAME,
     "alert.created",
-    "Staffing shortage alert created from demo trigger.",
+    "Staffing shortage alert created from district operations action.",
     now,
   );
 
@@ -433,9 +434,9 @@ export function syncOfflineReportsScenario(
   nextState.auditEvents = addAuditEvent(
     nextState.auditEvents,
     state.offlineQueue[0].clinicId,
-    DEMO_CONTROL_NAME,
+    OPERATIONS_DESK_NAME,
     "demo.offline_sync_triggered",
-    `Demo sync processed ${state.offlineQueue.length} offline report${state.offlineQueue.length === 1 ? "" : "s"}.`,
+    `Operations sync processed ${state.offlineQueue.length} offline report${state.offlineQueue.length === 1 ? "" : "s"}.`,
     now,
   );
 

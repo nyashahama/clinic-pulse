@@ -49,7 +49,7 @@ export function DemoControls({
 }: DemoControlsProps) {
   const actions: ControlAction[] = [
     {
-      title: "Reset demo",
+      title: "Reset scenario",
       description: "Restore the seeded district state and clear locally queued reports.",
       icon: RefreshCw,
       onClick: onReset,
@@ -104,9 +104,9 @@ export function DemoControls({
     <section className="min-w-0 rounded-lg border border-border-subtle bg-bg-default shadow-sm">
       <div className="px-4 pt-4">
         <SectionHeader
-          eyebrow="Demo actions"
+          eyebrow="Scenario actions"
           title="Console controls"
-          description="Each control is wired to the same mock state used across the district console surfaces."
+          description="Each control is wired to the same scenario state used across the district console surfaces."
         />
       </div>
 

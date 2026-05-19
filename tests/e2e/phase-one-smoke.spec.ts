@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { PRODUCT_LANGUAGE_BAN_LIST } from "../../lib/demo/operations-scenario";
 import { phaseOneDemoRouteChecklist } from "../../lib/demo/demo-runbook";
 
 const demoAccount = {
@@ -15,14 +16,23 @@ async function signIn(page: Page) {
   await expect(page).toHaveURL(/\/admin$/);
 }
 
-test.describe("phase-one demo route checklist", () => {
+async function expectNoStagedProductLanguage(page: Page) {
+  const visibleText = await page.locator("body").innerText();
+  const escapedBanList = PRODUCT_LANGUAGE_BAN_LIST.map((phrase) =>
+    phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+  );
+
+  expect(visibleText).not.toMatch(new RegExp(escapedBanList.join("|"), "i"));
+}
+
+test.describe("phase-one operations route checklist", () => {
   test("keeps the smoke suite aligned with the runbook route order", async () => {
     expect(phaseOneDemoRouteChecklist.map((entry) => entry.path)).toEqual([
       "/",
       "/book-demo",
       "/book-demo/thanks",
       "/demo",
-      "/demo/clinics/clinic-mamelodi-east",
+      "/demo/clinics/clinic-mabopane-station",
       "/finder",
       "/field",
       "/admin",
@@ -36,22 +46,37 @@ test.describe("phase-one demo route checklist", () => {
         name: "Know which clinics can help before patients travel.",
       }),
     ).toBeVisible();
-    await expect(page.getByRole("button", { name: "Book demo" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Book walkthrough" })).toBeVisible();
+    await expectNoStagedProductLanguage(page);
 
     await page.goto("/book-demo");
     await expect(page).toHaveURL(/\/\?booking=1$/);
-    await expect(page.getByRole("dialog", { name: "Book a Clinic Pulse demo" })).toBeVisible();
+    await expect(
+      page.getByRole("dialog", { name: "Book a Clinic Pulse walkthrough" }),
+    ).toBeVisible();
+    await expectNoStagedProductLanguage(page);
 
     await page.goto("/book-demo/thanks?name=Smoke&organization=E2E%20District");
     await expect(page.getByRole("heading", { name: "Thanks, Smoke" })).toBeVisible();
-    await expect(page.getByText("Demo booking created successfully.")).toBeVisible();
+    await expect(page.getByText("Request captured successfully.")).toBeVisible();
+    await expectNoStagedProductLanguage(page);
   });
 
   test("renders public finder against the seeded API", async ({ page }) => {
     await page.goto("/finder");
     await expect(page.getByRole("heading", { name: "Clinic finder" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "No-login public flow" })).toBeVisible();
-    await expect(page.getByText("Mamelodi East Community Clinic")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Public routing view" })).toBeVisible();
+    await expect(page.getByText("Mabopane Station Clinic")).toBeVisible();
+    await expectNoStagedProductLanguage(page);
+  });
+
+  test("renders public clinic detail without staged framing", async ({ page }) => {
+    await page.goto("/clinics/clinic-mabopane-station");
+    await expect(page.getByRole("heading", { name: "Mabopane Station Clinic" })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Request operations walkthrough" }),
+    ).toBeVisible();
+    await expectNoStagedProductLanguage(page);
   });
 
   test("renders protected district, clinic detail, field, and admin routes after login", async ({
@@ -67,6 +92,7 @@ test.describe("phase-one demo route checklist", () => {
 
     await signIn(page);
     await page.goto("/demo");
+    await expectNoStagedProductLanguage(page);
 
     await expect(
       page.getByRole("heading", { name: "Unified severity queue" }),
@@ -82,21 +108,35 @@ test.describe("phase-one demo route checklist", () => {
     await expect(page.getByRole("heading", { name: "Clinic table" })).toBeVisible();
     await expect(page.getByText("Report stream")).toBeVisible();
 
-    await page.goto("/demo/clinics/clinic-mamelodi-east");
+    await page.goto("/demo/clinics/clinic-mabopane-station");
+    await expectNoStagedProductLanguage(page);
     await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: "Mamelodi East Community Clinic" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Mabopane Station Clinic" })).toBeVisible();
 
     await page.goto("/field");
+    await expectNoStagedProductLanguage(page);
     await expect(page.getByRole("heading", { name: "Field workbench" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Submit clinic status" })).toBeVisible();
 
     await page.goto("/admin");
+    await expectNoStagedProductLanguage(page);
     await expect(page.getByRole("heading", { name: "Operations admin deck" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Stakeholder activity queue" })).toBeVisible();
 
+    await page.goto("/admin/data-ingestion");
+    await expectNoStagedProductLanguage(page);
+    await expect(page.getByRole("heading", { name: "Ingestion pressure" })).toBeVisible();
+
+    await page.goto("/admin/partner-readiness");
+    await expectNoStagedProductLanguage(page);
+    await expect(page.getByRole("heading", { name: "Partner readiness", exact: true })).toBeVisible();
+
+    await page.goto("/admin/demo-controls");
+    await expectNoStagedProductLanguage(page);
+    await expect(page.getByRole("heading", { name: "Scenario controls" })).toBeVisible();
+
     await page.goto("/demo");
+    await expectNoStagedProductLanguage(page);
     const supportingOperations = page
       .getByText("Supporting operations", { exact: true })
       .filter({ visible: true })

@@ -25,11 +25,11 @@ export function WorkflowIncidentPanel() {
         <div className="flex min-w-0 items-center gap-2">
           <ClipboardList className="size-4 shrink-0 text-primary" />
           <p className="truncate text-sm font-semibold text-neutral-950">
-            Mamelodi East incident
+            Mabopane Station incident
           </p>
         </div>
         <p className="min-w-0 break-all font-mono text-xs text-neutral-400 sm:break-normal sm:text-right">
-          LIVE_DEMO / AUD-2026-0504-017
+          OPS_INCIDENT / AUD-OPS-MAB-001
         </p>
       </div>
       <div className="grid gap-3 p-4">

@@ -170,7 +170,7 @@ export default async function PublicClinicDetailPage({ params }: PublicClinicDet
                 className={buttonVariants({ size: "sm", variant: "outline" })}
               >
                 <CalendarClock className="size-3.5" />
-                Book founder walkthrough
+                Request operations walkthrough
               </Link>
             </div>
           </section>

@@ -5,7 +5,7 @@ async function gotoLanding(page: Page) {
 }
 
 test.describe("landing page 2026", () => {
-  test("keeps required navigation and demo actions reachable", async ({ page }) => {
+  test("keeps required navigation and walkthrough actions reachable", async ({ page }) => {
     await gotoLanding(page);
 
     const header = page.locator("header");
@@ -15,7 +15,7 @@ test.describe("landing page 2026", () => {
     await expect(header.getByRole("link", { name: "Product" })).toBeVisible();
     await expect(header.getByRole("link", { name: "Trust" })).toBeVisible();
     await expect(header.getByRole("link", { name: "Sign in" })).toBeVisible();
-    await expect(header.getByRole("link", { name: "Book demo" })).toBeVisible();
+    await expect(header.getByRole("link", { name: "Book walkthrough" })).toBeVisible();
   });
 
   test("opens with the live operations incident narrative", async ({ page }) => {
@@ -35,17 +35,17 @@ test.describe("landing page 2026", () => {
     const console = hero.locator("[data-hero-console='true']");
 
     await expect(console).toBeVisible();
-    await expect(console).toContainText("Mamelodi East Community Clinic");
+    await expect(console).toContainText("Mabopane Station Clinic");
     await expect(console).toContainText("Akasia Hills Clinic");
     await expect(console).toContainText("Offline field report");
-    await expect(console).toContainText("ARV pickup");
-    await expect(console).toContainText("AUD-2026-0504-017");
+    await expect(console).toContainText("Pharmacy");
+    await expect(console).toContainText("AUD-OPS-MAB-001");
     await expect(
       page.getByRole("img", {
         name: /clinic entrance used to frame a live service availability incident/i,
       }),
     ).toBeVisible();
-    await expect(page.getByRole("button", { name: "Book demo" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Book walkthrough" }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Watch the incident flow" })).toBeVisible();
   });
 
@@ -72,7 +72,7 @@ test.describe("landing page 2026", () => {
         hero.locator("[data-incident-proof='true']").filter({ visible: true }),
       ).toHaveCount(0);
       await expect(console).toContainText("Akasia Hills Clinic");
-      await expect(console).toContainText("AUD-2026-0504-017");
+      await expect(console).toContainText("AUD-OPS-MAB-001");
     }
   });
 
@@ -87,7 +87,7 @@ test.describe("landing page 2026", () => {
     });
 
     expect(overflow).toBe(false);
-    await expect(page.getByRole("button", { name: "Book demo" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Book walkthrough" }).first()).toBeVisible();
     await expect(page.locator("[data-hero-console='true']")).toBeVisible();
     await expect(
       page.locator("#product").getByRole("heading", {
@@ -232,7 +232,7 @@ test.describe("landing page 2026", () => {
 
     const trust = page.locator("#trust");
     const cta = page.locator("section").filter({
-      has: page.getByRole("heading", { name: "Walk through a live clinic status incident." }),
+      has: page.getByRole("heading", { name: "Walk through the Mabopane Station incident." }),
     });
 
     await expect(
@@ -246,16 +246,17 @@ test.describe("landing page 2026", () => {
     await expect(trust.getByText("Webhook preview")).toBeVisible();
 
     await expect(
-      cta.getByRole("heading", { name: "Walk through a live clinic status incident." }),
+      cta.getByRole("heading", { name: "Walk through the Mabopane Station incident." }),
     ).toBeVisible();
-    await expect(cta.getByText("Mamelodi East Community Clinic")).toBeVisible();
+    await expect(cta.getByText("Mabopane Station Clinic")).toBeVisible();
     await expect(cta.getByText("Akasia Hills Clinic")).toBeVisible();
-    await expect(cta.getByText("AUD-2026-0504-017")).toBeVisible();
-    await expect(cta.getByRole("link", { name: "Sign in to demo workspace" })).toHaveAttribute(
-      "href",
-      "/login",
-    );
-    await cta.getByRole("link", { name: "Book demo" }).click();
-    await expect(page.getByRole("dialog", { name: "Book a Clinic Pulse demo" })).toBeVisible();
+    await expect(cta.getByText("AUD-OPS-MAB-001")).toBeVisible();
+    await expect(
+      cta.getByRole("link", { name: "Sign in to operations workspace" }),
+    ).toHaveAttribute("href", "/login");
+    await cta.getByRole("link", { name: "Book walkthrough" }).click();
+    await expect(
+      page.getByRole("dialog", { name: "Book a Clinic Pulse walkthrough" }),
+    ).toBeVisible();
   });
 });

@@ -12,6 +12,8 @@ import {
   stakeholderImpactItems,
   statusGapTimeline,
   trustEvidencePanels,
+  trustSystemPanels,
+  workflowIncidentStages,
   trustObjects,
 } from "./openpanel-refactor-content";
 
@@ -22,9 +24,24 @@ describe("landing page 2026 content", () => {
     expect(liveIncidentHero.title).toBe(
       "Know which clinics can help before patients travel.",
     );
-    expect(liveIncidentHero.incident.clinic).toBe("Mamelodi East Community Clinic");
+    expect(liveIncidentHero.incident.clinic).toBe("Mabopane Station Clinic");
     expect(liveIncidentHero.incident.recommendedRoute).toBe("Akasia Hills Clinic");
-    expect(liveIncidentHero.incident.auditId).toMatch(/^AUD-2026-/);
+    expect(liveIncidentHero.incident.auditId).toBe("AUD-OPS-MAB-001");
+  });
+
+  it("keeps workflow and trust evidence aligned to the active Mabopane incident", () => {
+    const serialized = JSON.stringify({
+      incidentFlowSteps,
+      trustEvidencePanels,
+      trustSystemPanels,
+      workflowIncidentStages,
+    });
+
+    expect(serialized).toContain("Mabopane Station");
+    expect(serialized).toContain("AUD-OPS-MAB-001");
+    expect(serialized).not.toContain("Mamelodi East");
+    expect(serialized).not.toContain("AUD-2026-0504-017");
+    expect(serialized).not.toContain("mamelodi-east");
   });
 
   it("keeps every main landing chapter populated", () => {
@@ -74,16 +91,41 @@ describe("landing page 2026 content", () => {
     expect(serialized).not.toContain("customer logo");
   });
 
-  it("routes public demo workspace access through sign in", () => {
+  it("routes public operations workspace access through sign in", () => {
     expect(incidentDemoCta.secondaryCta).toEqual({
-      label: "Sign in to demo workspace",
+      label: "Sign in to operations workspace",
       href: "/login",
     });
   });
 
+  it("keeps the incident walkthrough CTA anchored to the Mabopane scenario", () => {
+    expect(incidentDemoCta.title).toBe("Walk through the Mabopane Station incident.");
+    expect(incidentDemoCta.incident).toEqual({
+      sourceClinic: "Mabopane Station Clinic",
+      reroute: "Akasia Hills Clinic",
+      auditRecord: "AUD-OPS-MAB-001",
+    });
+  });
+
+  it("keeps public landing content away from staged product wording", () => {
+    const serialized = JSON.stringify({
+      incidentDemoCta,
+      landingHero,
+      liveIncidentHero,
+      demoCta,
+      productSurfacePreviewRows,
+      trustEvidencePanels,
+      trustObjects,
+    });
+
+    expect(serialized).not.toMatch(
+      /demo workspace|demo environment|demo clinics|Tshwane North demo|Demo data is seeded|Pilot walkthrough/i,
+    );
+  });
+
   it("keeps current landing content available during migration", () => {
     expect(landingHero.title).toBe("Clinic Pulse");
-    expect(landingHero.primaryCta.label).toBe("Book demo");
+    expect(landingHero.primaryCta.label).toBe("Book walkthrough");
     expect(featureCards).toHaveLength(3);
     expect(Object.keys(productSurfacePreviewRows)).toEqual(
       expect.arrayContaining([
@@ -98,6 +140,6 @@ describe("landing page 2026 content", () => {
     expect(productSurfacePreviewRows["patient-reroute"].length).toBeGreaterThan(0);
     expect(productSurfacePreviewRows["audit-ledger"].length).toBeGreaterThan(0);
     expect(trustObjects.length).toBeGreaterThan(0);
-    expect(demoCta.cta.label).toBe("Book demo");
+    expect(demoCta.cta.label).toBe("Book walkthrough");
   });
 });

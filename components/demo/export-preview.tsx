@@ -106,9 +106,9 @@ export function ExportPreview({ payload, onOpen }: ExportPreviewProps) {
   return (
     <section className="min-w-0 overflow-hidden rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
       <SectionHeader
-        eyebrow="Founder package"
+        eyebrow="Operations package"
         title="Export preview"
-        description="Generate an export blob to hand into analytics or BI tools during a founder pitch."
+        description="Generate an export blob to hand into analytics or BI tools during an operations review."
       />
 
       <div className="mt-4 space-y-3 rounded-lg border border-dashed border-border-subtle bg-bg-subtle p-3">

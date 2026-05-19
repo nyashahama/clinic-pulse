@@ -30,9 +30,9 @@ export default function FinderPageClient({ clinics }: FinderPageClientProps) {
       <div className="mx-auto grid max-w-7xl gap-4">
         <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
           <SectionHeader
-            eyebrow="Public tool"
+            eyebrow="Public status"
             title="Clinic finder"
-            description="Search without an account to locate a nearby clinic and get reroute options when a facility is not routing-safe."
+            description="Search the district operating record to locate a nearby clinic and see reroute options when a facility is not routing-safe."
           />
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -43,7 +43,7 @@ export default function FinderPageClient({ clinics }: FinderPageClientProps) {
 
             <Link href="/book-demo" className={buttonVariants({ size: "sm", variant: "outline" })}>
               <CalendarClock className="size-3.5" />
-              Book founder walkthrough
+              Request operations walkthrough
             </Link>
           </div>
 
@@ -60,7 +60,7 @@ export default function FinderPageClient({ clinics }: FinderPageClientProps) {
               </span>
             </div>
             <p className="mt-2 text-xs">
-              Pilot safety: confirm stale or pending data before operational decisions.{" "}
+              Confirm stale or pending data before operational decisions.{" "}
               <Link href="/legal/safety" className="underline">
                 Read safety notes
               </Link>

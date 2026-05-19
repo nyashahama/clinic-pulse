@@ -16,10 +16,10 @@ describe("responsive demo work queues", () => {
     expect(source).toContain("Recommended action");
   });
 
-  it("gives demo leads a mobile card queue with status controls", () => {
+  it("gives operations leads a mobile card queue with status controls", () => {
     const source = readFileSync(demoLeadTable, "utf8");
 
-    expect(source).toContain('aria-label="Demo leads mobile work queue"');
+    expect(source).toContain('aria-label="Operations leads mobile work queue"');
     expect(source).toContain('className="grid gap-3 px-4 pb-4 md:hidden"');
     expect(source).toContain('className="hidden overflow-x-auto px-4 pb-4 md:block"');
     expect(source).toContain("Update status for");

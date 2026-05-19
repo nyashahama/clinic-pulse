@@ -49,10 +49,10 @@ export function RoutingMoment() {
               >
                 <div className="flex items-center gap-2 text-sm font-semibold text-red-800">
                   <MapPinOff className="size-4" />
-                  Mamelodi East unavailable
+                  Mabopane Station unavailable
                 </div>
                 <p className="mt-2 text-sm leading-6 text-neutral-700">
-                  Pharmacy stockout reported by field worker. Status fresh - 2 min ago.
+                  Generator failure paused dispensing and chronic care pickup services. Status fresh - 2 min ago.
                 </p>
               </motion.div>
 
