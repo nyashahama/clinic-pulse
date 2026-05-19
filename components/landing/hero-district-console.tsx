@@ -151,7 +151,7 @@ export function HeroDistrictConsole({ className }: { className?: string }) {
                   <p className="text-[10px] uppercase tracking-[0.16em] text-white/45">
                     Selected clinic
                   </p>
-                  <p className="mt-1 text-sm font-semibold">Mamelodi East</p>
+                  <p className="mt-1 text-sm font-semibold">Mabopane Station</p>
                 </div>
               </div>
 

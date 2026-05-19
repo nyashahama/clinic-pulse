@@ -63,7 +63,7 @@ export function Nav() {
                 href="/?booking=1"
                 className="flex h-8 items-center rounded-lg border border-neutral-900 bg-neutral-900 px-3 text-xs font-semibold text-white transition-colors hover:bg-neutral-800 dark:border-foreground dark:bg-foreground dark:text-background dark:hover:bg-foreground/90"
               >
-                Book demo
+                Book walkthrough
               </Link>
             </div>
 
@@ -78,7 +78,7 @@ export function Nav() {
                 href="/?booking=1"
                 className="flex h-8 items-center rounded-lg border border-neutral-900 bg-neutral-900 px-4 text-sm font-medium text-white transition-colors hover:bg-neutral-800 dark:border-foreground dark:bg-foreground dark:text-background dark:hover:bg-foreground/90"
               >
-                Book demo
+                Book walkthrough
               </Link>
             </div>
           </div>

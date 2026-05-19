@@ -6,12 +6,12 @@ export const heroIncident = {
   primaryCta: "Book walkthrough",
   secondaryCta: "See Product Flow",
   proofLabel: "Scenario data shown for operations walkthrough",
-  clinic: "Mamelodi East Community Clinic",
+  clinic: "Mabopane Station Clinic",
   status: "Non-functional",
-  reason: "Pharmacy stockout reported by field worker",
+  reason: "Generator failure paused dispensing and chronic care pickups",
   freshness: "Fresh - 2 min ago",
   source: "Field report - S. Ndaba",
-  recommendation: "Reroute primary care to Akasia Hills Clinic",
+  recommendation: "Reroute pharmacy pickups to Akasia Hills Clinic",
   audit: "Status changed after offline sync",
 } as const;
 
@@ -71,9 +71,9 @@ export const productFlowSteps = [
     step: "02",
     title: "Status changes",
     description:
-    "Mamelodi East Community Clinic moves from operational to non-functional because pharmacy stock is unavailable.",
+    "Mabopane Station Clinic moves from operational to non-functional because generator failure paused pharmacy service.",
     artifactTitle: "Status update",
-    artifactDetail: "Non-functional - pharmacy stockout",
+    artifactDetail: "Non-functional - generator failure",
   },
   {
     step: "03",
@@ -102,13 +102,13 @@ export const productFlowSteps = [
 ] as const;
 
 export const routingMoment = {
-  before: "Patient would make a wasted trip to Mamelodi East Community Clinic.",
-  incident: "Mamelodi East Community Clinic is non-functional because pharmacy stock is unavailable.",
+  before: "Patient would make a wasted trip to Mabopane Station Clinic.",
+  incident: "Mabopane Station Clinic is non-functional because generator failure paused pharmacy service.",
   recommendation: "Send patient to Akasia Hills Clinic.",
   reasons: [
     "Wasted travel avoided: 18 min",
     "Best nearby compatible clinic",
-    "Service compatible: primary care supported",
+    "Service compatible: pharmacy supported",
     "Operational status fresh - 4 min ago",
   ],
 } as const;

@@ -22,6 +22,8 @@ const productSurfacePreviewsComponent = path.join(
 describe("patient journey landing copy", () => {
   it("frames the landing reroute story as a wasted trip avoided", () => {
     expect(routingMoment.before).toContain("wasted trip");
+    expect(routingMoment.before).toContain("Mabopane Station Clinic");
+    expect(productFlowSteps[1].description).toContain("Mabopane Station Clinic");
     expect(routingMoment.recommendation).toContain("Akasia Hills Clinic");
     expect(routingMoment.reasons).toContain("Wasted travel avoided: 18 min");
     expect(routingMoment.reasons).toContain("Best nearby compatible clinic");
@@ -44,12 +46,12 @@ describe("patient journey landing copy", () => {
     expect(patientFeature?.miniature.rows).toEqual([
       "Impact: 18 min avoided",
       "Clinic: Best nearby compatible",
-      "Service: ARV pickup accepting",
+      "Service: Pharmacy accepting",
     ]);
     expect(productSurfacePreviewRows["patient-reroute"]).toEqual([
       { label: "Impact", value: "18 min avoided", tone: "healthy" },
       { label: "Clinic", value: "Best nearby compatible", tone: "healthy" },
-      { label: "Service", value: "ARV pickup accepting", tone: "healthy" },
+      { label: "Service", value: "Pharmacy accepting", tone: "healthy" },
     ]);
   });
 

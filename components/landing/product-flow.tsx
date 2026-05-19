@@ -6,7 +6,7 @@ import { ArrowRight, ClipboardList, DatabaseZap, Radio, Route, ShieldCheck, Wifi
 import { MaxWidthWrapper } from "@/components/ui/max-width-wrapper";
 
 const timeline = [
-  { title: "Offline report", detail: "Mamelodi East / pharmacy stockout", icon: WifiOff },
+  { title: "Offline report", detail: "Mabopane Station / generator failure", icon: WifiOff },
   { title: "Status update", detail: "Operational -> non-functional", icon: Radio },
   { title: "District console", detail: "Alert opened / table refreshed", icon: DatabaseZap },
   { title: "Reroute", detail: "Akasia Hills Clinic recommended", icon: Route },
@@ -26,7 +26,7 @@ export function ProductFlow() {
               className="mt-4 font-display text-3xl font-medium leading-[1.12] sm:text-4xl"
               style={{ textWrap: "balance" }}
             >
-              The demo is one moving operating record.
+              One incident becomes a shared operating record.
             </h2>
             <p className="mt-4 text-base leading-7 text-white/60">
               Each event changes the next surface: field report, district console,
@@ -40,7 +40,7 @@ export function ProductFlow() {
                 <ClipboardList className="size-4 text-emerald-300" />
                 <p className="text-sm font-semibold">Incident timeline</p>
               </div>
-              <p className="font-mono text-xs text-white/40">YC_DEMO / LIVE_WALKTHROUGH</p>
+              <p className="font-mono text-xs text-white/40">OPS_INCIDENT / LIVE_WALKTHROUGH</p>
             </div>
 
             <div className="relative grid gap-0 p-4">
@@ -83,4 +83,3 @@ export function ProductFlow() {
     </section>
   );
 }
-

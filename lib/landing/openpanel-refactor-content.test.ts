@@ -12,6 +12,8 @@ import {
   stakeholderImpactItems,
   statusGapTimeline,
   trustEvidencePanels,
+  trustSystemPanels,
+  workflowIncidentStages,
   trustObjects,
 } from "./openpanel-refactor-content";
 
@@ -22,9 +24,24 @@ describe("landing page 2026 content", () => {
     expect(liveIncidentHero.title).toBe(
       "Know which clinics can help before patients travel.",
     );
-    expect(liveIncidentHero.incident.clinic).toBe("Mamelodi East Community Clinic");
+    expect(liveIncidentHero.incident.clinic).toBe("Mabopane Station Clinic");
     expect(liveIncidentHero.incident.recommendedRoute).toBe("Akasia Hills Clinic");
-    expect(liveIncidentHero.incident.auditId).toMatch(/^AUD-2026-/);
+    expect(liveIncidentHero.incident.auditId).toBe("AUD-OPS-MAB-001");
+  });
+
+  it("keeps workflow and trust evidence aligned to the active Mabopane incident", () => {
+    const serialized = JSON.stringify({
+      incidentFlowSteps,
+      trustEvidencePanels,
+      trustSystemPanels,
+      workflowIncidentStages,
+    });
+
+    expect(serialized).toContain("Mabopane Station");
+    expect(serialized).toContain("AUD-OPS-MAB-001");
+    expect(serialized).not.toContain("Mamelodi East");
+    expect(serialized).not.toContain("AUD-2026-0504-017");
+    expect(serialized).not.toContain("mamelodi-east");
   });
 
   it("keeps every main landing chapter populated", () => {
@@ -95,6 +112,7 @@ describe("landing page 2026 content", () => {
       incidentDemoCta,
       landingHero,
       liveIncidentHero,
+      demoCta,
       productSurfacePreviewRows,
       trustEvidencePanels,
       trustObjects,
@@ -107,7 +125,7 @@ describe("landing page 2026 content", () => {
 
   it("keeps current landing content available during migration", () => {
     expect(landingHero.title).toBe("Clinic Pulse");
-    expect(landingHero.primaryCta.label).toBe("Book demo");
+    expect(landingHero.primaryCta.label).toBe("Book walkthrough");
     expect(featureCards).toHaveLength(3);
     expect(Object.keys(productSurfacePreviewRows)).toEqual(
       expect.arrayContaining([
@@ -122,6 +140,6 @@ describe("landing page 2026 content", () => {
     expect(productSurfacePreviewRows["patient-reroute"].length).toBeGreaterThan(0);
     expect(productSurfacePreviewRows["audit-ledger"].length).toBeGreaterThan(0);
     expect(trustObjects.length).toBeGreaterThan(0);
-    expect(demoCta.cta.label).toBe("Book demo");
+    expect(demoCta.cta.label).toBe("Book walkthrough");
   });
 });

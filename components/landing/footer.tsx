@@ -6,7 +6,7 @@ const navigation = {
     { name: "District Console", href: "/demo" },
     { name: "Field Reports", href: "/field" },
     { name: "Clinic Finder", href: "/finder" },
-    { name: "Book Demo", href: "/book-demo" },
+    { name: "Book Walkthrough", href: "/book-demo" },
   ],
   proof: [
     { name: "Operating Gap", href: "/#problem" },

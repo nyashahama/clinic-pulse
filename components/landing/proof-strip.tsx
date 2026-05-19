@@ -15,7 +15,7 @@ const stakeholders = [
 ] as const;
 
 const liveSignals = [
-  "Mamelodi East Community Clinic / stockout alert",
+  "Mabopane Station Clinic / generator failure",
   "Soshanguve Block F Clinic / staffing pressure",
   "Akasia Hills Clinic / accepting reroutes",
   "Offline report queued / awaiting sync",

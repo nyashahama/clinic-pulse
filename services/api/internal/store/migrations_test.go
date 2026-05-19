@@ -58,7 +58,7 @@ func TestLocalPhase3AuthSeedExistsOutsideMigrations(t *testing.T) {
 		"org-admin@clinicpulse.local",
 		"district-manager@clinicpulse.local",
 		"reporter@clinicpulse.local",
-		"Password hashes correspond to the local demo password shared out-of-band.",
+		"Password hashes correspond to the local walkthrough password shared out-of-band.",
 		"$2b$",
 		"password_changed_at",
 		"password_reset_required",
@@ -190,6 +190,45 @@ WHERE subscription_id = $1`, subscriptionID).Scan(&webhookEventCount); err != ni
 	if webhookEventCount != 1 {
 		t.Fatalf("expected legacy webhook event to remain attached to moved subscription, got %d", webhookEventCount)
 	}
+}
+
+func TestLocalPhase3AuthSeedRenamesLegacyOnlyOrganisationEvidence(t *testing.T) {
+	databaseURL := os.Getenv("AUTH_STORE_TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("set AUTH_STORE_TEST_DATABASE_URL to run local auth seed integration tests")
+	}
+
+	ctx := context.Background()
+	store := newIntegrationStore(t, ctx, databaseURL)
+
+	legacyOrgID := insertIntegrationOrganisation(t, ctx, store, "Tshwane North Demo District", "tshwane-north-demo-district")
+	reviewerID := insertIntegrationUser(t, ctx, store, "legacy-only-reviewer@example.test", "Legacy Only Reviewer", nil, nil)
+	reporterID := insertIntegrationUser(t, ctx, store, "legacy-only-reporter@example.test", "Legacy Only Reporter", nil, nil)
+	insertIntegrationClinicInDistrict(t, ctx, store, "clinic-legacy-seed", "Legacy Seed Clinic", "Tshwane North District")
+	reportID := insertLocalSeedCompatibilityReport(t, ctx, store, reporterID)
+	insertLocalSeedCompatibilityEvidence(t, ctx, store, legacyOrgID, legacyOrgID, reviewerID, reporterID, reportID)
+
+	runLocalAuthSeed(t, ctx, store)
+
+	var currentOrgID int64
+	if err := store.pool.QueryRow(ctx, `
+SELECT id
+FROM organisations
+WHERE lower(slug) = 'tshwane-north-district'`).Scan(&currentOrgID); err != nil {
+		t.Fatalf("select renamed organisation: %v", err)
+	}
+	if currentOrgID != legacyOrgID {
+		t.Fatalf("expected legacy organisation id %d to be renamed in place, got %d", legacyOrgID, currentOrgID)
+	}
+
+	assertOrgScopedCount(t, ctx, store, "organisation_memberships", currentOrgID, 4)
+	assertOrgScopedCount(t, ctx, store, "report_reviews", currentOrgID, 1)
+	assertOrgScopedCount(t, ctx, store, "partner_api_keys", currentOrgID, 1)
+	assertOrgScopedCount(t, ctx, store, "partner_export_runs", currentOrgID, 1)
+
+	assertNoLegacyDistrictValue(t, ctx, store, "organisation_memberships", "district")
+	assertNoLegacyDistrictValue(t, ctx, store, "partner_api_keys", "allowed_districts::text")
+	assertNoLegacyDistrictValue(t, ctx, store, "partner_export_runs", "scope::text")
 }
 
 func TestLocalPhase3ReviewEvidenceSeedExistsOutsideMigrations(t *testing.T) {
@@ -509,7 +548,14 @@ VALUES (
 		t.Fatalf("insert legacy export evidence: %v", err)
 	}
 
-	if _, err := store.pool.Exec(ctx, `
+	if currentOrgID == legacyOrgID {
+		if _, err := store.pool.Exec(ctx, `
+INSERT INTO integration_status_checks (organisation_id, check_name, status, summary)
+VALUES ($1, 'shared-check', 'attention', 'Legacy shared check.'),
+       ($1, 'legacy-only-check', 'attention', 'Legacy-only check.')`, legacyOrgID); err != nil {
+			t.Fatalf("insert legacy-only integration check evidence: %v", err)
+		}
+	} else if _, err := store.pool.Exec(ctx, `
 INSERT INTO integration_status_checks (organisation_id, check_name, status, summary)
 VALUES ($1, 'shared-check', 'passing', 'Current duplicate check.'),
        ($2, 'shared-check', 'attention', 'Legacy duplicate check.'),
@@ -589,6 +635,33 @@ WHERE organisation_id = $1`, orgID).Scan(&got); err != nil {
 	}
 	if got != want {
 		t.Fatalf("expected %s rows for org %d = %d, got %d", table, orgID, want, got)
+	}
+}
+
+func assertNoLegacyDistrictValue(
+	t *testing.T,
+	ctx context.Context,
+	store Store,
+	table string,
+	columnExpression string,
+) {
+	t.Helper()
+
+	switch table {
+	case "organisation_memberships", "partner_api_keys", "partner_export_runs":
+	default:
+		t.Fatalf("unexpected legacy district table %q", table)
+	}
+
+	var got int
+	if err := store.pool.QueryRow(ctx, `
+SELECT count(*)
+FROM `+table+`
+WHERE `+columnExpression+` LIKE '%Tshwane North Demo District%'`).Scan(&got); err != nil {
+		t.Fatalf("count legacy district values in %s.%s: %v", table, columnExpression, err)
+	}
+	if got != 0 {
+		t.Fatalf("expected no legacy district values in %s.%s, got %d", table, columnExpression, got)
 	}
 }
 

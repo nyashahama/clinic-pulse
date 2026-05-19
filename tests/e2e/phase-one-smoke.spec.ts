@@ -25,7 +25,7 @@ async function expectNoStagedProductLanguage(page: Page) {
   expect(visibleText).not.toMatch(new RegExp(escapedBanList.join("|"), "i"));
 }
 
-test.describe("phase-one demo route checklist", () => {
+test.describe("phase-one operations route checklist", () => {
   test("keeps the smoke suite aligned with the runbook route order", async () => {
     expect(phaseOneDemoRouteChecklist.map((entry) => entry.path)).toEqual([
       "/",
@@ -46,12 +46,15 @@ test.describe("phase-one demo route checklist", () => {
         name: "Know which clinics can help before patients travel.",
       }),
     ).toBeVisible();
-    await expect(page.getByRole("button", { name: "Book demo" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Book walkthrough" })).toBeVisible();
     await expectNoStagedProductLanguage(page);
 
     await page.goto("/book-demo");
     await expect(page).toHaveURL(/\/\?booking=1$/);
-    await expect(page.getByRole("dialog", { name: "Book a Clinic Pulse demo" })).toBeVisible();
+    await expect(
+      page.getByRole("dialog", { name: "Book a Clinic Pulse walkthrough" }),
+    ).toBeVisible();
+    await expectNoStagedProductLanguage(page);
 
     await page.goto("/book-demo/thanks?name=Smoke&organization=E2E%20District");
     await expect(page.getByRole("heading", { name: "Thanks, Smoke" })).toBeVisible();

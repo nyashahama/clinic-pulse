@@ -67,7 +67,9 @@ async function captureScreenshots(page: Page) {
   await capture(page, "landing-desktop.png");
 
   await gotoStable(page, "/book-demo");
-  await expect(page.getByRole("dialog", { name: "Book a Clinic Pulse demo" })).toBeVisible();
+  await expect(
+    page.getByRole("dialog", { name: "Book a Clinic Pulse walkthrough" }),
+  ).toBeVisible();
   await expectNoStagedProductLanguage(page);
   await capture(page, "booking-flow-desktop.png");
 
