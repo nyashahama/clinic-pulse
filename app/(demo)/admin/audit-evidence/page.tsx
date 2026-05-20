@@ -9,6 +9,11 @@ import type {
   PartnerExportRunApiResponse,
   PartnerWebhookEventApiResponse,
 } from "@/lib/demo/api-types";
+import {
+  buildAdminAuditEventDetailHref,
+  buildAdminExportRunDetailHref,
+  buildAdminWebhookEventDetailHref,
+} from "@/lib/product/admin-detail-routes";
 import { requireDemoWorkflowAccess } from "../../workflow-guard";
 import { loadAdminGovernanceData } from "../admin-loaders";
 import {
@@ -18,6 +23,8 @@ import {
   StatusBadge,
   toneForAttention,
 } from "../governance-formatters";
+
+const returnSource = "admin-audit-evidence";
 
 function includesAny(value: string, terms: string[]) {
   const normalized = value.toLowerCase();
@@ -172,6 +179,8 @@ export default async function Page() {
         label="Audit event evidence"
         rows={auditEvents}
         getRowKey={(row) => String(row.id)}
+        getRowAriaLabel={(row) => `Open audit event ${row.id} detail`}
+        getRowHref={(row) => buildAdminAuditEventDetailHref(row.id, returnSource)}
         columns={[
           {
             key: "eventType",
@@ -216,6 +225,8 @@ export default async function Page() {
         label="Partner export evidence"
         rows={exportRuns}
         getRowKey={(row) => String(row.id)}
+        getRowAriaLabel={(row) => `Open export run ${row.id} detail`}
+        getRowHref={(row) => buildAdminExportRunDetailHref(row.id, returnSource)}
         columns={[
           {
             key: "checksum",
@@ -261,6 +272,8 @@ export default async function Page() {
         label="Webhook delivery and test evidence"
         rows={webhookEvents}
         getRowKey={(row) => String(row.id)}
+        getRowAriaLabel={(row) => `Open webhook event ${row.id} detail`}
+        getRowHref={(row) => buildAdminWebhookEventDetailHref(row.id, returnSource)}
         columns={[
           {
             key: "eventType",
