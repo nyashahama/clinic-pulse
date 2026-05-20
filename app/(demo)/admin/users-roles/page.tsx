@@ -26,6 +26,7 @@ const activeRoles = new Set<AuthRole>([
   "org_admin",
   "system_admin",
 ]);
+const returnSource = "admin-users-roles";
 
 function isActiveRole(role: string): role is AuthRole {
   return activeRoles.has(role as AuthRole);
@@ -90,6 +91,7 @@ export default async function Page() {
       />
       <AdminUserLifecycle
         users={users}
+        detailReturnSource={returnSource}
         createUserAction={createPilotUserAction}
         updateUserAction={setUserDisabledAction}
         updateAccessAction={updateUserAccessAction}
