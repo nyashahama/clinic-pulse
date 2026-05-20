@@ -200,5 +200,48 @@ it("links reporting coverage clinic rows to operational clinic detail", () => {
   const source = readFileSync("app/(demo)/admin/reporting-coverage/page.tsx", "utf8");
 
   expect(source).toContain("next/link");
-  expect(source).toContain('href={`/district/clinics/${encodeURIComponent(row.clinic.id)}`}');
+  expect(source).toContain('const returnSource = "admin-reporting-coverage";');
+  expect(source).toContain(
+    '`/district/clinics/${encodeURIComponent(clinicId)}?from=${returnSource}`',
+  );
+});
+
+it("links data-ingestion clinic and report rows to operational clinic detail", () => {
+  const source = readFileSync("app/(demo)/admin/data-ingestion/page.tsx", "utf8");
+
+  expect(source).toContain(
+    "getRowAriaLabel={(row) => `Open pending report evidence for ${row.clinicId}`}",
+  );
+  expect(source).toContain(
+    'const returnSource = "admin-data-ingestion";',
+  );
+  expect(source).toContain(
+    '`/district/clinics/${encodeURIComponent(clinicId)}?from=${returnSource}`',
+  );
+  expect(source).toContain(
+    "getRowAriaLabel={(row) => `Open ${row.clinic.name} clinic ingestion detail`}",
+  );
+});
+
+it("uses admin clinic detail return sources for back navigation", () => {
+  const source = readFileSync("app/(demo)/demo/clinics/[clinicId]/page-client.tsx", "utf8");
+
+  expect(source).toContain("useSearchParams");
+  expect(source).toContain('"admin-data-ingestion"');
+  expect(source).toContain('"Back to data ingestion"');
+  expect(source).toContain('"admin-reporting-coverage"');
+  expect(source).toContain('"Back to reporting coverage"');
+  expect(source).toContain(
+    "returnTarget.href",
+  );
+});
+
+it("keeps aggregate data-ingestion signal rows static", () => {
+  const source = readFileSync("app/(demo)/admin/data-ingestion/page.tsx", "utf8");
+  const signalTableStart = source.indexOf('label="Ingestion signal evidence"');
+  const pendingTableStart = source.indexOf('label="Pending report evidence"');
+
+  expect(signalTableStart).toBeGreaterThan(-1);
+  expect(pendingTableStart).toBeGreaterThan(signalTableStart);
+  expect(source.slice(signalTableStart, pendingTableStart)).not.toContain("getRowHref");
 });

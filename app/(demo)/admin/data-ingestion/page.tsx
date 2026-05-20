@@ -110,6 +110,12 @@ function dataTrustForClinic(clinic: ClinicDetailApiResponse) {
   });
 }
 
+const returnSource = "admin-data-ingestion";
+
+function buildClinicDetailHref(clinicId: string) {
+  return `/district/clinics/${encodeURIComponent(clinicId)}?from=${returnSource}`;
+}
+
 export default async function Page() {
   await requireDemoWorkflowAccess("admin");
 
@@ -237,6 +243,8 @@ export default async function Page() {
       <AdminEvidenceTable
         label="Pending report evidence"
         rows={pendingReports}
+        getRowAriaLabel={(row) => `Open pending report evidence for ${row.clinicId}`}
+        getRowHref={(row) => buildClinicDetailHref(row.clinicId)}
         getRowKey={(row) => String(row.id)}
         emptyState={
           <AdminEmptyState
@@ -293,6 +301,8 @@ export default async function Page() {
       <AdminEvidenceTable
         label="Clinic ingestion freshness"
         rows={clinicsNeedingReview}
+        getRowAriaLabel={(row) => `Open ${row.clinic.name} clinic ingestion detail`}
+        getRowHref={(row) => buildClinicDetailHref(row.clinic.id)}
         getRowKey={(row) => row.clinic.id}
         emptyState={
           <AdminEmptyState
