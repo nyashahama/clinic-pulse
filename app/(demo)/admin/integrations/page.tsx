@@ -14,6 +14,13 @@ import type {
   PartnerWebhookSubscriptionApiResponse,
 } from "@/lib/demo/api-types";
 import { isPartnerApiKeyActive } from "@/lib/demo/partner-readiness";
+import {
+  buildAdminApiKeyDetailHref,
+  buildAdminExportRunDetailHref,
+  buildAdminIntegrationCheckDetailHref,
+  buildAdminWebhookEventDetailHref,
+  buildAdminWebhookSubscriptionDetailHref,
+} from "@/lib/product/admin-detail-routes";
 import { requireDemoWorkflowAccess } from "../../workflow-guard";
 import { loadAdminPartnerReadiness } from "../admin-loaders";
 import {
@@ -33,6 +40,8 @@ type PartnerEndpointRow = {
 
 type WebhookEvidenceRow = {
   id: string;
+  href: string;
+  ariaLabel: string;
   type: string;
   name: string;
   target: string;
@@ -41,6 +50,8 @@ type WebhookEvidenceRow = {
   updatedAt: string;
   tone: AdminTone;
 };
+
+const returnSource = "admin-integrations";
 
 const partnerEndpointRows: PartnerEndpointRow[] = [
   {
@@ -145,14 +156,18 @@ function webhookStatusTone(status?: string | null): AdminTone {
 function webhookEvidenceRows({
   subscriptions,
   events,
+  source,
 }: {
   subscriptions: PartnerWebhookSubscriptionApiResponse[];
   events: PartnerWebhookEventApiResponse[];
+  source: string;
 }): WebhookEvidenceRow[] {
   return [
     ...subscriptions.map(
       (subscription): WebhookEvidenceRow => ({
         id: `subscription-${subscription.id}`,
+        href: buildAdminWebhookSubscriptionDetailHref(subscription.id, source),
+        ariaLabel: `Open webhook subscription ${subscription.id} detail`,
         type: "Subscription",
         name: subscription.name,
         target: subscription.targetUrl,
@@ -167,6 +182,8 @@ function webhookEvidenceRows({
     ...events.map(
       (event): WebhookEvidenceRow => ({
         id: `event-${event.id}`,
+        href: buildAdminWebhookEventDetailHref(event.id, source),
+        ariaLabel: `Open webhook event ${event.id} detail`,
         type: "Preview event",
         name: event.eventType,
         target: `Subscription ${event.subscriptionId}`,
@@ -216,6 +233,7 @@ export default async function Page() {
   const webhookRows = webhookEvidenceRows({
     subscriptions: partnerReadiness.webhookSubscriptions,
     events: partnerReadiness.webhookEvents,
+    source: returnSource,
   });
   const exportRun = latestExport(partnerReadiness.exportRuns);
 
@@ -320,6 +338,8 @@ export default async function Page() {
         label="Credential scope coverage"
         rows={keys}
         getRowKey={(row) => String(row.id)}
+        getRowAriaLabel={(row) => `Open ${row.name} API key detail`}
+        getRowHref={(row) => buildAdminApiKeyDetailHref(row.id, returnSource)}
         emptyState={
           <AdminEmptyState
             title="Credential scope coverage"
@@ -367,6 +387,8 @@ export default async function Page() {
         label="Webhook delivery evidence"
         rows={webhookRows}
         getRowKey={(row) => row.id}
+        getRowAriaLabel={(row) => row.ariaLabel}
+        getRowHref={(row) => row.href}
         emptyState={
           <AdminEmptyState
             title="Webhook delivery evidence"
@@ -411,6 +433,8 @@ export default async function Page() {
         label="Export package evidence"
         rows={partnerReadiness.exportRuns}
         getRowKey={(row) => String(row.id)}
+        getRowAriaLabel={(row) => `Open export run ${row.id} detail`}
+        getRowHref={(row) => buildAdminExportRunDetailHref(row.id, returnSource)}
         emptyState={
           <AdminEmptyState
             title="No export package evidence"
@@ -454,6 +478,8 @@ export default async function Page() {
         label="Integration check evidence"
         rows={partnerReadiness.integrationChecks}
         getRowKey={(row) => `${row.checkName}:${row.checkedAt}`}
+        getRowAriaLabel={(row) => `Open ${formatLabel(row.checkName)} integration check detail`}
+        getRowHref={(row) => buildAdminIntegrationCheckDetailHref(row.id, returnSource)}
         columns={[
           {
             key: "check",
