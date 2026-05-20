@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { ComponentType, SVGProps } from "react";
 import { useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
@@ -28,6 +29,10 @@ export type AdminUserLifecycleUser = {
   organisationId?: number | null;
   district?: string | null;
   lastSeenAt?: string | null;
+};
+
+type AdminUserLifecycleRow = AdminUserLifecycleUser & {
+  risk: ReturnType<typeof getRisk>;
 };
 
 export type AdminUserLifecycleCreateResult = {
@@ -118,6 +123,12 @@ function getRowKey(user: AdminUserLifecycleUser) {
     user.organisationId ?? "platform",
     user.district ?? "all-districts",
   ].join(":");
+}
+
+function getDetailHref(user: AdminUserLifecycleUser, detailReturnSource?: string) {
+  return detailReturnSource
+    ? buildAdminUserDetailHref(user.userId, detailReturnSource)
+    : undefined;
 }
 
 function mutationErrorMessage(error: unknown) {
@@ -454,24 +465,33 @@ export function AdminUserLifecycle({
         rows={rows}
         getRowKey={getRowKey}
         getRowAriaLabel={(user) => `Open ${user.displayName} user detail`}
-        getRowHref={(user) =>
-          detailReturnSource
-            ? buildAdminUserDetailHref(user.userId, detailReturnSource)
-            : undefined
-        }
+        getRowHref={(user) => getDetailHref(user, detailReturnSource)}
         columns={[
           {
             key: "user",
             header: "User",
-            render: (row) => (
-              <div className="min-w-56">
-                <p className="font-medium text-foreground">{row.displayName}</p>
-                <p className="break-all text-xs text-muted-foreground">{row.email}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Last seen: {formatDateTime(row.lastSeenAt)}
-                </p>
-              </div>
-            ),
+            render: (row: AdminUserLifecycleRow) => {
+              const detailHref = getDetailHref(row, detailReturnSource);
+
+              return (
+                <div className="min-w-56">
+                  {detailHref ? (
+                    <Link
+                      href={detailHref}
+                      className="font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {row.displayName}
+                    </Link>
+                  ) : (
+                    <p className="font-medium text-foreground">{row.displayName}</p>
+                  )}
+                  <p className="break-all text-xs text-muted-foreground">{row.email}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Last seen: {formatDateTime(row.lastSeenAt)}
+                  </p>
+                </div>
+              );
+            },
           },
           {
             key: "role",

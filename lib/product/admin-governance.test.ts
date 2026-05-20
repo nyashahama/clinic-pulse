@@ -274,6 +274,7 @@ it("links admin user evidence rows to user detail", () => {
   expect(usersPage).toContain('const returnSource = "admin-users-roles";');
   expect(usersPage).toContain("detailReturnSource={returnSource}");
   expect(lifecycle).toContain("buildAdminUserDetailHref(user.userId, detailReturnSource)");
+  expect(lifecycle).toContain('import Link from "next/link";');
   expect(accessReview).toContain('const returnSource = "admin-access-review";');
   expect(accessReview).toContain("buildAdminUserDetailHref(row.userId, returnSource)");
 });
