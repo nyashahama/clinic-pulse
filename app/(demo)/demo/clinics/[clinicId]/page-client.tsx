@@ -2,7 +2,7 @@
 
 import { AlertTriangle, ArrowLeft } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 
 import { AuditTrail } from "@/components/demo/audit-trail";
 import { ClinicOperationalGrid } from "@/components/demo/clinic-operational-grid";
@@ -127,11 +127,35 @@ type ClinicDetailPageProps = {
   consoleHref?: string;
 };
 
+const adminReturnTargets = {
+  "admin-data-ingestion": {
+    href: "/admin/data-ingestion",
+    label: "Back to data ingestion",
+  },
+  "admin-reporting-coverage": {
+    href: "/admin/reporting-coverage",
+    label: "Back to reporting coverage",
+  },
+} as const;
+
+function getReturnTarget(source: string | null, consoleHref: string) {
+  if (source && source in adminReturnTargets) {
+    return adminReturnTargets[source as keyof typeof adminReturnTargets];
+  }
+
+  return {
+    href: consoleHref,
+    label: "Back to console",
+  };
+}
+
 export default function ClinicDetailPage({ consoleHref = "/demo" }: ClinicDetailPageProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { state } = useDemoStore();
   const params = useParams<{ clinicId?: string | string[] }>();
   const clinicId = getClinicName(params.clinicId);
+  const returnTarget = getReturnTarget(searchParams.get("from"), consoleHref);
 
   const clinicRows = useMemo(() => getClinicRows(state), [state]);
   const clinicRow = useMemo(
@@ -227,11 +251,11 @@ export default function ClinicDetailPage({ consoleHref = "/demo" }: ClinicDetail
         <Button
           variant="outline"
           size="sm"
-          onClick={() => router.push(consoleHref)}
+          onClick={() => router.push(returnTarget.href)}
           className="inline-flex"
         >
           <ArrowLeft className="size-4" />
-          Back to console
+          {returnTarget.label}
         </Button>
       </div>
 
@@ -255,7 +279,8 @@ export default function ClinicDetailPage({ consoleHref = "/demo" }: ClinicDetail
           <div className="grid gap-4">
             <ClinicProfileHeader
               clinic={displayClinicRow}
-              consoleHref={consoleHref}
+              consoleHref={returnTarget.href}
+              returnLabel={returnTarget.label}
               onFindAlternative={() =>
                 router.push(
                   `/finder?query=${encodeURIComponent(displayClinicRow.name)}&service=${encodeURIComponent(

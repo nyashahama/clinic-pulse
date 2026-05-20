@@ -114,6 +114,12 @@ function dataTrustForClinic(
   });
 }
 
+const returnSource = "admin-reporting-coverage";
+
+function buildClinicDetailHref(clinicId: string) {
+  return `/district/clinics/${encodeURIComponent(clinicId)}?from=${returnSource}`;
+}
+
 export default async function Page() {
   await requireDemoWorkflowAccess("admin");
 
@@ -183,7 +189,7 @@ export default async function Page() {
         label="Clinic reporting coverage"
         rows={clinics}
         getRowAriaLabel={(row) => `Open ${row.clinic.name} clinic detail`}
-        getRowHref={(row) => `/district/clinics/${encodeURIComponent(row.clinic.id)}`}
+        getRowHref={(row) => buildClinicDetailHref(row.clinic.id)}
         getRowKey={(row) => row.clinic.id}
         columns={[
           {
@@ -192,7 +198,7 @@ export default async function Page() {
             render: (row) => (
               <div className="min-w-0">
                 <Link
-                  href={`/district/clinics/${encodeURIComponent(row.clinic.id)}`}
+                  href={buildClinicDetailHref(row.clinic.id)}
                   className="group/link inline-flex min-w-0 flex-col rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
                   <span className="font-medium text-primary underline-offset-4 group-hover/link:underline group-focus-visible/link:underline">

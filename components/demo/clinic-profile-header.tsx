@@ -11,6 +11,7 @@ import type { Clinic, ClinicCurrentState } from "@/lib/demo/types";
 type ClinicProfileHeaderProps = {
   clinic: Clinic & ClinicCurrentState;
   consoleHref?: string;
+  returnLabel?: string;
   onFindAlternative: () => void;
   onEscalate: () => void;
 };
@@ -27,6 +28,7 @@ function formatTimestamp(value: string) {
 export function ClinicProfileHeader({
   clinic,
   consoleHref = "/demo",
+  returnLabel = "Back to district console",
   onFindAlternative,
   onEscalate,
 }: ClinicProfileHeaderProps) {
@@ -53,7 +55,7 @@ export function ClinicProfileHeader({
             className="inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/15 px-2.5 py-1 text-xs font-medium text-white backdrop-blur"
           >
             <ArrowRight className="size-3.5 rotate-180" />
-            Back to district console
+            {returnLabel}
           </Link>
         </div>
       </div>

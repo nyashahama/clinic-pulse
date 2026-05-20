@@ -42,13 +42,14 @@ test("reporting coverage clinic names open operational detail", async ({ page })
 
   await expect(clinicLink).toHaveAttribute(
     "href",
-    "/district/clinics/clinic-mabopane-station",
+    "/district/clinics/clinic-mabopane-station?from=admin-reporting-coverage",
   );
   await Promise.all([
-    page.waitForURL(/\/district\/clinics\/clinic-mabopane-station$/),
+    page.waitForURL(/\/district\/clinics\/clinic-mabopane-station\?from=admin-reporting-coverage$/),
     clinicLink.click(),
   ]);
   await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Back to reporting coverage" })).toBeVisible();
 });
 
 test("reporting coverage rows open operational detail", async ({ page }) => {
@@ -62,10 +63,49 @@ test("reporting coverage rows open operational detail", async ({ page }) => {
 
   await expect(clinicRow).toBeVisible();
   await Promise.all([
-    page.waitForURL(/\/district\/clinics\/clinic-mabopane-station$/),
+    page.waitForURL(/\/district\/clinics\/clinic-mabopane-station\?from=admin-reporting-coverage$/),
     clinicRow.getByText("non functional", { exact: true }).click(),
   ]);
   await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
+  await Promise.all([
+    page.waitForURL(/\/admin\/reporting-coverage$/),
+    page.getByRole("button", { name: "Back to reporting coverage" }).click(),
+  ]);
+});
+
+test("data ingestion clinic-backed rows open operational detail", async ({ page }) => {
+  await signIn(page, "system-admin@clinicpulse.local");
+  await page.goto("/admin/data-ingestion");
+
+  const pendingReportTable = page.getByLabel("Pending report evidence");
+  const pendingReportRow = pendingReportTable.getByRole("row", {
+    name: /Open pending report evidence for clinic-atteridgeville-extension/i,
+  });
+
+  await expect(pendingReportRow).toBeVisible();
+  await Promise.all([
+    page.waitForURL(/\/district\/clinics\/clinic-atteridgeville-extension\?from=admin-data-ingestion$/),
+    pendingReportRow.getByText("clinic-atteridgeville-extension").click(),
+  ]);
+  await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
+  await Promise.all([
+    page.waitForURL(/\/admin\/data-ingestion$/),
+    page.getByRole("button", { name: "Back to data ingestion" }).click(),
+  ]);
+
+  await page.goto("/admin/data-ingestion");
+  const freshnessTable = page.getByLabel("Clinic ingestion freshness");
+  const freshnessRow = freshnessTable.getByRole("row", {
+    name: /Open Atteridgeville Extension Clinic clinic ingestion detail/i,
+  });
+
+  await expect(freshnessRow).toBeVisible();
+  await Promise.all([
+    page.waitForURL(/\/district\/clinics\/clinic-atteridgeville-extension\?from=admin-data-ingestion$/),
+    freshnessRow.getByText("Atteridgeville Extension Clinic").click(),
+  ]);
+  await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Back to data ingestion" })).toBeVisible();
 });
 
 test("desktop admin navigation opens standalone governance modules", async ({
