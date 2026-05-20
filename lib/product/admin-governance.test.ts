@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
@@ -244,4 +244,62 @@ it("keeps aggregate data-ingestion signal rows static", () => {
   expect(signalTableStart).toBeGreaterThan(-1);
   expect(pendingTableStart).toBeGreaterThan(signalTableStart);
   expect(source.slice(signalTableStart, pendingTableStart)).not.toContain("getRowHref");
+});
+
+it("defines canonical detail routes for entity-backed admin evidence rows", () => {
+  const routes = [
+    "app/(demo)/admin/users-roles/[userId]/page.tsx",
+    "app/(demo)/admin/audit-evidence/events/[eventId]/page.tsx",
+    "app/(demo)/admin/integrations/api-keys/[apiKeyId]/page.tsx",
+    "app/(demo)/admin/integrations/webhook-subscriptions/[subscriptionId]/page.tsx",
+    "app/(demo)/admin/integrations/webhook-events/[eventId]/page.tsx",
+    "app/(demo)/admin/integrations/export-runs/[exportRunId]/page.tsx",
+    "app/(demo)/admin/integrations/checks/[checkId]/page.tsx",
+  ];
+
+  for (const route of routes) {
+    expect(existsSync(route), `${route} should exist`).toBe(true);
+    const source = readFileSync(route, "utf8");
+
+    expect(source).toContain('requireDemoWorkflowAccess("admin")');
+    expect(source).toContain("getAdminReturnTarget");
+  }
+});
+
+it("links admin user evidence rows to user detail", () => {
+  const usersPage = readFileSync("app/(demo)/admin/users-roles/page.tsx", "utf8");
+  const lifecycle = readFileSync("components/product/admin-user-lifecycle.tsx", "utf8");
+  const accessReview = readFileSync("app/(demo)/admin/access-review/page.tsx", "utf8");
+
+  expect(usersPage).toContain('const returnSource = "admin-users-roles";');
+  expect(usersPage).toContain("detailReturnSource={returnSource}");
+  expect(lifecycle).toContain("buildAdminUserDetailHref(user.userId, detailReturnSource)");
+  expect(accessReview).toContain('const returnSource = "admin-access-review";');
+  expect(accessReview).toContain("buildAdminUserDetailHref(row.userId, returnSource)");
+});
+
+it("links audit evidence rows to canonical entity details", () => {
+  const auditEvidence = readFileSync("app/(demo)/admin/audit-evidence/page.tsx", "utf8");
+
+  expect(auditEvidence).toContain('const returnSource = "admin-audit-evidence";');
+  expect(auditEvidence).toContain("buildAdminAuditEventDetailHref(row.id, returnSource)");
+  expect(auditEvidence).toContain("buildAdminExportRunDetailHref(row.id, returnSource)");
+  expect(auditEvidence).toContain("buildAdminWebhookEventDetailHref(row.id, returnSource)");
+});
+
+it("links integration and security entity rows to canonical details", () => {
+  const integrations = readFileSync("app/(demo)/admin/integrations/page.tsx", "utf8");
+  const security = readFileSync("app/(demo)/admin/security/page.tsx", "utf8");
+
+  expect(integrations).toContain('const returnSource = "admin-integrations";');
+  expect(integrations).toContain("buildAdminApiKeyDetailHref(row.id, returnSource)");
+  expect(integrations).toContain("buildAdminWebhookSubscriptionDetailHref");
+  expect(integrations).toContain("buildAdminWebhookEventDetailHref");
+  expect(integrations).toContain("buildAdminExportRunDetailHref(row.id, returnSource)");
+  expect(integrations).toContain("buildAdminIntegrationCheckDetailHref(row.id, returnSource)");
+
+  expect(security).toContain('const returnSource = "admin-security";');
+  expect(security).toContain("buildAdminApiKeyDetailHref(row.id, returnSource)");
+  expect(security).toContain("buildAdminUserDetailHref(row.userId, returnSource)");
+  expect(security).toContain("buildAdminAuditEventDetailHref(row.id, returnSource)");
 });

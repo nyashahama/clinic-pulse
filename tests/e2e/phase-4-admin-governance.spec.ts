@@ -108,6 +108,81 @@ test("data ingestion clinic-backed rows open operational detail", async ({ page 
   await expect(page.getByRole("button", { name: "Back to data ingestion" })).toBeVisible();
 });
 
+test("entity-backed admin evidence rows open detail pages", async ({ page }) => {
+  test.setTimeout(90_000);
+
+  await signIn(page, "org-admin@clinicpulse.local");
+
+  await page.goto("/admin/users-roles");
+  const userLifecycleTable = page.getByLabel("User lifecycle evidence");
+  const userRow = userLifecycleTable.getByRole("row", {
+    name: /Open Organisation Admin user detail/i,
+  });
+
+  await expect(userRow).toBeVisible();
+  await Promise.all([
+    page.waitForURL(/\/admin\/users-roles\/\d+\?from=admin-users-roles$/),
+    userRow.getByText("Organisation Admin", { exact: true }).click(),
+  ]);
+  await expect(page.getByRole("heading", { name: "User detail" })).toBeVisible();
+  await Promise.all([
+    page.waitForURL(/\/admin\/users-roles$/),
+    page.getByRole("link", { name: "Back to users and roles" }).click(),
+  ]);
+
+  await page.goto("/admin/audit-evidence");
+  const auditTable = page.getByLabel("Audit event evidence");
+  const auditRow = auditTable.getByRole("row", {
+    name: /Open audit event \d+ detail/i,
+  }).first();
+
+  await expect(auditRow).toBeVisible();
+  await Promise.all([
+    page.waitForURL(/\/admin\/audit-evidence\/events\/\d+\?from=admin-audit-evidence$/),
+    auditRow.click(),
+  ]);
+  await expect(page.getByRole("heading", { name: "Audit event detail" })).toBeVisible();
+  await Promise.all([
+    page.waitForURL(/\/admin\/audit-evidence$/),
+    page.getByRole("link", { name: "Back to audit evidence" }).click(),
+  ]);
+
+  await page.goto("/admin/integrations");
+  const integrationCheckTable = page.getByLabel("Integration check evidence");
+  const integrationCheckRow = integrationCheckTable.getByRole("row", {
+    name: /Open .* integration check detail/i,
+  }).first();
+
+  await expect(integrationCheckRow).toBeVisible();
+  await Promise.all([
+    page.waitForURL(/\/admin\/integrations\/checks\/\d+\?from=admin-integrations$/),
+    integrationCheckRow.click(),
+  ]);
+  await expect(page.getByRole("heading", { name: "Integration check detail" })).toBeVisible();
+  await Promise.all([
+    page.waitForURL(/\/admin\/integrations$/),
+    page.getByRole("link", { name: "Back to integrations" }).click(),
+  ]);
+});
+
+test("security admin entity-backed rows open detail pages", async ({ page }) => {
+  await signIn(page, "system-admin@clinicpulse.local");
+
+  await page.goto("/admin/security");
+  const privilegedAccessTable = page.getByLabel("Privileged access evidence");
+  const privilegedUserRow = privilegedAccessTable.getByRole("row", {
+    name: /Open System Admin user detail/i,
+  });
+
+  await expect(privilegedUserRow).toBeVisible();
+  await Promise.all([
+    page.waitForURL(/\/admin\/users-roles\/\d+\?from=admin-security$/),
+    privilegedUserRow.getByText("System Admin", { exact: true }).click(),
+  ]);
+  await expect(page.getByRole("heading", { name: "User detail" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Back to security posture" })).toBeVisible();
+});
+
 test("desktop admin navigation opens standalone governance modules", async ({
   page,
 }, testInfo) => {
