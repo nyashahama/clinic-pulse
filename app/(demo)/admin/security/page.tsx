@@ -14,6 +14,13 @@ import type {
   PartnerWebhookSubscriptionApiResponse,
 } from "@/lib/demo/api-types";
 import { isPartnerApiKeyActive } from "@/lib/demo/partner-readiness";
+import {
+  buildAdminApiKeyDetailHref,
+  buildAdminAuditEventDetailHref,
+  buildAdminUserDetailHref,
+  buildAdminWebhookEventDetailHref,
+  buildAdminWebhookSubscriptionDetailHref,
+} from "@/lib/product/admin-detail-routes";
 import { summarizeSecurityPosture } from "@/lib/product/admin-governance";
 import { requireDemoWorkflowAccess } from "../../workflow-guard";
 import { loadAdminGovernanceData } from "../admin-loaders";
@@ -27,6 +34,8 @@ import {
 
 type WebhookSecurityEvidenceRow = {
   id: string;
+  href: string;
+  ariaLabel: string;
   type: string;
   name: string;
   state: string;
@@ -35,6 +44,8 @@ type WebhookSecurityEvidenceRow = {
   createdAt: string;
   tone: AdminTone;
 };
+
+const returnSource = "admin-security";
 
 function isExpired(apiKey: PartnerApiKeyApiResponse, now = new Date()) {
   if (!apiKey.expiresAt) {
@@ -145,6 +156,8 @@ export default async function Page() {
     ...partnerReadiness.webhookSubscriptions.map(
       (subscription): WebhookSecurityEvidenceRow => ({
         id: `subscription-${subscription.id}`,
+        href: buildAdminWebhookSubscriptionDetailHref(subscription.id, returnSource),
+        ariaLabel: `Open webhook subscription ${subscription.id} detail`,
         type: "Subscription",
         name: subscription.name,
         state: subscription.lastTestStatus ?? subscription.status,
@@ -159,6 +172,8 @@ export default async function Page() {
     ...partnerReadiness.webhookEvents.map(
       (event): WebhookSecurityEvidenceRow => ({
         id: `event-${event.id}`,
+        href: buildAdminWebhookEventDetailHref(event.id, returnSource),
+        ariaLabel: `Open webhook event ${event.id} detail`,
         type: "Event",
         name: event.eventType,
         state: event.status,
@@ -222,6 +237,8 @@ export default async function Page() {
         label="API key evidence"
         rows={apiKeys}
         getRowKey={(row) => String(row.id)}
+        getRowAriaLabel={(row) => `Open ${row.name} API key detail`}
+        getRowHref={(row) => buildAdminApiKeyDetailHref(row.id, returnSource)}
         emptyState={
           <AdminEmptyState
             title="No API key evidence"
@@ -272,6 +289,8 @@ export default async function Page() {
         label="Webhook security evidence"
         rows={webhookRows}
         getRowKey={(row) => row.id}
+        getRowAriaLabel={(row) => row.ariaLabel}
+        getRowHref={(row) => row.href}
         emptyState={
           <AdminEmptyState
             title="No webhook evidence"
@@ -315,6 +334,8 @@ export default async function Page() {
         label="Privileged access evidence"
         rows={privilegedUserRows}
         getRowKey={getUserAccessRowKey}
+        getRowAriaLabel={(row) => `Open ${row.displayName} user detail`}
+        getRowHref={(row) => buildAdminUserDetailHref(row.userId, returnSource)}
         emptyState={
           <AdminEmptyState
             title="No privileged access evidence"
@@ -353,6 +374,8 @@ export default async function Page() {
         label="Access audit evidence"
         rows={accessAuditEvents}
         getRowKey={(row) => String(row.id)}
+        getRowAriaLabel={(row) => `Open audit event ${row.id} detail`}
+        getRowHref={(row) => buildAdminAuditEventDetailHref(row.id, returnSource)}
         emptyState={
           <AdminEmptyState
             title="No access audit evidence"

@@ -7,6 +7,7 @@ import {
 } from "@/components/product/admin-module";
 import type { AuthRole } from "@/lib/auth/api";
 import type { AdminUserAccessApiResponse } from "@/lib/demo/api-types";
+import { buildAdminUserDetailHref } from "@/lib/product/admin-detail-routes";
 import { classifyAccessRisk } from "@/lib/product/admin-governance";
 import { requireDemoWorkflowAccess } from "../../workflow-guard";
 import { loadAdminUsers } from "../admin-loaders";
@@ -24,6 +25,7 @@ const activeRoles = new Set<AuthRole>([
   "org_admin",
   "system_admin",
 ]);
+const returnSource = "admin-access-review";
 
 function isActiveRole(role: string): role is AuthRole {
   return activeRoles.has(role as AuthRole);
@@ -109,6 +111,8 @@ export default async function Page() {
         label="Access review queue"
         rows={reviewRows}
         getRowKey={getUserAccessRowKey}
+        getRowAriaLabel={(row) => `Open ${row.displayName} user detail`}
+        getRowHref={(row) => buildAdminUserDetailHref(row.userId, returnSource)}
         emptyState={
           <AdminEmptyState
             title="No access risks in the current operating evidence"

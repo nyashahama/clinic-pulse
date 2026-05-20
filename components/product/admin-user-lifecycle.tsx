@@ -12,6 +12,7 @@ import {
 } from "@/components/product/admin-module";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { buildAdminUserDetailHref } from "@/lib/product/admin-detail-routes";
 import { classifyAccessRisk } from "@/lib/product/admin-governance";
 import { cn } from "@/lib/utils";
 
@@ -53,6 +54,7 @@ type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
 type AdminUserLifecycleProps = {
   users: AdminUserLifecycleUser[];
+  detailReturnSource?: string;
   createUserAction: (formData: FormData) => Promise<AdminUserLifecycleCreateResult>;
   updateUserAction: (userId: number, disabled: boolean) => Promise<void>;
   updateAccessAction: (userId: number, formData: FormData) => Promise<void>;
@@ -215,6 +217,7 @@ function FieldLabel({
 
 export function AdminUserLifecycle({
   users,
+  detailReturnSource,
   createUserAction,
   updateUserAction,
   updateAccessAction,
@@ -450,6 +453,12 @@ export function AdminUserLifecycle({
         className="overflow-x-auto"
         rows={rows}
         getRowKey={getRowKey}
+        getRowAriaLabel={(user) => `Open ${user.displayName} user detail`}
+        getRowHref={(user) =>
+          detailReturnSource
+            ? buildAdminUserDetailHref(user.userId, detailReturnSource)
+            : undefined
+        }
         columns={[
           {
             key: "user",
