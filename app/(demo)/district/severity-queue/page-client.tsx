@@ -228,15 +228,19 @@ export default function DistrictSeverityQueuePageClient({
 
       {viewModel.queue.length ? (
         <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
-          <SeverityQueueWorklist
-            items={viewModel.queue}
-            selectedClinicId={viewModel.selectedItem?.clinicId ?? null}
-            onSelectClinic={setSelectedClinicId}
-          />
-          <SeverityActionPanel
-            selectedAction={viewModel.selectedAction}
-            selectedItem={viewModel.selectedItem}
-          />
+          <div className="order-2 min-w-0 xl:order-1">
+            <SeverityQueueWorklist
+              items={viewModel.queue}
+              selectedClinicId={viewModel.selectedItem?.clinicId ?? null}
+              onSelectClinic={setSelectedClinicId}
+            />
+          </div>
+          <div className="order-1 min-w-0 xl:order-2">
+            <SeverityActionPanel
+              selectedAction={viewModel.selectedAction}
+              selectedItem={viewModel.selectedItem}
+            />
+          </div>
         </div>
       ) : (
         <AdminEmptyState
