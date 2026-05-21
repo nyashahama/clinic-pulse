@@ -94,6 +94,20 @@ export function buildAdminAuditEventDetailHref(
   );
 }
 
+export function buildAdminLeadDetailHref(
+  leadId: number | string,
+  source?: string,
+) {
+  return appendReturnSource(`/admin/leads/${encodeDetailId(leadId)}`, source);
+}
+
+export function buildAdminReportDetailHref(
+  reportId: number | string,
+  source?: string,
+) {
+  return appendReturnSource(`/admin/reports/${encodeDetailId(reportId)}`, source);
+}
+
 export function buildAdminApiKeyDetailHref(
   apiKeyId: number | string,
   source?: string,
