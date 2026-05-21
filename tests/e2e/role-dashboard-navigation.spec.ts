@@ -99,7 +99,6 @@ const hiddenStandaloneHrefs = [
   "/field/drafts-sync",
   "/field/recent-reports",
   "/field/sync-queue",
-  "/district/severity-queue",
   "/district/clinic-network",
   "/district/clinic-evidence",
   "/district/interventions",
