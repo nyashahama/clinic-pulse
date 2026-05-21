@@ -165,6 +165,75 @@ test("entity-backed admin evidence rows open detail pages", async ({ page }) => 
   ]);
 });
 
+test("report review cards open report detail pages", async ({ page }) => {
+  await signIn(page, "org-admin@clinicpulse.local");
+
+  const pendingResponse = await page.request.get("/api/clinicpulse/v1/reports/pending");
+  expect(pendingResponse.ok(), `Pending report lookup failed with ${pendingResponse.status()}`).toBe(
+    true,
+  );
+  const [pendingReport] = (await pendingResponse.json()) as Array<{ id: number }>;
+  expect(pendingReport, "expected seeded pending report evidence").toBeTruthy();
+
+  await page.goto("/admin");
+  const queue = page.locator('[data-testid="report-review-queue"]:visible');
+  const reportItem = queue.locator(
+    `[data-testid="report-review-item"][data-report-id="${pendingReport.id}"]`,
+  );
+
+  await expect(reportItem).toBeVisible();
+  await Promise.all([
+    page.waitForURL(new RegExp(`/admin/reports/${pendingReport.id}\\?from=admin$`)),
+    reportItem.getByRole("link", { name: "Open details" }).click(),
+  ]);
+  await expect(page.getByRole("heading", { name: "Report detail" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Back to admin console" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open clinic detail" })).toBeVisible();
+});
+
+test("admin overview preview controls open detail pages", async ({ page }) => {
+  await signIn(page, "org-admin@clinicpulse.local");
+  await page.goto("/admin");
+
+  await Promise.all([
+    page.waitForURL(/\/admin\/export-schema\?from=admin$/),
+    page.getByRole("link", { name: "Open export schema" }).click(),
+  ]);
+  await expect(page.getByRole("heading", { name: "Export schema detail" })).toBeVisible();
+  await Promise.all([
+    page.waitForURL(/\/admin$/),
+    page.getByRole("link", { name: "Back to admin console" }).click(),
+  ]);
+
+  await Promise.all([
+    page.waitForURL(/\/admin\/api-contract\?from=admin$/),
+    page.getByRole("link", { name: "Open API contract" }).click(),
+  ]);
+  await expect(page.getByRole("heading", { name: "API contract detail" })).toBeVisible();
+});
+
+test("stakeholder activity rows open lead detail pages", async ({ page }) => {
+  await signIn(page, "org-admin@clinicpulse.local");
+  await page.goto("/admin");
+
+  const stakeholderTable = page.getByLabel("Stakeholder activity queue");
+  const leadLink = stakeholderTable.getByRole("link", {
+    name: /Open lead detail for Thandi Mabuza/i,
+  });
+
+  await expect(leadLink).toHaveAttribute("href", "/admin/leads/lead-001?from=admin");
+  await Promise.all([
+    page.waitForURL(/\/admin\/leads\/lead-001\?from=admin$/),
+    leadLink.click(),
+  ]);
+  await expect(page.getByRole("heading", { name: "Lead detail" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Back to admin console" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Contact lead" })).toHaveAttribute(
+    "href",
+    "mailto:thandi.mabuza@gautenghealth.gov.za",
+  );
+});
+
 test("security admin entity-backed rows open detail pages", async ({ page }) => {
   await signIn(page, "system-admin@clinicpulse.local");
 
