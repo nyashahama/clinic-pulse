@@ -250,6 +250,8 @@ it("defines canonical detail routes for entity-backed admin evidence rows", () =
   const routes = [
     "app/(demo)/admin/users-roles/[userId]/page.tsx",
     "app/(demo)/admin/audit-evidence/events/[eventId]/page.tsx",
+    "app/(demo)/admin/leads/[leadId]/page.tsx",
+    "app/(demo)/admin/reports/[reportId]/page.tsx",
     "app/(demo)/admin/integrations/api-keys/[apiKeyId]/page.tsx",
     "app/(demo)/admin/integrations/webhook-subscriptions/[subscriptionId]/page.tsx",
     "app/(demo)/admin/integrations/webhook-events/[eventId]/page.tsx",
@@ -263,6 +265,32 @@ it("defines canonical detail routes for entity-backed admin evidence rows", () =
 
     expect(source).toContain('requireDemoWorkflowAccess("admin")');
     expect(source).toContain("getAdminReturnTarget");
+  }
+});
+
+it("links stakeholder activity rows to lead detail", () => {
+  const adminPage = readFileSync("app/(demo)/admin/page-client.tsx", "utf8");
+  const routes = readFileSync("lib/product/admin-detail-routes.ts", "utf8");
+
+  expect(routes).toContain("buildAdminLeadDetailHref");
+  expect(adminPage).toContain("buildAdminLeadDetailHref(lead.id, returnSource)");
+  expect(adminPage).toContain("Open lead detail");
+  expect(existsSync("app/(demo)/admin/leads/[leadId]/page.tsx")).toBe(true);
+});
+
+it("uses operational detail layouts for report and lead details", () => {
+  const adminReportDetail = readFileSync("app/(demo)/admin/reports/[reportId]/page.tsx", "utf8");
+  const demoReportDetail = readFileSync("app/(demo)/demo/reports/[reportId]/page-client.tsx", "utf8");
+  const leadDetail = readFileSync("app/(demo)/admin/leads/[leadId]/page-client.tsx", "utf8");
+
+  for (const source of [adminReportDetail, demoReportDetail, leadDetail]) {
+    expect(source).toContain("AdminDetailHero");
+    expect(source).toContain("AdminDetailSignalBar");
+    expect(source).toContain("AdminDetailEvidenceList");
+    expect(source).toContain("AdminDetailActionPanel");
+    expect(source).toContain("AdminDetailTimeline");
+    expect(source).not.toContain("AdminDetailStatStrip");
+    expect(source).not.toContain("AdminDetailFieldGrid");
   }
 });
 
@@ -303,4 +331,30 @@ it("links integration and security entity rows to canonical details", () => {
   expect(security).toContain("buildAdminApiKeyDetailHref(row.id, returnSource)");
   expect(security).toContain("buildAdminUserDetailHref(row.userId, returnSource)");
   expect(security).toContain("buildAdminAuditEventDetailHref(row.id, returnSource)");
+});
+
+it("links report review cards to report detail", () => {
+  const adminPage = readFileSync("app/(demo)/admin/page-client.tsx", "utf8");
+  const reportReviewQueue = readFileSync("components/product/report-review-queue.tsx", "utf8");
+  const routes = readFileSync("lib/product/admin-detail-routes.ts", "utf8");
+
+  expect(routes).toContain("buildAdminReportDetailHref");
+  expect(adminPage).toContain("buildAdminReportDetailHref(item.reportId, returnSource)");
+  expect(reportReviewQueue).toContain("getReportDetailHref");
+  expect(reportReviewQueue).toContain("Open details");
+});
+
+it("routes admin overview preview controls to detail pages", () => {
+  const adminPage = readFileSync("app/(demo)/admin/page-client.tsx", "utf8");
+  const exportPreview = readFileSync("components/demo/export-preview.tsx", "utf8");
+  const apiPreview = readFileSync("components/demo/api-preview.tsx", "utf8");
+
+  expect(existsSync("app/(demo)/admin/export-schema/page.tsx")).toBe(true);
+  expect(existsSync("app/(demo)/admin/api-contract/page.tsx")).toBe(true);
+  expect(adminPage).toContain('exportSchemaHref="/admin/export-schema?from=admin"');
+  expect(adminPage).toContain('apiContractHref="/admin/api-contract?from=admin"');
+  expect(exportPreview).toContain("exportSchemaHref");
+  expect(exportPreview).toContain("Open export schema");
+  expect(apiPreview).toContain("apiContractHref");
+  expect(apiPreview).toContain("Open API contract");
 });
