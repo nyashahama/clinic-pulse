@@ -1,5 +1,16 @@
 import Link from "next/link";
-import { ActivityIcon, ArrowRight, FileText, MapPin } from "lucide-react";
+import type { ReactNode } from "react";
+import {
+  ActivityIcon,
+  AlertTriangleIcon,
+  ArrowRight,
+  CheckCircle2Icon,
+  ClipboardCheckIcon,
+  FileText,
+  MapPin,
+  RadioTowerIcon,
+  RouteIcon,
+} from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import type {
@@ -21,7 +32,7 @@ export function SeverityActionPanel({
     return (
       <section className="rounded-lg border border-border-subtle bg-bg-default p-4 text-content-default shadow-sm">
         <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
-          Operational posture
+          Situation brief
         </p>
         <p className="mt-1 text-sm font-medium text-foreground">No clinic selected</p>
         <p className="mt-1 text-sm leading-5 text-muted-foreground">
@@ -39,7 +50,7 @@ export function SeverityActionPanel({
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
-            Operational posture
+            Situation brief
           </p>
           <h2 className="mt-1 break-words text-lg font-semibold leading-tight text-foreground">
             {selectedItem.clinicName}
@@ -67,77 +78,179 @@ export function SeverityActionPanel({
         ) : null}
       </div>
 
-      <p className="mt-3 break-words text-sm leading-5 text-muted-foreground">
-        {selectedAction.patientImpact}
-      </p>
-
-      <dl className="mt-4 divide-y divide-border-subtle border-y border-border-subtle">
-        <ActionSummary label="Recommended action" value={selectedAction.recommendedAction} />
-        <ActionSummary label="Verification need" value={selectedAction.verificationNeed} />
-        <ActionSummary
-          label="Alternative capacity"
-          value={`${selectedAction.availableAlternatives} available alternative clinics`}
-        />
-      </dl>
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Link className={buttonVariants({ size: "sm" })} href={selectedAction.clinicHref}>
-          <MapPin className="size-3.5" />
-          Open clinic detail
-        </Link>
+      <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-100">
+        <div className="flex min-w-0 items-start gap-2">
+          <span className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md border border-amber-200 bg-background/70 dark:border-amber-900/60 dark:bg-background/10">
+            <AlertTriangleIcon className="size-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-normal text-current/70">
+              Recommended next move
+            </p>
+            <p className="mt-1 break-words text-sm font-semibold leading-5">
+              {selectedAction.recommendedAction}
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="mt-5">
-        <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
-          Recent evidence
+      <BriefSection title="Why this clinic is in queue" className="mt-4">
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+          <SignalDriver
+            icon={<ActivityIcon className="size-3.5" />}
+            label="Service state"
+            tone={selectedItem.status === "operational" ? "clear" : "attention"}
+            value={formatLabel(selectedItem.status)}
+          />
+          <SignalDriver
+            icon={<RadioTowerIcon className="size-3.5" />}
+            label="Alert state"
+            tone={selectedItem.hasActiveAlert ? "attention" : "clear"}
+            value={selectedItem.hasActiveAlert ? "Active alert" : "No active alert"}
+          />
+          <SignalDriver
+            icon={<ClipboardCheckIcon className="size-3.5" />}
+            label="Evidence freshness"
+            tone={selectedItem.freshness === "fresh" ? "clear" : "attention"}
+            value={formatLabel(selectedItem.freshness)}
+          />
+          <SignalDriver
+            icon={<RouteIcon className="size-3.5" />}
+            label="Alternative capacity"
+            tone={selectedAction.availableAlternatives > 0 ? "clear" : "blocked"}
+            value={`${selectedAction.availableAlternatives} alternatives`}
+          />
+        </div>
+      </BriefSection>
+
+      <BriefSection title="Patient impact" className="mt-4">
+        <p className="break-words text-sm leading-5 text-muted-foreground">
+          {selectedAction.patientImpact}
         </p>
-        <div className="mt-2 grid gap-2">
-          {selectedAction.reportLinks.length ? (
-            selectedAction.reportLinks.map((report) => (
+      </BriefSection>
+
+      <BriefSection title="Verification needed" className="mt-4">
+        <div className="flex min-w-0 gap-2 rounded-md border border-border-subtle bg-bg-muted p-3">
+          <CheckCircle2Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+          <p className="break-words text-sm leading-5 text-foreground">
+            {selectedAction.verificationNeed}
+          </p>
+        </div>
+      </BriefSection>
+
+      <BriefSection title="Evidence trail" className="mt-4">
+        {selectedAction.reportLinks.length ? (
+          <div className="grid gap-2">
+            {selectedAction.reportLinks.map((report) => (
               <Link
                 key={report.id}
-                className={cn(
-                  buttonVariants({ variant: "outline", size: "sm" }),
-                  "h-auto justify-between gap-3 whitespace-normal px-3 py-2 text-left",
-                )}
+                className="group grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] gap-3 rounded-md border border-border-subtle bg-bg-muted p-3 text-left transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 href={report.href}
               >
+                <span
+                  aria-hidden="true"
+                  className="mt-0.5 inline-flex size-7 items-center justify-center rounded-md border border-border-subtle bg-bg-default text-muted-foreground"
+                >
+                  <FileText className="size-3.5" />
+                </span>
                 <span className="min-w-0">
-                  <span className="block break-words text-sm font-medium">
+                  <span className="block break-words text-sm font-medium text-foreground">
                     {report.label}
                   </span>
-                  <span className="block break-words text-xs text-muted-foreground">
+                  <span className="mt-0.5 block break-words text-xs leading-4 text-muted-foreground">
                     {report.detail}
                   </span>
                 </span>
-                <ArrowRight className="size-3.5 shrink-0" />
+                <ArrowRight className="mt-1 size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
               </Link>
-            ))
-          ) : (
-            <div className="rounded-lg border border-dashed border-border-subtle p-3 text-sm text-muted-foreground">
-              <FileText className="mb-2 size-4" />
-              No recent report evidence is attached to this clinic in the current scenario state.
-            </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-md border border-dashed border-border-subtle p-3 text-sm text-muted-foreground">
+            <FileText className="mb-2 size-4" />
+            No recent report evidence is attached to this clinic in the current scenario state.
+          </div>
+        )}
+      </BriefSection>
+
+      <div className="mt-4 border-t border-border-subtle pt-4">
+        <Link
+          className={cn(
+            buttonVariants({ variant: "outline", size: "sm" }),
+            "w-full justify-between",
           )}
-        </div>
+          href={selectedAction.clinicHref}
+        >
+          <span className="inline-flex min-w-0 items-center gap-1.5">
+            <MapPin className="size-3.5" />
+            Open clinic detail
+          </span>
+          <ArrowRight className="size-3.5" />
+        </Link>
       </div>
     </section>
   );
 }
 
-function formatLabel(value: string) {
-  return value.replaceAll("_", " ");
-}
-
-function ActionSummary({ label, value }: { label: string; value: string }) {
+function BriefSection({
+  children,
+  className,
+  title,
+}: {
+  children: ReactNode;
+  className?: string;
+  title: string;
+}) {
   return (
-    <div className="grid gap-1 py-3 first:pt-0 last:pb-0">
-      <dt className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
-        {label}
-      </dt>
-      <dd className="break-words text-sm leading-5 text-foreground">{value}</dd>
+    <div className={className}>
+      <p className="mb-2 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+        {title}
+      </p>
+      {children}
     </div>
   );
+}
+
+function SignalDriver({
+  icon,
+  label,
+  tone,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  tone: "attention" | "blocked" | "clear";
+  value: string;
+}) {
+  return (
+    <div className="min-w-0 rounded-md border border-border-subtle bg-bg-muted p-3">
+      <div className="flex min-w-0 items-center gap-2">
+        <span
+          className={cn(
+            "inline-flex size-6 shrink-0 items-center justify-center rounded-md border",
+            tone === "clear" &&
+              "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100",
+            tone === "attention" &&
+              "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100",
+            tone === "blocked" &&
+              "border-destructive/30 bg-destructive/10 text-destructive dark:border-destructive/40 dark:bg-destructive/20",
+          )}
+        >
+          {icon}
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-xs font-medium text-muted-foreground">{label}</p>
+          <p className="mt-0.5 break-words text-sm font-semibold capitalize text-foreground">
+            {value}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatLabel(value: string) {
+  return value.replaceAll("_", " ");
 }
 
 function PostureChip({
