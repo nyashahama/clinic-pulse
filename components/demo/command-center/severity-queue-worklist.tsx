@@ -68,12 +68,19 @@ export function SeverityQueueWorklist({
             type="button"
             aria-pressed={isSelected}
             aria-label={`Priority ${index + 1}: ${item.clinicName}, ${item.severityLabel} severity score ${item.score}`}
+            data-district-severity-row
             onClick={() => onSelectClinic(item.clinicId)}
             className={cn(
-              "grid w-full min-w-0 gap-3 border-b border-border-subtle px-3 py-3 text-left last:border-b-0 hover:bg-bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:grid-cols-[3rem_minmax(12rem,1.35fr)_minmax(10rem,0.9fr)_minmax(6rem,0.35fr)] md:items-start",
-              isSelected && "bg-bg-muted",
+              "relative grid w-full min-w-0 gap-3 border-b border-border-subtle px-3 py-3 text-left last:border-b-0 hover:bg-bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:grid-cols-[3rem_minmax(12rem,1.35fr)_minmax(10rem,0.9fr)_minmax(6rem,0.35fr)] md:items-start",
+              isSelected && "bg-primary/5",
             )}
           >
+            {isSelected ? (
+              <span
+                aria-hidden="true"
+                className="absolute inset-y-0 left-0 w-1 bg-primary"
+              />
+            ) : null}
             <span className="font-mono text-xs text-muted-foreground">
               {String(index + 1).padStart(2, "0")}
             </span>
@@ -118,8 +125,18 @@ export function SeverityQueueWorklist({
                 </span>
               ) : null}
             </span>
-            <span className="font-mono text-sm font-semibold text-foreground md:text-right">
-              {item.score}
+            <span className="grid justify-start gap-1 md:justify-items-end">
+              <span className="text-xs font-medium uppercase tracking-normal text-muted-foreground md:hidden">
+                Score
+              </span>
+              <span
+                className={cn(
+                  "inline-flex h-7 min-w-10 items-center justify-center rounded-md border border-border-subtle bg-bg-muted px-2 font-mono text-sm font-semibold text-foreground",
+                  isSelected && "border-primary/25 bg-background text-primary",
+                )}
+              >
+                {item.score}
+              </span>
             </span>
           </button>
         );

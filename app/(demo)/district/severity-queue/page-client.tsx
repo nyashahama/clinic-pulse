@@ -1,18 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 
+import { SeverityFilterToolbar } from "@/components/demo/command-center/severity-filter-toolbar";
+import { SeverityMetricStrip } from "@/components/demo/command-center/severity-metric-strip";
 import { SeverityActionPanel } from "@/components/demo/command-center/severity-action-panel";
 import { SeverityQueueWorklist } from "@/components/demo/command-center/severity-queue-worklist";
 import {
   AdminEmptyState,
-  AdminFilterBar,
-  AdminMetricStrip,
   AdminModuleHeader,
-  type AdminTone,
 } from "@/components/product/admin-module";
-import { Button } from "@/components/ui/button";
 import type { ClientAuthSession } from "@/lib/auth/api";
 import type {
   ReportApiResponse,
@@ -23,7 +21,6 @@ import {
   buildDistrictSeverityQueueViewModel,
   type DistrictSeverityQueueFilters,
 } from "@/lib/demo/district-severity-queue-view-model";
-import { cn } from "@/lib/utils";
 
 type DistrictSeverityQueuePageClientProps = {
   session: ClientAuthSession;
@@ -39,37 +36,8 @@ const defaultFilters: DistrictSeverityQueueFilters = {
   service: "all",
 };
 
-const selectClassName =
-  "h-9 min-w-0 rounded-md border border-border bg-background px-2 text-sm text-foreground";
-
 function formatCount(value: number) {
   return new Intl.NumberFormat("en-ZA").format(value);
-}
-
-function QueueStatusBadge({
-  children,
-  tone,
-}: {
-  children: ReactNode;
-  tone: AdminTone;
-}) {
-  return (
-    <span
-      className={cn(
-        "inline-flex max-w-full items-center rounded-md border px-2 py-0.5 text-xs font-medium",
-        tone === "clear" &&
-          "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100",
-        tone === "attention" &&
-          "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100",
-        tone === "blocked" &&
-          "border-destructive/30 bg-destructive/10 text-destructive dark:border-destructive/40 dark:bg-destructive/20",
-        tone === "info" &&
-          "border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-100",
-      )}
-    >
-      {children}
-    </span>
-  );
 }
 
 export default function DistrictSeverityQueuePageClient({
@@ -128,103 +96,17 @@ export default function DistrictSeverityQueuePageClient({
         ]}
       />
 
-      <AdminMetricStrip metrics={viewModel.metrics} />
+      <SeverityMetricStrip metrics={viewModel.metrics} />
 
-      <AdminFilterBar>
-        <label className="grid min-w-[10rem] flex-1 gap-1 text-xs font-medium text-muted-foreground sm:flex-none">
-          Status
-          <select
-            className={selectClassName}
-            value={filters.status}
-            onChange={(event) =>
-              updateFilter("status", event.target.value as DistrictSeverityQueueFilters["status"])
-            }
-          >
-            <option value="all">All statuses</option>
-            <option value="non_functional">Non functional</option>
-            <option value="degraded">Degraded</option>
-            <option value="unknown">Unknown</option>
-            <option value="operational">Operational</option>
-          </select>
-        </label>
-        <label className="grid min-w-[10rem] flex-1 gap-1 text-xs font-medium text-muted-foreground sm:flex-none">
-          Freshness
-          <select
-            className={selectClassName}
-            value={filters.freshness}
-            onChange={(event) =>
-              updateFilter(
-                "freshness",
-                event.target.value as DistrictSeverityQueueFilters["freshness"],
-              )
-            }
-          >
-            <option value="all">All freshness</option>
-            <option value="fresh">Fresh</option>
-            <option value="needs_confirmation">Needs confirmation</option>
-            <option value="stale">Stale</option>
-            <option value="unknown">Unknown</option>
-          </select>
-        </label>
-        <label className="grid min-w-[10rem] flex-1 gap-1 text-xs font-medium text-muted-foreground sm:flex-none">
-          Alert state
-          <select
-            className={selectClassName}
-            value={filters.alertState}
-            onChange={(event) =>
-              updateFilter(
-                "alertState",
-                event.target.value as DistrictSeverityQueueFilters["alertState"],
-              )
-            }
-          >
-            <option value="all">All signals</option>
-            <option value="active">Active alerts</option>
-          </select>
-        </label>
-        <label className="grid min-w-[10rem] flex-1 gap-1 text-xs font-medium text-muted-foreground sm:flex-none">
-          Offline queue
-          <select
-            className={selectClassName}
-            value={filters.offlineState}
-            onChange={(event) =>
-              updateFilter(
-                "offlineState",
-                event.target.value as DistrictSeverityQueueFilters["offlineState"],
-              )
-            }
-          >
-            <option value="all">All queue states</option>
-            <option value="queued">Queued reports</option>
-          </select>
-        </label>
-        <label className="grid min-w-[10rem] flex-1 gap-1 text-xs font-medium text-muted-foreground sm:flex-none">
-          Service line
-          <select
-            className={selectClassName}
-            value={filters.service}
-            onChange={(event) => updateFilter("service", event.target.value)}
-          >
-            <option value="all">All services</option>
-            {viewModel.filterOptions.services.map((service) => (
-              <option key={service} value={service}>
-                {service}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:justify-end">
-          <QueueStatusBadge tone={viewModel.queue.length ? "attention" : "info"}>
-            {formatCount(viewModel.queue.length)} clinics visible
-          </QueueStatusBadge>
-          <QueueStatusBadge tone={syncSummary?.pendingOfflineReports ? "attention" : "info"}>
-            {backendSignal}
-          </QueueStatusBadge>
-          <Button size="sm" variant="outline" onClick={clearFilters}>
-            Clear filters
-          </Button>
-        </div>
-      </AdminFilterBar>
+      <SeverityFilterToolbar
+        backendSignal={backendSignal}
+        backendSignalTone={syncSummary?.pendingOfflineReports ? "attention" : "info"}
+        filters={filters}
+        services={viewModel.filterOptions.services}
+        visibleClinicCount={viewModel.queue.length}
+        onClearFilters={clearFilters}
+        onFilterChange={updateFilter}
+      />
 
       {viewModel.queue.length ? (
         <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">

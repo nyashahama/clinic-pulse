@@ -221,11 +221,18 @@ test.describe("phase 1 role dashboard navigation", () => {
     await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
     await expect(page.locator('[data-district-module="severity-queue"]')).toBeVisible();
     await expect(page.getByRole("heading", { name: "Unified severity queue" })).toBeVisible();
+    await expect(page.locator("[data-district-severity-metrics]")).toBeVisible();
+    await expect(page.locator("[data-district-severity-toolbar]")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Status filter/i })).toBeVisible();
+    await expect(page.getByText("Operational posture")).toBeVisible();
     await expect(page.getByLabel("Severity queue worklist")).toBeVisible();
 
     const firstClinic = page.getByLabel("Severity queue worklist").getByRole("button").first();
     await expect(firstClinic).toBeVisible();
     await firstClinic.click();
+    await expect(
+      page.locator('[data-district-severity-row][aria-pressed="true"]'),
+    ).toBeVisible();
 
     await Promise.all([
       page.waitForURL(/\/district\/clinics\/[^?]+\?from=district-severity-queue$/),
