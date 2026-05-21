@@ -1,16 +1,16 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { CheckIcon, FilterIcon, RotateCcwIcon, SlidersHorizontalIcon } from "lucide-react";
+import { FilterIcon, RotateCcwIcon, SlidersHorizontalIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { AdminTone } from "@/components/product/admin-module";
@@ -139,16 +139,16 @@ function FacetedFilter({
         </span>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56">
-        <DropdownMenuLabel>{label} filter</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuRadioGroup value={value} onValueChange={onValueChange}>
-          {options.map((option) => (
-            <DropdownMenuRadioItem key={option.value} value={option.value}>
-              <span className="min-w-0 flex-1 truncate">{option.label}</span>
-              {option.value === value ? <CheckIcon className="size-3.5" /> : null}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>{label} filter</DropdownMenuLabel>
+          <DropdownMenuRadioGroup value={value} onValueChange={onValueChange}>
+            {options.map((option) => (
+              <DropdownMenuRadioItem key={option.value} closeOnClick value={option.value}>
+                <span className="min-w-0 flex-1 truncate">{option.label}</span>
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -175,6 +175,11 @@ async function expectNoRouteMatches(sidebar: Locator, routes: string[]) {
   }
 }
 
+async function selectSeverityQueueFilter(page: Page, label: string, option: string) {
+  await page.getByRole("button", { name: new RegExp(`${label} filter`, "i") }).click();
+  await page.getByRole("menuitemradio", { name: option, exact: true }).click();
+}
+
 test.describe("phase 1 role dashboard navigation", () => {
   for (const scenario of roleScenarios) {
     test(`${scenario.role} lands on the correct home and sees the right sidebar`, async ({
@@ -265,6 +270,59 @@ test.describe("phase 1 role dashboard navigation", () => {
       page.getByRole("link", { name: "Open clinic detail" }).click(),
     ]);
     await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
+  });
+
+  test("district severity queue filters update queue state and URL", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop-chrome", "Desktop filter regression");
+
+    await signInAs(page, "district-manager@clinicpulse.local", "/district");
+    await page.goto(
+      "/district/severity-queue?status=invalid&freshness=invalid&alert=invalid&offline=invalid&service=Imaginary",
+    );
+
+    await expect(page).toHaveURL(/\/district\/severity-queue$/);
+    await expect(page.getByText("8 clinics visible")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Status filter: All statuses/i })).toBeVisible();
+
+    await selectSeverityQueueFilter(page, "Status", "Operational");
+
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("status"))
+      .toBe("operational");
+    await expect(page.getByText("3 clinics visible")).toBeVisible();
+    await expect(page.getByLabel("Severity queue worklist").getByRole("button")).toHaveCount(3);
+    await expect(
+      page.getByRole("button", {
+        name: /Akasia Hills Clinic, stable severity score 0/i,
+      }),
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Akasia Hills Clinic" })).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByRole("button", { name: /Status filter: Operational/i })).toBeVisible();
+    await expect(page.getByText("3 clinics visible")).toBeVisible();
+
+    await selectSeverityQueueFilter(page, "Freshness", "Stale");
+
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("status"))
+      .toBe("operational");
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("freshness"))
+      .toBe("stale");
+    await expect(page.getByText("0 clinics visible")).toBeVisible();
+    await expect(page.getByText("No clinics match these filters")).toBeVisible();
+    await expect(page.getByLabel("Severity queue worklist")).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Reset" }).click();
+
+    await expect(page).toHaveURL(/\/district\/severity-queue$/);
+    await expect(page.getByRole("button", { name: /Status filter: All statuses/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Freshness filter: All freshness/i })).toBeVisible();
+    await expect(page.getByText("8 clinics visible")).toBeVisible();
+    await expect(page.getByLabel("Severity queue worklist")).toBeVisible();
   });
 
   test("demo showcase does not expose report review", async ({ page }) => {

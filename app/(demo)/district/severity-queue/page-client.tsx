@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { SeverityFilterToolbar } from "@/components/demo/command-center/severity-filter-toolbar";
 import { SeverityMetricStrip } from "@/components/demo/command-center/severity-metric-strip";
@@ -36,8 +37,84 @@ const defaultFilters: DistrictSeverityQueueFilters = {
   service: "all",
 };
 
+const statusFilterValues = [
+  "all",
+  "non_functional",
+  "degraded",
+  "unknown",
+  "operational",
+] satisfies ReadonlyArray<DistrictSeverityQueueFilters["status"]>;
+
+const freshnessFilterValues = [
+  "all",
+  "fresh",
+  "needs_confirmation",
+  "stale",
+  "unknown",
+] satisfies ReadonlyArray<DistrictSeverityQueueFilters["freshness"]>;
+
+const alertFilterValues = ["all", "active"] satisfies ReadonlyArray<
+  DistrictSeverityQueueFilters["alertState"]
+>;
+
+const offlineFilterValues = ["all", "queued"] satisfies ReadonlyArray<
+  DistrictSeverityQueueFilters["offlineState"]
+>;
+
 function formatCount(value: number) {
   return new Intl.NumberFormat("en-ZA").format(value);
+}
+
+function includesValue<T extends string>(
+  values: ReadonlyArray<T>,
+  value: string | null,
+): value is T {
+  return value !== null && values.includes(value as T);
+}
+
+function parseFiltersFromSearchParams(
+  searchParams: Pick<URLSearchParams, "get">,
+  services: string[],
+): DistrictSeverityQueueFilters {
+  const status = searchParams.get("status");
+  const freshness = searchParams.get("freshness");
+  const alert = searchParams.get("alert");
+  const offline = searchParams.get("offline");
+  const service = searchParams.get("service");
+
+  return {
+    status: includesValue(statusFilterValues, status) ? status : "all",
+    freshness: includesValue(freshnessFilterValues, freshness) ? freshness : "all",
+    alertState: includesValue(alertFilterValues, alert) ? alert : "all",
+    offlineState: includesValue(offlineFilterValues, offline) ? offline : "all",
+    service: service && services.includes(service) ? service : "all",
+  };
+}
+
+function serializeFiltersToSearchParams(filters: DistrictSeverityQueueFilters) {
+  const nextSearchParams = new URLSearchParams();
+
+  if (filters.status !== "all") {
+    nextSearchParams.set("status", filters.status);
+  }
+
+  if (filters.freshness !== "all") {
+    nextSearchParams.set("freshness", filters.freshness);
+  }
+
+  if (filters.alertState !== "all") {
+    nextSearchParams.set("alert", filters.alertState);
+  }
+
+  if (filters.offlineState !== "all") {
+    nextSearchParams.set("offline", filters.offlineState);
+  }
+
+  if (filters.service !== "all") {
+    nextSearchParams.set("service", filters.service);
+  }
+
+  return nextSearchParams.toString();
 }
 
 export default function DistrictSeverityQueuePageClient({
@@ -45,9 +122,26 @@ export default function DistrictSeverityQueuePageClient({
   session,
   syncSummary,
 }: DistrictSeverityQueuePageClientProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { state } = useDemoStore();
-  const [filters, setFilters] = useState<DistrictSeverityQueueFilters>(defaultFilters);
   const [selectedClinicId, setSelectedClinicId] = useState<string | null>(null);
+  const filterOptions = useMemo(
+    () =>
+      buildDistrictSeverityQueueViewModel({
+        state,
+        session,
+        filters: defaultFilters,
+        selectedClinicId: null,
+      }).filterOptions,
+    [session, state],
+  );
+  const filters = useMemo(
+    () => parseFiltersFromSearchParams(searchParams, filterOptions.services),
+    [filterOptions.services, searchParams],
+  );
+  const serializedFilters = serializeFiltersToSearchParams(filters);
   const viewModel = useMemo(
     () =>
       buildDistrictSeverityQueueViewModel({
@@ -59,17 +153,37 @@ export default function DistrictSeverityQueuePageClient({
     [filters, selectedClinicId, session, state],
   );
 
+  useEffect(() => {
+    const currentSearch = searchParams.toString();
+
+    if (currentSearch === serializedFilters) {
+      return;
+    }
+
+    router.replace(
+      serializedFilters ? `${pathname}?${serializedFilters}` : pathname,
+      { scroll: false },
+    );
+  }, [pathname, router, searchParams, serializedFilters]);
+
+  const replaceFilters = (nextFilters: DistrictSeverityQueueFilters) => {
+    const nextSearch = serializeFiltersToSearchParams(nextFilters);
+
+    setSelectedClinicId(null);
+    router.replace(nextSearch ? `${pathname}?${nextSearch}` : pathname, {
+      scroll: false,
+    });
+  };
+
   const updateFilter = <Key extends keyof DistrictSeverityQueueFilters>(
     key: Key,
     value: DistrictSeverityQueueFilters[Key],
   ) => {
-    setFilters((current) => ({ ...current, [key]: value }));
-    setSelectedClinicId(null);
+    replaceFilters({ ...filters, [key]: value });
   };
 
   const clearFilters = () => {
-    setFilters(defaultFilters);
-    setSelectedClinicId(null);
+    replaceFilters(defaultFilters);
   };
 
   const backendSignal = syncSummary
@@ -102,7 +216,7 @@ export default function DistrictSeverityQueuePageClient({
         backendSignal={backendSignal}
         backendSignalTone={syncSummary?.pendingOfflineReports ? "attention" : "info"}
         filters={filters}
-        services={viewModel.filterOptions.services}
+        services={filterOptions.services}
         visibleClinicCount={viewModel.queue.length}
         onClearFilters={clearFilters}
         onFilterChange={updateFilter}
