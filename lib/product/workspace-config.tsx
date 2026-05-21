@@ -49,7 +49,6 @@ export const HIDDEN_DASHBOARD_PRIMARY_NAV_ROUTES = [
   "/district/clinic-evidence",
   "/district/interventions",
   "/admin/exports",
-  "/admin/demo-controls",
 ] as const;
 
 export const PUBLIC_DASHBOARD_NAV_EXCLUSIONS = [
@@ -193,7 +192,7 @@ const ROLE_WORKSPACES: Record<AuthRole, DashboardWorkspace> = {
               { title: "Security", url: "/admin/security" },
               { title: "Partner readiness", url: "/admin/partner-readiness" },
               { title: "Integrations", url: "/admin/integrations" },
-              { title: "Scenario controls", url: "/admin#demo-controls" },
+              { title: "Scenario controls", url: "/admin/demo-controls" },
               { title: "Audit evidence", url: "/admin/audit-evidence" },
             ],
           },

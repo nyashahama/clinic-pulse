@@ -24,7 +24,6 @@ const expectedHiddenDashboardPrimaryNavRoutes = [
   "/district/clinic-evidence",
   "/district/interventions",
   "/admin/exports",
-  "/admin/demo-controls",
 ] as const;
 
 const expectedPublicDashboardNavExclusions = [
@@ -206,7 +205,7 @@ describe("product workspace navigation config", () => {
         "/admin/security",
         "/admin/partner-readiness",
         "/admin/integrations",
-        "/admin#demo-controls",
+        "/admin/demo-controls",
         "/admin/audit-evidence",
       ]),
     );
