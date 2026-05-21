@@ -104,7 +104,6 @@ const hiddenStandaloneHrefs = [
   "/district/clinic-evidence",
   "/district/interventions",
   "/admin/exports",
-  "/admin/demo-controls",
 ];
 
 const publicDashboardHrefs = [
@@ -213,5 +212,27 @@ test.describe("phase 1 role dashboard navigation", () => {
       page.locator('[data-role-dashboard="district_manager"]').filter({ visible: true }),
     ).toBeVisible();
     await expect(page.locator("#report-review")).toHaveCount(0);
+  });
+
+  test("system admin opens scenario controls as a standalone module", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop-chrome", "Desktop sidebar navigation regression");
+
+    await signInAs(page, "system-admin@clinicpulse.local", "/admin");
+
+    const sidebar = await openDashboardSidebar(page);
+    const link = sidebar.getByRole("link", { name: "Scenario controls", exact: true });
+
+    await expect(link).toHaveAttribute("href", "/admin/demo-controls");
+    await Promise.all([
+      page.waitForURL(/\/admin\/demo-controls$/),
+      link.click(),
+    ]);
+
+    await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
+    await expect(page.locator('[data-admin-module="scenario-controls"]')).toBeVisible();
+    await expect(page.getByRole("button", { name: "Reset scenario" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Trigger stockout" })).toBeVisible();
   });
 });
