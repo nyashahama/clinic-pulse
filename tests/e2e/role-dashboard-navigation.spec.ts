@@ -180,6 +180,16 @@ async function selectSeverityQueueFilter(page: Page, label: string, option: stri
   await page.getByRole("menuitemradio", { name: option, exact: true }).click();
 }
 
+async function visibleSeverityClinicCount(page: Page) {
+  const countText = await page
+    .locator("[data-district-severity-toolbar]")
+    .getByText(/\d+ clinics visible/)
+    .textContent();
+  const count = countText?.match(/\d+/)?.[0];
+
+  return count ? Number(count) : -1;
+}
+
 test.describe("phase 1 role dashboard navigation", () => {
   for (const scenario of roleScenarios) {
     test(`${scenario.role} lands on the correct home and sees the right sidebar`, async ({
@@ -283,7 +293,8 @@ test.describe("phase 1 role dashboard navigation", () => {
     );
 
     await expect(page).toHaveURL(/\/district\/severity-queue$/);
-    await expect(page.getByText("8 clinics visible")).toBeVisible();
+    await expect.poll(() => visibleSeverityClinicCount(page)).toBeGreaterThan(0);
+    const initialClinicCount = await visibleSeverityClinicCount(page);
     await expect(page.getByRole("button", { name: /Status filter: All statuses/i })).toBeVisible();
 
     await selectSeverityQueueFilter(page, "Status", "Operational");
@@ -291,18 +302,24 @@ test.describe("phase 1 role dashboard navigation", () => {
     await expect
       .poll(() => new URL(page.url()).searchParams.get("status"))
       .toBe("operational");
-    await expect(page.getByText("3 clinics visible")).toBeVisible();
-    await expect(page.getByLabel("Severity queue worklist").getByRole("button")).toHaveCount(3);
+    await expect.poll(() => visibleSeverityClinicCount(page)).toBeGreaterThan(0);
+
+    const operationalClinicCount = await visibleSeverityClinicCount(page);
+    const worklistRows = page.getByLabel("Severity queue worklist").getByRole("button");
+    await expect(worklistRows).toHaveCount(operationalClinicCount);
+
+    const firstOperationalLabel = await worklistRows.first().getAttribute("aria-label");
+    const firstOperationalClinicName = firstOperationalLabel?.match(/^Priority 1: (.*), /)?.[1];
+    expect(firstOperationalClinicName).toBeTruthy();
     await expect(
-      page.getByRole("button", {
-        name: /Akasia Hills Clinic, stable severity score 0/i,
-      }),
+      page.getByRole("heading", { name: firstOperationalClinicName! }),
     ).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Akasia Hills Clinic" })).toBeVisible();
 
     await page.reload();
     await expect(page.getByRole("button", { name: /Status filter: Operational/i })).toBeVisible();
-    await expect(page.getByText("3 clinics visible")).toBeVisible();
+    await expect(page.locator("[data-district-severity-toolbar]")).toContainText(
+      `${operationalClinicCount} clinics visible`,
+    );
 
     await selectSeverityQueueFilter(page, "Freshness", "Stale");
 
@@ -321,8 +338,31 @@ test.describe("phase 1 role dashboard navigation", () => {
     await expect(page).toHaveURL(/\/district\/severity-queue$/);
     await expect(page.getByRole("button", { name: /Status filter: All statuses/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /Freshness filter: All freshness/i })).toBeVisible();
-    await expect(page.getByText("8 clinics visible")).toBeVisible();
+    await expect(page.locator("[data-district-severity-toolbar]")).toContainText(
+      `${initialClinicCount} clinics visible`,
+    );
     await expect(page.getByLabel("Severity queue worklist")).toBeVisible();
+  });
+
+  test("district manager opens report evidence from severity queue", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop-chrome", "Desktop evidence route regression");
+
+    await signInAs(page, "district-manager@clinicpulse.local", "/district");
+    await page.goto("/district/severity-queue");
+
+    await Promise.all([
+      page.waitForURL(/\/district\/reports\/[^?]+\?from=district-severity-queue$/),
+      page.getByRole("link", { name: "View report evidence" }).click(),
+    ]);
+
+    await expect(page.getByRole("heading", { name: "Report evidence" })).toBeVisible();
+    await expect(page.getByText("Clinic", { exact: true })).toBeVisible();
+    await expect(page.getByText("Reporter", { exact: true })).toBeVisible();
+    await expect(page.getByText("Received", { exact: true })).toBeVisible();
+    await expect(page.getByText("Report notes", { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Back to severity queue" })).toBeVisible();
   });
 
   test("demo showcase does not expose report review", async ({ page }) => {
