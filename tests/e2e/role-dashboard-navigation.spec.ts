@@ -202,6 +202,38 @@ test.describe("phase 1 role dashboard navigation", () => {
     });
   }
 
+  test("district manager opens severity queue as a standalone module", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop-chrome", "Desktop sidebar navigation regression");
+
+    await signInAs(page, "district-manager@clinicpulse.local", "/district");
+
+    const sidebar = await openDashboardSidebar(page);
+    const link = sidebar.getByRole("link", { name: "Severity queue", exact: true });
+
+    await expect(link).toHaveAttribute("href", "/district/severity-queue");
+    await Promise.all([
+      page.waitForURL(/\/district\/severity-queue$/),
+      link.click(),
+    ]);
+
+    await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
+    await expect(page.locator('[data-district-module="severity-queue"]')).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Unified severity queue" })).toBeVisible();
+    await expect(page.getByLabel("Severity queue worklist")).toBeVisible();
+
+    const firstClinic = page.getByLabel("Severity queue worklist").getByRole("button").first();
+    await expect(firstClinic).toBeVisible();
+    await firstClinic.click();
+
+    await Promise.all([
+      page.waitForURL(/\/district\/clinics\/[^?]+\?from=district-severity-queue$/),
+      page.getByRole("link", { name: "Open clinic detail" }).click(),
+    ]);
+    await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
+  });
+
   test("demo showcase does not expose report review", async ({ page }) => {
     await signInAs(page, "district-manager@clinicpulse.local", "/district");
 
