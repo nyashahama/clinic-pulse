@@ -224,10 +224,11 @@ test.describe("phase 1 role dashboard navigation", () => {
     await expect(page.locator("[data-district-severity-metrics]")).toBeVisible();
     await expect(page.locator("[data-district-severity-toolbar]")).toBeVisible();
     await expect(page.getByRole("button", { name: /Status filter/i })).toBeVisible();
-    await expect(page.getByText("Clinic command brief")).toBeVisible();
-    await expect(page.getByText("Next action")).toBeVisible();
-    await expect(page.getByText("Signal summary")).toBeVisible();
-    await expect(page.getByText("Operational timeline")).toBeVisible();
+    await expect(page.getByText("Selected clinic decision")).toBeVisible();
+    await expect(page.getByText("Recommended action")).toBeVisible();
+    await expect(page.getByText("Latest evidence")).toBeVisible();
+    await expect(page.getByText("Signal summary")).toHaveCount(0);
+    await expect(page.getByText("Operational timeline")).toHaveCount(0);
     await expect(page.getByRole("link", { name: "View report evidence" })).toBeVisible();
     await expect(page.getByLabel("Severity queue worklist")).toBeVisible();
 
