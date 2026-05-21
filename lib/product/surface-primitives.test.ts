@@ -221,7 +221,7 @@ describe("product surface primitives", () => {
     expect(html).toContain("border-l");
   });
 
-  it("renders case-file detail pages with inline signals and property-list evidence", () => {
+  it("renders case-file detail pages with command-center signals and property-list evidence", () => {
     const html = renderToStaticMarkup(
       createElement(
         "div",
@@ -266,8 +266,9 @@ describe("product surface primitives", () => {
     expect(html).toContain("Queue pressure");
     expect(html).toContain("Mamelodi East Clinic");
     expect(html).toContain("Power outage closed the triage room.");
+    expect(html).toContain("data-admin-detail-signal");
+    expect(html).toContain("xl:grid-cols-4");
     expect(html).toContain("divide-y");
-    expect(html).not.toContain("xl:grid-cols-4");
   });
 
   it("maps report pressure values to operational detail tones", () => {

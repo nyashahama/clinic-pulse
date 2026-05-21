@@ -9,7 +9,6 @@ import {
   AdminDetailActionPanel,
   AdminDetailEvidenceList,
   AdminDetailHero,
-  AdminDetailJsonBlock,
   AdminDetailShell,
   AdminDetailSignalBar,
   AdminDetailTimeline,
@@ -48,20 +47,6 @@ function leadStatusTone(status: DemoLead["status"]) {
   }
 
   return "info" as const;
-}
-
-function buildLeadPayload(lead: DemoLead) {
-  return {
-    id: lead.id,
-    name: lead.name,
-    workEmail: lead.workEmail,
-    organization: lead.organization,
-    role: lead.role,
-    interest: lead.interest,
-    status: lead.status,
-    createdAt: lead.createdAt,
-    note: lead.note,
-  };
 }
 
 export default function LeadDetailPageClient({
@@ -176,7 +161,7 @@ export default function LeadDetailPageClient({
           },
         ]}
       />
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(20rem,0.8fr)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
         <div className="grid min-w-0 gap-4">
           <AdminDetailEvidenceList
             title="Stakeholder properties"
@@ -224,7 +209,6 @@ export default function LeadDetailPageClient({
               },
             ]}
           />
-          <AdminDetailJsonBlock title="Raw lead evidence" value={buildLeadPayload(lead)} />
         </div>
         <div className="grid min-w-0 gap-4 content-start">
           <AdminDetailActionPanel

@@ -1,5 +1,11 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import {
+  ActivityIcon,
+  AlertTriangleIcon,
+  ArrowLeft,
+  CheckCircle2Icon,
+  Clock3Icon,
+} from "lucide-react";
 import type { ReactNode } from "react";
 
 import { buttonVariants } from "@/components/ui/button";
@@ -45,19 +51,19 @@ export type AdminDetailTimelineItem = {
 function detailToneClassName(tone: AdminDetailTone = "neutral") {
   switch (tone) {
     case "clear":
-      return "border-emerald-200 bg-emerald-50/70 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100";
+      return "border-emerald-200/80 bg-emerald-50/45 text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-100";
     case "attention":
-      return "border-amber-200 bg-amber-50/70 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100";
+      return "border-amber-200/80 bg-amber-50/45 text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-100";
     case "blocked":
-      return "border-destructive/30 bg-destructive/10 text-destructive dark:border-destructive/50 dark:bg-destructive/15";
+      return "border-destructive/25 bg-destructive/5 text-destructive dark:border-destructive/40 dark:bg-destructive/15";
     case "info":
-      return "border-sky-200 bg-sky-50/70 text-sky-950 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-100";
+      return "border-sky-200/80 bg-sky-50/45 text-sky-950 dark:border-sky-900/50 dark:bg-sky-950/20 dark:text-sky-100";
     default:
-      return "border-border-subtle bg-bg-muted text-content-default";
+      return "border-border-subtle bg-bg-muted text-muted-foreground";
   }
 }
 
-function detailToneDotClassName(tone: AdminDetailTone = "neutral") {
+function detailToneRailClassName(tone: AdminDetailTone = "neutral") {
   switch (tone) {
     case "clear":
       return "bg-emerald-500";
@@ -70,6 +76,31 @@ function detailToneDotClassName(tone: AdminDetailTone = "neutral") {
     default:
       return "bg-muted-foreground/45";
   }
+}
+
+function DetailSignalIcon({
+  label,
+  tone,
+}: {
+  label: ReactNode;
+  tone?: AdminDetailTone;
+}) {
+  const labelText = typeof label === "string" ? label.toLowerCase() : "";
+  const iconClassName = "size-4";
+
+  if (labelText.includes("received") || labelText.includes("created")) {
+    return <Clock3Icon className={iconClassName} />;
+  }
+
+  if (tone === "blocked" || tone === "attention") {
+    return <AlertTriangleIcon className={iconClassName} />;
+  }
+
+  if (tone === "clear") {
+    return <CheckCircle2Icon className={iconClassName} />;
+  }
+
+  return <ActivityIcon className={iconClassName} />;
 }
 
 export function getAdminDetailPressureTone(
@@ -174,33 +205,48 @@ export function AdminDetailSignalBar({
 }) {
   return (
     <section
+      aria-label="Detail evidence signals"
       data-admin-module
-      className={cn(
-        "min-w-0 overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm",
-        className,
-      )}
+      className={cn("grid gap-3 sm:grid-cols-2 xl:grid-cols-4", className)}
     >
-      <dl className="grid divide-y divide-border-subtle sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
-        {signals.map((signal, index) => (
-          <div key={index} className="min-w-0 px-4 py-3">
-            <dt className="flex min-w-0 items-center gap-2 text-xs font-medium uppercase tracking-normal text-muted-foreground">
+      {signals.map((signal, index) => (
+        <article
+          key={index}
+          className="min-w-0 overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm"
+          data-admin-detail-signal
+        >
+          <div
+            className={cn("h-1", detailToneRailClassName(signal.tone))}
+            aria-hidden="true"
+          />
+          <div className="grid min-h-[6.25rem] gap-3 p-4">
+            <div className="flex min-w-0 items-center justify-between gap-3">
+              <p className="min-w-0 break-words text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                {signal.label}
+              </p>
               <span
                 aria-hidden="true"
-                className={cn("size-2 rounded-full", detailToneDotClassName(signal.tone))}
-              />
-              <span className="min-w-0 truncate">{signal.label}</span>
-            </dt>
-            <dd className="mt-1 min-w-0 break-words text-lg font-semibold leading-tight text-foreground">
-              {signal.value}
-            </dd>
-            {signal.detail ? (
-              <dd className="mt-1 min-w-0 break-words text-xs leading-5 text-muted-foreground">
-                {signal.detail}
-              </dd>
-            ) : null}
+                className={cn(
+                  "inline-flex size-7 shrink-0 items-center justify-center rounded-md border",
+                  detailToneClassName(signal.tone),
+                )}
+              >
+                <DetailSignalIcon label={signal.label} tone={signal.tone} />
+              </span>
+            </div>
+            <div className="min-w-0">
+              <p className="break-words text-xl font-semibold leading-tight text-foreground">
+                {signal.value}
+              </p>
+              {signal.detail ? (
+                <p className="mt-2 break-words text-xs leading-4 text-muted-foreground">
+                  {signal.detail}
+                </p>
+              ) : null}
+            </div>
           </div>
-        ))}
-      </dl>
+        </article>
+      ))}
     </section>
   );
 }
@@ -220,23 +266,23 @@ export function AdminDetailEvidenceList({
     <section
       data-admin-module
       className={cn(
-        "min-w-0 rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm",
+        "min-w-0 overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm",
         className,
       )}
     >
-      <div className="min-w-0 border-b border-border-subtle px-4 py-3">
+      <div className="min-w-0 border-b border-border-subtle bg-bg-muted/60 px-3 py-2">
         <h2 className="text-sm font-semibold text-foreground">{title}</h2>
         {description ? (
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
+          <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{description}</p>
         ) : null}
       </div>
       <dl className="min-w-0 divide-y divide-border-subtle">
         {items.map((item, index) => (
           <div
             key={index}
-            className="grid gap-1 px-4 py-3 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-4"
+            className="grid min-w-0 gap-1 px-3 py-3 md:grid-cols-[11rem_minmax(0,1fr)] md:gap-4"
           >
-            <dt className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
+            <dt className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
               {item.label}
             </dt>
             <dd
@@ -282,11 +328,11 @@ export function AdminDetailHero({
             </p>
             {status ? <div className="shrink-0">{status}</div> : null}
           </div>
-          <h1 className="mt-2 max-w-4xl text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
+          <h1 className="mt-1 max-w-4xl text-xl font-semibold leading-tight text-foreground">
             {title}
           </h1>
           {description ? (
-            <p className="mt-3 max-w-4xl text-sm leading-6 text-muted-foreground">
+            <p className="mt-2 max-w-4xl text-sm leading-5 text-muted-foreground">
               {description}
             </p>
           ) : null}
@@ -350,15 +396,35 @@ export function AdminDetailActionPanel({
     <section
       data-admin-module
       className={cn(
-        "min-w-0 rounded-lg border border-border-subtle bg-bg-default p-4 text-content-default shadow-sm",
+        "min-w-0 rounded-lg border border-border-subtle bg-bg-default p-3 text-content-default shadow-sm",
         className,
       )}
     >
-      <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+      <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+        Decision panel
+      </p>
+      <h2 className="mt-1 text-base font-semibold leading-tight text-foreground">{title}</h2>
       {description ? (
-        <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
+        <div className="mt-3 rounded-md border border-border-subtle border-l-2 border-l-sky-300 bg-bg-muted/60 p-2.5 dark:border-l-sky-700">
+          <div className="flex min-w-0 gap-2.5">
+            <span
+              aria-hidden="true"
+              className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md border border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-100"
+            >
+              <AlertTriangleIcon className="size-3.5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                Next step
+              </p>
+              <p className="mt-0.5 break-words text-sm font-medium leading-5 text-foreground">
+                {description}
+              </p>
+            </div>
+          </div>
+        </div>
       ) : null}
-      <div className="mt-4 flex flex-wrap gap-2">{children}</div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">{children}</div>
     </section>
   );
 }

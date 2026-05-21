@@ -9,7 +9,6 @@ import {
   AdminDetailActionPanel,
   AdminDetailEvidenceList,
   AdminDetailHero,
-  AdminDetailJsonBlock,
   AdminDetailShell,
   AdminDetailSignalBar,
   AdminDetailTimeline,
@@ -23,7 +22,6 @@ import {
   getClinicRows,
   getRecentReportStream,
 } from "@/lib/demo/selectors";
-import type { ReportStreamItem } from "@/lib/demo/types";
 
 type ReportDetailPageClientProps = {
   consoleHref?: "/demo" | "/district";
@@ -50,28 +48,6 @@ function formatLabel(value: string) {
 
 function formatBoolean(value: boolean) {
   return value ? "Yes" : "No";
-}
-
-function buildReportPayload(report: ReportStreamItem) {
-  return {
-    id: report.id,
-    clinicId: report.clinicId,
-    clinicName: report.clinicName,
-    facilityCode: report.facilityCode,
-    status: report.status,
-    source: report.source,
-    offlineCreated: report.offlineCreated,
-    reporterName: report.reporterName,
-    submittedAt: report.submittedAt,
-    receivedAt: report.receivedAt,
-    pressures: {
-      staff: report.staffPressure,
-      stock: report.stockPressure,
-      queue: report.queuePressure,
-    },
-    reason: report.reason,
-    notes: report.notes,
-  };
 }
 
 export default function ReportDetailPageClient({
@@ -200,7 +176,7 @@ export default function ReportDetailPageClient({
           },
         ]}
       />
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(20rem,0.8fr)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
         <div className="grid min-w-0 gap-4">
           <AdminDetailEvidenceList
             title="Evidence properties"
@@ -284,7 +260,6 @@ export default function ReportDetailPageClient({
               },
             ]}
           />
-          <AdminDetailJsonBlock title="Raw report evidence" value={buildReportPayload(report)} />
         </div>
         <div className="grid min-w-0 gap-4 content-start">
           <AdminDetailActionPanel

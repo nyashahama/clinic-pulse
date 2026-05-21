@@ -5,7 +5,6 @@ import {
   AdminDetailActionPanel,
   AdminDetailEvidenceList,
   AdminDetailHero,
-  AdminDetailJsonBlock,
   AdminDetailShell,
   AdminDetailSignalBar,
   AdminDetailTimeline,
@@ -20,7 +19,6 @@ import {
 } from "@/lib/demo/server-hydration";
 import {
   buildPendingReportReviews,
-  type PendingReportReview,
 } from "@/lib/product/report-review";
 import {
   getAdminReturnSource,
@@ -52,28 +50,6 @@ function reportStatusTone(status: string) {
   }
 
   return "attention" as const;
-}
-
-function reportPayload(review: PendingReportReview) {
-  return {
-    reportId: review.reportId,
-    clinicId: review.clinicId,
-    clinicName: review.clinicName,
-    status: review.status,
-    reason: review.reason,
-    pressures: {
-      staff: review.staffPressure,
-      stock: review.stockPressure,
-      queue: review.queuePressure,
-    },
-    reporterName: review.reporterName,
-    source: review.source,
-    offlineCreated: review.offlineCreated,
-    submittedAt: review.submittedAt,
-    receivedAt: review.receivedAt,
-    reviewState: review.reviewState,
-    notes: review.notes,
-  };
 }
 
 export default async function Page({
@@ -185,7 +161,7 @@ export default async function Page({
           },
         ]}
       />
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(20rem,0.8fr)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
         <div className="grid min-w-0 gap-4">
           <AdminDetailEvidenceList
             title="Evidence properties"
@@ -268,7 +244,6 @@ export default async function Page({
               },
             ]}
           />
-          <AdminDetailJsonBlock title="Raw report evidence" value={reportPayload(review)} />
         </div>
         <div className="grid min-w-0 gap-4 content-start">
           <AdminDetailActionPanel
