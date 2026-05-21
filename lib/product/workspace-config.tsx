@@ -44,7 +44,6 @@ export const HIDDEN_DASHBOARD_PRIMARY_NAV_ROUTES = [
   "/field/drafts-sync",
   "/field/recent-reports",
   "/field/sync-queue",
-  "/district/severity-queue",
   "/district/clinic-network",
   "/district/clinic-evidence",
   "/district/interventions",
@@ -73,7 +72,7 @@ const ROLE_WORKSPACES: Record<AuthRole, DashboardWorkspace> = {
     searchPlaceholder: "Search clinics, services, or field signals",
     primaryAction: {
       title: "Open severity queue",
-      url: "/district#severity-queue",
+      url: "/district/severity-queue",
       icon: <ActivityIcon />,
     },
     groups: [
@@ -85,7 +84,7 @@ const ROLE_WORKSPACES: Record<AuthRole, DashboardWorkspace> = {
             url: "/district",
             icon: <Building2Icon />,
             items: [
-              { title: "Severity queue", url: "/district#severity-queue" },
+              { title: "Severity queue", url: "/district/severity-queue" },
               { title: "Clinic network", url: "/district#clinic-network" },
               { title: "Clinic evidence", url: "/district#clinic-evidence" },
               { title: "Interventions", url: "/district#interventions" },
