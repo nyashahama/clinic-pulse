@@ -15,6 +15,11 @@ import {
 import type { ReactNode } from "react";
 
 import { SectionHeader } from "@/components/demo/section-header";
+import {
+  getReadinessBadgeToneClassName,
+  getReadinessMetricToneClassName,
+  type ReadinessTone,
+} from "@/components/demo/readiness-tones";
 import { Button } from "@/components/ui/button";
 import type { PartnerReadinessApiResponse } from "@/lib/demo/api-types";
 import {
@@ -22,7 +27,6 @@ import {
   isPartnerApiKeyActive,
   type OneTimePartnerApiKeySecret,
   type OneTimePartnerWebhookSecret,
-  type PartnerReadinessMetric,
   type PartnerReadinessSeverity,
 } from "@/lib/demo/partner-readiness";
 import { cn } from "@/lib/utils";
@@ -46,27 +50,9 @@ type PartnerReadinessPanelProps = {
   onClearOneTimeWebhookSecret?: () => void;
 };
 
-type Tone = PartnerReadinessSeverity | "info";
+type Tone = ReadinessTone;
 
 const numberFormatter = new Intl.NumberFormat("en-ZA");
-
-const toneClassNames: Record<Tone, string> = {
-  clear:
-    "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200",
-  watch:
-    "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100",
-  attention:
-    "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-200",
-  info:
-    "border-border-subtle bg-bg-subtle text-content-default dark:border-border-subtle dark:bg-bg-subtle dark:text-content-default",
-};
-
-const metricToneClassNames: Record<PartnerReadinessMetric["tone"], string> = {
-  clear: "text-emerald-700 dark:text-emerald-300",
-  watch: "text-amber-700 dark:text-amber-200",
-  attention: "text-rose-700 dark:text-rose-300",
-  info: "text-content-emphasis",
-};
 
 const severityIcons: Record<PartnerReadinessSeverity, typeof CheckCircle2> = {
   clear: CheckCircle2,
@@ -138,7 +124,7 @@ function Badge({
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold capitalize",
-        toneClassNames[tone],
+        getReadinessBadgeToneClassName(tone),
       )}
     >
       {icon}
@@ -332,7 +318,7 @@ export function PartnerReadinessPanel({
             <dd
               className={cn(
                 "mt-1 break-words text-2xl font-semibold leading-tight tabular-nums",
-                metricToneClassNames[metric.tone],
+                getReadinessMetricToneClassName(metric.tone),
               )}
             >
               {metric.value}
