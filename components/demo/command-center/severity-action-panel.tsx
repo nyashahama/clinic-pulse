@@ -20,6 +20,35 @@ type SeverityActionPanelProps = {
   selectedAction: DistrictSeveritySelectedAction | null;
 };
 
+type SeverityTone = NonNullable<
+  DistrictSeverityQueueViewModel["selectedItem"]
+>["severityLabel"];
+
+const nextStepToneClassName: Record<
+  SeverityTone,
+  {
+    callout: string;
+    icon: string;
+  }
+> = {
+  critical: {
+    callout: "border-l-red-400 dark:border-l-red-700",
+    icon: "border-red-200 bg-red-50 text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-100",
+  },
+  attention: {
+    callout: "border-l-amber-300 dark:border-l-amber-700",
+    icon: "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100",
+  },
+  watch: {
+    callout: "border-l-sky-300 dark:border-l-sky-700",
+    icon: "border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-100",
+  },
+  stable: {
+    callout: "border-l-emerald-300 dark:border-l-emerald-700",
+    icon: "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100",
+  },
+};
+
 export function SeverityActionPanel({
   selectedAction,
   selectedItem,
@@ -39,6 +68,7 @@ export function SeverityActionPanel({
   }
 
   const primaryReport = selectedAction.reportLinks[0] ?? null;
+  const nextStepTone = nextStepToneClassName[selectedItem.severityLabel];
 
   return (
     <section
@@ -76,11 +106,21 @@ export function SeverityActionPanel({
         ) : null}
       </div>
 
-      <div className="mt-3 rounded-md border border-border-subtle border-l-2 border-l-amber-300 bg-bg-muted/60 p-2.5 dark:border-l-amber-700">
+      <div
+        className={cn(
+          "mt-3 rounded-md border border-border-subtle border-l-2 bg-bg-muted/60 p-2.5",
+          nextStepTone.callout,
+        )}
+        data-district-severity-next-step
+        data-tone={selectedItem.severityLabel}
+      >
         <div className="flex min-w-0 gap-2.5">
           <span
             aria-hidden="true"
-            className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100"
+            className={cn(
+              "mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md border",
+              nextStepTone.icon,
+            )}
           >
             <AlertTriangleIcon className="size-3.5" />
           </span>

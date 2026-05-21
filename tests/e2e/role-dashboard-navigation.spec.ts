@@ -232,6 +232,26 @@ test.describe("phase 1 role dashboard navigation", () => {
     await expect(page.getByText("Operational timeline")).toHaveCount(0);
     await expect(page.getByRole("link", { name: "View report evidence" })).toBeVisible();
     await expect(page.getByLabel("Severity queue worklist")).toBeVisible();
+    const nextStepCallout = page.locator(
+      "[data-district-severity-next-step]:visible",
+    );
+    await expect(nextStepCallout).toHaveAttribute("data-tone", "watch");
+    const watchToneColor = await nextStepCallout.evaluate(
+      (element) => getComputedStyle(element).borderLeftColor,
+    );
+
+    await page
+      .getByLabel("Severity queue worklist")
+      .getByRole("button", {
+        name: /Akasia Hills Clinic, stable severity score 0/i,
+      })
+      .click();
+    await expect(nextStepCallout).toHaveAttribute("data-tone", "stable");
+    await expect
+      .poll(() =>
+        nextStepCallout.evaluate((element) => getComputedStyle(element).borderLeftColor),
+      )
+      .not.toBe(watchToneColor);
 
     const firstClinic = page.getByLabel("Severity queue worklist").getByRole("button").first();
     await expect(firstClinic).toBeVisible();
