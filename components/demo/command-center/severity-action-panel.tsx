@@ -42,19 +42,19 @@ export function SeverityActionPanel({
 
   return (
     <section
-      className="rounded-lg border border-border-subtle bg-bg-default p-4 text-content-default shadow-sm"
+      className="rounded-lg border border-border-subtle bg-bg-default p-3 text-content-default shadow-sm"
       data-district-severity-action
     >
-      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex min-w-0 flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
             Selected clinic decision
           </p>
-          <h2 className="mt-1 break-words text-lg font-semibold leading-tight text-foreground">
+          <h2 className="mt-1 break-words text-base font-semibold leading-tight text-foreground">
             {selectedItem.clinicName}
           </h2>
         </div>
-        <div className="flex shrink-0 items-center gap-2 rounded-md border border-border-subtle bg-bg-muted px-2 py-1">
+        <div className="flex h-7 shrink-0 items-center gap-1.5 self-start rounded-md border border-border-subtle bg-bg-muted px-2">
           <ActivityIcon className="size-3.5 text-muted-foreground" />
           <span className="text-xs font-medium text-muted-foreground">Score</span>
           <span className="font-mono text-sm font-semibold text-foreground">
@@ -76,14 +76,19 @@ export function SeverityActionPanel({
         ) : null}
       </div>
 
-      <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50/45 p-3 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-100">
-        <div className="flex min-w-0 gap-3">
-          <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" />
+      <div className="mt-3 rounded-md border border-border-subtle border-l-2 border-l-amber-300 bg-bg-muted/60 p-2.5 dark:border-l-amber-700">
+        <div className="flex min-w-0 gap-2.5">
+          <span
+            aria-hidden="true"
+            className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100"
+          >
+            <AlertTriangleIcon className="size-3.5" />
+          </span>
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-normal text-current/70">
-              Recommended action
+            <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+              Next step
             </p>
-            <p className="mt-1 break-words text-sm font-semibold leading-5">
+            <p className="mt-0.5 break-words text-sm font-medium leading-5 text-foreground">
               {selectedAction.recommendedAction}
             </p>
           </div>
@@ -96,15 +101,15 @@ export function SeverityActionPanel({
         </p>
       </BriefSection>
 
-      <BriefSection title="Latest evidence" className="mt-4">
+      <BriefSection title="Evidence" className="mt-4">
         {primaryReport ? (
           <Link
-            className="group grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] gap-3 rounded-md border border-border-subtle bg-bg-muted p-3 text-left transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="group grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] gap-2.5 rounded-md border border-border-subtle bg-bg-muted/60 p-2.5 text-left transition-colors hover:bg-bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             href={primaryReport.href}
           >
             <span
               aria-hidden="true"
-              className="mt-0.5 inline-flex size-7 items-center justify-center rounded-md border border-border-subtle bg-bg-default text-muted-foreground"
+              className="mt-0.5 inline-flex size-6 items-center justify-center rounded-md border border-border-subtle bg-bg-default text-muted-foreground"
             >
               <FileText className="size-3.5" />
             </span>
@@ -126,10 +131,10 @@ export function SeverityActionPanel({
         )}
       </BriefSection>
 
-      <div className="mt-4 grid gap-2 border-t border-border-subtle pt-4 sm:grid-cols-2">
+      <div className="mt-4 grid gap-2 border-t border-border-subtle pt-3 sm:grid-cols-2">
         <Link
           className={cn(
-            buttonVariants({ variant: "outline", size: "sm" }),
+            buttonVariants({ size: "sm" }),
             "justify-between",
           )}
           href={selectedAction.clinicHref}
@@ -142,7 +147,10 @@ export function SeverityActionPanel({
         </Link>
         {primaryReport ? (
           <Link
-            className={cn(buttonVariants({ size: "sm" }), "justify-between")}
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "justify-between",
+            )}
             href={primaryReport.href}
           >
             <span className="inline-flex min-w-0 items-center gap-1.5">
