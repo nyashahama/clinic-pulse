@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import {
@@ -85,7 +85,16 @@ function parseFiltersFromSearchParams(
   };
 }
 
-function serializeFiltersToSearchParams(filters: DistrictClinicEvidenceFilters) {
+function parseSelectedEvidenceId(searchParams: Pick<URLSearchParams, "get">) {
+  const evidenceId = searchParams.get("evidence")?.trim();
+
+  return evidenceId || null;
+}
+
+function serializeFiltersToSearchParams(
+  filters: DistrictClinicEvidenceFilters,
+  selectedEvidenceId?: string | null,
+) {
   const nextSearchParams = new URLSearchParams();
 
   if (filters.kind !== "all") {
@@ -112,6 +121,10 @@ function serializeFiltersToSearchParams(filters: DistrictClinicEvidenceFilters) 
     nextSearchParams.set("q", filters.query.trim());
   }
 
+  if (selectedEvidenceId?.trim()) {
+    nextSearchParams.set("evidence", selectedEvidenceId.trim());
+  }
+
   return nextSearchParams.toString();
 }
 
@@ -120,7 +133,6 @@ export default function DistrictClinicEvidencePageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { state } = useDemoStore();
-  const [selectedEvidenceId, setSelectedEvidenceId] = useState<string | null>(null);
   const selectedPacketRef = useRef<HTMLDivElement>(null);
   const filterOptions = useMemo(
     () =>
@@ -139,7 +151,11 @@ export default function DistrictClinicEvidencePageClient() {
     () => parseFiltersFromSearchParams(searchParams, clinicIds),
     [clinicIds, searchParams],
   );
-  const serializedFilters = serializeFiltersToSearchParams(filters);
+  const selectedEvidenceId = useMemo(
+    () => parseSelectedEvidenceId(searchParams),
+    [searchParams],
+  );
+  const serializedSearch = serializeFiltersToSearchParams(filters, selectedEvidenceId);
   const viewModel = useMemo(
     () =>
       buildDistrictClinicEvidenceViewModel({
@@ -153,20 +169,19 @@ export default function DistrictClinicEvidencePageClient() {
   useEffect(() => {
     const currentSearch = searchParams.toString();
 
-    if (currentSearch === serializedFilters) {
+    if (currentSearch === serializedSearch) {
       return;
     }
 
     router.replace(
-      serializedFilters ? `${pathname}?${serializedFilters}` : pathname,
+      serializedSearch ? `${pathname}?${serializedSearch}` : pathname,
       { scroll: false },
     );
-  }, [pathname, router, searchParams, serializedFilters]);
+  }, [pathname, router, searchParams, serializedSearch]);
 
   const replaceFilters = (nextFilters: DistrictClinicEvidenceFilters) => {
     const nextSearch = serializeFiltersToSearchParams(nextFilters);
 
-    setSelectedEvidenceId(null);
     router.replace(nextSearch ? `${pathname}?${nextSearch}` : pathname, {
       scroll: false,
     });
@@ -184,7 +199,11 @@ export default function DistrictClinicEvidencePageClient() {
   };
 
   const selectEvidence = (evidenceId: string) => {
-    setSelectedEvidenceId(evidenceId);
+    const nextSearch = serializeFiltersToSearchParams(filters, evidenceId);
+
+    router.replace(nextSearch ? `${pathname}?${nextSearch}` : pathname, {
+      scroll: false,
+    });
 
     if (window.matchMedia("(max-width: 1279px)").matches) {
       window.requestAnimationFrame(() => {

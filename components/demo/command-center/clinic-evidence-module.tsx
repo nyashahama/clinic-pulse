@@ -91,14 +91,11 @@ const railClassName: Record<DistrictClinicEvidenceTone, string> = {
   info: "bg-sky-500",
 };
 
-const readinessPanelClassName: Record<DistrictClinicEvidenceTone, string> = {
-  clear:
-    "border-emerald-300 bg-emerald-50/40 dark:border-emerald-900/60 dark:bg-emerald-950/20",
-  attention:
-    "border-amber-300 bg-amber-50/50 dark:border-amber-900/60 dark:bg-amber-950/20",
-  blocked:
-    "border-destructive/35 bg-destructive/5 dark:border-destructive/50 dark:bg-destructive/15",
-  info: "border-sky-300 bg-sky-50/50 dark:border-sky-900/60 dark:bg-sky-950/20",
+const readinessAccentClassName: Record<DistrictClinicEvidenceTone, string> = {
+  clear: "border-l-emerald-400 dark:border-l-emerald-700",
+  attention: "border-l-amber-400 dark:border-l-amber-700",
+  blocked: "border-l-destructive",
+  info: "border-l-sky-400 dark:border-l-sky-700",
 };
 
 function formatDateTime(value: string) {
@@ -259,62 +256,66 @@ export function ClinicEvidenceCommandHeader({
   header: DistrictClinicEvidenceViewModel["header"];
 }) {
   return (
-    <section className="overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm">
-      <div className="grid min-w-0 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
-        <div className="min-w-0 p-3 sm:p-4">
-          <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-            {header.eyebrow}
-          </p>
-          <h1 className="mt-1 break-words text-xl font-semibold leading-tight text-foreground sm:text-2xl">
-            {header.title}
-          </h1>
-          <p className="mt-1 max-w-3xl break-words text-sm leading-5 text-muted-foreground">
-            {header.description}
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+    <section
+      className={cn(
+        "rounded-lg border border-l-2 border-border-subtle bg-bg-default px-3 py-3 text-content-default shadow-sm sm:px-4",
+        readinessAccentClassName[header.readiness.tone],
+      )}
+    >
+      <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+              {header.eyebrow}
+            </p>
             <ToneBadge tone="info">{header.scope}</ToneBadge>
           </div>
+          <h1 className="mt-1 break-words text-lg font-semibold leading-tight text-foreground sm:text-2xl">
+            {header.title}
+          </h1>
+          <p className="mt-1 hidden max-w-3xl break-words text-sm leading-5 text-muted-foreground sm:block">
+            {header.description}
+          </p>
         </div>
-        <div
-          className={cn(
-            "grid min-w-0 gap-3 border-t p-3 lg:border-l lg:border-t-0 sm:p-4",
-            readinessPanelClassName[header.readiness.tone],
-          )}
-        >
-          <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-3 lg:block">
-            <p className="font-mono text-3xl font-semibold leading-none text-foreground lg:text-4xl">
+        <div className="grid min-w-0 gap-2 lg:min-w-[25rem] lg:justify-items-end">
+          <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-2 lg:max-w-[25rem]">
+            <p className="font-mono text-2xl font-semibold leading-none text-foreground sm:text-3xl">
               {header.readiness.value}
             </p>
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
                 {header.readiness.label}
               </p>
-              <p className="mt-1 max-w-sm break-words text-xs leading-4 text-muted-foreground">
+              <p className="mt-0.5 max-w-sm break-words text-xs leading-4 text-muted-foreground sm:mt-1">
                 {header.readiness.detail}
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid w-full min-w-0 grid-cols-2 gap-2 lg:max-w-[25rem]">
             <Link
-              className={cn(buttonVariants({ size: "sm" }), "justify-between gap-2")}
+              aria-label={header.primaryAction.label}
+              className={cn(buttonVariants({ size: "sm" }), "min-w-0 justify-between gap-2")}
               href={header.primaryAction.href}
             >
               <span className="inline-flex min-w-0 items-center gap-1.5">
                 <ActivityIcon className="size-3.5" />
-                <span className="truncate">{header.primaryAction.label}</span>
+                <span className="truncate sm:hidden">Severity queue</span>
+                <span className="hidden truncate sm:inline">{header.primaryAction.label}</span>
               </span>
               <ArrowRightIcon className="size-3.5" />
             </Link>
             <Link
+              aria-label={header.secondaryAction.label}
               className={cn(
                 buttonVariants({ size: "sm", variant: "outline" }),
-                "justify-between gap-2",
+                "min-w-0 justify-between gap-2",
               )}
               href={header.secondaryAction.href}
             >
               <span className="inline-flex min-w-0 items-center gap-1.5">
                 <MapPinIcon className="size-3.5" />
-                <span className="truncate">{header.secondaryAction.label}</span>
+                <span className="truncate sm:hidden">Clinic network</span>
+                <span className="hidden truncate sm:inline">{header.secondaryAction.label}</span>
               </span>
               <ArrowRightIcon className="size-3.5" />
             </Link>
@@ -632,6 +633,89 @@ function PacketSection({
   );
 }
 
+type PacketProperty = {
+  detail?: ReactNode;
+  label: ReactNode;
+  tone?: DistrictClinicEvidenceTone;
+  value: ReactNode;
+};
+
+function PacketPropertyTable({
+  items,
+}: {
+  items: PacketProperty[];
+}) {
+  return (
+    <dl className="divide-y divide-border-subtle border-y border-border-subtle">
+      {items.map((item, index) => (
+        <div
+          className="grid min-w-0 gap-1 py-2 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:gap-3"
+          key={index}
+        >
+          <dt className="text-xs font-medium text-muted-foreground">{item.label}</dt>
+          <dd className="min-w-0">
+            <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+              {item.tone ? (
+                <span
+                  aria-hidden="true"
+                  className={cn("size-2 rounded-full", railClassName[item.tone])}
+                />
+              ) : null}
+              <span className="min-w-0 break-words text-sm font-medium leading-5 text-foreground">
+                {item.value}
+              </span>
+            </span>
+            {item.detail ? (
+              <span className="mt-0.5 block break-words text-xs leading-4 text-muted-foreground">
+                {item.detail}
+              </span>
+            ) : null}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function PacketTraceList({
+  trace,
+}: {
+  trace: DistrictClinicEvidencePacket["trace"];
+}) {
+  return (
+    <ol className="divide-y divide-border-subtle border-y border-border-subtle">
+      {trace.map((step, index) => (
+        <li
+          className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-2.5 py-2"
+          key={step.id}
+        >
+          <span
+            className={cn(
+              "mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md border bg-bg-default font-mono text-[11px] font-semibold",
+              toneClassName[step.tone],
+            )}
+          >
+            {index + 1}
+          </span>
+          <span className="min-w-0">
+            <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <span className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                {step.label}
+              </span>
+              <span className="min-w-0 break-words text-sm font-semibold text-foreground">
+                {step.title}
+              </span>
+            </span>
+            <span className="mt-0.5 block break-words text-xs leading-4 text-muted-foreground">
+              {step.detail}
+            </span>
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 export function ClinicEvidenceSelectedPacket({
   onSelectEvidence,
   selectedPacket,
@@ -729,41 +813,9 @@ export function ClinicEvidenceSelectedPacket({
       </div>
 
       <div className="mt-4 grid gap-3">
-        <PacketSection title="Evidence trace">
-          <ol className="relative grid gap-2 before:absolute before:bottom-5 before:left-[0.875rem] before:top-5 before:w-px before:bg-border-subtle">
-            {selectedPacket.trace.map((step, index) => (
-              <li
-                key={step.id}
-                className="relative grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-2.5"
-              >
-                <span
-                  className={cn(
-                    "z-10 mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full border bg-bg-default font-mono text-[11px] font-semibold",
-                    toneClassName[step.tone],
-                  )}
-                >
-                  {index + 1}
-                </span>
-                <span className="min-w-0 rounded-md border border-border-subtle bg-bg-muted/45 p-2">
-                  <span className="flex min-w-0 flex-wrap items-center gap-1.5">
-                    <span className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                      {step.label}
-                    </span>
-                    <span className="min-w-0 break-words text-sm font-semibold text-foreground">
-                      {step.title}
-                    </span>
-                  </span>
-                  <span className="mt-1 block break-words text-xs leading-4 text-muted-foreground">
-                    {step.detail}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ol>
-        </PacketSection>
         <div
           className={cn(
-            "rounded-md border border-border-subtle border-l-2 bg-bg-muted/60 p-3",
+            "rounded-md border border-border-subtle border-l-2 bg-bg-muted/60 p-2.5",
             selectedPacket.actionTone === "blocked" && "border-l-destructive",
             selectedPacket.actionTone === "attention" &&
               "border-l-amber-400 dark:border-l-amber-700",
@@ -776,7 +828,7 @@ export function ClinicEvidenceSelectedPacket({
           <div className="flex min-w-0 gap-2.5">
             <span
               className={cn(
-                "mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md border",
+                "mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md border",
                 toneClassName[selectedPacket.actionTone],
               )}
             >
@@ -792,42 +844,49 @@ export function ClinicEvidenceSelectedPacket({
             </div>
           </div>
         </div>
-        <PacketSection title="Evidence summary">
-          <p className="text-sm font-medium leading-5 text-foreground">
-            {selectedPacket.title}
-          </p>
-          <p className="mt-1 text-sm leading-5 text-muted-foreground">
-            {selectedPacket.detail}
-          </p>
+        <PacketSection title="Decision summary">
+          <div data-district-clinic-evidence-decision-summary>
+            <PacketPropertyTable items={selectedPacket.decisionSummary} />
+          </div>
         </PacketSection>
-        <PacketSection title="Verification need">
-          <p className="text-sm leading-5 text-muted-foreground">
-            {selectedPacket.verificationNeed}
-          </p>
+        <PacketSection title="Evidence trace">
+          <PacketTraceList trace={selectedPacket.trace} />
         </PacketSection>
-        <PacketSection title="Provenance">
-          <dl className="grid gap-2 text-sm sm:grid-cols-2">
-            {selectedPacket.provenance.map((field) => (
-              <div key={field.label}>
-                <dt className="text-xs text-muted-foreground">{field.label}</dt>
-                <dd className="mt-0.5 break-words text-foreground">{field.value}</dd>
-              </div>
-            ))}
-          </dl>
+        <PacketSection title="Evidence context">
+          <PacketPropertyTable
+            items={[
+              {
+                detail: selectedPacket.detail,
+                label: "Summary",
+                tone: selectedPacket.tone,
+                value: selectedPacket.title,
+              },
+              {
+                detail: selectedPacket.verificationNeed,
+                label: "Verification",
+                tone: selectedPacket.status === "operational" ? "clear" : selectedPacket.tone,
+                value:
+                  selectedPacket.status === "operational"
+                    ? "Audit-ready"
+                    : "Clinic owner confirmation",
+              },
+              ...selectedPacket.provenance,
+            ]}
+          />
         </PacketSection>
         <PacketSection title="Clinic evidence timeline">
           <p className="mb-2 text-xs leading-4 text-muted-foreground">
             {selectedPacket.timelineSummary}
           </p>
-          <div className="grid gap-2">
+          <div className="divide-y divide-border-subtle border-y border-border-subtle">
             {timeline.slice(0, 4).map((item) => (
               <div
                 key={item.id}
-                className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-2 rounded-md border border-border-subtle bg-bg-muted/55 p-2"
+                className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-2 py-2"
               >
                 <span
                   className={cn(
-                    "mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md border",
+                    "mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md border bg-bg-default",
                     toneClassName[item.tone],
                   )}
                 >

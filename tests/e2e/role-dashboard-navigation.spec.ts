@@ -399,6 +399,14 @@ test.describe("phase 1 role dashboard navigation", () => {
     await expect(
       page.locator("[data-district-clinic-evidence-selected-packet]"),
     ).toContainText("audit-001");
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("evidence"))
+      .toBe("audit-001");
+
+    await page.goto("/district/clinic-evidence?evidence=audit-001");
+    await expect(
+      page.locator("[data-district-clinic-evidence-selected-packet]"),
+    ).toContainText("audit-001");
 
     await page.getByRole("button", { name: /Needs action/i }).click();
     await expect
@@ -448,7 +456,7 @@ test.describe("phase 1 role dashboard navigation", () => {
     const metricsBox = await metrics.boundingBox();
     const ledgerBox = await ledger.boundingBox();
 
-    expect(packetBox?.y).toBeLessThan(440);
+    expect(packetBox?.y).toBeLessThan(300);
     expect(packetBox?.y).toBeLessThan(metricsBox?.y ?? Number.POSITIVE_INFINITY);
     expect(packetBox?.y).toBeLessThan(ledgerBox?.y ?? Number.POSITIVE_INFINITY);
   });

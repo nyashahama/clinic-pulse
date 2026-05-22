@@ -71,6 +71,25 @@ describe("buildDistrictClinicEvidenceViewModel", () => {
       /^\/district\/clinics\/[^?]+\?from=district-clinic-evidence$/,
     );
     expect(viewModel.selectedPacket?.actionTone).toBe("blocked");
+    expect(viewModel.selectedPacket?.decisionSummary).toEqual([
+      expect.objectContaining({
+        label: "Decision",
+        tone: "blocked",
+        value: "Review report",
+      }),
+      expect.objectContaining({
+        label: "Signal",
+        tone: "blocked",
+        value: "non functional",
+      }),
+      expect.objectContaining({
+        label: "Trust chain",
+      }),
+      expect.objectContaining({
+        label: "Verification gap",
+        value: "Owner confirmation",
+      }),
+    ]);
     expect(viewModel.selectedPacket?.trace.map((step) => step.label)).toEqual([
       "Source",
       "Signal",

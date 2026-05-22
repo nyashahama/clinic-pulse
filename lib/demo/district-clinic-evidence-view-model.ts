@@ -104,8 +104,16 @@ export type DistrictClinicEvidenceTraceStep = {
   tone: DistrictClinicEvidenceTone;
 };
 
+export type DistrictClinicEvidenceDecisionSummaryItem = {
+  label: string;
+  value: string;
+  detail: string;
+  tone: DistrictClinicEvidenceTone;
+};
+
 export type DistrictClinicEvidencePacket = DistrictClinicEvidenceRow & {
   actionTone: DistrictClinicEvidenceTone;
+  decisionSummary: DistrictClinicEvidenceDecisionSummaryItem[];
   navigation: {
     previousEvidenceId: string | null;
     nextEvidenceId: string | null;
@@ -557,6 +565,72 @@ function buildPacketTrace(
   ];
 }
 
+function decisionValue(row: DistrictClinicEvidenceRow) {
+  if (row.kind === "alert") {
+    return "Confirm alert";
+  }
+
+  if (row.kind === "audit") {
+    return "Validate audit";
+  }
+
+  return "Review report";
+}
+
+function verificationValue(row: DistrictClinicEvidenceRow) {
+  return row.status === "operational" ? "Audit-ready" : "Owner confirmation";
+}
+
+function verificationNeed(row: DistrictClinicEvidenceRow) {
+  return row.status === "operational"
+    ? "Confirm normal reporting cadence and keep this evidence available for audit review."
+    : "Confirm the evidence with the clinic owner before clearing the district decision trail.";
+}
+
+function recommendedAction(row: DistrictClinicEvidenceRow) {
+  if (row.kind === "report") {
+    return "Read the report brief, compare it with the clinic timeline, and confirm whether district posture should change.";
+  }
+
+  if (row.kind === "alert") {
+    return "Confirm whether this alert still reflects active service pressure before changing routing or intervention notes.";
+  }
+
+  return "Use this audit event to validate who changed the evidence chain and what clinic state it affected.";
+}
+
+function buildDecisionSummary(
+  row: DistrictClinicEvidenceRow,
+  timeline: DistrictClinicEvidenceRow[],
+): DistrictClinicEvidenceDecisionSummaryItem[] {
+  return [
+    {
+      label: "Decision",
+      value: decisionValue(row),
+      detail: row.title,
+      tone: row.tone,
+    },
+    {
+      label: "Signal",
+      value: formatValueLabel(row.status),
+      detail: row.detail,
+      tone: row.tone,
+    },
+    {
+      label: "Trust chain",
+      value: `${formatCount(timeline.length)} records`,
+      detail: `${sourceLabel(row.source)} · ${row.actorName}`,
+      tone: timeline.length > 1 ? "info" : row.tone,
+    },
+    {
+      label: "Verification gap",
+      value: verificationValue(row),
+      detail: verificationNeed(row),
+      tone: row.status === "operational" ? "clear" : row.tone,
+    },
+  ];
+}
+
 function buildPacketNavigation(
   selectedRow: DistrictClinicEvidenceRow,
   rows: DistrictClinicEvidenceRow[],
@@ -588,6 +662,7 @@ function buildPacket(
   return {
     ...row,
     actionTone: row.tone,
+    decisionSummary: buildDecisionSummary(row, timeline),
     navigation: buildPacketNavigation(row, reviewRows),
     provenance: [
       { label: "Source", value: sourceLabel(row.source) },
@@ -595,18 +670,10 @@ function buildPacket(
       { label: "Facility code", value: row.facilityCode },
       { label: "Linked records", value: formatCount(timeline.length) },
     ],
-    recommendedAction:
-      row.kind === "report"
-        ? "Read the report brief, compare it with the clinic timeline, and confirm whether district posture should change."
-        : row.kind === "alert"
-          ? "Confirm whether this alert still reflects active service pressure before changing routing or intervention notes."
-          : "Use this audit event to validate who changed the evidence chain and what clinic state it affected.",
+    recommendedAction: recommendedAction(row),
     timelineSummary: `${formatCount(timeline.length)} linked evidence records for this clinic.`,
     trace: buildPacketTrace(row),
-    verificationNeed:
-      row.status === "operational"
-        ? "Confirm normal reporting cadence and keep this evidence available for audit review."
-        : "Confirm the evidence with the clinic owner before clearing the district decision trail.",
+    verificationNeed: verificationNeed(row),
   };
 }
 
