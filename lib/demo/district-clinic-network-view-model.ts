@@ -56,11 +56,24 @@ export type DistrictClinicNetworkClinic = {
   longitude: number;
 };
 
+export type DistrictClinicNetworkRoutingAlternative = {
+  clinicId: string;
+  clinicName: string;
+  facilityCode: string;
+  status: ClinicStatus;
+  freshness: Freshness;
+  coverageLabel: string;
+  matchedService: string;
+  distanceLabel: string;
+  clinicHref: string;
+};
+
 export type DistrictClinicNetworkSelectedClinic = DistrictClinicNetworkClinic & {
   recommendedAction: string;
   verificationNeed: string;
   networkRole: string;
   primaryService: string;
+  routingAlternatives: DistrictClinicNetworkRoutingAlternative[];
 };
 
 export type DistrictClinicNetworkViewModel = {
@@ -98,6 +111,29 @@ function formatCount(value: number) {
 
 function encodeRouteId(value: string) {
   return encodeURIComponent(value);
+}
+
+function estimateClinicDistanceKm(
+  left: Pick<DistrictClinicNetworkClinic, "latitude" | "longitude">,
+  right: Pick<ClinicRow, "latitude" | "longitude">,
+) {
+  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const dLat = toRadians(right.latitude - left.latitude);
+  const dLng = toRadians(right.longitude - left.longitude);
+  const leftLat = toRadians(left.latitude);
+  const rightLat = toRadians(right.latitude);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(leftLat) * Math.cos(rightLat) * Math.sin(dLng / 2) ** 2;
+
+  return Math.max(0.1, 2 * earthRadiusKm * Math.asin(Math.sqrt(a)));
+}
+
+function formatDistanceLabel(distanceKm: number) {
+  return `${new Intl.NumberFormat("en-ZA", {
+    maximumFractionDigits: distanceKm < 10 ? 1 : 0,
+  }).format(distanceKm)} km`;
 }
 
 function getStatusRiskRank(status: ClinicStatus) {
@@ -218,6 +254,64 @@ function getNetworkRole(clinic: DistrictClinicNetworkClinic) {
   }
 
   return "Monitoring node";
+}
+
+function getRoutingAlternatives(
+  state: DemoState,
+  clinic: DistrictClinicNetworkClinic,
+): DistrictClinicNetworkRoutingAlternative[] {
+  const alternatives = new Map<
+    string,
+    DistrictClinicNetworkRoutingAlternative & { distanceKm: number }
+  >();
+
+  for (const service of clinic.services) {
+    for (const alternative of getAlternativeClinics(state, clinic.clinicId, service)) {
+      const existing = alternatives.get(alternative.id);
+
+      if (existing) {
+        continue;
+      }
+
+      const distanceKm = estimateClinicDistanceKm(clinic, alternative);
+
+      alternatives.set(alternative.id, {
+        clinicId: alternative.id,
+        clinicName: alternative.name,
+        facilityCode: alternative.facilityCode,
+        status: alternative.status,
+        freshness: alternative.freshness,
+        coverageLabel: getCoverageLabel(alternative, 0),
+        matchedService: service,
+        distanceKm,
+        distanceLabel: formatDistanceLabel(distanceKm),
+        clinicHref: `/district/clinics/${encodeRouteId(alternative.id)}?from=${RETURN_SOURCE}`,
+      });
+    }
+  }
+
+  return [...alternatives.values()]
+    .sort((left, right) => {
+      const statusDelta = getStatusRiskRank(left.status) - getStatusRiskRank(right.status);
+
+      if (statusDelta !== 0) {
+        return statusDelta;
+      }
+
+      return left.distanceKm - right.distanceKm;
+    })
+    .slice(0, 3)
+    .map((alternative) => ({
+      clinicId: alternative.clinicId,
+      clinicName: alternative.clinicName,
+      facilityCode: alternative.facilityCode,
+      status: alternative.status,
+      freshness: alternative.freshness,
+      coverageLabel: alternative.coverageLabel,
+      matchedService: alternative.matchedService,
+      distanceLabel: alternative.distanceLabel,
+      clinicHref: alternative.clinicHref,
+    }));
 }
 
 function toNetworkClinic({
@@ -378,6 +472,7 @@ export function buildDistrictClinicNetworkViewModel({
         verificationNeed: getVerificationNeed(selectedBase),
         networkRole: getNetworkRole(selectedBase),
         primaryService: selectedBase.services[0] ?? "Primary care",
+        routingAlternatives: getRoutingAlternatives(state, selectedBase),
       }
     : null;
 

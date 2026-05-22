@@ -41,6 +41,18 @@ describe("buildDistrictClinicNetworkViewModel", () => {
     expect(viewModel.selectedClinic?.clinicHref).toMatch(
       /^\/district\/clinics\/[^?]+\?from=district-clinic-network$/,
     );
+    expect(viewModel.selectedClinic?.routingAlternatives.length).toBeGreaterThan(0);
+    expect(viewModel.selectedClinic?.routingAlternatives[0]).toEqual(
+      expect.objectContaining({
+        clinicHref: expect.stringMatching(
+          /^\/district\/clinics\/[^?]+\?from=district-clinic-network$/,
+        ),
+        clinicName: expect.any(String),
+        coverageLabel: expect.any(String),
+        facilityCode: expect.any(String),
+        matchedService: expect.any(String),
+      }),
+    );
     expect(viewModel.filterOptions.services).toContain("Pharmacy");
     expect(viewModel.coverage.totalClinics).toBe(state.clinics.length);
   });

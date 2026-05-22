@@ -99,7 +99,6 @@ const hiddenStandaloneHrefs = [
   "/field/drafts-sync",
   "/field/recent-reports",
   "/field/sync-queue",
-  "/district/clinic-evidence",
   "/district/interventions",
   "/admin/exports",
 ];
@@ -305,8 +304,26 @@ test.describe("phase 1 role dashboard navigation", () => {
     await expect(page.getByRole("button", { name: /Status filter/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /Service filter/i })).toBeVisible();
     await expect(page.getByRole("searchbox", { name: "Search clinic network" })).toBeVisible();
+    await expect(
+      page.locator('[data-district-clinic-network-layout="map-first"]'),
+    ).toBeVisible();
+    await expect(
+      page.locator("[data-district-clinic-network-command-surface]"),
+    ).toBeVisible();
+    await expect(
+      page
+        .locator("[data-district-clinic-network-command-surface]")
+        .getByLabel("District clinic network map"),
+    ).toBeVisible();
+    await expect(
+      page
+        .locator("[data-district-clinic-network-command-surface]")
+        .getByText("Routing capacity"),
+    ).toBeVisible();
+    await expect(page.getByText(/without turning the network page/i)).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Coverage table" })).toBeVisible();
     await expect(page.getByLabel("Clinic network worklist")).toBeVisible();
-    await expect(page.getByText("Selected clinic profile")).toBeVisible();
+    await expect(page.getByText("Routing alternatives")).toBeVisible();
     await expect(
       page.getByLabel("Clinic network metrics").getByText("Network coverage"),
     ).toBeVisible();
@@ -325,6 +342,67 @@ test.describe("phase 1 role dashboard navigation", () => {
       page.getByRole("link", { name: "Open clinic detail" }).click(),
     ]);
     await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
+  });
+
+  test("clinic network is map-first on mobile", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile-chrome", "Mobile Clinic network hierarchy");
+
+    await signInAs(page, "district-manager@clinicpulse.local", "/district");
+    await page.goto("/district/clinic-network");
+
+    const commandSurface = page.locator("[data-district-clinic-network-command-surface]");
+    const metrics = page.locator("[data-district-clinic-network-metrics]");
+
+    await expect(commandSurface).toBeVisible();
+    await expect(metrics).toBeVisible();
+
+    const commandBox = await commandSurface.boundingBox();
+    const metricsBox = await metrics.boundingBox();
+
+    expect(commandBox?.y).toBeLessThan(metricsBox?.y ?? Number.POSITIVE_INFINITY);
+    await expect(page.getByLabel("District clinic network map")).toBeVisible();
+    await expect(commandSurface.getByText("Routing capacity", { exact: true })).toBeVisible();
+  });
+
+  test("district manager opens clinic evidence as a standalone module", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop-chrome", "Desktop sidebar navigation regression");
+
+    await signInAs(page, "district-manager@clinicpulse.local", "/district");
+
+    const sidebar = await openDashboardSidebar(page);
+    const link = sidebar.getByRole("link", { name: "Clinic evidence", exact: true });
+
+    await expect(link).toHaveAttribute("href", "/district/clinic-evidence");
+    await Promise.all([
+      page.waitForURL(/\/district\/clinic-evidence$/),
+      link.click(),
+    ]);
+
+    await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
+    await expect(page.locator('[data-district-module="clinic-evidence"]')).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Clinic evidence" })).toBeVisible();
+    await expect(page.locator("[data-district-clinic-evidence-metrics]")).toBeVisible();
+    await expect(page.locator("[data-district-clinic-evidence-toolbar]")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Evidence type filter/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Clinic filter/i })).toBeVisible();
+    await expect(page.getByRole("searchbox", { name: "Search clinic evidence" })).toBeVisible();
+    await expect(page.getByLabel("Clinic evidence ledger")).toBeVisible();
+    await expect(page.getByText("Selected evidence packet")).toBeVisible();
+
+    await page.getByRole("button", { name: /Evidence type filter: All evidence/i }).click();
+    await page.getByRole("menuitemradio", { name: "Reports" }).click();
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("kind"))
+      .toBe("report");
+    await expect(page.locator("[data-district-clinic-evidence-toolbar]")).toContainText("Reports");
+
+    await Promise.all([
+      page.waitForURL(/\/district\/reports\/[^?]+\?from=district-clinic-evidence$/),
+      page.getByRole("link", { name: "Open report evidence" }).click(),
+    ]);
+    await expect(page.getByRole("heading", { name: "Report evidence brief" })).toBeVisible();
   });
 
   test("district severity queue filters update queue state and URL", async ({
