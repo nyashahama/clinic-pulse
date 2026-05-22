@@ -122,18 +122,17 @@ export function DataIngestionWorkspace({
   return (
     <section aria-label="Ingestion evidence workspace" className="grid gap-4">
       <section className="overflow-hidden rounded-xl border border-border-subtle bg-bg-default text-content-default shadow-sm">
-        <div className="grid gap-4 border-b border-border-subtle px-4 py-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+        <div className="grid gap-3 border-b border-border-subtle px-4 py-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
               Ingestion workspace
             </p>
-            <h2 className="mt-1 text-xl font-semibold tracking-[-0.02em] text-foreground">
+            <h2 className="mt-1 text-lg font-semibold tracking-[-0.02em] text-foreground">
               Ingestion evidence ledger
             </h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-              Review field reports, validation blockers, offline intake, and stale clinic evidence
-              from one ledger. Inspect evidence without leaving the page; open clinic context only
-              when the source record needs investigation.
+            <p className="mt-1 max-w-3xl text-sm leading-5 text-muted-foreground">
+              Inspect report evidence in place; open clinic context only when the source record
+              needs investigation.
             </p>
           </div>
           <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
@@ -146,14 +145,14 @@ export function DataIngestionWorkspace({
           </div>
         </div>
 
-        <div className="grid gap-3 border-b border-border-subtle bg-bg-muted/30 p-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 border-b border-border-subtle bg-bg-muted/30 p-3 md:grid-cols-2 xl:grid-cols-4">
           {metrics.map((metric) => (
             <article
               key={metric.id}
               className="min-w-0 overflow-hidden rounded-xl border border-border-subtle bg-bg-default shadow-sm"
             >
               <div className={cn("h-1", toneRailClassName[metric.tone])} aria-hidden="true" />
-              <div className="grid gap-3 p-4">
+              <div className="grid gap-2.5 p-3">
                 <div className="flex min-w-0 items-start justify-between gap-3">
                   <p className="min-w-0 break-words text-xs font-semibold uppercase tracking-normal text-muted-foreground">
                     {metric.label}
@@ -169,10 +168,10 @@ export function DataIngestionWorkspace({
                   </span>
                 </div>
                 <div className="min-w-0">
-                  <p className="font-mono text-2xl font-semibold leading-none text-foreground">
+                  <p className="font-mono text-[1.65rem] font-semibold leading-none text-foreground">
                     {metric.value}
                   </p>
-                  <p className="mt-2 break-words text-xs leading-5 text-muted-foreground">
+                  <p className="mt-1.5 break-words text-xs leading-4 text-muted-foreground">
                     {metric.detail}
                   </p>
                 </div>
@@ -181,7 +180,7 @@ export function DataIngestionWorkspace({
           ))}
         </div>
 
-        <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]">
+        <div className="grid gap-4 p-3 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]">
           <section aria-label="Pending report queue" className="flex min-w-0 flex-col gap-3 self-start">
             <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -193,8 +192,7 @@ export function DataIngestionWorkspace({
                 </h3>
               </div>
               <p className="max-w-xl text-sm text-muted-foreground">
-                Rows are ingestion events. The clinic link is explicit so receipt review does not
-                accidentally become navigation.
+                Rows are ingestion events; clinic navigation stays explicit.
               </p>
             </div>
 
@@ -208,7 +206,7 @@ export function DataIngestionWorkspace({
                       key={item.id}
                       aria-label={`Ingestion event for ${item.clinicId}`}
                       className={cn(
-                        "grid gap-3 rounded-xl border border-border-subtle bg-bg-default p-3 transition md:grid-cols-[minmax(0,0.75fr)_minmax(0,1fr)_auto]",
+                        "grid gap-3 rounded-xl border border-border-subtle bg-bg-default p-3 transition md:grid-cols-[minmax(0,0.68fr)_minmax(0,1fr)_auto]",
                         isSelected && "border-amber-300 bg-amber-50/55 shadow-sm",
                       )}
                     >
@@ -284,8 +282,8 @@ export function DataIngestionWorkspace({
               </h3>
             </div>
             {selectedItem ? (
-              <div className="grid gap-4 p-4">
-                <div className="rounded-xl border border-border-subtle bg-bg-muted/30 p-4">
+              <div className="grid gap-3 p-4">
+                <div className="rounded-xl border border-border-subtle bg-bg-muted/30 p-3">
                   <div className="flex min-w-0 items-start gap-3">
                     <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-border-subtle bg-bg-default text-muted-foreground">
                       <FileSearchIcon className="size-5" aria-hidden="true" />
@@ -299,7 +297,7 @@ export function DataIngestionWorkspace({
                       </p>
                     </div>
                   </div>
-                  <div className="mt-4 rounded-lg border border-border-subtle bg-bg-default p-3">
+                  <div className="mt-3 rounded-lg border border-border-subtle bg-bg-default p-3">
                     <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
                       Recommended action
                     </p>
@@ -335,10 +333,10 @@ export function DataIngestionWorkspace({
                   <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
                     Receipt trail
                   </p>
-                  <ol className="mt-3 grid gap-2 text-sm text-foreground">
+                  <ol className="relative mt-3 grid gap-0 text-sm text-foreground before:absolute before:left-2.5 before:top-2 before:h-[calc(100%-1rem)] before:w-px before:bg-border-subtle">
                     {selectedItem.receiptTrail.map((entry, index) => (
-                      <li key={entry} className="flex gap-3 rounded-lg bg-bg-default p-2">
-                        <span className="mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-foreground text-[0.65rem] font-semibold text-background">
+                      <li key={entry} className="relative flex gap-3 py-2">
+                        <span className="mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full border border-border-subtle bg-bg-default text-[0.65rem] font-semibold text-muted-foreground">
                           {index + 1}
                         </span>
                         <span className="break-words">{entry}</span>
