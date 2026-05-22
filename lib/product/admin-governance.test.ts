@@ -214,10 +214,19 @@ it("links reporting coverage clinic rows to operational clinic detail", () => {
 
 it("links data-ingestion clinic and report rows to operational clinic detail", () => {
   const source = readFileSync("app/(demo)/admin/data-ingestion/page.tsx", "utf8");
+  const componentSource = readFileSync("components/product/data-ingestion-workspace.tsx", "utf8");
 
-  expect(source).toContain(
-    "getRowAriaLabel={(row) => `Open pending report evidence for ${row.clinicId}`}",
+  expect(source).toContain("DataIngestionWorkspace");
+  expect(componentSource).toContain('aria-label="Pending report queue"');
+  expect(componentSource).toContain("Evidence receipt");
+  expect(componentSource).toContain("Ingestion receipt");
+  expect(componentSource).toContain(
+    "aria-label={`View evidence receipt for ${row.clinicId}`}",
   );
+  expect(componentSource).toContain(
+    "aria-label={`Open clinic context for ${row.clinicId}`}",
+  );
+  expect(componentSource).toContain("href={row.clinicHref}");
   expect(source).toContain(
     'const returnSource = "admin-data-ingestion";',
   );
@@ -245,11 +254,11 @@ it("uses admin clinic detail return sources for back navigation", () => {
 it("keeps aggregate data-ingestion signal rows static", () => {
   const source = readFileSync("app/(demo)/admin/data-ingestion/page.tsx", "utf8");
   const signalTableStart = source.indexOf('label="Ingestion signal evidence"');
-  const pendingTableStart = source.indexOf('label="Pending report evidence"');
+  const freshnessTableStart = source.indexOf('label="Clinic freshness backlog"');
 
   expect(signalTableStart).toBeGreaterThan(-1);
-  expect(pendingTableStart).toBeGreaterThan(signalTableStart);
-  expect(source.slice(signalTableStart, pendingTableStart)).not.toContain("getRowHref");
+  expect(freshnessTableStart).toBeGreaterThan(signalTableStart);
+  expect(source.slice(signalTableStart, freshnessTableStart)).not.toContain("getRowHref");
 });
 
 it("defines canonical detail routes for entity-backed admin evidence rows", () => {

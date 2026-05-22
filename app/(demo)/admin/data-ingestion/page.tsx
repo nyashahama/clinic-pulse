@@ -7,6 +7,10 @@ import {
   type AdminTone,
 } from "@/components/product/admin-module";
 import {
+  DataIngestionWorkspace,
+  type DataIngestionQueueRow,
+} from "@/components/product/data-ingestion-workspace";
+import {
   fetchOperationalClinics,
   fetchPendingReports,
   fetchSyncSummary,
@@ -116,6 +120,47 @@ function buildClinicDetailHref(clinicId: string) {
   return `/district/clinics/${encodeURIComponent(clinicId)}?from=${returnSource}`;
 }
 
+function actionForReport(report: ReportApiResponse) {
+  if (report.offlineCreated) {
+    return "Validate offline payload";
+  }
+
+  if (report.reviewState === "pending") {
+    return "Confirm source payload";
+  }
+
+  if (report.reviewState === "rejected") {
+    return "Escalate rejected report";
+  }
+
+  return "Keep in intake watchlist";
+}
+
+function buildPendingReportQueueRow(
+  report: ReportApiResponse,
+  clinicLabel?: string,
+): DataIngestionQueueRow {
+  const trust = dataTrustForReport(report);
+
+  return {
+    id: String(report.id),
+    clinicId: report.clinicId,
+    clinicLabel: clinicLabel ?? report.clinicId,
+    reporterLabel: report.reporterName ?? "Field report",
+    sourceLabel: report.offlineCreated ? "Offline field report" : formatLabel(report.source),
+    evidence: reportEvidence(report),
+    submittedLabel: formatDateTime(report.submittedAt),
+    receivedLabel: formatDateTime(report.receivedAt),
+    reviewLabel: formatLabel(report.reviewState),
+    reviewTone: toneForAttention(report.reviewState === "pending" ? 1 : 0),
+    trustLabel: trust.label,
+    trustTone: trust.tone,
+    trustDescription: trust.description,
+    actionLabel: actionForReport(report),
+    clinicHref: buildClinicDetailHref(report.clinicId),
+  };
+}
+
 export default async function Page() {
   await requireDemoWorkflowAccess("admin");
 
@@ -134,6 +179,10 @@ export default async function Page() {
     validationFailureCount: syncSummary.validationFailures,
   });
   const clinicsNeedingReview = clinics.filter(clinicNeedsIngestionReview);
+  const clinicNameById = new Map(clinics.map((row) => [row.clinic.id, row.clinic.name]));
+  const pendingReportRows = pendingReports.map((report) =>
+    buildPendingReportQueueRow(report, clinicNameById.get(report.clinicId)),
+  );
   const ingestionSignals: IngestionSignal[] = [
     {
       id: "offline-queue",
@@ -213,6 +262,7 @@ export default async function Page() {
           Retry and incident handoff controls are not exposed.
         </span>
       </AdminFilterBar>
+      <DataIngestionWorkspace rows={pendingReportRows} />
       <AdminEvidenceTable
         label="Ingestion signal evidence"
         rows={ingestionSignals}
@@ -241,65 +291,7 @@ export default async function Page() {
         ]}
       />
       <AdminEvidenceTable
-        label="Pending report evidence"
-        rows={pendingReports}
-        getRowAriaLabel={(row) => `Open pending report evidence for ${row.clinicId}`}
-        getRowHref={(row) => buildClinicDetailHref(row.clinicId)}
-        getRowKey={(row) => String(row.id)}
-        emptyState={
-          <AdminEmptyState
-            title="No pending report evidence"
-            description="Field reports have no pending review pressure in the current scenario state."
-          />
-        }
-        columns={[
-          {
-            key: "clinic",
-            header: "Clinic",
-            render: (row) => row.clinicId,
-          },
-          {
-            key: "reporter",
-            header: "Reporter / source",
-            render: (row) => (
-              <div className="space-y-1">
-                <p className="font-medium text-foreground">
-                  {row.reporterName ?? "Field report"}
-                </p>
-                <p className="text-xs text-muted-foreground">{formatLabel(row.source)}</p>
-              </div>
-            ),
-          },
-          {
-            key: "evidence",
-            header: "Pending report evidence",
-            render: (row) => {
-              const trust = dataTrustForReport(row);
-
-              return (
-                <div className="space-y-1">
-                  <p>{reportEvidence(row)}</p>
-                  <StatusBadge tone={trust.tone}>{trust.label}</StatusBadge>
-                </div>
-              );
-            },
-          },
-          {
-            key: "submitted",
-            header: "Submitted / received",
-            render: (row) => (
-              <div className="space-y-1 text-sm">
-                <p>{formatDateTime(row.submittedAt)}</p>
-                <p className="text-xs text-muted-foreground">
-                  Received {formatDateTime(row.receivedAt)}
-                </p>
-              </div>
-            ),
-          },
-        ]}
-      />
-      <AdminEvidenceTable
-        label="Clinic ingestion freshness"
+        label="Clinic freshness backlog"
         rows={clinicsNeedingReview}
         getRowAriaLabel={(row) => `Open ${row.clinic.name} clinic ingestion detail`}
         getRowHref={(row) => buildClinicDetailHref(row.clinic.id)}
