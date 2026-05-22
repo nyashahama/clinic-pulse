@@ -4,6 +4,7 @@ import {
   ActivityIcon,
   AlertTriangleIcon,
   ArrowRight,
+  BadgeCheckIcon,
   CheckCircle2Icon,
   Clock3Icon,
   FileText,
@@ -12,6 +13,7 @@ import {
   RadioTowerIcon,
   RotateCcwIcon,
   UserRound,
+  WifiOffIcon,
 } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
@@ -95,7 +97,19 @@ function EvidenceToneIcon({
     return <UserRound className={iconClassName} />;
   }
 
-  if (icon === "check" || tone === "stable") {
+  if (icon === "offline") {
+    return <WifiOffIcon className={iconClassName} />;
+  }
+
+  if (icon === "radio") {
+    return <RadioTowerIcon className={iconClassName} />;
+  }
+
+  if (icon === "check") {
+    return <BadgeCheckIcon className={iconClassName} />;
+  }
+
+  if (tone === "stable") {
     return <CheckCircle2Icon className={iconClassName} />;
   }
 
@@ -414,7 +428,7 @@ export function EvidenceDecisionPanel({
           </span>
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-              Next step
+              Recommended action
             </p>
             <p className="mt-0.5 break-words text-sm font-medium leading-5 text-foreground">
               {decision.nextStep}

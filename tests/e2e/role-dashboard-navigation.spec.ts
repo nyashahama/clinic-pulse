@@ -99,7 +99,6 @@ const hiddenStandaloneHrefs = [
   "/field/drafts-sync",
   "/field/recent-reports",
   "/field/sync-queue",
-  "/district/severity-queue",
   "/district/clinic-network",
   "/district/clinic-evidence",
   "/district/interventions",
@@ -176,6 +175,21 @@ async function expectNoRouteMatches(sidebar: Locator, routes: string[]) {
   }
 }
 
+async function selectSeverityQueueFilter(page: Page, label: string, option: string) {
+  await page.getByRole("button", { name: new RegExp(`${label} filter`, "i") }).click();
+  await page.getByRole("menuitemradio", { name: option, exact: true }).click();
+}
+
+async function visibleSeverityClinicCount(page: Page) {
+  const countText = await page
+    .locator("[data-district-severity-toolbar]")
+    .getByText(/\d+ clinics visible/)
+    .textContent();
+  const count = countText?.match(/\d+/)?.[0];
+
+  return count ? Number(count) : -1;
+}
+
 test.describe("phase 1 role dashboard navigation", () => {
   for (const scenario of roleScenarios) {
     test(`${scenario.role} lands on the correct home and sees the right sidebar`, async ({
@@ -202,6 +216,163 @@ test.describe("phase 1 role dashboard navigation", () => {
       }
     });
   }
+
+  test("district manager opens severity queue as a standalone module", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop-chrome", "Desktop sidebar navigation regression");
+
+    await signInAs(page, "district-manager@clinicpulse.local", "/district");
+
+    const sidebar = await openDashboardSidebar(page);
+    const link = sidebar.getByRole("link", { name: "Severity queue", exact: true });
+
+    await expect(link).toHaveAttribute("href", "/district/severity-queue");
+    await Promise.all([
+      page.waitForURL(/\/district\/severity-queue$/),
+      link.click(),
+    ]);
+
+    await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
+    await expect(page.locator('[data-district-module="severity-queue"]')).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Unified severity queue" })).toBeVisible();
+    await expect(page.locator("[data-district-severity-metrics]")).toBeVisible();
+    await expect(page.locator("[data-district-severity-toolbar]")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Status filter/i })).toBeVisible();
+    await expect(page.getByText("Selected clinic decision")).toBeVisible();
+    await expect(page.getByText("Next step", { exact: true })).toBeVisible();
+    await expect(page.getByText("Evidence", { exact: true })).toBeVisible();
+    await expect(page.getByText("Recommended action")).toHaveCount(0);
+    await expect(page.getByText("Signal summary")).toHaveCount(0);
+    await expect(page.getByText("Operational timeline")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "View report evidence" })).toBeVisible();
+    await expect(page.getByLabel("Severity queue worklist")).toBeVisible();
+    const nextStepCallout = page.locator(
+      "[data-district-severity-next-step]:visible",
+    );
+    await expect(nextStepCallout).toHaveAttribute("data-tone", "watch");
+    const watchToneColor = await nextStepCallout.evaluate(
+      (element) => getComputedStyle(element).borderLeftColor,
+    );
+
+    await page
+      .getByLabel("Severity queue worklist")
+      .getByRole("button", {
+        name: /Akasia Hills Clinic, stable severity score 0/i,
+      })
+      .click();
+    await expect(nextStepCallout).toHaveAttribute("data-tone", "stable");
+    await expect
+      .poll(() =>
+        nextStepCallout.evaluate((element) => getComputedStyle(element).borderLeftColor),
+      )
+      .not.toBe(watchToneColor);
+
+    const firstClinic = page.getByLabel("Severity queue worklist").getByRole("button").first();
+    await expect(firstClinic).toBeVisible();
+    await firstClinic.click();
+    await expect(
+      page.locator('[data-district-severity-row][aria-pressed="true"]'),
+    ).toBeVisible();
+
+    await Promise.all([
+      page.waitForURL(/\/district\/clinics\/[^?]+\?from=district-severity-queue$/),
+      page.getByRole("link", { name: "Open clinic detail" }).click(),
+    ]);
+    await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
+  });
+
+  test("district severity queue filters update queue state and URL", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop-chrome", "Desktop filter regression");
+
+    await signInAs(page, "district-manager@clinicpulse.local", "/district");
+    await page.goto(
+      "/district/severity-queue?status=invalid&freshness=invalid&alert=invalid&offline=invalid&service=Imaginary",
+    );
+
+    await expect(page).toHaveURL(/\/district\/severity-queue$/);
+    await expect.poll(() => visibleSeverityClinicCount(page)).toBeGreaterThan(0);
+    const initialClinicCount = await visibleSeverityClinicCount(page);
+    await expect(page.getByRole("button", { name: /Status filter: All statuses/i })).toBeVisible();
+
+    await selectSeverityQueueFilter(page, "Status", "Operational");
+
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("status"))
+      .toBe("operational");
+    await expect.poll(() => visibleSeverityClinicCount(page)).toBeGreaterThan(0);
+
+    const operationalClinicCount = await visibleSeverityClinicCount(page);
+    const worklistRows = page.getByLabel("Severity queue worklist").getByRole("button");
+    await expect(worklistRows).toHaveCount(operationalClinicCount);
+
+    const firstOperationalLabel = await worklistRows.first().getAttribute("aria-label");
+    const firstOperationalClinicName = firstOperationalLabel?.match(/^Priority 1: (.*), /)?.[1];
+    expect(firstOperationalClinicName).toBeTruthy();
+    await expect(
+      page.getByRole("heading", { name: firstOperationalClinicName! }),
+    ).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByRole("button", { name: /Status filter: Operational/i })).toBeVisible();
+    await expect(page.locator("[data-district-severity-toolbar]")).toContainText(
+      `${operationalClinicCount} clinics visible`,
+    );
+
+    await selectSeverityQueueFilter(page, "Freshness", "Stale");
+
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("status"))
+      .toBe("operational");
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("freshness"))
+      .toBe("stale");
+    await expect(page.getByText("0 clinics visible")).toBeVisible();
+    await expect(page.getByText("No clinics match these filters")).toBeVisible();
+    await expect(page.getByLabel("Severity queue worklist")).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Reset" }).click();
+
+    await expect(page).toHaveURL(/\/district\/severity-queue$/);
+    await expect(page.getByRole("button", { name: /Status filter: All statuses/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Freshness filter: All freshness/i })).toBeVisible();
+    await expect(page.locator("[data-district-severity-toolbar]")).toContainText(
+      `${initialClinicCount} clinics visible`,
+    );
+    await expect(page.getByLabel("Severity queue worklist")).toBeVisible();
+  });
+
+  test("district manager opens report evidence from severity queue", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop-chrome", "Desktop evidence route regression");
+
+    await signInAs(page, "district-manager@clinicpulse.local", "/district");
+    await page.goto("/district/severity-queue");
+
+    await Promise.all([
+      page.waitForURL(/\/district\/reports\/[^?]+\?from=district-severity-queue$/),
+      page.getByRole("link", { name: "View report evidence" }).click(),
+    ]);
+
+    await expect(page.getByRole("heading", { name: "Report evidence" })).toBeVisible();
+    await expect(page.getByText("Evidence brief", { exact: true })).toBeVisible();
+    await expect(page.getByText("Priority signal", { exact: true })).toBeVisible();
+    await expect(page.getByText("What happened", { exact: true })).toBeVisible();
+    await expect(page.getByText("Decision context", { exact: true })).toBeVisible();
+    await expect(page.getByText("Recommended action", { exact: true })).toBeVisible();
+    await expect(page.getByText("Trust and provenance", { exact: true })).toBeVisible();
+    await expect(page.getByText("Operational signals", { exact: true })).toBeVisible();
+    await expect(page.getByText("Signal pressure", { exact: true })).toBeVisible();
+    await expect(page.getByText("Evidence timeline", { exact: true })).toBeVisible();
+    await expect(page.getByText('"reporterName"')).toBeHidden();
+    await page.getByText("Technical payload", { exact: true }).click();
+    await expect(page.getByText('"reporterName"')).toBeVisible();
+    await expect(page.getByRole("link", { name: "Open clinic detail" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Back to severity queue" })).toBeVisible();
+  });
 
   test("demo showcase does not expose report review", async ({ page }) => {
     await signInAs(page, "district-manager@clinicpulse.local", "/district");

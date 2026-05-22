@@ -36,7 +36,7 @@ test.describe("product shell responsive behavior", () => {
     expect(headerOverflows).toBe(false);
   });
 
-  test("mobile sidebar closes after navigating to a workspace anchor", async ({
+  test("mobile sidebar closes after navigating to a workspace module", async ({
     page,
   }, testInfo) => {
     skipUnlessMobileProject(testInfo);
@@ -49,7 +49,7 @@ test.describe("product shell responsive behavior", () => {
 
     await mobileSidebar.getByRole("link", { name: "Severity queue" }).click();
 
-    await expect(page).toHaveURL(/\/district#severity-queue$/);
+    await expect(page).toHaveURL(/\/district\/severity-queue$/);
     await expect(mobileSidebar).toBeHidden();
   });
 

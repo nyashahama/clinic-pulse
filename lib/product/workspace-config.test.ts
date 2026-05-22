@@ -19,7 +19,6 @@ const expectedHiddenDashboardPrimaryNavRoutes = [
   "/field/drafts-sync",
   "/field/recent-reports",
   "/field/sync-queue",
-  "/district/severity-queue",
   "/district/clinic-network",
   "/district/clinic-evidence",
   "/district/interventions",
@@ -180,7 +179,7 @@ describe("product workspace navigation config", () => {
     );
     expect(workspaceUrlsForRole("district_manager")).toEqual(
       expect.arrayContaining([
-        "/district#severity-queue",
+        "/district/severity-queue",
         "/district#clinic-network",
         "/district#clinic-evidence",
         "/district#interventions",

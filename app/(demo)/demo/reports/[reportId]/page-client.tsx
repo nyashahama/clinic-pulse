@@ -1,12 +1,10 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { AlertTriangle } from "lucide-react";
+import { useParams, useSearchParams } from "next/navigation";
+import { AlertTriangle, FileJson } from "lucide-react";
 import { useMemo } from "react";
 
-import {
-  AdminDetailShell,
-} from "@/components/product/admin-detail";
+import { AdminDetailShell } from "@/components/product/admin-detail";
 import {
   EvidenceCaseBriefPanel,
   EvidenceCommandChip,
@@ -39,6 +37,44 @@ type ReportDetailPageClientProps = {
   consoleHref?: "/demo" | "/district";
 };
 
+const reportStreamCopy = {
+  headerEyebrow: "Incoming signal",
+  headerTitle: "Report evidence brief",
+  caseTitle: "Case brief",
+  caseDescription: "Decision-ready evidence from this incoming field signal.",
+  summary: {
+    label: "Signal summary",
+  },
+  operationalSection: {
+    title: "Operational pressure",
+  },
+  operationalSectionDescription: undefined,
+  fieldHandlingTitle: "Field handling",
+  fieldHandlingDescription: undefined,
+  contextLabel: "Signal response",
+  primaryActionLabel: "Review clinic context",
+  returnActionLabel: "Return to report stream",
+} as const;
+
+const severityQueueCopy = {
+  headerEyebrow: "Evidence brief",
+  headerTitle: "Report evidence",
+  caseTitle: "What happened",
+  caseDescription: "The latest report attached to this queue decision.",
+  summary: {
+    label: "Report notes",
+  },
+  operationalSection: {
+    title: "Operational signals",
+  },
+  operationalSectionDescription: "Signal pressure",
+  fieldHandlingTitle: "Trust and provenance",
+  fieldHandlingDescription: "Source metadata for validating the signal.",
+  contextLabel: "Decision context",
+  primaryActionLabel: "Open clinic detail",
+  returnActionLabel: "Return to queue",
+} as const;
+
 function getRouteParam(value: string | string[] | undefined) {
   if (Array.isArray(value)) {
     return value[0] ?? "";
@@ -58,11 +94,52 @@ function formatBoolean(value: boolean) {
   return value ? "Yes" : "No";
 }
 
+function formatDuration(startValue: string, endValue: string) {
+  const start = new Date(startValue).getTime();
+  const end = new Date(endValue).getTime();
+
+  if (Number.isNaN(start) || Number.isNaN(end)) {
+    return "Unavailable";
+  }
+
+  const minutes = Math.max(0, Math.round((end - start) / 60_000));
+
+  if (minutes === 0) {
+    return "Same minute";
+  }
+
+  if (minutes < 60) {
+    return `${minutes} min`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+
+  return remainder === 0 ? `${hours}h` : `${hours}h ${remainder}m`;
+}
+
+function getReturnTarget(consoleHref: "/demo" | "/district", from?: string | null) {
+  if (consoleHref === "/district" && from === "district-severity-queue") {
+    return {
+      href: "/district/severity-queue",
+      label: "Back to severity queue",
+      clinicFrom: "district-severity-queue",
+    };
+  }
+
+  return {
+    href: `${consoleHref}#clinic-evidence`,
+    label: consoleHref === "/district" ? "Back to district console" : "Back to demo console",
+    clinicFrom: "report-detail",
+  };
+}
+
 export default function ReportDetailPageClient({
   consoleHref = "/demo",
 }: ReportDetailPageClientProps) {
   const { state } = useDemoStore();
   const params = useParams<{ reportId?: string | string[] }>();
+  const searchParams = useSearchParams();
   const reportId = getRouteParam(params.reportId);
   const reports = useMemo(() => getRecentReportStream(state), [state]);
   const report = useMemo(
@@ -78,9 +155,12 @@ export default function ReportDetailPageClient({
     () => (report ? getClinicAuditEvents(state, report.clinicId) : []),
     [report, state],
   );
-  const returnHref = `${consoleHref}#clinic-evidence`;
-  const returnLabel =
-    consoleHref === "/district" ? "Back to district console" : "Back to demo console";
+  const entrySource = searchParams.get("from");
+  const isSeverityQueueEntry = consoleHref === "/district" && entrySource === "district-severity-queue";
+  const copy = isSeverityQueueEntry ? severityQueueCopy : reportStreamCopy;
+  const returnTarget = getReturnTarget(consoleHref, entrySource);
+  const returnHref = returnTarget.href;
+  const returnLabel = returnTarget.label;
 
   if (!report) {
     return (
@@ -113,27 +193,46 @@ export default function ReportDetailPageClient({
 
   const clinicDetailHref = `${consoleHref}/clinics/${encodeURIComponent(
     report.clinicId,
-  )}?from=report-detail`;
+  )}?from=${returnTarget.clinicFrom}`;
   const auditConsequence =
     auditEvents[0]?.summary ?? "No linked audit consequence has been recorded yet.";
   const statusTone = getReportStatusTone(report.status);
+  const syncDelay = formatDuration(report.submittedAt, report.receivedAt);
   const decisionCopy = buildReportDecisionCopy({
     queuePressure: report.queuePressure,
     staffPressure: report.staffPressure,
     status: report.status,
   });
+  const payload = {
+    id: report.id,
+    clinicId: report.clinicId,
+    facilityCode: report.facilityCode,
+    reporterName: report.reporterName,
+    source: report.source,
+    offlineCreated: report.offlineCreated,
+    submittedAt: report.submittedAt,
+    receivedAt: report.receivedAt,
+    status: report.status,
+    reason: report.reason,
+    pressure: {
+      staff: report.staffPressure,
+      stock: report.stockPressure,
+      queue: report.queuePressure,
+    },
+    notes: report.notes,
+  };
   const actions: EvidenceCommandAction[] = [
     {
-      label: "Review clinic context",
+      label: copy.primaryActionLabel,
       href: clinicDetailHref,
       priority: "primary",
       icon: "clinic",
     },
     {
-      label: "Return to report stream",
+      label: copy.returnActionLabel,
       href: returnHref,
       priority: "secondary",
-      icon: "stream",
+      icon: isSeverityQueueEntry ? "queue" : "stream",
     },
   ];
   const headerActions = actions.filter((action) => action.priority === "secondary");
@@ -143,44 +242,35 @@ export default function ReportDetailPageClient({
       tone: statusTone,
     },
     {
-      label: report.offlineCreated ? "offline sync" : formatEvidenceSource(report.source),
-      tone: report.offlineCreated ? "attention" : "neutral",
+      label: formatEvidenceSource(report.source),
+      tone: "info",
     },
     {
-      label: formatEvidenceLabel(report.queuePressure),
-      tone: getPressureTone(report.queuePressure, "queue"),
+      label: report.offlineCreated ? "offline synced" : "online report",
+      tone: report.offlineCreated ? "attention" : "stable",
     },
   ];
   const metrics: EvidenceCommandMetric[] = [
     {
-      label: "Current status",
+      label: "Priority signal",
       value: formatEvidenceLabel(report.status),
-      detail: report.offlineCreated
-        ? "Synced after offline capture"
-        : formatEvidenceSource(report.source),
+      detail: "Current service state carried by this report.",
       tone: statusTone,
       icon: "alert",
     },
     {
-      label: "Queue pressure",
-      value: formatEvidenceLabel(report.queuePressure),
-      detail: "Patient routing impact",
-      tone: getPressureTone(report.queuePressure, "queue"),
-      icon: "activity",
-    },
-    {
-      label: "Staff pressure",
-      value: formatEvidenceLabel(report.staffPressure),
-      detail: "Operational capacity",
-      tone: getPressureTone(report.staffPressure, "staff"),
-      icon: "activity",
-    },
-    {
-      label: "Received",
-      value: formatDateTime(report.receivedAt),
-      detail: `Report ${report.id}`,
+      label: "Source",
+      value: formatEvidenceSource(report.source),
+      detail: "Who supplied the latest attached evidence.",
       tone: "info",
-      icon: "clock",
+      icon: "check",
+    },
+    {
+      label: "Signal path",
+      value: syncDelay,
+      detail: report.offlineCreated ? "Captured offline before sync." : "Received online.",
+      tone: report.offlineCreated ? "attention" : "stable",
+      icon: report.offlineCreated ? "offline" : "radio",
     },
   ];
   const primaryFields: EvidenceCommandField[] = [
@@ -205,27 +295,29 @@ export default function ReportDetailPageClient({
   ];
   const evidenceSections: EvidenceCommandSection[] = [
     {
-      title: "Operational pressure",
+      title: copy.operationalSection.title,
+      description: copy.operationalSectionDescription,
       fields: [
         {
-          label: "Queue",
+          label: isSeverityQueueEntry ? "Queue pressure" : "Queue",
           value: formatEvidenceLabel(report.queuePressure),
           tone: getPressureTone(report.queuePressure, "queue"),
         },
         {
-          label: "Staff",
+          label: isSeverityQueueEntry ? "Staff pressure" : "Staff",
           value: formatEvidenceLabel(report.staffPressure),
           tone: getPressureTone(report.staffPressure, "staff"),
         },
         {
-          label: "Stock",
+          label: isSeverityQueueEntry ? "Stock pressure" : "Stock",
           value: formatEvidenceLabel(report.stockPressure),
           tone: getPressureTone(report.stockPressure, "stock"),
         },
       ],
     },
     {
-      title: "Field handling",
+      title: copy.fieldHandlingTitle,
+      description: copy.fieldHandlingDescription,
       fields: [
         {
           label: "Source",
@@ -304,8 +396,8 @@ export default function ReportDetailPageClient({
       hideHeader
     >
       <EvidenceCommandHeader
-        eyebrow="Incoming signal"
-        title="Report evidence brief"
+        eyebrow={copy.headerEyebrow}
+        title={copy.headerTitle}
         description={report.reason}
         actions={headerActions}
       >
@@ -324,21 +416,40 @@ export default function ReportDetailPageClient({
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
         <div className="grid min-w-0 content-start gap-4">
           <EvidenceCaseBriefPanel
-            title="Case brief"
-            description="Decision-ready evidence from this incoming field signal."
+            title={copy.caseTitle}
+            description={copy.caseDescription}
             summary={{
-              label: "Signal summary",
+              label: copy.summary.label,
               value: report.reason,
               emphasis: true,
             }}
             primaryFields={primaryFields}
             sections={evidenceSections}
           />
+          <details className="group rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-sm font-semibold text-foreground sm:px-5">
+              <span className="inline-flex min-w-0 items-center gap-2">
+                <FileJson aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                <span>Technical payload</span>
+              </span>
+              <span className="text-xs font-medium text-muted-foreground group-open:hidden">
+                Collapsed
+              </span>
+              <span className="hidden text-xs font-medium text-muted-foreground group-open:inline">
+                Expanded
+              </span>
+            </summary>
+            <div className="border-t border-border-subtle px-4 pb-4 sm:px-5">
+              <pre className="mt-4 max-h-[28rem] overflow-auto rounded-md bg-bg-muted p-3 text-xs leading-5 text-content-default">
+                {JSON.stringify(payload, null, 2)}
+              </pre>
+            </div>
+          </details>
         </div>
         <div className="grid min-w-0 gap-4 content-start">
           <EvidenceDecisionPanel
             decision={{
-              contextLabel: "Signal response",
+              contextLabel: copy.contextLabel,
               title: decisionCopy.title,
               scoreLabel: "Report",
               scoreValue: report.id,
