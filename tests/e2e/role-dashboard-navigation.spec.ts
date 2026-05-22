@@ -350,8 +350,10 @@ test.describe("phase 1 role dashboard navigation", () => {
     await signInAs(page, "district-manager@clinicpulse.local", "/district");
     await page.goto("/district/clinic-network");
 
-    const commandSurface = page.locator("[data-district-clinic-network-command-surface]");
-    const metrics = page.locator("[data-district-clinic-network-metrics]");
+    const commandSurface = page.locator(
+      "[data-district-clinic-network-command-surface]:visible",
+    );
+    const metrics = page.locator("[data-district-clinic-network-metrics]:visible");
 
     await expect(commandSurface).toBeVisible();
     await expect(metrics).toBeVisible();
@@ -438,10 +440,10 @@ test.describe("phase 1 role dashboard navigation", () => {
     await page.goto("/district/clinic-evidence");
 
     const selectedPacket = page.locator(
-      "[data-district-clinic-evidence-selected-packet]",
+      "[data-district-clinic-evidence-selected-packet]:visible",
     );
-    const metrics = page.locator("[data-district-clinic-evidence-metrics]");
-    const ledger = page.getByLabel("Clinic evidence ledger");
+    const metrics = page.locator("[data-district-clinic-evidence-metrics]:visible");
+    const ledger = page.locator('[aria-label="Clinic evidence ledger"]:visible');
 
     await expect(
       page.locator('[data-district-clinic-evidence-layout="review-first"]:visible'),
