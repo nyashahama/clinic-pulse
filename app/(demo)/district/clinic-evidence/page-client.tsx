@@ -155,7 +155,6 @@ export default function DistrictClinicEvidencePageClient() {
     () => parseSelectedEvidenceId(searchParams),
     [searchParams],
   );
-  const serializedSearch = serializeFiltersToSearchParams(filters, selectedEvidenceId);
   const viewModel = useMemo(
     () =>
       buildDistrictClinicEvidenceViewModel({
@@ -164,6 +163,15 @@ export default function DistrictClinicEvidencePageClient() {
         selectedEvidenceId,
       }),
     [filters, selectedEvidenceId, state],
+  );
+  const normalizedSelectedEvidenceId =
+    selectedEvidenceId &&
+    viewModel.selectedPacket?.evidenceId === selectedEvidenceId
+      ? selectedEvidenceId
+      : null;
+  const serializedSearch = serializeFiltersToSearchParams(
+    filters,
+    normalizedSelectedEvidenceId,
   );
 
   useEffect(() => {
@@ -219,60 +227,60 @@ export default function DistrictClinicEvidencePageClient() {
     <div className="grid min-w-0 gap-4 pb-6" data-district-module="clinic-evidence">
       <ClinicEvidenceCommandHeader header={viewModel.header} />
 
-      {viewModel.rows.length ? (
-        <div
-          className="grid min-w-0 gap-4"
-          data-district-clinic-evidence-layout="review-first"
-        >
-          <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,390px)] xl:items-start">
-            <div className="order-2 min-w-0 xl:order-1">
-              <ClinicEvidenceReviewQueue
-                queue={viewModel.queue}
-                onQueueChange={(queue) => updateFilter("queue", queue)}
-              >
-                <ClinicEvidenceFilterToolbar
-                  embedded
-                  clinicOptions={filterOptions.clinics}
-                  filters={filters}
-                  visibleEvidenceCount={viewModel.rows.length}
-                  onClearFilters={clearFilters}
-                  onFilterChange={updateFilter}
-                />
+      <div
+        className="grid min-w-0 gap-4"
+        data-district-clinic-evidence-layout="review-first"
+      >
+        <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,390px)] xl:items-start">
+          <div className="order-2 min-w-0 xl:order-1">
+            <ClinicEvidenceReviewQueue
+              queue={viewModel.queue}
+              onQueueChange={(queue) => updateFilter("queue", queue)}
+            >
+              <ClinicEvidenceFilterToolbar
+                embedded
+                clinicOptions={filterOptions.clinics}
+                filters={filters}
+                visibleEvidenceCount={viewModel.rows.length}
+                onClearFilters={clearFilters}
+                onFilterChange={updateFilter}
+              />
+              {viewModel.rows.length ? (
                 <ClinicEvidenceLedger
                   embedded
                   rows={viewModel.rows}
                   selectedEvidenceId={viewModel.selectedPacket?.evidenceId ?? null}
                   onSelectEvidence={selectEvidence}
                 />
-              </ClinicEvidenceReviewQueue>
-            </div>
-            <div
-              ref={selectedPacketRef}
-              className="order-1 min-w-0 scroll-mt-4 xl:order-2 xl:sticky xl:top-4"
-            >
-              <ClinicEvidenceSelectedPacket
-                selectedPacket={viewModel.selectedPacket}
-                onSelectEvidence={selectEvidence}
-                timeline={viewModel.timeline}
-              />
-            </div>
+              ) : (
+                <AdminEmptyState
+                  title={viewModel.emptyState.title}
+                  description={viewModel.emptyState.description}
+                  action={{
+                    label: "Clear filters",
+                    buttonProps: {
+                      onClick: clearFilters,
+                      variant: "outline",
+                    },
+                  }}
+                  className="border-t border-border-subtle"
+                />
+              )}
+            </ClinicEvidenceReviewQueue>
           </div>
-          <ClinicEvidenceMetricStrip metrics={viewModel.metrics} />
+          <div
+            ref={selectedPacketRef}
+            className="order-1 min-w-0 scroll-mt-4 xl:order-2 xl:sticky xl:top-4"
+          >
+            <ClinicEvidenceSelectedPacket
+              selectedPacket={viewModel.selectedPacket}
+              onSelectEvidence={selectEvidence}
+              timeline={viewModel.timeline}
+            />
+          </div>
         </div>
-      ) : (
-        <AdminEmptyState
-          title={viewModel.emptyState.title}
-          description={viewModel.emptyState.description}
-          action={{
-            label: "Clear filters",
-            buttonProps: {
-              onClick: clearFilters,
-              variant: "outline",
-            },
-          }}
-          className="rounded-lg border border-border-subtle bg-bg-default shadow-sm"
-        />
-      )}
+        <ClinicEvidenceMetricStrip metrics={viewModel.metrics} />
+      </div>
     </div>
   );
 }

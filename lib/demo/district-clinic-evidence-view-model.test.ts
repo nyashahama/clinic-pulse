@@ -176,6 +176,7 @@ describe("buildDistrictClinicEvidenceViewModel", () => {
     const viewModel = buildDistrictClinicEvidenceViewModel({
       state,
       filters: {
+        ...emptyFilters,
         kind: "report",
         status: "non_functional",
         source: "field_worker",
@@ -248,6 +249,7 @@ describe("buildDistrictClinicEvidenceViewModel", () => {
     const empty = buildDistrictClinicEvidenceViewModel({
       state,
       filters: {
+        ...emptyFilters,
         kind: "report",
         status: "operational",
         source: "seed",

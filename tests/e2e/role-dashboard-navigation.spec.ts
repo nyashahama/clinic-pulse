@@ -419,12 +419,28 @@ test.describe("phase 1 role dashboard navigation", () => {
       "true",
     );
 
+    await page.goto("/district/clinic-evidence?queue=alerts&evidence=report-005");
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("evidence"))
+      .toBeNull();
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("queue"))
+      .toBe("alerts");
+
     await page.getByRole("button", { name: /Evidence type filter: All evidence/i }).click();
     await page.getByRole("menuitemradio", { name: "Reports" }).click();
     await expect
       .poll(() => new URL(page.url()).searchParams.get("kind"))
       .toBe("report");
     await expect(page.locator("[data-district-clinic-evidence-toolbar]")).toContainText("Reports");
+    await expect(page.getByText("No evidence matches these filters")).toBeVisible();
+
+    await page.goto("/district/clinic-evidence");
+    await page.getByRole("button", { name: /Evidence type filter: All evidence/i }).click();
+    await page.getByRole("menuitemradio", { name: "Reports" }).click();
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("kind"))
+      .toBe("report");
 
     await Promise.all([
       page.waitForURL(/\/district\/reports\/[^?]+\?from=district-clinic-evidence$/),
