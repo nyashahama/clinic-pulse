@@ -308,9 +308,9 @@ test("system admin sees productized platform governance modules", async ({ page 
       path: "/admin/tenant-health",
       marker: "tenant-health",
       content: [
-        "Current tenant estate",
-        "Clinic coverage",
-        "Partner readiness evidence",
+        "Tenant health",
+        "District health stack",
+        "Health signal ledger",
       ],
     },
     {

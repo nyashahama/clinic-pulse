@@ -317,6 +317,19 @@ it("uses operational detail layouts for report and lead details", () => {
   }
 });
 
+it("uses a distinct estate health board for tenant health", () => {
+  const source = readFileSync("app/(demo)/admin/tenant-health/page.tsx", "utf8");
+
+  expect(source).toContain("buildTenantHealthViewModel");
+  expect(source).toContain("TenantHealthBoard");
+  expect(source).not.toContain("EvidenceCommandHeader");
+  expect(source).not.toContain("EvidenceCommandMetricStrip");
+  expect(source).not.toContain("EvidenceCaseBriefPanel");
+  expect(source).not.toContain("EvidenceDecisionPanel");
+  expect(source).not.toContain("EvidenceTimeline");
+  expect(source).not.toContain("<AdminEvidenceTable");
+});
+
 it("links admin user evidence rows to user detail", () => {
   const usersPage = readFileSync("app/(demo)/admin/users-roles/page.tsx", "utf8");
   const lifecycle = readFileSync("components/product/admin-user-lifecycle.tsx", "utf8");
