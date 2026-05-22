@@ -11,6 +11,7 @@ import {
   MapIcon,
   MapPinIcon,
   RadioTowerIcon,
+  RouteIcon,
   RotateCcwIcon,
   SearchIcon,
   ShieldCheckIcon,
@@ -340,12 +341,9 @@ function clampPercent(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
-function getMapPosition(clinics: DistrictClinicNetworkClinic[]) {
+function getMapCoordinates(clinics: DistrictClinicNetworkClinic[]) {
   if (clinics.length === 0) {
-    return () => ({
-      labelClassName: "left-1/2 top-[calc(100%+0.65rem)] -translate-x-1/2",
-      style: { left: "16%", top: "18%" },
-    });
+    return () => ({ x: 16, y: 18 });
   }
 
   const latitudes = clinics.map((clinic) => clinic.latitude);
@@ -366,18 +364,27 @@ function getMapPosition(clinics: DistrictClinicNetworkClinic[]) {
       16,
       82,
     );
+    return { x, y };
+  };
+}
+
+function getMapPosition(clinics: DistrictClinicNetworkClinic[]) {
+  const getCoordinates = getMapCoordinates(clinics);
+
+  return (clinic: DistrictClinicNetworkClinic) => {
+    const coordinates = getCoordinates(clinic);
     const horizontalClassName =
-      x < 26
+      coordinates.x < 26
         ? "left-0 translate-x-0"
-        : x > 74
+        : coordinates.x > 74
           ? "right-0 translate-x-0"
           : "left-1/2 -translate-x-1/2";
     const verticalClassName =
-      y > 68 ? "bottom-[calc(100%+0.65rem)]" : "top-[calc(100%+0.65rem)]";
+      coordinates.y > 68 ? "bottom-[calc(100%+0.65rem)]" : "top-[calc(100%+0.65rem)]";
 
     return {
       labelClassName: `${horizontalClassName} ${verticalClassName}`,
-      style: { left: `${x}%`, top: `${y}%` },
+      style: { left: `${coordinates.x}%`, top: `${coordinates.y}%` },
     };
   };
 }
@@ -408,13 +415,23 @@ const mapLegend = [
 export function ClinicNetworkMapPanel({
   clinics,
   onSelectClinic,
-  selectedClinicId,
+  selectedClinic,
 }: {
   clinics: DistrictClinicNetworkViewModel["clinics"];
   onSelectClinic: (clinicId: string) => void;
-  selectedClinicId: string | null;
+  selectedClinic: DistrictClinicNetworkViewModel["selectedClinic"];
 }) {
   const placePin = getMapPosition(clinics);
+  const getCoordinates = getMapCoordinates(clinics);
+  const selectedClinicId = selectedClinic?.clinicId ?? null;
+  const selectedMapClinic =
+    clinics.find((clinic) => clinic.clinicId === selectedClinicId) ?? null;
+  const selectedAlternativeIds = new Set(
+    selectedClinic?.routingAlternatives.map((alternative) => alternative.clinicId) ?? [],
+  );
+  const selectedAlternativeClinics = clinics.filter((clinic) =>
+    selectedAlternativeIds.has(clinic.clinicId),
+  );
   const routingReadyCount = clinics.filter(
     (clinic) => clinic.status === "operational" && clinic.freshness === "fresh",
   ).length;
@@ -449,6 +466,34 @@ export function ClinicNetworkMapPanel({
           <div className="absolute left-[58%] top-[52%] h-20 w-28 rounded-full border border-dashed border-sky-200/70 dark:border-sky-500/25" />
         </div>
 
+        {selectedMapClinic ? (
+          <svg
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-0 h-full w-full"
+            preserveAspectRatio="none"
+            viewBox="0 0 100 100"
+          >
+            {selectedAlternativeClinics.map((alternative) => {
+              const start = getCoordinates(selectedMapClinic);
+              const end = getCoordinates(alternative);
+
+              return (
+                <line
+                  key={alternative.clinicId}
+                  x1={start.x}
+                  y1={start.y}
+                  x2={end.x}
+                  y2={end.y}
+                  className="stroke-primary/40"
+                  strokeDasharray="1.5 2"
+                  strokeLinecap="round"
+                  strokeWidth="0.45"
+                />
+              );
+            })}
+          </svg>
+        ) : null}
+
         <div className="absolute left-3 top-3 z-10 inline-flex max-w-[calc(100%-1.5rem)] items-center gap-2 rounded-md border border-border-subtle bg-bg-default/92 px-3 py-2 text-xs text-content-default shadow-sm backdrop-blur">
           <RadioTowerIcon className="size-3.5 shrink-0 text-primary" />
           <span className="truncate">
@@ -458,6 +503,7 @@ export function ClinicNetworkMapPanel({
 
         {clinics.map((clinic) => {
           const isSelected = clinic.clinicId === selectedClinicId;
+          const isRoutingAlternative = selectedAlternativeIds.has(clinic.clinicId);
           const placement = placePin(clinic);
 
           return (
@@ -488,6 +534,7 @@ export function ClinicNetworkMapPanel({
                   "relative flex size-4 items-center justify-center rounded-full border-2 shadow-sm transition-transform group-hover:scale-110",
                   getPinClassName(clinic),
                   isSelected ? "scale-110 ring-4 ring-white dark:ring-primary/40" : "",
+                  isRoutingAlternative && "ring-4 ring-emerald-200/80 dark:ring-emerald-900/40",
                 )}
               />
               <span
@@ -507,6 +554,12 @@ export function ClinicNetworkMapPanel({
         })}
 
         <div className="absolute bottom-3 left-3 z-10 flex max-w-[calc(100%-1.5rem)] min-w-0 flex-wrap gap-1.5 rounded-md border border-border-subtle bg-bg-default/92 p-2 text-xs text-content-default shadow-sm backdrop-blur">
+          {selectedAlternativeClinics.length ? (
+            <span className="inline-flex items-center gap-1.5 rounded border border-primary/20 bg-primary/5 px-1.5 text-primary">
+              <RouteIcon className="size-3" />
+              {selectedAlternativeClinics.length} active corridors
+            </span>
+          ) : null}
           {mapLegend.map((item) => (
             <span key={item.label} className="inline-flex items-center gap-1.5 px-1">
               <span className={cn("size-2 rounded-full", item.className)} />
@@ -546,8 +599,8 @@ export function ClinicNetworkWorklist({
               Coverage table
             </h2>
             <p className="mt-1 max-w-2xl text-sm leading-5 text-muted-foreground">
-              Supporting clinic rows for the map view, showing signal state and spare routing
-              capacity without turning the network page into another severity queue.
+              Clinic-level signal state and spare routing capacity for teams that need the row
+              detail behind the district map.
             </p>
           </div>
           <span className="inline-flex h-7 shrink-0 items-center rounded-md border border-border-subtle bg-bg-muted px-2 text-xs font-medium text-muted-foreground">
@@ -641,11 +694,12 @@ export function ClinicNetworkSelectedProfile({
     return (
       <section className="rounded-lg border border-border-subtle bg-bg-default p-4 text-content-default shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-          Selected clinic profile
+          Routing capacity
         </p>
         <p className="mt-1 text-sm font-medium text-foreground">No clinic selected</p>
         <p className="mt-1 text-sm leading-5 text-muted-foreground">
-          Select a clinic to review its network role, capacity state, and verification need.
+          Select a clinic to review available alternatives, protected services, and verification
+          need.
         </p>
       </section>
     );
@@ -656,7 +710,7 @@ export function ClinicNetworkSelectedProfile({
       <div className="flex min-w-0 flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-            Selected clinic profile
+            Routing capacity
           </p>
           <h2 className="mt-1 break-words text-base font-semibold leading-tight text-foreground">
             {selectedClinic.clinicName}
@@ -680,12 +734,62 @@ export function ClinicNetworkSelectedProfile({
       </div>
 
       <div className="mt-4 grid gap-3">
-        <ProfileSection title="Recommended action">
-          <p className="text-sm leading-5 text-foreground">{selectedClinic.recommendedAction}</p>
-        </ProfileSection>
+        <div className="grid gap-2 rounded-md border border-primary/15 bg-primary/5 p-3 text-sm">
+          <div className="flex min-w-0 items-center justify-between gap-2">
+            <span className="text-xs font-semibold uppercase tracking-normal text-primary">
+              Capacity posture
+            </span>
+            <span className="rounded-md border border-primary/20 bg-bg-default px-2 py-0.5 text-xs font-medium text-primary">
+              {selectedClinic.alternativeCapacity} alternatives
+            </span>
+          </div>
+          <p className="leading-5 text-foreground">{selectedClinic.recommendedAction}</p>
+        </div>
         <ProfileSection title="Verification need">
           <p className="text-sm leading-5 text-muted-foreground">
             {selectedClinic.verificationNeed}
+          </p>
+        </ProfileSection>
+        <ProfileSection title="Routing alternatives">
+          {selectedClinic.routingAlternatives.length ? (
+            <div className="grid gap-2">
+              {selectedClinic.routingAlternatives.map((alternative) => (
+                <Link
+                  key={alternative.clinicId}
+                  className="group grid min-w-0 gap-2 rounded-md border border-border-subtle bg-bg-muted/60 p-2.5 text-left transition-colors hover:bg-bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  href={alternative.clinicHref}
+                >
+                  <span className="flex min-w-0 items-start justify-between gap-2">
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium text-foreground">
+                        {alternative.clinicName}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                        {alternative.facilityCode} · {alternative.distanceLabel}
+                      </span>
+                    </span>
+                    <ArrowRightIcon className="mt-1 size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                  <span className="flex min-w-0 flex-wrap gap-1.5">
+                    <StatusBadge status={alternative.status} />
+                    <FreshnessBadge freshness={alternative.freshness} />
+                    <span className="rounded-md border border-border-subtle bg-bg-default px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                      {alternative.matchedService}
+                    </span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-md border border-dashed border-border-subtle p-3 text-sm leading-5 text-muted-foreground">
+              No compatible alternative is currently routing-ready for the listed clinic services.
+            </div>
+          )}
+        </ProfileSection>
+        <ProfileSection title="Protected service">
+          <p className="text-sm leading-5 text-foreground">
+            Keep {selectedClinic.primaryService} coverage visible while district teams verify this
+            node and its nearest alternatives.
           </p>
         </ProfileSection>
         <ProfileSection title="Clinic signal">

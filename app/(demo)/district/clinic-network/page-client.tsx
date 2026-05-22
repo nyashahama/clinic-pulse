@@ -203,19 +203,23 @@ export default function DistrictClinicNetworkPageClient({
         ]}
       />
 
-      <ClinicNetworkMetricStrip metrics={viewModel.metrics} />
+      <div className="order-2 md:order-none">
+        <ClinicNetworkMetricStrip metrics={viewModel.metrics} />
+      </div>
 
-      <ClinicNetworkFilterToolbar
-        filters={filters}
-        services={filterOptions.services}
-        visibleClinicCount={viewModel.clinics.length}
-        onClearFilters={clearFilters}
-        onFilterChange={updateFilter}
-      />
+      <div className="order-3 md:order-none">
+        <ClinicNetworkFilterToolbar
+          filters={filters}
+          services={filterOptions.services}
+          visibleClinicCount={viewModel.clinics.length}
+          onClearFilters={clearFilters}
+          onFilterChange={updateFilter}
+        />
+      </div>
 
       {viewModel.clinics.length ? (
         <div
-          className="grid min-w-0 gap-4"
+          className="order-1 grid min-w-0 gap-4 md:order-none"
           data-district-clinic-network-layout="map-first"
         >
           <div
@@ -224,7 +228,7 @@ export default function DistrictClinicNetworkPageClient({
           >
             <ClinicNetworkMapPanel
               clinics={viewModel.clinics}
-              selectedClinicId={viewModel.selectedClinic?.clinicId ?? null}
+              selectedClinic={viewModel.selectedClinic}
               onSelectClinic={setSelectedClinicId}
             />
             <ClinicNetworkSelectedProfile selectedClinic={viewModel.selectedClinic} />

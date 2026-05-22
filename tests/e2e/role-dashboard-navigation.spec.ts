@@ -318,11 +318,12 @@ test.describe("phase 1 role dashboard navigation", () => {
     await expect(
       page
         .locator("[data-district-clinic-network-command-surface]")
-        .getByText("Selected clinic profile"),
+        .getByText("Routing capacity"),
     ).toBeVisible();
+    await expect(page.getByText(/without turning the network page/i)).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Coverage table" })).toBeVisible();
     await expect(page.getByLabel("Clinic network worklist")).toBeVisible();
-    await expect(page.getByText("Selected clinic profile")).toBeVisible();
+    await expect(page.getByText("Routing alternatives")).toBeVisible();
     await expect(
       page.getByLabel("Clinic network metrics").getByText("Network coverage"),
     ).toBeVisible();
@@ -341,6 +342,26 @@ test.describe("phase 1 role dashboard navigation", () => {
       page.getByRole("link", { name: "Open clinic detail" }).click(),
     ]);
     await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
+  });
+
+  test("clinic network is map-first on mobile", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile-chrome", "Mobile Clinic network hierarchy");
+
+    await signInAs(page, "district-manager@clinicpulse.local", "/district");
+    await page.goto("/district/clinic-network");
+
+    const commandSurface = page.locator("[data-district-clinic-network-command-surface]");
+    const metrics = page.locator("[data-district-clinic-network-metrics]");
+
+    await expect(commandSurface).toBeVisible();
+    await expect(metrics).toBeVisible();
+
+    const commandBox = await commandSurface.boundingBox();
+    const metricsBox = await metrics.boundingBox();
+
+    expect(commandBox?.y).toBeLessThan(metricsBox?.y ?? Number.POSITIVE_INFINITY);
+    await expect(page.getByLabel("District clinic network map")).toBeVisible();
+    await expect(commandSurface.getByText("Routing capacity", { exact: true })).toBeVisible();
   });
 
   test("district manager opens clinic evidence as a standalone module", async ({
