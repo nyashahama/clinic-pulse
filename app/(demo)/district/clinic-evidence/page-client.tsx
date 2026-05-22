@@ -20,6 +20,7 @@ import {
 
 const defaultFilters: DistrictClinicEvidenceFilters = {
   kind: "all",
+  queue: "all",
   status: "all",
   source: "all",
   clinic: "all",
@@ -29,6 +30,14 @@ const defaultFilters: DistrictClinicEvidenceFilters = {
 const kindFilterValues = ["all", "report", "audit", "alert"] satisfies ReadonlyArray<
   DistrictClinicEvidenceFilters["kind"]
 >;
+
+const queueFilterValues = [
+  "all",
+  "needs_action",
+  "reports",
+  "alerts",
+  "audit",
+] satisfies ReadonlyArray<DistrictClinicEvidenceFilters["queue"]>;
 
 const statusFilterValues = [
   "all",
@@ -60,6 +69,7 @@ function parseFiltersFromSearchParams(
   clinicIds: string[],
 ): DistrictClinicEvidenceFilters {
   const kind = searchParams.get("kind");
+  const queue = searchParams.get("queue");
   const status = searchParams.get("status");
   const source = searchParams.get("source");
   const clinic = searchParams.get("clinic");
@@ -67,6 +77,7 @@ function parseFiltersFromSearchParams(
 
   return {
     kind: includesValue(kindFilterValues, kind) ? kind : "all",
+    queue: includesValue(queueFilterValues, queue) ? queue : "all",
     status: includesValue(statusFilterValues, status) ? status : "all",
     source: includesValue(sourceFilterValues, source) ? source : "all",
     clinic: clinic && clinicIds.includes(clinic) ? clinic : "all",
@@ -79,6 +90,10 @@ function serializeFiltersToSearchParams(filters: DistrictClinicEvidenceFilters) 
 
   if (filters.kind !== "all") {
     nextSearchParams.set("kind", filters.kind);
+  }
+
+  if (filters.queue !== "all") {
+    nextSearchParams.set("queue", filters.queue);
   }
 
   if (filters.status !== "all") {
@@ -192,7 +207,10 @@ export default function DistrictClinicEvidencePageClient() {
         >
           <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,390px)] xl:items-start">
             <div className="order-2 min-w-0 xl:order-1">
-              <ClinicEvidenceReviewQueue queue={viewModel.queue}>
+              <ClinicEvidenceReviewQueue
+                queue={viewModel.queue}
+                onQueueChange={(queue) => updateFilter("queue", queue)}
+              >
                 <ClinicEvidenceFilterToolbar
                   embedded
                   clinicOptions={filterOptions.clinics}
@@ -215,6 +233,7 @@ export default function DistrictClinicEvidencePageClient() {
             >
               <ClinicEvidenceSelectedPacket
                 selectedPacket={viewModel.selectedPacket}
+                onSelectEvidence={selectEvidence}
                 timeline={viewModel.timeline}
               />
             </div>

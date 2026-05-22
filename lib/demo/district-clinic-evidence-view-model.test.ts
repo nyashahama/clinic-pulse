@@ -8,6 +8,7 @@ import {
 
 const emptyFilters: DistrictClinicEvidenceFilters = {
   kind: "all",
+  queue: "all",
   status: "all",
   source: "all",
   clinic: "all",
@@ -70,6 +71,12 @@ describe("buildDistrictClinicEvidenceViewModel", () => {
       /^\/district\/clinics\/[^?]+\?from=district-clinic-evidence$/,
     );
     expect(viewModel.selectedPacket?.actionTone).toBe("blocked");
+    expect(viewModel.selectedPacket?.trace.map((step) => step.label)).toEqual([
+      "Source",
+      "Signal",
+      "Verification",
+      "District action",
+    ]);
     expect(viewModel.selectedPacket?.timelineSummary).toContain("linked evidence records");
     expect(viewModel.filterOptions.clinics).toContainEqual(
       expect.objectContaining({
@@ -78,6 +85,71 @@ describe("buildDistrictClinicEvidenceViewModel", () => {
       }),
     );
     expect(viewModel.timeline.length).toBeGreaterThan(0);
+  });
+
+  it("supports queue lenses for action, report, alert, and audit review", () => {
+    const state = createInitialDemoState();
+    const allEvidence = buildDistrictClinicEvidenceViewModel({
+      state,
+      filters: emptyFilters,
+      selectedEvidenceId: null,
+    });
+    const actionEvidence = buildDistrictClinicEvidenceViewModel({
+      state,
+      filters: {
+        ...emptyFilters,
+        queue: "needs_action",
+      },
+      selectedEvidenceId: null,
+    });
+    const reportEvidence = buildDistrictClinicEvidenceViewModel({
+      state,
+      filters: {
+        ...emptyFilters,
+        queue: "reports",
+      },
+      selectedEvidenceId: null,
+    });
+    const alertEvidence = buildDistrictClinicEvidenceViewModel({
+      state,
+      filters: {
+        ...emptyFilters,
+        queue: "alerts",
+      },
+      selectedEvidenceId: null,
+    });
+    const auditEvidence = buildDistrictClinicEvidenceViewModel({
+      state,
+      filters: {
+        ...emptyFilters,
+        queue: "audit",
+      },
+      selectedEvidenceId: null,
+    });
+
+    expect(actionEvidence.rows.length).toBe(
+      allEvidence.queue.chips.find((chip) => chip.id === "needs_action")?.count,
+    );
+    expect(actionEvidence.rows.every((row) => row.tone !== "clear")).toBe(true);
+    expect(reportEvidence.rows.every((row) => row.kind === "report")).toBe(true);
+    expect(alertEvidence.rows.every((row) => row.kind === "alert")).toBe(true);
+    expect(auditEvidence.rows.every((row) => row.kind === "audit")).toBe(true);
+  });
+
+  it("exposes selected packet navigation within the filtered review queue", () => {
+    const state = createInitialDemoState();
+    const viewModel = buildDistrictClinicEvidenceViewModel({
+      state,
+      filters: emptyFilters,
+      selectedEvidenceId: null,
+    });
+
+    expect(viewModel.selectedPacket?.navigation).toMatchObject({
+      previousEvidenceId: null,
+      nextEvidenceId: viewModel.rows[1]?.evidenceId,
+      position: 1,
+      total: viewModel.rows.length,
+    });
   });
 
   it("filters by evidence kind, status, source, clinic, and search query", () => {

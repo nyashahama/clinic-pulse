@@ -390,6 +390,24 @@ test.describe("phase 1 role dashboard navigation", () => {
     await expect(page.getByRole("searchbox", { name: "Search clinic evidence" })).toBeVisible();
     await expect(page.getByLabel("Clinic evidence ledger")).toBeVisible();
     await expect(page.getByText("Selected evidence packet")).toBeVisible();
+    await expect(page.getByText("Evidence trace")).toBeVisible();
+
+    await page
+      .locator("[data-district-clinic-evidence-selected-packet]")
+      .getByRole("button", { name: /Next/i })
+      .click();
+    await expect(
+      page.locator("[data-district-clinic-evidence-selected-packet]"),
+    ).toContainText("audit-001");
+
+    await page.getByRole("button", { name: /Needs action/i }).click();
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("queue"))
+      .toBe("needs_action");
+    await expect(page.getByRole("button", { name: /Needs action/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
 
     await page.getByRole("button", { name: /Evidence type filter: All evidence/i }).click();
     await page.getByRole("menuitemradio", { name: "Reports" }).click();
@@ -430,6 +448,7 @@ test.describe("phase 1 role dashboard navigation", () => {
     const metricsBox = await metrics.boundingBox();
     const ledgerBox = await ledger.boundingBox();
 
+    expect(packetBox?.y).toBeLessThan(440);
     expect(packetBox?.y).toBeLessThan(metricsBox?.y ?? Number.POSITIVE_INFINITY);
     expect(packetBox?.y).toBeLessThan(ledgerBox?.y ?? Number.POSITIVE_INFINITY);
   });

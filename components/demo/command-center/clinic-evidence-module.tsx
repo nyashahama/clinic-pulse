@@ -7,6 +7,8 @@ import {
   AlertTriangleIcon,
   ArrowRightIcon,
   BellRingIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   ClipboardCheckIcon,
   FileTextIcon,
   FilterIcon,
@@ -35,6 +37,7 @@ import type {
   DistrictClinicEvidenceMetric,
   DistrictClinicEvidencePacket,
   DistrictClinicEvidenceQueueChip,
+  DistrictClinicEvidenceQueueFilter,
   DistrictClinicEvidenceRow,
   DistrictClinicEvidenceTone,
   DistrictClinicEvidenceViewModel,
@@ -170,17 +173,27 @@ function ToneBadge({
   );
 }
 
-function QueueChip({ chip }: { chip: DistrictClinicEvidenceQueueChip }) {
+function QueueChip({
+  chip,
+  onSelect,
+}: {
+  chip: DistrictClinicEvidenceQueueChip;
+  onSelect: (queue: DistrictClinicEvidenceQueueFilter) => void;
+}) {
   return (
-    <span
+    <button
+      type="button"
+      aria-pressed={chip.isActive}
+      onClick={() => onSelect(chip.id)}
       className={cn(
-        "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium",
+        "inline-flex min-h-8 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition hover:-translate-y-px hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         toneClassName[chip.tone],
+        chip.isActive && "ring-2 ring-ring ring-offset-2",
       )}
     >
       <span>{chip.label}</span>
       <span className="font-mono">{chip.count}</span>
-    </span>
+    </button>
   );
 }
 
@@ -248,44 +261,38 @@ export function ClinicEvidenceCommandHeader({
   return (
     <section className="overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm">
       <div className="grid min-w-0 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
-        <div className="min-w-0 p-4 sm:p-5">
+        <div className="min-w-0 p-3 sm:p-4">
           <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
             {header.eyebrow}
           </p>
-          <h1 className="mt-1 break-words text-2xl font-semibold leading-tight text-foreground">
+          <h1 className="mt-1 break-words text-xl font-semibold leading-tight text-foreground sm:text-2xl">
             {header.title}
           </h1>
-          <p className="mt-2 max-w-4xl break-words text-sm leading-5 text-muted-foreground">
+          <p className="mt-1 max-w-3xl break-words text-sm leading-5 text-muted-foreground">
             {header.description}
           </p>
-          <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <ToneBadge tone="info">{header.scope}</ToneBadge>
-            <ToneBadge tone={header.readiness.tone}>
-              {header.readiness.detail}
-            </ToneBadge>
           </div>
         </div>
         <div
           className={cn(
-            "grid min-w-0 content-between gap-4 border-t p-4 lg:border-l lg:border-t-0 sm:p-5",
+            "grid min-w-0 gap-3 border-t p-3 lg:border-l lg:border-t-0 sm:p-4",
             readinessPanelClassName[header.readiness.tone],
           )}
         >
-          <div className="min-w-0">
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-3 lg:block">
+            <p className="font-mono text-3xl font-semibold leading-none text-foreground lg:text-4xl">
+              {header.readiness.value}
+            </p>
+            <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
                 {header.readiness.label}
               </p>
-              <ToneBadge tone={header.readiness.tone}>
-                {header.readiness.tone === "blocked" ? "Needs review" : "Clear"}
-              </ToneBadge>
+              <p className="mt-1 max-w-sm break-words text-xs leading-4 text-muted-foreground">
+                {header.readiness.detail}
+              </p>
             </div>
-            <p className="mt-2 font-mono text-4xl font-semibold leading-none text-foreground">
-              {header.readiness.value}
-            </p>
-            <p className="mt-3 max-w-sm break-words text-xs leading-4 text-muted-foreground">
-              Blocking records that still need district verification.
-            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
@@ -481,9 +488,11 @@ export function ClinicEvidenceFilterToolbar({
 
 export function ClinicEvidenceReviewQueue({
   children,
+  onQueueChange,
   queue,
 }: {
   children: ReactNode;
+  onQueueChange: (queue: DistrictClinicEvidenceQueueFilter) => void;
   queue: DistrictClinicEvidenceViewModel["queue"];
 }) {
   return (
@@ -506,13 +515,13 @@ export function ClinicEvidenceReviewQueue({
           </div>
           <div className="flex min-w-0 flex-wrap gap-2">
             {queue.chips.slice(0, 2).map((chip) => (
-              <QueueChip chip={chip} key={chip.id} />
+              <QueueChip chip={chip} key={chip.id} onSelect={onQueueChange} />
             ))}
           </div>
         </div>
         <div className="flex min-w-0 flex-wrap gap-2" aria-label="Evidence queue mix">
           {queue.chips.slice(2).map((chip) => (
-            <QueueChip chip={chip} key={chip.id} />
+            <QueueChip chip={chip} key={chip.id} onSelect={onQueueChange} />
           ))}
         </div>
       </div>
@@ -624,9 +633,11 @@ function PacketSection({
 }
 
 export function ClinicEvidenceSelectedPacket({
+  onSelectEvidence,
   selectedPacket,
   timeline,
 }: {
+  onSelectEvidence: (evidenceId: string) => void;
   selectedPacket: DistrictClinicEvidencePacket | null;
   timeline: DistrictClinicEvidenceViewModel["timeline"];
 }) {
@@ -670,7 +681,7 @@ export function ClinicEvidenceSelectedPacket({
         </span>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-1.5">
+      <div className="mt-3 flex min-w-0 flex-wrap items-center gap-1.5">
         <StatusBadge status={selectedPacket.status} />
         <span
           className={cn(
@@ -680,41 +691,107 @@ export function ClinicEvidenceSelectedPacket({
         >
           {formatLabel(selectedPacket.source)}
         </span>
+        <span className="ml-auto inline-flex h-7 items-center rounded-md border border-border-subtle bg-bg-muted px-2 font-mono text-xs text-muted-foreground">
+          {selectedPacket.navigation.position}/{selectedPacket.navigation.total}
+        </span>
       </div>
 
-      <div
-        className={cn(
-          "mt-4 rounded-md border border-border-subtle border-l-2 bg-bg-muted/60 p-3",
-          selectedPacket.actionTone === "blocked" && "border-l-destructive",
-          selectedPacket.actionTone === "attention" &&
-            "border-l-amber-400 dark:border-l-amber-700",
-          selectedPacket.actionTone === "clear" &&
-            "border-l-emerald-400 dark:border-l-emerald-700",
-          selectedPacket.actionTone === "info" &&
-            "border-l-sky-400 dark:border-l-sky-700",
-        )}
-      >
-        <div className="flex min-w-0 gap-2.5">
-          <span
-            className={cn(
-              "mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md border",
-              toneClassName[selectedPacket.actionTone],
-            )}
-          >
-            <ActivityIcon className="size-3.5" />
-          </span>
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-              Next evidence action
-            </p>
-            <p className="mt-0.5 break-words text-sm font-medium leading-5 text-foreground">
-              {selectedPacket.recommendedAction}
-            </p>
-          </div>
-        </div>
+      <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+        <Button
+          className="h-8 justify-start gap-1.5 px-2 text-xs"
+          disabled={!selectedPacket.navigation.previousEvidenceId}
+          onClick={() => {
+            if (selectedPacket.navigation.previousEvidenceId) {
+              onSelectEvidence(selectedPacket.navigation.previousEvidenceId);
+            }
+          }}
+          size="sm"
+          variant="outline"
+        >
+          <ChevronLeftIcon className="size-3.5" />
+          Previous
+        </Button>
+        <span className="text-xs font-medium text-muted-foreground">Packet</span>
+        <Button
+          className="h-8 justify-end gap-1.5 px-2 text-xs"
+          disabled={!selectedPacket.navigation.nextEvidenceId}
+          onClick={() => {
+            if (selectedPacket.navigation.nextEvidenceId) {
+              onSelectEvidence(selectedPacket.navigation.nextEvidenceId);
+            }
+          }}
+          size="sm"
+          variant="outline"
+        >
+          Next
+          <ChevronRightIcon className="size-3.5" />
+        </Button>
       </div>
 
       <div className="mt-4 grid gap-3">
+        <PacketSection title="Evidence trace">
+          <ol className="relative grid gap-2 before:absolute before:bottom-5 before:left-[0.875rem] before:top-5 before:w-px before:bg-border-subtle">
+            {selectedPacket.trace.map((step, index) => (
+              <li
+                key={step.id}
+                className="relative grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-2.5"
+              >
+                <span
+                  className={cn(
+                    "z-10 mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full border bg-bg-default font-mono text-[11px] font-semibold",
+                    toneClassName[step.tone],
+                  )}
+                >
+                  {index + 1}
+                </span>
+                <span className="min-w-0 rounded-md border border-border-subtle bg-bg-muted/45 p-2">
+                  <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+                    <span className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                      {step.label}
+                    </span>
+                    <span className="min-w-0 break-words text-sm font-semibold text-foreground">
+                      {step.title}
+                    </span>
+                  </span>
+                  <span className="mt-1 block break-words text-xs leading-4 text-muted-foreground">
+                    {step.detail}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </PacketSection>
+        <div
+          className={cn(
+            "rounded-md border border-border-subtle border-l-2 bg-bg-muted/60 p-3",
+            selectedPacket.actionTone === "blocked" && "border-l-destructive",
+            selectedPacket.actionTone === "attention" &&
+              "border-l-amber-400 dark:border-l-amber-700",
+            selectedPacket.actionTone === "clear" &&
+              "border-l-emerald-400 dark:border-l-emerald-700",
+            selectedPacket.actionTone === "info" &&
+              "border-l-sky-400 dark:border-l-sky-700",
+          )}
+        >
+          <div className="flex min-w-0 gap-2.5">
+            <span
+              className={cn(
+                "mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md border",
+                toneClassName[selectedPacket.actionTone],
+              )}
+            >
+              <ActivityIcon className="size-3.5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                Next evidence action
+              </p>
+              <p className="mt-0.5 break-words text-sm font-medium leading-5 text-foreground">
+                {selectedPacket.recommendedAction}
+              </p>
+            </div>
+          </div>
+        </div>
         <PacketSection title="Evidence summary">
           <p className="text-sm font-medium leading-5 text-foreground">
             {selectedPacket.title}
