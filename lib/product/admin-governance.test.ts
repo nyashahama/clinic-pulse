@@ -198,11 +198,17 @@ it("exports the shared admin module primitives", () => {
 
 it("links reporting coverage clinic rows to operational clinic detail", () => {
   const source = readFileSync("app/(demo)/admin/reporting-coverage/page.tsx", "utf8");
+  const componentSource = readFileSync("components/product/reporting-coverage-ledger.tsx", "utf8");
+  const modelSource = readFileSync("lib/product/reporting-coverage.ts", "utf8");
 
-  expect(source).toContain("next/link");
-  expect(source).toContain('const returnSource = "admin-reporting-coverage";');
-  expect(source).toContain(
-    '`/district/clinics/${encodeURIComponent(clinicId)}?from=${returnSource}`',
+  expect(source).toContain("ReportingCoverageLedger");
+  expect(source).not.toContain("AdminEvidenceTable");
+  expect(componentSource).toContain('aria-label={viewModel.ledger.title}');
+  expect(componentSource).toContain("Inspect coverage receipt for");
+  expect(componentSource).toContain("onSelectReceipt(row.clinicId)");
+  expect(modelSource).toContain('const RETURN_SOURCE = "admin-reporting-coverage";');
+  expect(modelSource).toContain(
+    '`/district/clinics/${encodeURIComponent(clinicId)}?from=${RETURN_SOURCE}`',
   );
 });
 
