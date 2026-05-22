@@ -44,7 +44,6 @@ export const HIDDEN_DASHBOARD_PRIMARY_NAV_ROUTES = [
   "/field/drafts-sync",
   "/field/recent-reports",
   "/field/sync-queue",
-  "/district/clinic-network",
   "/district/clinic-evidence",
   "/district/interventions",
   "/admin/exports",
@@ -85,7 +84,7 @@ const ROLE_WORKSPACES: Record<AuthRole, DashboardWorkspace> = {
             icon: <Building2Icon />,
             items: [
               { title: "Severity queue", url: "/district/severity-queue" },
-              { title: "Clinic network", url: "/district#clinic-network" },
+              { title: "Clinic network", url: "/district/clinic-network" },
               { title: "Clinic evidence", url: "/district#clinic-evidence" },
               { title: "Interventions", url: "/district#interventions" },
             ],

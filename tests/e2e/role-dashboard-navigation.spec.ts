@@ -99,7 +99,6 @@ const hiddenStandaloneHrefs = [
   "/field/drafts-sync",
   "/field/recent-reports",
   "/field/sync-queue",
-  "/district/clinic-network",
   "/district/clinic-evidence",
   "/district/interventions",
   "/admin/exports",
@@ -277,6 +276,52 @@ test.describe("phase 1 role dashboard navigation", () => {
 
     await Promise.all([
       page.waitForURL(/\/district\/clinics\/[^?]+\?from=district-severity-queue$/),
+      page.getByRole("link", { name: "Open clinic detail" }).click(),
+    ]);
+    await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
+  });
+
+  test("district manager opens clinic network as a standalone module", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop-chrome", "Desktop sidebar navigation regression");
+
+    await signInAs(page, "district-manager@clinicpulse.local", "/district");
+
+    const sidebar = await openDashboardSidebar(page);
+    const link = sidebar.getByRole("link", { name: "Clinic network", exact: true });
+
+    await expect(link).toHaveAttribute("href", "/district/clinic-network");
+    await Promise.all([
+      page.waitForURL(/\/district\/clinic-network$/),
+      link.click(),
+    ]);
+
+    await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
+    await expect(page.locator('[data-district-module="clinic-network"]')).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Clinic network" })).toBeVisible();
+    await expect(page.locator("[data-district-clinic-network-metrics]")).toBeVisible();
+    await expect(page.locator("[data-district-clinic-network-toolbar]")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Status filter/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Service filter/i })).toBeVisible();
+    await expect(page.getByRole("searchbox", { name: "Search clinic network" })).toBeVisible();
+    await expect(page.getByLabel("Clinic network worklist")).toBeVisible();
+    await expect(page.getByText("Selected clinic profile")).toBeVisible();
+    await expect(
+      page.getByLabel("Clinic network metrics").getByText("Network coverage"),
+    ).toBeVisible();
+
+    await page.getByRole("button", { name: /Status filter: All statuses/i }).click();
+    await page.getByRole("menuitemradio", { name: "Operational" }).click();
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("status"))
+      .toBe("operational");
+    await expect(page.locator("[data-district-clinic-network-toolbar]")).toContainText(
+      "Operational",
+    );
+
+    await Promise.all([
+      page.waitForURL(/\/district\/clinics\/[^?]+\?from=district-clinic-network$/),
       page.getByRole("link", { name: "Open clinic detail" }).click(),
     ]);
     await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
