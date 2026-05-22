@@ -109,6 +109,7 @@ export type ReportingCoverageViewModel = {
     description: string;
     rows: ReportingCoverageLedgerRow[];
   };
+  evidenceReceiptsByClinicId: Record<string, ReportingCoverageEvidenceReceipt>;
   evidenceReceipt: ReportingCoverageEvidenceReceipt | null;
   actions: Array<{
     label: string;
@@ -169,6 +170,15 @@ export function buildReportingCoverageViewModel({
     .sort(sortLedgerRows);
   const attentionRows = rows.filter((row) => row.trust.tone !== "clear").length;
   const composition = buildComposition(rows);
+  const evidenceReceiptsByClinicId: Record<string, ReportingCoverageEvidenceReceipt> = {};
+
+  for (const row of rows) {
+    const receipt = buildEvidenceReceipt(row, pendingReportsByClinicId);
+
+    if (receipt) {
+      evidenceReceiptsByClinicId[row.clinicId] = receipt;
+    }
+  }
 
   return {
     header: {
@@ -226,7 +236,8 @@ export function buildReportingCoverageViewModel({
         "Each row links to the operational clinic detail with source, freshness, trust state, and evidence note intact.",
       rows,
     },
-    evidenceReceipt: buildEvidenceReceipt(rows[0] ?? null, pendingReportsByClinicId),
+    evidenceReceiptsByClinicId,
+    evidenceReceipt: rows[0] ? evidenceReceiptsByClinicId[rows[0].clinicId] : null,
     actions: [
       {
         label: "Review ingestion",

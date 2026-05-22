@@ -122,5 +122,13 @@ describe("buildReportingCoverageViewModel", () => {
       "Received",
       "Now",
     ]);
+    expect(Object.keys(viewModel.evidenceReceiptsByClinicId)).toEqual([
+      "clinic-stale",
+      "clinic-confirm",
+      "clinic-fresh",
+    ]);
+    expect(viewModel.evidenceReceiptsByClinicId["clinic-confirm"]?.clinicName).toBe(
+      "clinic-confirm Clinic",
+    );
   });
 });

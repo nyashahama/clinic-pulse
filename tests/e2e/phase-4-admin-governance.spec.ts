@@ -52,25 +52,19 @@ test("reporting coverage clinic names open operational detail", async ({ page })
   await expect(page.getByRole("button", { name: "Back to reporting coverage" })).toBeVisible();
 });
 
-test("reporting coverage rows open operational detail", async ({ page }) => {
+test("reporting coverage rows update the evidence receipt rail", async ({ page }) => {
   await signIn(page, "org-admin@clinicpulse.local");
   await page.goto("/admin/reporting-coverage");
 
   const coverageTable = page.getByLabel("Clinic reporting coverage");
   const clinicRow = coverageTable.getByRole("row", {
-    name: /Open Mabopane Station Clinic clinic detail/i,
+    name: /Inspect coverage receipt for Mabopane Station Clinic/i,
   });
 
   await expect(clinicRow).toBeVisible();
-  await Promise.all([
-    page.waitForURL(/\/district\/clinics\/clinic-mabopane-station\?from=admin-reporting-coverage$/),
-    clinicRow.getByText("non functional", { exact: true }).click(),
-  ]);
-  await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
-  await Promise.all([
-    page.waitForURL(/\/admin\/reporting-coverage$/),
-    page.getByRole("button", { name: "Back to reporting coverage" }).click(),
-  ]);
+  await clinicRow.getByText("non functional", { exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/reporting-coverage$/);
+  await expect(page.getByRole("heading", { name: "Mabopane Station Clinic" })).toBeVisible();
 });
 
 test("data ingestion clinic-backed rows open operational detail", async ({ page }) => {

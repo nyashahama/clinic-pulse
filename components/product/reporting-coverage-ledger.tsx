@@ -1,16 +1,19 @@
+"use client";
+
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import {
   ActivityIcon,
   ArrowRightIcon,
   CheckCircle2Icon,
   DatabaseIcon,
   FileTextIcon,
+  ListFilterIcon,
   RadioTowerIcon,
   ShieldCheckIcon,
   TriangleAlertIcon,
 } from "lucide-react";
 
-import { AdminEvidenceLinkedRow } from "@/components/product/admin-evidence-linked-row";
 import { AdminStatusBadge, type AdminTone } from "@/components/product/admin-module";
 import {
   Table,
@@ -259,11 +262,7 @@ function DistrictCoverageMatrix({
   );
 }
 
-function EvidenceReceipt({
-  receipt,
-}: {
-  receipt: ReportingCoverageEvidenceReceipt | null;
-}) {
+function EvidenceReceipt({ receipt }: { receipt: ReportingCoverageEvidenceReceipt | null }) {
   if (!receipt) {
     return (
       <section className="rounded-lg border border-border-subtle bg-bg-default p-4 text-content-default shadow-sm">
@@ -345,11 +344,216 @@ function EvidenceReceipt({
   );
 }
 
+const LEDGER_ROW_INTERACTIVE_SELECTOR = [
+  "a",
+  "button",
+  "input",
+  "select",
+  "textarea",
+  "[role='button']",
+  "[role='link']",
+].join(",");
+
+function shouldIgnoreLedgerRowSelection(target: EventTarget | null) {
+  return (
+    target instanceof HTMLElement && Boolean(target.closest(LEDGER_ROW_INTERACTIVE_SELECTOR))
+  );
+}
+
+function CoverageLedgerWorkspace({
+  evidenceReceipt,
+  onSelectReceipt,
+  selectedClinicId,
+  viewModel,
+}: {
+  evidenceReceipt: ReportingCoverageEvidenceReceipt | null;
+  onSelectReceipt: (clinicId: string) => void;
+  selectedClinicId: string | null;
+  viewModel: ReportingCoverageViewModel;
+}) {
+  const attentionRows = viewModel.ledger.rows.filter((row) => row.trust.tone !== "clear").length;
+  const pendingRows = viewModel.ledger.rows.filter(
+    (row) => row.reviewState === "pending_review",
+  ).length;
+
+  return (
+    <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,390px)] xl:items-start">
+      <div
+        aria-label={viewModel.ledger.title}
+        className="min-w-0 overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm"
+      >
+        <div className="grid gap-3 border-b border-border-subtle px-4 py-3">
+          <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                Coverage workspace
+              </p>
+              <h2 className="mt-1 break-words text-base font-semibold text-foreground">
+                Clinic reporting coverage
+              </h2>
+              <p className="mt-1 break-words text-sm leading-5 text-muted-foreground">
+                {viewModel.ledger.description}
+              </p>
+            </div>
+            <div className="flex min-w-0 flex-wrap gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-border-subtle bg-bg-muted/50 px-2 py-1 text-xs text-muted-foreground">
+                <ListFilterIcon className="size-3.5" />
+                {viewModel.ledger.rows.length} rows
+              </span>
+              <ToneBadge tone={attentionRows > 0 ? "attention" : "clear"}>
+                {`${attentionRows} need attention`}
+              </ToneBadge>
+              <ToneBadge tone={pendingRows > 0 ? "attention" : "clear"}>
+                {`${pendingRows} pending review`}
+              </ToneBadge>
+            </div>
+          </div>
+          <p className="rounded-md border border-border-subtle bg-bg-muted/35 px-3 py-2 text-xs leading-4 text-muted-foreground">
+            Row click updates the evidence rail. Use the clinic name link to open the full clinic
+            detail.
+          </p>
+        </div>
+        <Table className="table-fixed">
+          <TableHeader className="bg-bg-muted/60">
+            <TableRow className="border-border-subtle bg-bg-muted/60 hover:bg-bg-muted/60">
+              <TableHead className="h-11 w-[24%] whitespace-normal break-words px-3 align-top text-xs font-semibold uppercase tracking-normal text-content-default">
+                Clinic
+              </TableHead>
+              <TableHead className="h-11 w-[18%] whitespace-normal break-words px-3 align-top text-xs font-semibold uppercase tracking-normal text-content-default">
+                State
+              </TableHead>
+              <TableHead className="h-11 w-[22%] whitespace-normal break-words px-3 align-top text-xs font-semibold uppercase tracking-normal text-content-default">
+                Evidence
+              </TableHead>
+              <TableHead className="h-11 w-[21%] whitespace-normal break-words px-3 align-top text-xs font-semibold uppercase tracking-normal text-content-default">
+                Data trust
+              </TableHead>
+              <TableHead className="h-11 w-[15%] whitespace-normal break-words px-3 align-top text-xs font-semibold uppercase tracking-normal text-content-default">
+                Action
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody className="divide-y divide-border-subtle [&_tr]:border-0">
+            {viewModel.ledger.rows.map((row) => {
+              const isSelected = row.clinicId === selectedClinicId;
+
+              return (
+                <TableRow
+                  aria-label={`Inspect coverage receipt for ${row.clinicName}`}
+                  className={cn(
+                    "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:bg-bg-muted/60",
+                    isSelected && "bg-primary/5 ring-1 ring-inset ring-primary/25",
+                  )}
+                  key={row.clinicId}
+                  onClick={(event) => {
+                    if (shouldIgnoreLedgerRowSelection(event.target)) {
+                      return;
+                    }
+
+                    onSelectReceipt(row.clinicId);
+                  }}
+                  onKeyDown={(event) => {
+                    if (
+                      shouldIgnoreLedgerRowSelection(event.target) ||
+                      (event.key !== "Enter" && event.key !== " ")
+                    ) {
+                      return;
+                    }
+
+                    event.preventDefault();
+                    onSelectReceipt(row.clinicId);
+                  }}
+                  tabIndex={0}
+                >
+                  <TableCell className="whitespace-normal break-words px-3 py-3 align-top text-content-default">
+                    <Link
+                      className="group/link inline-flex min-w-0 flex-col rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      href={row.clinicHref}
+                    >
+                      <span className="font-medium text-primary underline-offset-4 group-hover/link:underline group-focus-visible/link:underline">
+                        {row.clinicName}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {row.facilityCode} · {row.district}
+                      </span>
+                    </Link>
+                  </TableCell>
+                  <TableCell className="whitespace-normal break-words px-3 py-3 align-top text-content-default">
+                    <div className="grid justify-start gap-1.5">
+                      <AdminStatusBadge tone={row.trust.tone === "clear" ? "clear" : "attention"}>
+                        {row.status}
+                      </AdminStatusBadge>
+                      <span className="text-xs text-muted-foreground">{row.freshness}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="whitespace-normal break-words px-3 py-3 align-top text-content-default">
+                    <div className="space-y-1 text-sm">
+                      <p>{row.lastReportedAt}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {row.sourceLabel} · {row.reporterName}
+                      </p>
+                    </div>
+                  </TableCell>
+                  <TableCell className="whitespace-normal break-words px-3 py-3 align-top text-content-default">
+                    <div className="space-y-1">
+                      <AdminStatusBadge tone={trustToneToAdminTone(row.trust.tone)}>
+                        {row.trust.label}
+                      </AdminStatusBadge>
+                      <p className="max-w-xs text-xs leading-4 text-muted-foreground">
+                        {row.trust.description}
+                      </p>
+                    </div>
+                  </TableCell>
+                  <TableCell className="whitespace-normal break-words px-3 py-3 align-top text-content-default">
+                    <div className="grid gap-2">
+                      <button
+                        aria-pressed={isSelected}
+                        className={cn(
+                          "inline-flex w-full items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-left text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          isSelected
+                            ? "border-primary/40 bg-primary/10 text-primary"
+                            : "border-border-subtle bg-bg-default text-content-default hover:bg-bg-muted",
+                        )}
+                        onClick={() => onSelectReceipt(row.clinicId)}
+                        type="button"
+                      >
+                        <span className="min-w-0 truncate">Inspect receipt</span>
+                        <ArrowRightIcon className="size-3.5 shrink-0" />
+                      </button>
+                      <p className="line-clamp-3 text-xs leading-4 text-muted-foreground">
+                        {row.evidenceNote}
+                      </p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="xl:sticky xl:top-4">
+        <EvidenceReceipt receipt={evidenceReceipt} />
+      </div>
+    </section>
+  );
+}
+
 function trustToneToAdminTone(tone: ReportingCoverageViewModel["ledger"]["rows"][number]["trust"]["tone"]): AdminTone {
   return tone;
 }
 
 export function ReportingCoverageLedger({ viewModel }: ReportingCoverageLedgerProps) {
+  const [selectedClinicId, setSelectedClinicId] = useState<string | null>(
+    viewModel.ledger.rows[0]?.clinicId ?? null,
+  );
+  const selectedEvidenceReceipt = useMemo(() => {
+    if (!selectedClinicId) {
+      return viewModel.evidenceReceipt;
+    }
+
+    return viewModel.evidenceReceiptsByClinicId[selectedClinicId] ?? viewModel.evidenceReceipt;
+  }, [selectedClinicId, viewModel.evidenceReceipt, viewModel.evidenceReceiptsByClinicId]);
+
   return (
     <div className="grid min-w-0 gap-4 pb-6" data-admin-module="reporting-coverage">
       <section className="overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm">
@@ -431,100 +635,17 @@ export function ReportingCoverageLedger({ viewModel }: ReportingCoverageLedgerPr
         ))}
       </section>
 
-      <CoverageComposition items={viewModel.composition} />
+      <CoverageLedgerWorkspace
+        evidenceReceipt={selectedEvidenceReceipt}
+        onSelectReceipt={setSelectedClinicId}
+        selectedClinicId={selectedClinicId}
+        viewModel={viewModel}
+      />
 
-      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] xl:items-start">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,390px)] xl:items-start">
+        <CoverageComposition items={viewModel.composition} />
         <DistrictCoverageMatrix viewModel={viewModel.districtMatrix} />
-        <EvidenceReceipt receipt={viewModel.evidenceReceipt} />
       </div>
-
-      <section
-        aria-label={viewModel.ledger.title}
-        className="overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm"
-      >
-        <div className="border-b border-border-subtle px-4 py-3">
-          <h2 className="break-words text-base font-semibold text-foreground">
-            Clinic coverage ledger
-          </h2>
-          <p className="mt-1 break-words text-sm leading-5 text-muted-foreground">
-            {viewModel.ledger.description}
-          </p>
-        </div>
-        <Table className="table-fixed">
-          <TableHeader className="bg-bg-muted/60">
-            <TableRow className="border-border-subtle bg-bg-muted/60 hover:bg-bg-muted/60">
-              <TableHead className="h-11 whitespace-normal break-words px-3 align-top text-xs font-semibold uppercase tracking-normal text-content-default">
-                Clinic
-              </TableHead>
-              <TableHead className="h-11 whitespace-normal break-words px-3 align-top text-xs font-semibold uppercase tracking-normal text-content-default">
-                Status / freshness
-              </TableHead>
-              <TableHead className="h-11 whitespace-normal break-words px-3 align-top text-xs font-semibold uppercase tracking-normal text-content-default">
-                Evidence receipt
-              </TableHead>
-              <TableHead className="h-11 whitespace-normal break-words px-3 align-top text-xs font-semibold uppercase tracking-normal text-content-default">
-                Data trust
-              </TableHead>
-              <TableHead className="h-11 whitespace-normal break-words px-3 align-top text-xs font-semibold uppercase tracking-normal text-content-default">
-                Ledger note
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody className="divide-y divide-border-subtle [&_tr]:border-0">
-            {viewModel.ledger.rows.map((row) => (
-              <AdminEvidenceLinkedRow
-                ariaLabel={`Open ${row.clinicName} clinic detail`}
-                className="hover:bg-bg-muted/60"
-                href={row.clinicHref}
-                key={row.clinicId}
-              >
-                <TableCell className="whitespace-normal break-words px-3 py-3 align-top text-content-default">
-                  <Link
-                    className="group/link inline-flex min-w-0 flex-col rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                    href={row.clinicHref}
-                  >
-                    <span className="font-medium text-primary underline-offset-4 group-hover/link:underline group-focus-visible/link:underline">
-                      {row.clinicName}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {row.facilityCode} · {row.district}
-                    </span>
-                  </Link>
-                </TableCell>
-                <TableCell className="whitespace-normal break-words px-3 py-3 align-top text-content-default">
-                  <div className="grid justify-start gap-1.5">
-                    <AdminStatusBadge tone={row.trust.tone === "clear" ? "clear" : "attention"}>
-                      {row.status}
-                    </AdminStatusBadge>
-                    <span className="text-xs text-muted-foreground">{row.freshness}</span>
-                  </div>
-                </TableCell>
-                <TableCell className="whitespace-normal break-words px-3 py-3 align-top text-content-default">
-                  <div className="space-y-1 text-sm">
-                    <p>{row.lastReportedAt}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {row.sourceLabel} · {row.reporterName}
-                    </p>
-                  </div>
-                </TableCell>
-                <TableCell className="whitespace-normal break-words px-3 py-3 align-top text-content-default">
-                  <div className="space-y-1">
-                    <AdminStatusBadge tone={trustToneToAdminTone(row.trust.tone)}>
-                      {row.trust.label}
-                    </AdminStatusBadge>
-                    <p className="max-w-xs text-xs leading-4 text-muted-foreground">
-                      {row.trust.description}
-                    </p>
-                  </div>
-                </TableCell>
-                <TableCell className="whitespace-normal break-words px-3 py-3 align-top text-content-default">
-                  {row.evidenceNote}
-                </TableCell>
-              </AdminEvidenceLinkedRow>
-            ))}
-          </TableBody>
-        </Table>
-      </section>
     </div>
   );
 }
