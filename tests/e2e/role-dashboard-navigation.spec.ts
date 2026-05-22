@@ -304,6 +304,23 @@ test.describe("phase 1 role dashboard navigation", () => {
     await expect(page.getByRole("button", { name: /Status filter/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /Service filter/i })).toBeVisible();
     await expect(page.getByRole("searchbox", { name: "Search clinic network" })).toBeVisible();
+    await expect(
+      page.locator('[data-district-clinic-network-layout="map-first"]'),
+    ).toBeVisible();
+    await expect(
+      page.locator("[data-district-clinic-network-command-surface]"),
+    ).toBeVisible();
+    await expect(
+      page
+        .locator("[data-district-clinic-network-command-surface]")
+        .getByLabel("District clinic network map"),
+    ).toBeVisible();
+    await expect(
+      page
+        .locator("[data-district-clinic-network-command-surface]")
+        .getByText("Selected clinic profile"),
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Coverage table" })).toBeVisible();
     await expect(page.getByLabel("Clinic network worklist")).toBeVisible();
     await expect(page.getByText("Selected clinic profile")).toBeVisible();
     await expect(

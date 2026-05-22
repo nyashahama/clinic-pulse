@@ -423,6 +423,7 @@ export function ClinicNetworkMapPanel({
     <section
       aria-label="District clinic network map"
       className="min-w-0 overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm"
+      data-district-clinic-network-map-primary
     >
       <div className="border-b border-border-subtle px-4 py-3">
         <div className="flex min-w-0 items-center justify-between gap-3">
@@ -438,7 +439,7 @@ export function ClinicNetworkMapPanel({
         </div>
       </div>
 
-      <div className="relative min-h-[28rem] overflow-hidden bg-[linear-gradient(180deg,#f7faf9_0%,#eef6f4_100%)] dark:bg-none dark:bg-card">
+      <div className="relative min-h-[32rem] overflow-hidden bg-[linear-gradient(180deg,#f7faf9_0%,#eef6f4_100%)] dark:bg-none dark:bg-card">
         <div className="absolute inset-0 opacity-80">
           <div className="absolute left-[8%] top-[14%] h-px w-[34%] rotate-[16deg] bg-teal-200/80 dark:bg-primary/30" />
           <div className="absolute left-[22%] top-[48%] h-px w-[52%] -rotate-[12deg] bg-teal-200/80 dark:bg-primary/30" />
@@ -533,7 +534,27 @@ export function ClinicNetworkWorklist({
     <section
       aria-label="Clinic network worklist"
       className="overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm"
+      data-district-clinic-network-worklist-panel
     >
+      <div className="border-b border-border-subtle px-4 py-3">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+              Network clinics
+            </p>
+            <h2 className="mt-1 text-base font-semibold text-foreground">
+              Coverage table
+            </h2>
+            <p className="mt-1 max-w-2xl text-sm leading-5 text-muted-foreground">
+              Supporting clinic rows for the map view, showing signal state and spare routing
+              capacity without turning the network page into another severity queue.
+            </p>
+          </div>
+          <span className="inline-flex h-7 shrink-0 items-center rounded-md border border-border-subtle bg-bg-muted px-2 text-xs font-medium text-muted-foreground">
+            {clinics.length} visible
+          </span>
+        </div>
+      </div>
       <div className="hidden grid-cols-[minmax(12rem,1fr)_minmax(7rem,0.5fr)_minmax(7rem,0.5fr)] border-b border-border-subtle bg-bg-muted/60 px-3 py-2 text-xs font-semibold uppercase tracking-normal text-content-default sm:grid">
         <span>Clinic</span>
         <span>Signal</span>

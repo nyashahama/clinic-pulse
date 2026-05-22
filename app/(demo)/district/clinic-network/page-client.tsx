@@ -214,23 +214,27 @@ export default function DistrictClinicNetworkPageClient({
       />
 
       {viewModel.clinics.length ? (
-        <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-          <div className="grid min-w-0 gap-4">
+        <div
+          className="grid min-w-0 gap-4"
+          data-district-clinic-network-layout="map-first"
+        >
+          <div
+            className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]"
+            data-district-clinic-network-command-surface
+          >
             <ClinicNetworkMapPanel
               clinics={viewModel.clinics}
               selectedClinicId={viewModel.selectedClinic?.clinicId ?? null}
               onSelectClinic={setSelectedClinicId}
             />
-            <ClinicNetworkWorklist
-              clinics={viewModel.clinics}
-              emptyState={viewModel.emptyState}
-              selectedClinicId={viewModel.selectedClinic?.clinicId ?? null}
-              onSelectClinic={setSelectedClinicId}
-            />
-          </div>
-          <div className="min-w-0">
             <ClinicNetworkSelectedProfile selectedClinic={viewModel.selectedClinic} />
           </div>
+          <ClinicNetworkWorklist
+            clinics={viewModel.clinics}
+            emptyState={viewModel.emptyState}
+            selectedClinicId={viewModel.selectedClinic?.clinicId ?? null}
+            onSelectClinic={setSelectedClinicId}
+          />
         </div>
       ) : (
         <AdminEmptyState
