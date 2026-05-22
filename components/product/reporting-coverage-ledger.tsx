@@ -37,6 +37,8 @@ type ReportingCoverageLedgerProps = {
   viewModel: ReportingCoverageViewModel;
 };
 
+type CoverageLedgerFilter = "all" | "attention" | "pending_review" | "fresh";
+
 const toneRailClassName: Record<ReportingCoverageTone, string> = {
   clear: "bg-emerald-500",
   attention: "bg-amber-500",
@@ -371,10 +373,55 @@ function CoverageLedgerWorkspace({
   selectedClinicId: string | null;
   viewModel: ReportingCoverageViewModel;
 }) {
+  const [activeFilter, setActiveFilter] = useState<CoverageLedgerFilter>("all");
   const attentionRows = viewModel.ledger.rows.filter((row) => row.trust.tone !== "clear").length;
   const pendingRows = viewModel.ledger.rows.filter(
     (row) => row.reviewState === "pending_review",
   ).length;
+  const freshRows = viewModel.ledger.rows.filter((row) => row.freshness === "fresh").length;
+  const filteredRows = useMemo(() => {
+    switch (activeFilter) {
+      case "attention":
+        return viewModel.ledger.rows.filter((row) => row.trust.tone !== "clear");
+      case "pending_review":
+        return viewModel.ledger.rows.filter((row) => row.reviewState === "pending_review");
+      case "fresh":
+        return viewModel.ledger.rows.filter((row) => row.freshness === "fresh");
+      default:
+        return viewModel.ledger.rows;
+    }
+  }, [activeFilter, viewModel.ledger.rows]);
+  const filterOptions: Array<{
+    count: number;
+    id: CoverageLedgerFilter;
+    label: string;
+    tone: ReportingCoverageTone;
+  }> = [
+    {
+      count: viewModel.ledger.rows.length,
+      id: "all",
+      label: "All",
+      tone: "info",
+    },
+    {
+      count: attentionRows,
+      id: "attention",
+      label: "Needs attention",
+      tone: attentionRows > 0 ? "attention" : "clear",
+    },
+    {
+      count: pendingRows,
+      id: "pending_review",
+      label: "Pending review",
+      tone: pendingRows > 0 ? "attention" : "clear",
+    },
+    {
+      count: freshRows,
+      id: "fresh",
+      label: "Fresh",
+      tone: "clear",
+    },
+  ];
 
   return (
     <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,390px)] xl:items-start">
@@ -408,33 +455,55 @@ function CoverageLedgerWorkspace({
               </ToneBadge>
             </div>
           </div>
-          <p className="rounded-md border border-border-subtle bg-bg-muted/35 px-3 py-2 text-xs leading-4 text-muted-foreground">
-            Row click updates the evidence rail. Use the clinic name link to open the full clinic
-            detail.
+          <div className="flex min-w-0 flex-wrap gap-2" aria-label="Coverage ledger filters">
+            {filterOptions.map((option) => {
+              const isActive = activeFilter === option.id;
+
+              return (
+                <button
+                  aria-pressed={isActive}
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    isActive
+                      ? toneBadgeClassName[option.tone]
+                      : "border-border-subtle bg-bg-muted/35 text-muted-foreground hover:bg-bg-muted",
+                  )}
+                  key={option.id}
+                  onClick={() => setActiveFilter(option.id)}
+                  type="button"
+                >
+                  <span>{option.label}</span>
+                  <span className="font-mono">{option.count}</span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs leading-4 text-muted-foreground">
+            Select a row to inspect its evidence receipt. Clinic names open the full clinic detail.
           </p>
         </div>
         <Table className="table-fixed">
           <TableHeader className="bg-bg-muted/60">
             <TableRow className="border-border-subtle bg-bg-muted/60 hover:bg-bg-muted/60">
-              <TableHead className="h-11 w-[24%] whitespace-normal break-words px-3 align-top text-xs font-semibold uppercase tracking-normal text-content-default">
+              <TableHead className="h-11 w-[28%] whitespace-normal break-words px-3 align-top text-xs font-semibold uppercase tracking-normal text-content-default">
                 Clinic
               </TableHead>
-              <TableHead className="h-11 w-[18%] whitespace-normal break-words px-3 align-top text-xs font-semibold uppercase tracking-normal text-content-default">
+              <TableHead className="h-11 w-[16%] whitespace-normal break-words px-3 align-top text-xs font-semibold uppercase tracking-normal text-content-default">
                 State
               </TableHead>
-              <TableHead className="h-11 w-[22%] whitespace-normal break-words px-3 align-top text-xs font-semibold uppercase tracking-normal text-content-default">
+              <TableHead className="h-11 w-[23%] whitespace-normal break-words px-3 align-top text-xs font-semibold uppercase tracking-normal text-content-default">
                 Evidence
               </TableHead>
-              <TableHead className="h-11 w-[21%] whitespace-normal break-words px-3 align-top text-xs font-semibold uppercase tracking-normal text-content-default">
+              <TableHead className="h-11 w-[23%] whitespace-normal break-words px-3 align-top text-xs font-semibold uppercase tracking-normal text-content-default">
                 Data trust
               </TableHead>
-              <TableHead className="h-11 w-[15%] whitespace-normal break-words px-3 align-top text-xs font-semibold uppercase tracking-normal text-content-default">
-                Action
+              <TableHead className="h-11 w-[10%] whitespace-normal break-words px-3 align-top text-xs font-semibold uppercase tracking-normal text-content-default">
+                Receipt
               </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className="divide-y divide-border-subtle [&_tr]:border-0">
-            {viewModel.ledger.rows.map((row) => {
+            {filteredRows.map((row) => {
               const isSelected = row.clinicId === selectedClinicId;
 
               return (
@@ -505,11 +574,11 @@ function CoverageLedgerWorkspace({
                     </div>
                   </TableCell>
                   <TableCell className="whitespace-normal break-words px-3 py-3 align-top text-content-default">
-                    <div className="grid gap-2">
+                    <div className="grid">
                       <button
                         aria-pressed={isSelected}
                         className={cn(
-                          "inline-flex w-full items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-left text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          "inline-flex w-full items-center justify-center rounded-md border px-2 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                           isSelected
                             ? "border-primary/40 bg-primary/10 text-primary"
                             : "border-border-subtle bg-bg-default text-content-default hover:bg-bg-muted",
@@ -517,17 +586,24 @@ function CoverageLedgerWorkspace({
                         onClick={() => onSelectReceipt(row.clinicId)}
                         type="button"
                       >
-                        <span className="min-w-0 truncate">Inspect receipt</span>
-                        <ArrowRightIcon className="size-3.5 shrink-0" />
+                        <span className="sr-only">Inspect receipt</span>
+                        <ArrowRightIcon className="size-3.5" />
                       </button>
-                      <p className="line-clamp-3 text-xs leading-4 text-muted-foreground">
-                        {row.evidenceNote}
-                      </p>
                     </div>
                   </TableCell>
                 </TableRow>
               );
             })}
+            {filteredRows.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  className="px-3 py-8 text-center text-sm text-muted-foreground"
+                  colSpan={5}
+                >
+                  No clinics match this coverage filter.
+                </TableCell>
+              </TableRow>
+            ) : null}
           </TableBody>
         </Table>
       </div>
