@@ -8,7 +8,8 @@ import {
 } from "@/components/product/admin-module";
 import {
   DataIngestionWorkspace,
-  type DataIngestionQueueRow,
+  type DataIngestionStage,
+  type DataIngestionTriageItem,
 } from "@/components/product/data-ingestion-workspace";
 import {
   fetchOperationalClinics,
@@ -136,28 +137,89 @@ function actionForReport(report: ReportApiResponse) {
   return "Keep in intake watchlist";
 }
 
-function buildPendingReportQueueRow(
+function stageForReport(report: ReportApiResponse): {
+  id: string;
+  label: string;
+  tone: AdminTone;
+  blocker: string;
+} {
+  if (report.offlineCreated) {
+    return {
+      id: "captured",
+      label: "Captured",
+      tone: "attention",
+      blocker: "Offline source waiting for validation",
+    };
+  }
+
+  if (report.reviewState === "pending") {
+    return {
+      id: "reviewed",
+      label: "Reviewed",
+      tone: "attention",
+      blocker: "Human review gate",
+    };
+  }
+
+  if (report.reviewState === "rejected") {
+    return {
+      id: "validated",
+      label: "Validated",
+      tone: "blocked",
+      blocker: "Rejected source payload",
+    };
+  }
+
+  return {
+    id: "promoted",
+    label: "Promoted",
+    tone: "clear",
+    blocker: "Ready for clinic status promotion",
+  };
+}
+
+function buildIngestionTriageItem(
   report: ReportApiResponse,
   clinicLabel?: string,
-): DataIngestionQueueRow {
+): DataIngestionTriageItem {
   const trust = dataTrustForReport(report);
+  const stage = stageForReport(report);
+  const sourceLabel = report.offlineCreated ? "Offline field report" : formatLabel(report.source);
+  const submittedLabel = formatDateTime(report.submittedAt);
+  const receivedLabel = formatDateTime(report.receivedAt);
+  const reviewLabel = formatLabel(report.reviewState);
 
   return {
     id: String(report.id),
+    stageId: stage.id,
+    stageLabel: stage.label,
+    stageTone: stage.tone,
     clinicId: report.clinicId,
     clinicLabel: clinicLabel ?? report.clinicId,
     reporterLabel: report.reporterName ?? "Field report",
-    sourceLabel: report.offlineCreated ? "Offline field report" : formatLabel(report.source),
+    sourceLabel,
     evidence: reportEvidence(report),
-    submittedLabel: formatDateTime(report.submittedAt),
-    receivedLabel: formatDateTime(report.receivedAt),
-    reviewLabel: formatLabel(report.reviewState),
+    submittedLabel,
+    receivedLabel,
+    reviewLabel,
     reviewTone: toneForAttention(report.reviewState === "pending" ? 1 : 0),
     trustLabel: trust.label,
     trustTone: trust.tone,
     trustDescription: trust.description,
     actionLabel: actionForReport(report),
+    blockerLabel: stage.blocker,
     clinicHref: buildClinicDetailHref(report.clinicId),
+    receiptTrail: [
+      `Captured from ${sourceLabel}`,
+      `Submitted ${submittedLabel}`,
+      `Received ${receivedLabel}`,
+      `Review state is ${reviewLabel}`,
+    ],
+    payloadChecks: [
+      `One-clinic context: ${clinicLabel ?? report.clinicId}`,
+      `Source review: ${stage.blocker}`,
+      `Trust result: ${trust.label}`,
+    ],
   };
 }
 
@@ -180,9 +242,58 @@ export default async function Page() {
   });
   const clinicsNeedingReview = clinics.filter(clinicNeedsIngestionReview);
   const clinicNameById = new Map(clinics.map((row) => [row.clinic.id, row.clinic.name]));
-  const pendingReportRows = pendingReports.map((report) =>
-    buildPendingReportQueueRow(report, clinicNameById.get(report.clinicId)),
+  const ingestionItems = pendingReports.map((report) =>
+    buildIngestionTriageItem(report, clinicNameById.get(report.clinicId)),
   );
+  const stageCounts = new Map<string, number>();
+
+  for (const item of ingestionItems) {
+    stageCounts.set(item.stageId, (stageCounts.get(item.stageId) ?? 0) + 1);
+  }
+
+  const freshnessPressure = syncSummary.staleClinics + syncSummary.needsConfirmationClinics;
+  const ingestionStages: DataIngestionStage[] = [
+    {
+      id: "captured",
+      label: "Captured",
+      count: pendingReports.length + syncSummary.pendingOfflineReports,
+      tone: toneForAttention(syncSummary.pendingOfflineReports),
+      description: "Field and offline payloads that entered the intake window.",
+      blocker: syncSummary.pendingOfflineReports ? "Offline queue active" : "Capture clear",
+    },
+    {
+      id: "validated",
+      label: "Validated",
+      count: syncSummary.validationFailures,
+      tone: toneForAttention(syncSummary.validationFailures),
+      description: "Payloads blocked before they can influence clinic status.",
+      blocker: syncSummary.validationFailures ? "Validation failures" : "Schema clear",
+    },
+    {
+      id: "reviewed",
+      label: "Reviewed",
+      count: stageCounts.get("reviewed") ?? pendingReports.length,
+      tone: toneForAttention(pendingReports.length),
+      description: "Reports waiting for a human review decision.",
+      blocker: pendingReports.length ? "Review gate active" : "Review clear",
+    },
+    {
+      id: "promoted",
+      label: "Promoted",
+      count: Math.max(clinics.length - clinicsNeedingReview.length, 0),
+      tone: clinicsNeedingReview.length ? "attention" : "clear",
+      description: "Clinics whose current status is usable by operations.",
+      blocker: clinicsNeedingReview.length ? "Some clinics held back" : "Promotion clear",
+    },
+    {
+      id: "reconciled",
+      label: "Reconciled",
+      count: freshnessPressure,
+      tone: toneForAttention(freshnessPressure),
+      description: "Freshness and confirmation pressure after ingestion.",
+      blocker: freshnessPressure ? "Freshness backlog" : "Reconciled",
+    },
+  ];
   const ingestionSignals: IngestionSignal[] = [
     {
       id: "offline-queue",
@@ -262,7 +373,15 @@ export default async function Page() {
           Retry and incident handoff controls are not exposed.
         </span>
       </AdminFilterBar>
-      <DataIngestionWorkspace rows={pendingReportRows} />
+      <DataIngestionWorkspace
+        summary={{
+          readinessLabel: `${formatCount(coverage.readinessPercent)}%`,
+          pendingLabel: formatCount(pendingReports.length),
+          syncWindowLabel: formatDateTime(syncSummary.windowStartedAt),
+        }}
+        stages={ingestionStages}
+        items={ingestionItems}
+      />
       <AdminEvidenceTable
         label="Ingestion signal evidence"
         rows={ingestionSignals}

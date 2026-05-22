@@ -217,16 +217,22 @@ it("links data-ingestion clinic and report rows to operational clinic detail", (
   const componentSource = readFileSync("components/product/data-ingestion-workspace.tsx", "utf8");
 
   expect(source).toContain("DataIngestionWorkspace");
+  expect(source).toContain("ingestionStages");
   expect(componentSource).toContain('aria-label="Pending report queue"');
-  expect(componentSource).toContain("Evidence receipt");
-  expect(componentSource).toContain("Ingestion receipt");
+  expect(componentSource).toContain('aria-label="Ingestion pipeline control tower"');
+  expect(componentSource).toContain("Ingestion control tower");
+  expect(componentSource).toContain("Pipeline pressure map");
+  expect(componentSource).toContain("Evidence console");
+  expect(componentSource).toContain("Receipt trail");
+  expect(componentSource).toContain("Payload checks");
   expect(componentSource).toContain(
-    "aria-label={`View evidence receipt for ${row.clinicId}`}",
+    "aria-label={`Inspect evidence for ${item.clinicId}`}",
   );
   expect(componentSource).toContain(
-    "aria-label={`Open clinic context for ${row.clinicId}`}",
+    "aria-label={`Open clinic context for ${item.clinicId}`}",
   );
-  expect(componentSource).toContain("href={row.clinicHref}");
+  expect(componentSource).toContain("href={item.clinicHref}");
+  expect(componentSource).toContain("href={selectedItem.clinicHref}");
   expect(source).toContain(
     'const returnSource = "admin-data-ingestion";',
   );

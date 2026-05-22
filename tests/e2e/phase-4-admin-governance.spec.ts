@@ -73,14 +73,14 @@ test("data ingestion clinic-backed rows open operational detail", async ({ page 
 
   const pendingReportQueue = page.getByLabel("Pending report queue");
   const pendingReportRow = pendingReportQueue.getByRole("article", {
-    name: /Pending report evidence for clinic-atteridgeville-extension/i,
+    name: /Ingestion case for clinic-atteridgeville-extension/i,
   });
 
   await expect(pendingReportRow).toBeVisible();
   await pendingReportRow
-    .getByRole("button", { name: "View evidence receipt for clinic-atteridgeville-extension" })
+    .getByRole("button", { name: "Inspect evidence for clinic-atteridgeville-extension" })
     .click();
-  await expect(page.getByLabel("Ingestion receipt")).toContainText(
+  await expect(page.getByLabel("Ingestion evidence console")).toContainText(
     "clinic-atteridgeville-extension",
   );
   await Promise.all([
