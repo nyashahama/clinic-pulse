@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { MetricTile } from "@/components/product/metric-tile";
 import { ProductPanel } from "@/components/product/panel";
+import { ReportStream } from "@/components/demo/report-stream";
 import {
   ReportReviewQueueView,
   ReportReviewQueueErrorAlert,
@@ -22,11 +23,35 @@ import {
   AdminEvidenceTable,
   AdminFilterBar,
   AdminModuleHeader,
+  AdminStatusBadge,
+  getAdminToneClassName,
 } from "@/components/product/admin-module";
+import {
+  AdminDetailActionPanel,
+  AdminDetailEvidenceList,
+  AdminDetailHero,
+  AdminDetailSignalBar,
+  AdminDetailStatStrip,
+  AdminDetailTimeline,
+  getAdminDetailPressureTone,
+} from "@/components/product/admin-detail";
+import {
+  EvidenceCaseBriefPanel,
+  EvidenceCommandHeader,
+  EvidenceCommandMetricStrip,
+  EvidenceDecisionPanel,
+  EvidencePacketPanel,
+} from "@/components/product/evidence-command";
 import {
   WorkspaceClinicDetailLoading,
   WorkspaceDashboardLoading,
 } from "@/components/product/workspace-loading";
+import {
+  clinicOperatingStatuses,
+  getClinicStatusCopy,
+  normalizeClinicStatus,
+} from "@/lib/product/clinic-status";
+import { formatEvidenceSource } from "@/lib/product/evidence-command";
 import type { PendingReportReview } from "@/lib/product/report-review";
 
 describe("product surface primitives", () => {
@@ -136,6 +161,307 @@ describe("product surface primitives", () => {
     expect(html).not.toContain('class="flex flex-col gap-2 rounded-lg border bg-card');
   });
 
+  it("renders admin status badges from the shared admin tone primitive", () => {
+    const html = renderToStaticMarkup(
+      createElement(AdminStatusBadge, { tone: "attention" }, "Needs review"),
+    );
+
+    expect(html).toContain("Needs review");
+    expect(html).toContain("rounded-md");
+    expect(html).toContain("bg-amber-50");
+  });
+
+  it("renders operational detail pages with hero, actions, metrics, and timeline primitives", () => {
+    const html = renderToStaticMarkup(
+      createElement(
+        "div",
+        null,
+        createElement(AdminDetailHero, {
+          eyebrow: "Field evidence",
+          title: "Mamelodi East Clinic report",
+          description: "Power outage closed the triage room.",
+          status: createElement(AdminStatusBadge, { tone: "attention" }, "Needs review"),
+          actions: createElement("a", { href: "/admin/reports/42" }, "Open detail"),
+        }),
+        createElement(AdminDetailStatStrip, {
+          stats: [
+            {
+              label: "Status",
+              value: "Degraded",
+              detail: "Clinic needs confirmation",
+              tone: "attention",
+            },
+            {
+              label: "Queue pressure",
+              value: "High",
+              detail: "Patient routing risk",
+              tone: "blocked",
+            },
+          ],
+        }),
+        createElement(
+          AdminDetailActionPanel,
+          {
+            title: "Next action",
+            description: "Review the linked clinic and return to the queue.",
+          },
+          createElement("a", { href: "/district/clinics/clinic-mamelodi-east" }, "Open clinic"),
+        ),
+        createElement(AdminDetailTimeline, {
+          title: "Evidence timeline",
+          items: [
+            {
+              label: "Submitted",
+              title: "Field report received",
+              description: "Submitted by Sipho Nkosi",
+              timestamp: "May 10, 10:30",
+            },
+          ],
+        }),
+      ),
+    );
+
+    expect(html).toContain("Mamelodi East Clinic report");
+    expect(html).toContain("Power outage closed the triage room.");
+    expect(html).toContain("Next action");
+    expect(html).toContain("Evidence timeline");
+    expect(html).toContain("Queue pressure");
+    expect(html).toContain("border-l");
+  });
+
+  it("renders case-file detail pages with command-center signals and property-list evidence", () => {
+    const html = renderToStaticMarkup(
+      createElement(
+        "div",
+        null,
+        createElement(AdminDetailSignalBar, {
+          signals: [
+            {
+              label: "Review state",
+              value: "Pending",
+              detail: "Report #42",
+              tone: "attention",
+            },
+            {
+              label: "Queue pressure",
+              value: "Unknown",
+              detail: "Patient routing impact",
+              tone: "neutral",
+            },
+          ],
+        }),
+        createElement(AdminDetailEvidenceList, {
+          title: "Evidence properties",
+          description: "Operational facts captured with the field report.",
+          items: [
+            {
+              label: "Clinic",
+              value: "Mamelodi East Clinic",
+            },
+            {
+              label: "Reason",
+              value: "Power outage closed the triage room.",
+              emphasis: true,
+            },
+          ],
+        }),
+      ),
+    );
+
+    expect(html).toContain("Evidence properties");
+    expect(html).toContain("Operational facts captured with the field report.");
+    expect(html).toContain("Review state");
+    expect(html).toContain("Queue pressure");
+    expect(html).toContain("Mamelodi East Clinic");
+    expect(html).toContain("Power outage closed the triage room.");
+    expect(html).toContain("data-admin-detail-signal");
+    expect(html).toContain("xl:grid-cols-4");
+    expect(html).toContain("divide-y");
+  });
+
+  it("renders evidence command briefs with differentiated primary and secondary actions", () => {
+    const actions = [
+      {
+        label: "Open clinic detail",
+        href: "/district/clinics/clinic-mamelodi-east",
+        priority: "primary" as const,
+        icon: "clinic" as const,
+      },
+      {
+        label: "Return to queue",
+        href: "/admin#admin-review-pressure",
+        priority: "secondary" as const,
+        icon: "queue" as const,
+      },
+    ];
+    const html = renderToStaticMarkup(
+      createElement(
+        "div",
+        null,
+        createElement(EvidenceCommandHeader, {
+          eyebrow: "Field evidence",
+          title: "Report evidence brief",
+          description: "Power outage closed the triage room.",
+          actions: [actions[1]],
+        }),
+        createElement(EvidenceCommandMetricStrip, {
+          metrics: [
+            {
+              label: "Queue pressure",
+              value: "high",
+              detail: "Patient routing impact",
+              tone: "critical",
+              icon: "alert",
+            },
+          ],
+        }),
+        createElement(EvidencePacketPanel, {
+          title: "Evidence packet",
+          description: "Operational facts captured with the report.",
+          fields: [
+            {
+              label: "Clinic",
+              value: "Mamelodi East Clinic",
+              href: "/district/clinics/clinic-mamelodi-east",
+            },
+            {
+              label: "Status",
+              value: "degraded",
+              tone: "attention",
+            },
+          ],
+        }),
+        createElement(EvidenceDecisionPanel, {
+          decision: {
+            contextLabel: "Signal response",
+            title: "Capacity risk decision",
+            chips: [{ label: "degraded", tone: "attention" }],
+            nextStep: "Review the clinic context before accepting the field evidence.",
+            nextStepTone: "attention",
+            impactTitle: "Patient impact",
+            impact: "Queues may require rerouting.",
+            actions,
+          },
+        }),
+      ),
+    );
+
+    expect(html).toContain("Report evidence brief");
+    expect(html).toContain("Evidence packet");
+    expect(html).toContain("Signal response");
+    expect(html).toContain("Capacity risk decision");
+    expect(html).toContain("Open clinic detail");
+    expect(html).toContain("Return to queue");
+    expect(html).toContain("group/button");
+    expect(html).toContain("bg-primary");
+    expect(html).toContain("bg-bg-muted/60");
+  });
+
+  it("renders evidence case briefs as grouped operational summaries", () => {
+    const html = renderToStaticMarkup(
+      createElement(EvidenceCaseBriefPanel, {
+        title: "Case brief",
+        description: "Decision-ready evidence without the raw record table.",
+        summary: {
+          label: "Signal summary",
+          value: "Power outage closed the triage room.",
+          emphasis: true,
+        },
+        primaryFields: [
+          {
+            label: "Clinic",
+            value: "Mamelodi East Clinic",
+            href: "/district/clinics/clinic-mamelodi-east",
+            emphasis: true,
+          },
+          {
+            label: "Facility",
+            value: "GP-TND-001",
+          },
+        ],
+        sections: [
+          {
+            title: "Operational pressure",
+            fields: [
+              {
+                label: "Queue",
+                value: "high",
+                tone: "critical",
+              },
+              {
+                label: "Staff",
+                value: "strained",
+                tone: "attention",
+              },
+              {
+                label: "Notes",
+                value: "Generator handover needs confirmation.",
+                fullWidth: true,
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain("Case brief");
+    expect(html).toContain("Signal summary");
+    expect(html).toContain("Power outage closed the triage room.");
+    expect(html).toContain("Operational pressure");
+    expect(html).toContain("Mamelodi East Clinic");
+    expect(html).toContain("GP-TND-001");
+    expect(html).toContain("Generator handover needs confirmation.");
+    expect(html).toContain("md:col-span-2");
+    expect(html).toContain("grid-cols");
+    expect(html).not.toContain("divide-y divide-border-subtle");
+  });
+
+  it("maps report pressure values to operational detail tones", () => {
+    expect(getAdminDetailPressureTone("unknown")).toBe("neutral");
+    expect(getAdminDetailPressureTone("moderate")).toBe("attention");
+    expect(getAdminDetailPressureTone("high")).toBe("blocked");
+    expect(getAdminDetailPressureTone("normal")).toBe("clear");
+    expect(getAdminDetailPressureTone("low", "queue")).toBe("clear");
+    expect(getAdminDetailPressureTone("low", "stock")).toBe("attention");
+  });
+
+  it("exposes the shared admin tone classes for sibling primitives", () => {
+    expect(getAdminToneClassName("clear")).toContain("bg-emerald-50");
+    expect(getAdminToneClassName("attention")).toContain("bg-amber-50");
+    expect(getAdminToneClassName("blocked")).toContain("bg-destructive/10");
+    expect(getAdminToneClassName("info")).toContain("bg-sky-50");
+  });
+
+  it("normalizes landing and demo status spellings to one product status key", () => {
+    expect(normalizeClinicStatus("non-functional")).toBe("non_functional");
+    expect(normalizeClinicStatus("non_functional")).toBe("non_functional");
+  });
+
+  it("formats internal evidence sources for product-facing briefs", () => {
+    expect(formatEvidenceSource("seed")).toBe("scenario seed");
+    expect(formatEvidenceSource("field_worker")).toBe("field worker");
+    expect(formatEvidenceSource("field_worker", { offlineCreated: true })).toBe(
+      "field worker / synced offline",
+    );
+  });
+
+  it("owns shared clinic status copy in one product module", () => {
+    expect(clinicOperatingStatuses).toEqual([
+      "operational",
+      "degraded",
+      "non_functional",
+      "unknown",
+    ]);
+    expect(getClinicStatusCopy("operational")).toMatchObject({
+      label: "Operational",
+      description: "Clinic is open and delivering expected services.",
+    });
+    expect(getClinicStatusCopy("non-functional")).toMatchObject({
+      label: "Non-functional",
+      description: "Clinic is unavailable for normal patient routing.",
+    });
+  });
+
   it("renders metric tile content and trend context", () => {
     const html = renderToStaticMarkup(
       createElement(MetricTile, {
@@ -206,6 +532,7 @@ describe("product surface primitives", () => {
       createElement(ReportReviewQueueView, {
         items: [review],
         onReview: async () => undefined,
+        getReportDetailHref: (item) => `/admin/reports/${item.reportId}?from=admin`,
       }),
     );
 
@@ -213,10 +540,51 @@ describe("product surface primitives", () => {
     expect(html).toContain('data-report-id="42"');
     expect(html).toContain("Mamelodi East Clinic");
     expect(html).toContain("Power outage closed the triage room.");
+    expect(html).toContain('href="/admin/reports/42?from=admin"');
+    expect(html).toContain("Open details");
     expect(html).toContain('data-testid="accept-report-review"');
     expect(html).toContain("Accept");
     expect(html).toContain('data-testid="reject-report-review"');
     expect(html).toContain("Reject");
+  });
+
+  it("renders report stream items as report detail links", () => {
+    const html = renderToStaticMarkup(
+      createElement(ReportStream, {
+        reports: [
+          {
+            id: "report-demo-1",
+            clinicId: "clinic-mamelodi-east",
+            clinicName: "Mamelodi East Clinic",
+            facilityCode: "FAC-001",
+            reporterName: "Sipho Nkosi",
+            source: "field_worker",
+            offlineCreated: false,
+            submittedAt: "2026-05-10T08:20:00.000Z",
+            receivedAt: "2026-05-10T08:30:00.000Z",
+            status: "degraded",
+            reason: "Queues are backing up after the morning shift change.",
+            staffPressure: "strained",
+            stockPressure: "ok",
+            queuePressure: "high",
+            notes: "Needs district review.",
+          },
+        ],
+        selectedClinicId: null,
+        consequenceByReportId: {
+          "report-demo-1": "District monitoring opened a follow-up task.",
+        },
+        statusChangeByReportId: {
+          "report-demo-1": "Operational to degraded",
+        },
+        onSelectClinic: vi.fn(),
+        getReportDetailHref: (report) => `/demo/reports/${report.id}?from=demo`,
+      }),
+    );
+
+    expect(html).toContain('href="/demo/reports/report-demo-1?from=demo"');
+    expect(html).toContain("Open report detail");
+    expect(html).toContain("Mamelodi East Clinic");
   });
 
   it("sends report review action payload and calls success callback", async () => {

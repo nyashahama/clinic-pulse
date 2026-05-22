@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   BookMarked,
@@ -10,7 +11,7 @@ import {
   FileJson,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { SectionHeader } from "@/components/demo/section-header";
 import type { AuditEvent, ClinicRow, DemoLead, ReportEvent } from "@/lib/demo/types";
 
@@ -26,7 +27,7 @@ type ExportPayload = {
 
 type ExportPreviewProps = {
   payload: ExportPayload;
-  onOpen?: () => void;
+  exportSchemaHref?: string;
 };
 
 function toCsv(payload: ExportPayload) {
@@ -69,7 +70,7 @@ function toCsv(payload: ExportPayload) {
     .join("\n");
 }
 
-export function ExportPreview({ payload, onOpen }: ExportPreviewProps) {
+export function ExportPreview({ payload, exportSchemaHref }: ExportPreviewProps) {
   const [format, setFormat] = useState<"json" | "csv">("json");
   const [copied, setCopied] = useState(false);
 
@@ -130,11 +131,18 @@ export function ExportPreview({ payload, onOpen }: ExportPreviewProps) {
         </div>
 
         <div className="grid gap-2 sm:grid-cols-[repeat(3,minmax(0,1fr))]">
-          <Button size="sm" variant="outline" onClick={() => onOpen?.()} className="justify-center">
+          <Link
+            className={buttonVariants({
+              size: "sm",
+              variant: "outline",
+              className: "justify-center",
+            })}
+            href={exportSchemaHref ?? "/admin/export-schema"}
+          >
             <FileJson className="size-4" />
             Open export schema
             <ChevronRight className="size-3.5" />
-          </Button>
+          </Link>
           <Button size="sm" className="justify-center" onClick={onCopy}>
             <ClipboardCopy className="size-4" />
             {copied ? "Copied" : "Copy payload"}

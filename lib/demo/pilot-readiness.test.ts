@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { getReadinessMetricToneClassName } from "@/components/demo/readiness-tones";
 import {
   buildPilotReadinessModel,
   createEmptySyncSummary,
@@ -7,6 +8,13 @@ import {
 } from "@/lib/demo/pilot-readiness";
 
 describe("pilot readiness helpers", () => {
+  it("shares metric tone classes across readiness panels", () => {
+    expect(getReadinessMetricToneClassName("clear")).toContain("text-emerald-700");
+    expect(getReadinessMetricToneClassName("watch")).toContain("text-amber-700");
+    expect(getReadinessMetricToneClassName("attention")).toContain("text-rose-700");
+    expect(getReadinessMetricToneClassName("info")).toBe("text-content-emphasis");
+  });
+
   it("formats empty sync summary as zero-risk pilot state", () => {
     const summary = createEmptySyncSummary("2026-05-03T00:00:00.000Z");
 

@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo } from "react";
-import { BookCheck, CodeXml, Copy } from "lucide-react";
+import { BookCheck, ChevronRight, CodeXml } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { SectionHeader } from "@/components/demo/section-header";
 
 const REQUEST_EXAMPLES = [
@@ -48,10 +49,10 @@ function formatCodeBlock(value: string) {
 
 type APIPreviewProps = {
   clinicCount: number;
-  onOpen?: () => void;
+  apiContractHref?: string;
 };
 
-export function APIPreview({ clinicCount, onOpen }: APIPreviewProps) {
+export function APIPreview({ clinicCount, apiContractHref }: APIPreviewProps) {
   const endpointCount = REQUEST_EXAMPLES.length;
 
   const clinicMetric = useMemo(
@@ -75,16 +76,18 @@ export function APIPreview({ clinicCount, onOpen }: APIPreviewProps) {
           <p className="mt-1 text-sm text-content-subtle">
             Read-only / write-safe operations endpoints with deterministic local fixtures.
           </p>
-          <Button
-            size="sm"
-            variant="outline"
-            className="mt-3 max-w-full"
-            onClick={() => onOpen?.()}
+          <Link
+            className={buttonVariants({
+              size: "sm",
+              variant: "outline",
+              className: "mt-3 max-w-full",
+            })}
+            href={apiContractHref ?? "/admin/api-contract"}
           >
             <BookCheck className="size-4" />
-            Mark API docs as reviewed
-            <Copy className="size-3.5" />
-          </Button>
+            Open API contract
+            <ChevronRight className="size-3.5" />
+          </Link>
         </div>
 
         <div className="grid gap-3">

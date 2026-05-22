@@ -1,8 +1,6 @@
-export type ClinicStatus =
-  | "operational"
-  | "degraded"
-  | "non_functional"
-  | "unknown";
+import type { ClinicOperatingStatus } from "@/lib/product/clinic-status";
+
+export type ClinicStatus = ClinicOperatingStatus;
 
 export type Freshness = "fresh" | "needs_confirmation" | "stale" | "unknown";
 export type StaffPressure = "normal" | "strained" | "critical" | "unknown";

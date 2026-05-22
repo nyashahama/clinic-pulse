@@ -1,6 +1,8 @@
 "use client";
 
 import { ArrowUpRight, WifiOff } from "lucide-react";
+import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { EmptyState } from "@/components/demo/empty-state";
 import { SectionHeader } from "@/components/demo/section-header";
@@ -14,6 +16,7 @@ type ReportStreamProps = {
   consequenceByReportId: Record<string, string>;
   statusChangeByReportId: Record<string, string>;
   onSelectClinic: (clinicId: string) => void;
+  getReportDetailHref?: (report: ReportStreamItem) => string;
 };
 
 function formatTimestamp(value: string) {
@@ -35,6 +38,7 @@ export function ReportStream({
   consequenceByReportId,
   statusChangeByReportId,
   onSelectClinic,
+  getReportDetailHref,
 }: ReportStreamProps) {
   return (
     <section className="min-w-0 rounded-lg border border-border-subtle bg-bg-default shadow-sm">
@@ -50,55 +54,81 @@ export function ReportStream({
         {reports.length === 0 ? (
           <EmptyState surface="report-stream" className="min-h-44" />
         ) : (
-          reports.slice(0, 8).map((report) => (
-            <button
-              key={report.id}
-              type="button"
-              onClick={() => onSelectClinic(report.clinicId)}
-              className={cn(
-                "rounded-lg border border-border-subtle p-3 text-left transition-colors hover:bg-bg-subtle",
-                report.clinicId === selectedClinicId ? "bg-teal-50/60" : "bg-bg-default",
-              )}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-medium text-content-emphasis">
-                      {report.clinicName}
-                    </p>
-                    <span className="rounded-full bg-bg-subtle px-2 py-1 font-mono text-[11px] text-content-subtle">
-                      {report.facilityCode}
-                    </span>
-                  </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-content-subtle">
-                    <span className="capitalize">{formatSource(report.source)}</span>
-                    <span>{formatTimestamp(report.receivedAt)}</span>
-                    {report.offlineCreated ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-amber-700">
-                        <WifiOff className="size-3.5" />
-                        Offline sync
+          reports.slice(0, 8).map((report) => {
+            const cardClassName = cn(
+              "rounded-lg border border-border-subtle p-3 text-left transition-colors hover:bg-bg-subtle",
+              report.clinicId === selectedClinicId ? "bg-teal-50/60" : "bg-bg-default",
+            );
+            const cardContent: ReactNode = (
+              <>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-medium text-content-emphasis">
+                        {report.clinicName}
+                      </p>
+                      <span className="rounded-full bg-bg-subtle px-2 py-1 font-mono text-[11px] text-content-subtle">
+                        {report.facilityCode}
                       </span>
-                    ) : null}
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-content-subtle">
+                      <span className="capitalize">{formatSource(report.source)}</span>
+                      <span>{formatTimestamp(report.receivedAt)}</span>
+                      {report.offlineCreated ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-amber-700">
+                          <WifiOff className="size-3.5" />
+                          Offline sync
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
+                  <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-content-subtle">
+                    Open report detail
+                    <ArrowUpRight className="size-4" />
+                  </span>
                 </div>
-                <ArrowUpRight className="size-4 shrink-0 text-content-subtle" />
-              </div>
 
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <StatusBadge status={report.status} />
-              </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <StatusBadge status={report.status} />
+                </div>
 
-              <p className="mt-3 text-sm leading-6 text-content-default">
-                <span className="font-medium text-content-default">Status change:</span>{" "}
-                {statusChangeByReportId[report.id]}
-              </p>
-              <p className="mt-3 text-sm leading-6 text-content-default">{report.reason}</p>
-              <p className="mt-3 text-xs leading-5 text-content-subtle">
-                <span className="font-medium text-content-default">Audit consequence:</span>{" "}
-                {consequenceByReportId[report.id]}
-              </p>
-            </button>
-          ))
+                <p className="mt-3 text-sm leading-6 text-content-default">
+                  <span className="font-medium text-content-default">Status change:</span>{" "}
+                  {statusChangeByReportId[report.id]}
+                </p>
+                <p className="mt-3 text-sm leading-6 text-content-default">{report.reason}</p>
+                <p className="mt-3 text-xs leading-5 text-content-subtle">
+                  <span className="font-medium text-content-default">Audit consequence:</span>{" "}
+                  {consequenceByReportId[report.id]}
+                </p>
+              </>
+            );
+            const reportDetailHref = getReportDetailHref?.(report);
+
+            if (reportDetailHref) {
+              return (
+                <Link
+                  key={report.id}
+                  href={reportDetailHref}
+                  className={cardClassName}
+                  aria-label={`Open report detail for ${report.clinicName}`}
+                >
+                  {cardContent}
+                </Link>
+              );
+            }
+
+            return (
+              <button
+                key={report.id}
+                type="button"
+                onClick={() => onSelectClinic(report.clinicId)}
+                className={cardClassName}
+              >
+                {cardContent}
+              </button>
+            );
+          })
         )}
       </div>
     </section>

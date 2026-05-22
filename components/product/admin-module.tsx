@@ -84,7 +84,7 @@ export type AdminMetricStripProps = {
   className?: string;
 };
 
-const metricToneClassName: Record<AdminTone, string> = {
+const adminToneClassName: Record<AdminTone, string> = {
   clear: "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100",
   attention:
     "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100",
@@ -92,6 +92,10 @@ const metricToneClassName: Record<AdminTone, string> = {
     "border-destructive/30 bg-destructive/10 text-destructive dark:border-destructive/40 dark:bg-destructive/20",
   info: "border-sky-200 bg-sky-50 text-sky-950 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-100",
 };
+
+export function getAdminToneClassName(tone: AdminTone) {
+  return adminToneClassName[tone];
+}
 
 export function AdminMetricStrip({
   metrics,
@@ -110,7 +114,7 @@ export function AdminMetricStrip({
             key={index}
             className={cn(
               "min-w-0 rounded-lg border px-4 py-3 shadow-sm",
-              metricToneClassName[tone],
+              getAdminToneClassName(tone),
             )}
           >
             <p className="break-words text-xs font-medium text-current/75">
@@ -128,6 +132,30 @@ export function AdminMetricStrip({
         );
       })}
     </section>
+  );
+}
+
+export type AdminStatusBadgeProps = {
+  children: ReactNode;
+  tone?: AdminTone;
+  className?: string;
+};
+
+export function AdminStatusBadge({
+  children,
+  tone = "info",
+  className,
+}: AdminStatusBadgeProps) {
+  return (
+    <span
+      className={cn(
+        "inline-flex max-w-full items-center rounded-md border px-2 py-0.5 text-xs font-medium capitalize",
+        getAdminToneClassName(tone),
+        className,
+      )}
+    >
+      {children}
+    </span>
   );
 }
 

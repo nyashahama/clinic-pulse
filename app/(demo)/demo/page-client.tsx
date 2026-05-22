@@ -213,10 +213,14 @@ export default function DistrictConsolePage({
   const statusFilterLabel = statusFilter.replaceAll("_", " ");
   const replayNonIdle = replayStatus !== "idle";
   const isReplayFilterBypassed = hasStatusFilter && replayStatus !== "idle";
+  const reportReturnSource = consoleHref === "/district" ? "district" : "demo";
 
   const openClinicDetail = (clinicId: string) => {
     router.push(`${consoleHref}/clinics/${encodeURIComponent(clinicId)}`);
   };
+
+  const getReportDetailHref = (reportId: string) =>
+    `${consoleHref}/reports/${encodeURIComponent(reportId)}?from=${reportReturnSource}`;
 
   const selectCommandClinic = (clinicId: string) => {
     setSelectedCommandClinicId(clinicId);
@@ -778,6 +782,7 @@ export default function DistrictConsolePage({
             consequenceByReportId={consequenceByReportId}
             statusChangeByReportId={statusChangeByReportId}
             onSelectClinic={openClinicDetail}
+            getReportDetailHref={(report) => getReportDetailHref(report.id)}
           />
         </div>
 
