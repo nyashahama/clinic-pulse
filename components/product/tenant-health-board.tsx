@@ -42,12 +42,12 @@ const toneBadgeClassName: Record<TenantHealthTone, string> = {
 
 const tonePanelClassName: Record<TenantHealthTone, string> = {
   clear:
-    "border-emerald-200/70 bg-emerald-50/35 dark:border-emerald-900/45 dark:bg-emerald-950/15",
+    "border-t-emerald-300 bg-bg-default lg:border-l-emerald-300 dark:border-t-emerald-900/70 dark:lg:border-l-emerald-900/70",
   attention:
-    "border-amber-200/70 bg-amber-50/35 dark:border-amber-900/45 dark:bg-amber-950/15",
+    "border-t-amber-300 bg-bg-default lg:border-l-amber-300 dark:border-t-amber-900/70 dark:lg:border-l-amber-900/70",
   blocked:
-    "border-destructive/25 bg-destructive/5 dark:border-destructive/40 dark:bg-destructive/15",
-  info: "border-sky-200/70 bg-sky-50/35 dark:border-sky-900/45 dark:bg-sky-950/15",
+    "border-t-destructive/45 bg-bg-default lg:border-l-destructive/45 dark:border-t-destructive/60 dark:lg:border-l-destructive/60",
+  info: "border-t-sky-300 bg-bg-default lg:border-l-sky-300 dark:border-t-sky-900/70 dark:lg:border-l-sky-900/70",
 };
 
 function HealthActionIcon({ icon }: { icon: TenantHealthAction["icon"] }) {
@@ -128,6 +128,10 @@ function HealthMetric({ metric }: { metric: TenantHealthMetric }) {
   );
 }
 
+function statusLabelForTone(tone: TenantHealthTone) {
+  return tone === "clear" ? "Clear" : "Open";
+}
+
 function ToneBadge({
   children,
   tone,
@@ -148,6 +152,9 @@ function ToneBadge({
 }
 
 export function TenantHealthBoard({ viewModel }: TenantHealthBoardProps) {
+  const estateStatus =
+    viewModel.header.score.tone === "clear" ? "Clear" : "Needs review";
+
   return (
     <div className="grid min-w-0 gap-4 pb-6" data-admin-module="tenant-health">
       <section className="overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm">
@@ -171,16 +178,22 @@ export function TenantHealthBoard({ viewModel }: TenantHealthBoardProps) {
           </div>
           <div
             className={cn(
-              "grid min-w-0 content-between gap-4 border-t border-border-subtle p-4 lg:border-l lg:border-t-0 sm:p-5",
+              "grid min-w-0 content-between gap-4 border-t-4 border-border-subtle p-4 lg:border-l-4 lg:border-t-0 sm:p-5",
               tonePanelClassName[viewModel.header.score.tone],
             )}
           >
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                {viewModel.header.score.label}
-              </p>
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                  {viewModel.header.score.label}
+                </p>
+                <ToneBadge tone={viewModel.header.score.tone}>{estateStatus}</ToneBadge>
+              </div>
               <p className="mt-2 font-mono text-4xl font-semibold leading-none text-foreground">
                 {viewModel.header.score.value}
+              </p>
+              <p className="mt-3 max-w-sm break-words text-xs leading-4 text-muted-foreground">
+                {viewModel.header.score.detail}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -267,13 +280,20 @@ export function TenantHealthBoard({ viewModel }: TenantHealthBoardProps) {
           <div className="grid gap-3 p-3">
             {viewModel.signalLedger.items.map((item) => (
               <Link
-                className="group grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] gap-3 rounded-md border border-border-subtle bg-bg-muted/45 p-3 transition-colors hover:bg-bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="group relative grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] gap-3 overflow-hidden rounded-md border border-border-subtle bg-bg-default p-3 transition-colors hover:bg-bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 href={item.href}
                 key={item.id}
               >
                 <span
                   className={cn(
-                    "inline-flex size-8 shrink-0 items-center justify-center rounded-md border",
+                    "absolute inset-y-0 left-0 w-1",
+                    toneRailClassName[item.tone],
+                  )}
+                  aria-hidden="true"
+                />
+                <span
+                  className={cn(
+                    "ml-1 inline-flex size-8 shrink-0 items-center justify-center rounded-md border",
                     toneBadgeClassName[item.tone],
                   )}
                   aria-hidden="true"
@@ -288,6 +308,7 @@ export function TenantHealthBoard({ viewModel }: TenantHealthBoardProps) {
                     <span className="rounded-md border border-border-subtle bg-bg-default px-2 py-0.5 font-mono text-xs font-semibold text-muted-foreground">
                       {item.value}
                     </span>
+                    <ToneBadge tone={item.tone}>{statusLabelForTone(item.tone)}</ToneBadge>
                   </span>
                   <span className="mt-1 block break-words text-xs leading-4 text-muted-foreground">
                     {item.detail}
