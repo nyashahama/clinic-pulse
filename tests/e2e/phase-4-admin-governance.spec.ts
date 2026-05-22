@@ -73,7 +73,7 @@ test("data ingestion clinic-backed rows open operational detail", async ({ page 
 
   const pendingReportQueue = page.getByLabel("Pending report queue");
   const pendingReportRow = pendingReportQueue.getByRole("article", {
-    name: /Ingestion case for clinic-atteridgeville-extension/i,
+    name: /Ingestion event for clinic-atteridgeville-extension/i,
   });
 
   await expect(pendingReportRow).toBeVisible();

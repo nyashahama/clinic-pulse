@@ -6,9 +6,9 @@ import {
 import {
   type DataIngestionBacklogItem,
   type DataIngestionDiagnostic,
+  type DataIngestionLedgerItem,
+  type DataIngestionSummaryMetric,
   DataIngestionWorkspace,
-  type DataIngestionStage,
-  type DataIngestionTriageItem,
 } from "@/components/product/data-ingestion-workspace";
 import {
   fetchOperationalClinics,
@@ -177,12 +177,12 @@ function stageForReport(report: ReportApiResponse): {
   };
 }
 
-function buildIngestionTriageItem(
+function buildIngestionLedgerItem(
   report: ReportApiResponse,
   clinicLabel?: string,
-): DataIngestionTriageItem {
+): DataIngestionLedgerItem {
   const trust = dataTrustForReport(report);
-  const stage = stageForReport(report);
+  const issue = stageForReport(report);
   const sourceLabel = report.offlineCreated ? "Offline field report" : formatLabel(report.source);
   const submittedLabel = formatDateTime(report.submittedAt);
   const receivedLabel = formatDateTime(report.receivedAt);
@@ -190,9 +190,6 @@ function buildIngestionTriageItem(
 
   return {
     id: String(report.id),
-    stageId: stage.id,
-    stageLabel: stage.label,
-    stageTone: stage.tone,
     clinicId: report.clinicId,
     clinicLabel: clinicLabel ?? report.clinicId,
     reporterLabel: report.reporterName ?? "Field report",
@@ -200,13 +197,14 @@ function buildIngestionTriageItem(
     evidence: reportEvidence(report),
     submittedLabel,
     receivedLabel,
+    issueLabel: issue.blocker,
+    issueTone: issue.tone,
     reviewLabel,
     reviewTone: toneForAttention(report.reviewState === "pending" ? 1 : 0),
     trustLabel: trust.label,
     trustTone: trust.tone,
     trustDescription: trust.description,
     actionLabel: actionForReport(report),
-    blockerLabel: stage.blocker,
     clinicHref: buildClinicDetailHref(report.clinicId),
     receiptTrail: [
       `Captured from ${sourceLabel}`,
@@ -216,7 +214,7 @@ function buildIngestionTriageItem(
     ],
     payloadChecks: [
       `One-clinic context: ${clinicLabel ?? report.clinicId}`,
-      `Source review: ${stage.blocker}`,
+      `Source review: ${issue.blocker}`,
       `Trust result: ${trust.label}`,
     ],
   };
@@ -242,55 +240,36 @@ export default async function Page() {
   const clinicsNeedingReview = clinics.filter(clinicNeedsIngestionReview);
   const clinicNameById = new Map(clinics.map((row) => [row.clinic.id, row.clinic.name]));
   const ingestionItems = pendingReports.map((report) =>
-    buildIngestionTriageItem(report, clinicNameById.get(report.clinicId)),
+    buildIngestionLedgerItem(report, clinicNameById.get(report.clinicId)),
   );
-  const stageCounts = new Map<string, number>();
-
-  for (const item of ingestionItems) {
-    stageCounts.set(item.stageId, (stageCounts.get(item.stageId) ?? 0) + 1);
-  }
-
-  const freshnessPressure = syncSummary.staleClinics + syncSummary.needsConfirmationClinics;
-  const ingestionStages: DataIngestionStage[] = [
+  const ingestionMetrics: DataIngestionSummaryMetric[] = [
     {
-      id: "captured",
-      label: "Captured",
-      count: pendingReports.length + syncSummary.pendingOfflineReports,
-      tone: toneForAttention(syncSummary.pendingOfflineReports),
-      description: "Field and offline payloads that entered the intake window.",
-      blocker: syncSummary.pendingOfflineReports ? "Offline queue active" : "Capture clear",
+      id: "coverage-readiness",
+      label: "Coverage readiness",
+      value: `${formatCount(coverage.readinessPercent)}%`,
+      detail: coverage.blockers.length ? coverage.blockers.join("; ") : "No ingestion blockers",
+      tone: coverage.tone,
     },
     {
-      id: "validated",
-      label: "Validated",
-      count: syncSummary.validationFailures,
-      tone: toneForAttention(syncSummary.validationFailures),
-      description: "Payloads blocked before they can influence clinic status.",
-      blocker: syncSummary.validationFailures ? "Validation failures" : "Schema clear",
-    },
-    {
-      id: "reviewed",
-      label: "Reviewed",
-      count: stageCounts.get("reviewed") ?? pendingReports.length,
+      id: "pending-report-evidence",
+      label: "Pending report evidence",
+      value: formatCount(pendingReports.length),
+      detail: "Field reports awaiting review before status promotion",
       tone: toneForAttention(pendingReports.length),
-      description: "Reports waiting for a human review decision.",
-      blocker: pendingReports.length ? "Review gate active" : "Review clear",
     },
     {
-      id: "promoted",
-      label: "Promoted",
-      count: Math.max(clinics.length - clinicsNeedingReview.length, 0),
-      tone: clinicsNeedingReview.length ? "attention" : "clear",
-      description: "Clinics whose current status is usable by operations.",
-      blocker: clinicsNeedingReview.length ? "Some clinics held back" : "Promotion clear",
+      id: "offline-queue",
+      label: "Offline queue",
+      value: formatCount(syncSummary.pendingOfflineReports),
+      detail: `${formatCount(syncSummary.offlineReportsReceived)} received in window`,
+      tone: toneForAttention(syncSummary.pendingOfflineReports),
     },
     {
-      id: "reconciled",
-      label: "Reconciled",
-      count: freshnessPressure,
-      tone: toneForAttention(freshnessPressure),
-      description: "Freshness and confirmation pressure after ingestion.",
-      blocker: freshnessPressure ? "Freshness backlog" : "Reconciled",
+      id: "validation-failures",
+      label: "Validation failures",
+      value: formatCount(syncSummary.validationFailures),
+      detail: `${formatCount(syncSummary.conflictsNeedingAttention)} conflicts need attention`,
+      tone: toneForAttention(syncSummary.validationFailures),
     },
   ];
   const ingestionSignals: IngestionSignal[] = [
@@ -341,14 +320,7 @@ export default async function Page() {
         </span>
       </AdminFilterBar>
       <DataIngestionWorkspace
-        summary={{
-          readinessLabel: `${formatCount(coverage.readinessPercent)}%`,
-          pendingLabel: formatCount(pendingReports.length),
-          offlineQueueLabel: formatCount(syncSummary.pendingOfflineReports),
-          validationFailureLabel: formatCount(syncSummary.validationFailures),
-          syncWindowLabel: formatDateTime(syncSummary.windowStartedAt),
-        }}
-        stages={ingestionStages}
+        metrics={ingestionMetrics}
         items={ingestionItems}
         diagnostics={ingestionSignals.map(
           (signal): DataIngestionDiagnostic => ({

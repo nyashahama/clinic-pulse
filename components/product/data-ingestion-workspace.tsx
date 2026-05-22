@@ -6,7 +6,7 @@ import {
   ArrowRightIcon,
   CheckCircle2Icon,
   CircleDotIcon,
-  ClipboardCheckIcon,
+  ClipboardListIcon,
   FileSearchIcon,
   ListChecksIcon,
   RadioTowerIcon,
@@ -16,20 +16,16 @@ import {
 import { AdminStatusBadge, type AdminTone } from "@/components/product/admin-module";
 import { cn } from "@/lib/utils";
 
-export type DataIngestionStage = {
+export type DataIngestionSummaryMetric = {
   id: string;
   label: string;
-  count: number;
+  value: string;
+  detail: string;
   tone: AdminTone;
-  description: string;
-  blocker: string;
 };
 
-export type DataIngestionTriageItem = {
+export type DataIngestionLedgerItem = {
   id: string;
-  stageId: string;
-  stageLabel: string;
-  stageTone: AdminTone;
   clinicId: string;
   clinicLabel: string;
   reporterLabel: string;
@@ -37,24 +33,17 @@ export type DataIngestionTriageItem = {
   evidence: string;
   submittedLabel: string;
   receivedLabel: string;
+  issueLabel: string;
+  issueTone: AdminTone;
   reviewLabel: string;
   reviewTone: AdminTone;
   trustLabel: string;
   trustTone: AdminTone;
   trustDescription: string;
   actionLabel: string;
-  blockerLabel: string;
   clinicHref: string;
   receiptTrail: string[];
   payloadChecks: string[];
-};
-
-export type DataIngestionWorkspaceSummary = {
-  readinessLabel: string;
-  pendingLabel: string;
-  offlineQueueLabel: string;
-  validationFailureLabel: string;
-  syncWindowLabel: string;
 };
 
 export type DataIngestionDiagnostic = {
@@ -80,9 +69,8 @@ export type DataIngestionBacklogItem = {
 };
 
 type DataIngestionWorkspaceProps = {
-  summary: DataIngestionWorkspaceSummary;
-  stages: DataIngestionStage[];
-  items: DataIngestionTriageItem[];
+  metrics: DataIngestionSummaryMetric[];
+  items: DataIngestionLedgerItem[];
   diagnostics: DataIngestionDiagnostic[];
   backlogItems: DataIngestionBacklogItem[];
 };
@@ -101,27 +89,26 @@ const tonePanelClassName: Record<AdminTone, string> = {
   info: "border-sky-200 bg-sky-50/70 text-sky-950",
 };
 
-function stageIcon(stageId: string) {
+function metricIcon(metricId: string) {
   const className = "size-4";
 
-  if (stageId === "validated") {
+  if (metricId === "validation-failures") {
     return <ShieldAlertIcon className={className} />;
   }
 
-  if (stageId === "reviewed") {
-    return <ClipboardCheckIcon className={className} />;
+  if (metricId === "pending-report-evidence") {
+    return <ClipboardListIcon className={className} />;
   }
 
-  if (stageId === "promoted" || stageId === "reconciled") {
-    return <CheckCircle2Icon className={className} />;
+  if (metricId === "offline-queue") {
+    return <RadioTowerIcon className={className} />;
   }
 
-  return <RadioTowerIcon className={className} />;
+  return <CheckCircle2Icon className={className} />;
 }
 
 export function DataIngestionWorkspace({
-  summary,
-  stages,
+  metrics,
   items,
   diagnostics,
   backlogItems,
@@ -131,311 +118,275 @@ export function DataIngestionWorkspace({
     () => items.find((item) => item.id === selectedId) ?? items[0] ?? null,
     [items, selectedId],
   );
-  const itemsByStage = useMemo(
-    () =>
-      stages.map((stage) => ({
-        stage,
-        items: items.filter((item) => item.stageId === stage.id),
-      })),
-    [items, stages],
-  );
 
   return (
-    <section
-      aria-label="Ingestion pipeline control tower"
-      className="overflow-hidden rounded-xl border border-border-subtle bg-bg-default text-content-default shadow-sm"
-    >
-      <div className="relative overflow-hidden border-b border-border-subtle bg-slate-950 px-5 py-5 text-white">
-        <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_top_right,rgba(20,184,166,0.32),transparent_45%),linear-gradient(135deg,transparent,rgba(245,158,11,0.16))]" />
-        <div className="relative grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+    <section aria-label="Ingestion evidence workspace" className="grid gap-4">
+      <section className="overflow-hidden rounded-xl border border-border-subtle bg-bg-default text-content-default shadow-sm">
+        <div className="grid gap-4 border-b border-border-subtle px-4 py-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-200">
-              Ingestion control tower
+            <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+              Ingestion workspace
             </p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em]">
-              Pipeline pressure map
+            <h2 className="mt-1 text-xl font-semibold tracking-[-0.02em] text-foreground">
+              Ingestion evidence ledger
             </h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-              Follow each report from capture to reconciliation. Inspect evidence first, then open
-              clinic context only when the source payload needs a local record check.
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+              Review field reports, validation blockers, offline intake, and stale clinic evidence
+              from one ledger. Inspect evidence without leaving the page; open clinic context only
+              when the source record needs investigation.
             </p>
           </div>
-          <div className="grid min-w-[18rem] gap-2 rounded-xl border border-white/10 bg-white/10 p-3 text-sm backdrop-blur">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-slate-300">Readiness</span>
-              <span className="font-mono font-semibold">{summary.readinessLabel}</span>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-slate-300">Pending evidence</span>
-              <span className="font-mono font-semibold">{summary.pendingLabel}</span>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-slate-300">Offline queue</span>
-              <span className="font-mono font-semibold">{summary.offlineQueueLabel}</span>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-slate-300">Validation failures</span>
-              <span className="font-mono font-semibold">{summary.validationFailureLabel}</span>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-slate-300">Window</span>
-              <span className="font-mono text-xs font-semibold">{summary.syncWindowLabel}</span>
-            </div>
+          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+            <span className="rounded-full border border-border-subtle bg-bg-muted px-3 py-1">
+              {items.length} ledger rows
+            </span>
+            <span className="rounded-full border border-border-subtle bg-bg-muted px-3 py-1">
+              {backlogItems.length} clinic backlog
+            </span>
           </div>
         </div>
-      </div>
 
-      <div className="grid gap-4 border-b border-border-subtle bg-bg-muted/30 p-4 lg:grid-cols-5">
-        {stages.map((stage, index) => (
-          <article
-            key={stage.id}
-            className={cn(
-              "relative min-w-0 overflow-hidden rounded-xl border bg-bg-default p-4 shadow-sm",
-              tonePanelClassName[stage.tone],
-            )}
-          >
-            <div className="flex min-w-0 items-start justify-between gap-3">
-              <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-current/15 bg-white/60">
-                {stageIcon(stage.id)}
-              </span>
-              <span className="font-mono text-2xl font-semibold leading-none">{stage.count}</span>
-            </div>
-            <p className="mt-4 text-sm font-semibold uppercase tracking-normal">{stage.label}</p>
-            <p className="mt-2 min-h-10 text-xs leading-5 opacity-80">{stage.description}</p>
-            <p className="mt-3 rounded-lg border border-current/15 bg-white/45 px-2 py-1 text-xs font-medium">
-              {stage.blocker}
-            </p>
-            {index < stages.length - 1 ? (
-              <div
-                className={cn(
-                  "absolute -right-2 top-1/2 hidden h-0.5 w-4 lg:block",
-                  toneRailClassName[stage.tone],
-                )}
-                aria-hidden="true"
-              />
-            ) : null}
-          </article>
-        ))}
-      </div>
+        <div className="grid gap-3 border-b border-border-subtle bg-bg-muted/30 p-4 md:grid-cols-2 xl:grid-cols-4">
+          {metrics.map((metric) => (
+            <article
+              key={metric.id}
+              className="min-w-0 overflow-hidden rounded-xl border border-border-subtle bg-bg-default shadow-sm"
+            >
+              <div className={cn("h-1", toneRailClassName[metric.tone])} aria-hidden="true" />
+              <div className="grid gap-3 p-4">
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <p className="min-w-0 break-words text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                    {metric.label}
+                  </p>
+                  <span
+                    className={cn(
+                      "inline-flex size-8 shrink-0 items-center justify-center rounded-lg border",
+                      tonePanelClassName[metric.tone],
+                    )}
+                    aria-hidden="true"
+                  >
+                    {metricIcon(metric.id)}
+                  </span>
+                </div>
+                <div className="min-w-0">
+                  <p className="font-mono text-2xl font-semibold leading-none text-foreground">
+                    {metric.value}
+                  </p>
+                  <p className="mt-2 break-words text-xs leading-5 text-muted-foreground">
+                    {metric.detail}
+                  </p>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
 
-      <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
-        <section aria-label="Pending report queue" className="flex min-w-0 flex-col gap-3 self-start">
-          <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                Triage lanes
+        <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]">
+          <section aria-label="Pending report queue" className="flex min-w-0 flex-col gap-3 self-start">
+            <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                  Primary ledger
+                </p>
+                <h3 className="text-lg font-semibold tracking-[-0.02em] text-foreground">
+                  Pending report evidence
+                </h3>
+              </div>
+              <p className="max-w-xl text-sm text-muted-foreground">
+                Rows are ingestion events. The clinic link is explicit so receipt review does not
+                accidentally become navigation.
               </p>
-              <h3 className="text-lg font-semibold tracking-[-0.02em] text-foreground">
-                Pending report evidence by pipeline stage
+            </div>
+
+            <div className="grid gap-2">
+              {items.length ? (
+                items.map((item) => {
+                  const isSelected = selectedItem?.id === item.id;
+
+                  return (
+                    <article
+                      key={item.id}
+                      aria-label={`Ingestion event for ${item.clinicId}`}
+                      className={cn(
+                        "grid gap-3 rounded-xl border border-border-subtle bg-bg-default p-3 transition md:grid-cols-[minmax(0,0.75fr)_minmax(0,1fr)_auto]",
+                        isSelected && "border-amber-300 bg-amber-50/55 shadow-sm",
+                      )}
+                    >
+                      <div className="min-w-0">
+                        <p className="break-words font-semibold text-foreground">{item.clinicLabel}</p>
+                        <p className="mt-1 break-words font-mono text-xs text-muted-foreground">
+                          {item.clinicId}
+                        </p>
+                        <p className="mt-2 text-sm font-medium text-foreground">
+                          {item.reporterLabel}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{item.sourceLabel}</p>
+                      </div>
+                      <div className="min-w-0 space-y-2">
+                        <p className="break-words text-sm text-foreground">{item.evidence}</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          <AdminStatusBadge tone={item.issueTone}>{item.issueLabel}</AdminStatusBadge>
+                          <AdminStatusBadge tone={item.reviewTone}>{item.reviewLabel}</AdminStatusBadge>
+                          <AdminStatusBadge tone={item.trustTone}>{item.trustLabel}</AdminStatusBadge>
+                        </div>
+                        <p className="text-xs leading-5 text-muted-foreground">
+                          Submitted {item.submittedLabel}; received {item.receivedLabel}
+                        </p>
+                      </div>
+                      <div className="flex min-w-[10rem] flex-col items-start justify-between gap-3">
+                        <p className="text-sm text-muted-foreground">{item.actionLabel}</p>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            aria-pressed={isSelected}
+                            aria-label={`Inspect evidence for ${item.clinicId}`}
+                            className={cn(
+                              "inline-flex w-fit items-center rounded-full px-3 py-1.5 text-xs font-semibold transition",
+                              isSelected
+                                ? "bg-amber-600 text-white hover:bg-amber-700"
+                                : "border border-border-subtle bg-bg-default text-foreground hover:bg-bg-muted",
+                            )}
+                            onClick={() => setSelectedId(item.id)}
+                          >
+                            Inspect evidence
+                          </button>
+                          <Link
+                            href={item.clinicHref}
+                            aria-label={`Open clinic context for ${item.clinicId}`}
+                            className="inline-flex w-fit items-center gap-1.5 rounded-full border border-border-subtle bg-bg-default px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-bg-muted"
+                          >
+                            Open clinic
+                            <ArrowRightIcon className="size-3" aria-hidden="true" />
+                          </Link>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })
+              ) : (
+                <div className="rounded-xl border border-border-subtle bg-bg-muted/25 p-4 text-sm text-muted-foreground">
+                  No pending report evidence needs review.
+                </div>
+              )}
+            </div>
+          </section>
+
+          <aside
+            aria-label="Ingestion evidence console"
+            className="overflow-hidden rounded-xl border border-border-subtle bg-bg-default shadow-sm"
+          >
+            <div className="border-b border-border-subtle px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                Evidence inspector
+              </p>
+              <h3 className="mt-1 text-lg font-semibold tracking-[-0.02em] text-foreground">
+                Receipt and payload checks
               </h3>
             </div>
-            <p className="max-w-xl text-sm text-muted-foreground">
-              Each case belongs to one clinic and one blocked stage. Use Inspect evidence to drive
-              the console without leaving the page.
-            </p>
-          </div>
-
-          <div className="grid gap-3">
-            {itemsByStage.map(({ stage, items: stageItems }) =>
-              stageItems.length ? (
-                <section key={stage.id} className="rounded-xl border border-border-subtle bg-bg-muted/20 p-3">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className={cn("h-2.5 w-2.5 rounded-full", toneRailClassName[stage.tone])} />
-                      <p className="text-sm font-semibold text-foreground">{stage.label}</p>
+            {selectedItem ? (
+              <div className="grid gap-4 p-4">
+                <div className="rounded-xl border border-border-subtle bg-bg-muted/30 p-4">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-border-subtle bg-bg-default text-muted-foreground">
+                      <FileSearchIcon className="size-5" aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="break-words text-lg font-semibold text-foreground">
+                        {selectedItem.clinicLabel}
+                      </p>
+                      <p className="mt-1 break-words font-mono text-xs text-muted-foreground">
+                        {selectedItem.clinicId}
+                      </p>
                     </div>
-                    <AdminStatusBadge tone={stage.tone}>{stage.blocker}</AdminStatusBadge>
                   </div>
-                  <div className="grid gap-2">
-                    {stageItems.map((item) => {
-                      const isSelected = selectedItem?.id === item.id;
+                  <div className="mt-4 rounded-lg border border-border-subtle bg-bg-default p-3">
+                    <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                      Recommended action
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {selectedItem.actionLabel}
+                    </p>
+                  </div>
+                </div>
 
-                      return (
-                        <article
-                          key={item.id}
-                          aria-label={`Ingestion case for ${item.clinicId}`}
-                          className={cn(
-                            "grid gap-3 rounded-lg border border-border-subtle bg-bg-default p-3 transition md:grid-cols-[minmax(0,0.75fr)_minmax(0,1fr)_auto]",
-                            isSelected && "border-amber-300 bg-amber-50/55 shadow-sm",
-                          )}
-                        >
-                          <div className="min-w-0">
-                            <p className="break-words font-semibold text-foreground">
-                              {item.clinicLabel}
-                            </p>
-                            <p className="mt-1 break-words font-mono text-xs text-muted-foreground">
-                              {item.clinicId}
-                            </p>
-                            <p className="mt-2 text-sm font-medium text-foreground">
-                              {item.reporterLabel}
-                            </p>
-                            <p className="text-xs text-muted-foreground">{item.sourceLabel}</p>
-                          </div>
-                          <div className="min-w-0 space-y-2">
-                            <p className="break-words text-sm text-foreground">{item.evidence}</p>
-                            <div className="flex flex-wrap gap-1.5">
-                              <AdminStatusBadge tone={item.stageTone}>{item.stageLabel}</AdminStatusBadge>
-                              <AdminStatusBadge tone={item.reviewTone}>{item.reviewLabel}</AdminStatusBadge>
-                              <AdminStatusBadge tone={item.trustTone}>{item.trustLabel}</AdminStatusBadge>
-                            </div>
-                            <p className="text-xs leading-5 text-muted-foreground">
-                              Submitted {item.submittedLabel}; received {item.receivedLabel}
-                            </p>
-                          </div>
-                          <div className="flex min-w-[10rem] flex-col items-start justify-between gap-3">
-                            <p className="text-sm text-muted-foreground">{item.actionLabel}</p>
-                            <div className="flex flex-wrap gap-2">
-                              <button
-                                type="button"
-                                aria-pressed={isSelected}
-                                aria-label={`Inspect evidence for ${item.clinicId}`}
-                                className={cn(
-                                  "inline-flex w-fit items-center rounded-full px-3 py-1.5 text-xs font-semibold transition",
-                                  isSelected
-                                    ? "bg-amber-600 text-white hover:bg-amber-700"
-                                    : "border border-border-subtle bg-bg-default text-foreground hover:bg-bg-muted",
-                                )}
-                                onClick={() => setSelectedId(item.id)}
-                              >
-                                Inspect evidence
-                              </button>
-                              <Link
-                                href={item.clinicHref}
-                                aria-label={`Open clinic context for ${item.clinicId}`}
-                                className="inline-flex w-fit items-center gap-1.5 rounded-full border border-border-subtle bg-bg-default px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-bg-muted"
-                              >
-                                Open clinic
-                                <ArrowRightIcon className="size-3" aria-hidden="true" />
-                              </Link>
-                            </div>
-                          </div>
-                        </article>
-                      );
-                    })}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl border border-border-subtle bg-bg-muted/25 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                      Ingestion issue
+                    </p>
+                    <div className="mt-2">
+                      <AdminStatusBadge tone={selectedItem.issueTone}>{selectedItem.issueLabel}</AdminStatusBadge>
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-border-subtle bg-bg-muted/25 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                      Data trust
+                    </p>
+                    <div className="mt-2 space-y-2">
+                      <AdminStatusBadge tone={selectedItem.trustTone}>{selectedItem.trustLabel}</AdminStatusBadge>
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        {selectedItem.trustDescription}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <section className="rounded-xl border border-border-subtle bg-bg-muted/25 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                    Receipt trail
+                  </p>
+                  <ol className="mt-3 grid gap-2 text-sm text-foreground">
+                    {selectedItem.receiptTrail.map((entry, index) => (
+                      <li key={entry} className="flex gap-3 rounded-lg bg-bg-default p-2">
+                        <span className="mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-foreground text-[0.65rem] font-semibold text-background">
+                          {index + 1}
+                        </span>
+                        <span className="break-words">{entry}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+
+                <section className="rounded-xl border border-border-subtle bg-bg-muted/25 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                    Payload checks
+                  </p>
+                  <div className="mt-3 grid gap-2">
+                    {selectedItem.payloadChecks.map((check) => (
+                      <div key={check} className="flex items-start gap-2 rounded-lg bg-bg-default p-2 text-sm">
+                        <CircleDotIcon className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden="true" />
+                        <span className="break-words text-foreground">{check}</span>
+                      </div>
+                    ))}
                   </div>
                 </section>
-              ) : null,
+
+                <Link
+                  href={selectedItem.clinicHref}
+                  aria-label={`Open clinic context for ${selectedItem.clinicId}`}
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background transition hover:opacity-90"
+                >
+                  Open clinic context
+                  <ArrowRightIcon className="size-4" aria-hidden="true" />
+                </Link>
+              </div>
+            ) : (
+              <div className="p-4 text-sm text-muted-foreground">
+                No ingestion event is currently selected.
+              </div>
             )}
-          </div>
-        </section>
+          </aside>
+        </div>
+      </section>
 
-        <aside
-          aria-label="Ingestion evidence console"
-          className="overflow-hidden rounded-xl border border-border-subtle bg-bg-default shadow-sm"
-        >
-          <div className="border-b border-border-subtle bg-bg-muted/30 px-4 py-3">
-            <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-              Evidence console
-            </p>
-            <h3 className="mt-1 text-lg font-semibold tracking-[-0.02em] text-foreground">
-              Receipt, trail, and payload checks
-            </h3>
-          </div>
-          {selectedItem ? (
-            <div className="grid gap-4 p-4">
-              <div className="rounded-xl border border-border-subtle bg-slate-950 p-4 text-white">
-                <div className="flex min-w-0 items-start gap-3">
-                  <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/10">
-                    <FileSearchIcon className="size-5" aria-hidden="true" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="break-words text-lg font-semibold">{selectedItem.clinicLabel}</p>
-                    <p className="mt-1 break-words font-mono text-xs text-slate-300">
-                      {selectedItem.clinicId}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                  <div className="rounded-lg border border-white/10 bg-white/10 p-3">
-                    <p className="text-xs uppercase tracking-normal text-slate-300">Blocked stage</p>
-                    <p className="mt-1 font-semibold">{selectedItem.stageLabel}</p>
-                  </div>
-                  <div className="rounded-lg border border-white/10 bg-white/10 p-3">
-                    <p className="text-xs uppercase tracking-normal text-slate-300">Next action</p>
-                    <p className="mt-1 font-semibold">{selectedItem.actionLabel}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-border-subtle bg-bg-muted/25 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                    Review state
-                  </p>
-                  <div className="mt-2">
-                    <AdminStatusBadge tone={selectedItem.reviewTone}>
-                      {selectedItem.reviewLabel}
-                    </AdminStatusBadge>
-                  </div>
-                </div>
-                <div className="rounded-xl border border-border-subtle bg-bg-muted/25 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                    Data trust
-                  </p>
-                  <div className="mt-2 space-y-2">
-                    <AdminStatusBadge tone={selectedItem.trustTone}>{selectedItem.trustLabel}</AdminStatusBadge>
-                    <p className="text-xs leading-5 text-muted-foreground">
-                      {selectedItem.trustDescription}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <section className="rounded-xl border border-border-subtle bg-bg-muted/25 p-3">
-                <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                  Receipt trail
-                </p>
-                <ol className="mt-3 grid gap-2 text-sm text-foreground">
-                  {selectedItem.receiptTrail.map((entry, index) => (
-                    <li key={entry} className="flex gap-3 rounded-lg bg-bg-default p-2">
-                      <span className="mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-slate-950 text-[0.65rem] font-semibold text-white">
-                        {index + 1}
-                      </span>
-                      <span className="break-words">{entry}</span>
-                    </li>
-                  ))}
-                </ol>
-              </section>
-
-              <section className="rounded-xl border border-border-subtle bg-bg-muted/25 p-3">
-                <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                  Payload checks
-                </p>
-                <div className="mt-3 grid gap-2">
-                  {selectedItem.payloadChecks.map((check) => (
-                    <div key={check} className="flex items-start gap-2 rounded-lg bg-bg-default p-2 text-sm">
-                      <CircleDotIcon className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden="true" />
-                      <span className="break-words text-foreground">{check}</span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              <Link
-                href={selectedItem.clinicHref}
-                aria-label={`Open clinic context for ${selectedItem.clinicId}`}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background transition hover:opacity-90"
-              >
-                Open clinic context
-                <ArrowRightIcon className="size-4" aria-hidden="true" />
-              </Link>
-            </div>
-          ) : (
-            <div className="p-4 text-sm text-muted-foreground">
-              No ingestion case is currently selected.
-            </div>
-          )}
-        </aside>
-      </div>
-
-      <div className="grid gap-4 border-t border-border-subtle bg-bg-muted/25 p-4 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
         <section
           aria-label="Ingestion signal diagnostics"
           className="overflow-hidden rounded-xl border border-border-subtle bg-bg-default shadow-sm"
         >
           <div className="border-b border-border-subtle px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-              Operational diagnostics
+              Supporting diagnostics
             </p>
             <h3 className="mt-1 text-lg font-semibold tracking-[-0.02em] text-foreground">
               Ingestion signal evidence
@@ -445,10 +396,7 @@ export function DataIngestionWorkspace({
             {diagnostics.map((diagnostic) => (
               <article
                 key={diagnostic.id}
-                className={cn(
-                  "min-w-0 rounded-xl border p-3",
-                  tonePanelClassName[diagnostic.tone],
-                )}
+                className={cn("min-w-0 rounded-xl border p-3", tonePanelClassName[diagnostic.tone])}
               >
                 <div className="flex min-w-0 items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -475,10 +423,10 @@ export function DataIngestionWorkspace({
         >
           <div className="border-b border-border-subtle px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-              Clinic backlog
+              Linked backlog
             </p>
             <h3 className="mt-1 text-lg font-semibold tracking-[-0.02em] text-foreground">
-              Freshness and confirmation follow-up
+              Clinic freshness follow-up
             </h3>
           </div>
           <div className="grid gap-3 p-4">
@@ -495,17 +443,13 @@ export function DataIngestionWorkspace({
                   </div>
                   <div className="min-w-0 space-y-2">
                     <div className="flex flex-wrap gap-1.5">
-                      <AdminStatusBadge tone={item.freshnessTone}>
-                        {item.freshnessLabel}
-                      </AdminStatusBadge>
+                      <AdminStatusBadge tone={item.freshnessTone}>{item.freshnessLabel}</AdminStatusBadge>
                       <AdminStatusBadge tone={item.trustTone}>{item.trustLabel}</AdminStatusBadge>
                     </div>
                     <p className="break-words text-xs leading-5 text-muted-foreground">
                       {item.trustDescription}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      Last update {item.lastUpdateLabel}
-                    </p>
+                    <p className="text-xs text-muted-foreground">Last update {item.lastUpdateLabel}</p>
                   </div>
                   <Link
                     href={item.clinicHref}
