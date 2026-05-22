@@ -243,7 +243,7 @@ test.describe("phase 1 role dashboard navigation", () => {
         page.waitForURL(scenario.urlPattern),
         reportDetailLink.click(),
       ]);
-      await expect(page.getByRole("heading", { name: "Report detail" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Report evidence brief" })).toBeVisible();
       await expect(page.getByRole("link", { name: scenario.backLabel })).toBeVisible();
       await expect(page.getByRole("link", { name: "Open clinic detail" })).toBeVisible();
     }

@@ -284,14 +284,18 @@ it("uses operational detail layouts for report and lead details", () => {
   const leadDetail = readFileSync("app/(demo)/admin/leads/[leadId]/page-client.tsx", "utf8");
 
   for (const source of [adminReportDetail, demoReportDetail, leadDetail]) {
-    expect(source).toContain("AdminDetailHero");
-    expect(source).toContain("AdminDetailSignalBar");
-    expect(source).toContain("AdminDetailEvidenceList");
-    expect(source).toContain("AdminDetailActionPanel");
-    expect(source).toContain("AdminDetailTimeline");
+    expect(source).toContain("EvidenceCommandHeader");
+    expect(source).toContain("EvidenceCommandMetricStrip");
+    expect(source).toContain("EvidencePacketPanel");
+    expect(source).toContain("EvidenceDecisionPanel");
+    expect(source).toContain("EvidenceTimeline");
     expect(source).not.toContain("AdminDetailStatStrip");
     expect(source).not.toContain("AdminDetailFieldGrid");
   }
+
+  expect(adminReportDetail).toContain("buildReportDecisionCopy");
+  expect(demoReportDetail).toContain("buildReportDecisionCopy");
+  expect(leadDetail).toContain("buildLeadDecisionCopy");
 });
 
 it("links admin user evidence rows to user detail", () => {

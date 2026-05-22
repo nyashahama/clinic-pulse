@@ -36,6 +36,12 @@ import {
   getAdminDetailPressureTone,
 } from "@/components/product/admin-detail";
 import {
+  EvidenceCommandHeader,
+  EvidenceCommandMetricStrip,
+  EvidenceDecisionPanel,
+  EvidencePacketPanel,
+} from "@/components/product/evidence-command";
+import {
   WorkspaceClinicDetailLoading,
   WorkspaceDashboardLoading,
 } from "@/components/product/workspace-loading";
@@ -269,6 +275,82 @@ describe("product surface primitives", () => {
     expect(html).toContain("data-admin-detail-signal");
     expect(html).toContain("xl:grid-cols-4");
     expect(html).toContain("divide-y");
+  });
+
+  it("renders evidence command briefs with differentiated primary and secondary actions", () => {
+    const actions = [
+      {
+        label: "Open clinic detail",
+        href: "/district/clinics/clinic-mamelodi-east",
+        priority: "primary" as const,
+        icon: "clinic" as const,
+      },
+      {
+        label: "Return to queue",
+        href: "/admin#admin-review-pressure",
+        priority: "secondary" as const,
+        icon: "queue" as const,
+      },
+    ];
+    const html = renderToStaticMarkup(
+      createElement(
+        "div",
+        null,
+        createElement(EvidenceCommandHeader, {
+          eyebrow: "Field evidence",
+          title: "Report evidence brief",
+          description: "Power outage closed the triage room.",
+          actions: [actions[1]],
+        }),
+        createElement(EvidenceCommandMetricStrip, {
+          metrics: [
+            {
+              label: "Queue pressure",
+              value: "high",
+              detail: "Patient routing impact",
+              tone: "critical",
+              icon: "alert",
+            },
+          ],
+        }),
+        createElement(EvidencePacketPanel, {
+          title: "Evidence packet",
+          description: "Operational facts captured with the report.",
+          fields: [
+            {
+              label: "Clinic",
+              value: "Mamelodi East Clinic",
+              href: "/district/clinics/clinic-mamelodi-east",
+            },
+            {
+              label: "Status",
+              value: "degraded",
+              tone: "attention",
+            },
+          ],
+        }),
+        createElement(EvidenceDecisionPanel, {
+          decision: {
+            eyebrow: "Selected signal decision",
+            title: "Capacity risk decision",
+            chips: [{ label: "degraded", tone: "attention" }],
+            nextStep: "Review the clinic context before accepting the field evidence.",
+            nextStepTone: "attention",
+            impactTitle: "Patient impact",
+            impact: "Queues may require rerouting.",
+            actions,
+          },
+        }),
+      ),
+    );
+
+    expect(html).toContain("Report evidence brief");
+    expect(html).toContain("Evidence packet");
+    expect(html).toContain("Capacity risk decision");
+    expect(html).toContain("Open clinic detail");
+    expect(html).toContain("Return to queue");
+    expect(html).toContain("bg-primary");
+    expect(html).toContain("bg-bg-muted/60");
   });
 
   it("maps report pressure values to operational detail tones", () => {

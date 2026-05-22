@@ -1,27 +1,37 @@
 "use client";
 
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 import { useMemo } from "react";
 
 import {
-  AdminDetailActionPanel,
-  AdminDetailEvidenceList,
-  AdminDetailHero,
   AdminDetailShell,
-  AdminDetailSignalBar,
-  AdminDetailTimeline,
-  getAdminDetailPressureTone,
 } from "@/components/product/admin-detail";
-import { StatusBadge } from "@/components/demo/status-badge";
-import { buttonVariants } from "@/components/ui/button";
+import {
+  EvidenceCommandChip,
+  EvidenceCommandHeader,
+  EvidenceCommandMetricStrip,
+  EvidenceDecisionPanel,
+  EvidencePacketPanel,
+  EvidenceTimeline,
+} from "@/components/product/evidence-command";
 import { useDemoStore } from "@/lib/demo/demo-store";
 import {
   getClinicAuditEvents,
   getClinicRows,
   getRecentReportStream,
 } from "@/lib/demo/selectors";
+import {
+  buildReportDecisionCopy,
+  formatEvidenceLabel,
+  getPressureTone,
+  getReportStatusTone,
+  type EvidenceCommandAction,
+  type EvidenceCommandChip as EvidenceCommandChipModel,
+  type EvidenceCommandField,
+  type EvidenceCommandMetric,
+  type EvidenceCommandTimelineItem,
+} from "@/lib/product/evidence-command";
 
 type ReportDetailPageClientProps = {
   consoleHref?: "/demo" | "/district";
@@ -40,10 +50,6 @@ function formatDateTime(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
-}
-
-function formatLabel(value: string) {
-  return value.replaceAll("_", " ");
 }
 
 function formatBoolean(value: boolean) {
@@ -108,6 +114,165 @@ export default function ReportDetailPageClient({
   )}?from=report-detail`;
   const auditConsequence =
     auditEvents[0]?.summary ?? "No linked audit consequence has been recorded yet.";
+  const statusTone = getReportStatusTone(report.status);
+  const decisionCopy = buildReportDecisionCopy({
+    queuePressure: report.queuePressure,
+    staffPressure: report.staffPressure,
+    status: report.status,
+  });
+  const actions: EvidenceCommandAction[] = [
+    {
+      label: "Open clinic detail",
+      href: clinicDetailHref,
+      priority: "primary",
+      icon: "clinic",
+    },
+    {
+      label: "Return to report stream",
+      href: returnHref,
+      priority: "secondary",
+      icon: "stream",
+    },
+  ];
+  const headerActions = actions.filter((action) => action.priority === "secondary");
+  const chips: EvidenceCommandChipModel[] = [
+    {
+      label: formatEvidenceLabel(report.status),
+      tone: statusTone,
+    },
+    {
+      label: report.offlineCreated ? "offline sync" : formatEvidenceLabel(report.source),
+      tone: report.offlineCreated ? "attention" : "neutral",
+    },
+    {
+      label: formatEvidenceLabel(report.queuePressure),
+      tone: getPressureTone(report.queuePressure, "queue"),
+    },
+  ];
+  const metrics: EvidenceCommandMetric[] = [
+    {
+      label: "Current status",
+      value: formatEvidenceLabel(report.status),
+      detail: report.offlineCreated
+        ? "Synced after offline capture"
+        : formatEvidenceLabel(report.source),
+      tone: statusTone,
+      icon: "alert",
+    },
+    {
+      label: "Queue pressure",
+      value: formatEvidenceLabel(report.queuePressure),
+      detail: "Patient routing impact",
+      tone: getPressureTone(report.queuePressure, "queue"),
+      icon: "activity",
+    },
+    {
+      label: "Staff pressure",
+      value: formatEvidenceLabel(report.staffPressure),
+      detail: "Operational capacity",
+      tone: getPressureTone(report.staffPressure, "staff"),
+      icon: "activity",
+    },
+    {
+      label: "Received",
+      value: formatDateTime(report.receivedAt),
+      detail: `Report ${report.id}`,
+      tone: "info",
+      icon: "clock",
+    },
+  ];
+  const fields: EvidenceCommandField[] = [
+    {
+      label: "Clinic",
+      value: report.clinicName,
+      href: clinicDetailHref,
+      emphasis: true,
+    },
+    {
+      label: "Facility",
+      value: report.facilityCode,
+    },
+    {
+      label: "District",
+      value: clinic?.district ?? "Unknown district",
+    },
+    {
+      label: "Report ID",
+      value: report.id,
+    },
+    {
+      label: "Status",
+      value: formatEvidenceLabel(report.status),
+      tone: statusTone,
+    },
+    {
+      label: "Source",
+      value: report.offlineCreated
+        ? `${formatEvidenceLabel(report.source)} / synced offline`
+        : formatEvidenceLabel(report.source),
+    },
+    {
+      label: "Reporter",
+      value: report.reporterName,
+    },
+    {
+      label: "Submitted",
+      value: formatDateTime(report.submittedAt),
+    },
+    {
+      label: "Received",
+      value: formatDateTime(report.receivedAt),
+    },
+    {
+      label: "Offline created",
+      value: formatBoolean(report.offlineCreated),
+    },
+    {
+      label: "Pressure",
+      value: `staff ${formatEvidenceLabel(report.staffPressure)}; stock ${formatEvidenceLabel(
+        report.stockPressure,
+      )}; queue ${formatEvidenceLabel(report.queuePressure)}`,
+    },
+    {
+      label: "Reason",
+      value: report.reason,
+      emphasis: true,
+    },
+    {
+      label: "Notes",
+      value: report.notes || "No notes supplied.",
+      emphasis: Boolean(report.notes),
+    },
+    {
+      label: "Audit consequence",
+      value: auditConsequence,
+      emphasis: Boolean(auditEvents[0]?.summary),
+    },
+  ];
+  const timeline: EvidenceCommandTimelineItem[] = [
+    {
+      label: "Submitted",
+      title: "Report submitted",
+      description: `${report.reporterName} submitted the field signal.`,
+      timestamp: formatDateTime(report.submittedAt),
+      tone: "info",
+    },
+    {
+      label: "Received",
+      title: report.offlineCreated ? "Offline report synced" : "Report received",
+      description: report.offlineCreated
+        ? "The report was created offline and synced once connectivity returned."
+        : "The report entered the live stream without offline delay.",
+      timestamp: formatDateTime(report.receivedAt),
+      tone: report.offlineCreated ? "attention" : "stable",
+    },
+    {
+      label: "Current consequence",
+      title: "Command evidence updated",
+      description: auditConsequence,
+      tone: "attention",
+    },
+  ];
 
   return (
     <AdminDetailShell
@@ -118,194 +283,58 @@ export default function ReportDetailPageClient({
       returnLabel={returnLabel}
       hideHeader
     >
-      <AdminDetailHero
+      <EvidenceCommandHeader
         eyebrow="Incoming signal"
-        title="Report detail"
+        title="Report evidence brief"
         description={report.reason}
-        status={<StatusBadge status={report.status} />}
-        actions={
-          <>
-            <Link
-              className={buttonVariants({ size: "sm" })}
-              href={clinicDetailHref}
-            >
-              Open clinic detail
-            </Link>
-            <Link
-              className={buttonVariants({ size: "sm", variant: "outline" })}
-              href={returnHref}
-            >
-              Report stream
-            </Link>
-          </>
-        }
+        actions={headerActions}
       >
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span className="font-medium text-foreground">{report.clinicName}</span>
           <span>{report.facilityCode}</span>
           <span>{clinic?.district ?? "Unknown district"}</span>
         </div>
-      </AdminDetailHero>
-      <AdminDetailSignalBar
-        signals={[
-          {
-            label: "Current status",
-            value: formatLabel(report.status),
-            detail: report.offlineCreated
-              ? "Synced after offline capture"
-              : formatLabel(report.source),
-            tone: report.status === "operational" ? "clear" : "attention",
-          },
-          {
-            label: "Queue pressure",
-            value: formatLabel(report.queuePressure),
-            detail: "Patient routing impact",
-            tone: getAdminDetailPressureTone(report.queuePressure, "queue"),
-          },
-          {
-            label: "Staff pressure",
-            value: formatLabel(report.staffPressure),
-            detail: "Operational capacity",
-            tone: getAdminDetailPressureTone(report.staffPressure, "staff"),
-          },
-          {
-            label: "Received",
-            value: formatDateTime(report.receivedAt),
-            detail: `Report ${report.id}`,
-            tone: "info",
-          },
-        ]}
-      />
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {chips.map((chip) => (
+            <EvidenceCommandChip chip={chip} key={`${chip.label}-${chip.tone}`} />
+          ))}
+        </div>
+      </EvidenceCommandHeader>
+      <EvidenceCommandMetricStrip metrics={metrics} />
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
         <div className="grid min-w-0 gap-4">
-          <AdminDetailEvidenceList
-            title="Evidence properties"
+          <EvidencePacketPanel
+            title="Evidence packet"
             description="Operational facts captured with this incoming field signal."
-            items={[
-              {
-                label: "Clinic",
-                value: (
-                  <Link
-                    className="underline-offset-4 hover:underline"
-                    href={clinicDetailHref}
-                  >
-                    {report.clinicName}
-                  </Link>
-                ),
-              },
-              {
-                label: "Facility",
-                value: report.facilityCode,
-              },
-              {
-                label: "District",
-                value: clinic?.district ?? "Unknown district",
-              },
-              {
-                label: "Report ID",
-                value: report.id,
-              },
-              {
-                label: "Status",
-                value: <StatusBadge status={report.status} />,
-              },
-              {
-                label: "Source",
-                value: report.offlineCreated
-                  ? `${formatLabel(report.source)} / synced offline`
-                  : formatLabel(report.source),
-              },
-              {
-                label: "Reporter",
-                value: report.reporterName,
-              },
-              {
-                label: "Submitted",
-                value: formatDateTime(report.submittedAt),
-              },
-              {
-                label: "Received",
-                value: formatDateTime(report.receivedAt),
-              },
-              {
-                label: "Offline created",
-                value: formatBoolean(report.offlineCreated),
-              },
-              {
-                label: "Staff pressure",
-                value: formatLabel(report.staffPressure),
-              },
-              {
-                label: "Stock pressure",
-                value: formatLabel(report.stockPressure),
-              },
-              {
-                label: "Queue pressure",
-                value: formatLabel(report.queuePressure),
-              },
-              {
-                label: "Reason",
-                value: report.reason,
-                emphasis: true,
-              },
-              {
-                label: "Notes",
-                value: report.notes || "No notes supplied.",
-                emphasis: Boolean(report.notes),
-              },
-              {
-                label: "Audit consequence",
-                value: auditConsequence,
-                emphasis: Boolean(auditEvents[0]?.summary),
-              },
-            ]}
+            fields={fields}
           />
         </div>
         <div className="grid min-w-0 gap-4 content-start">
-          <AdminDetailActionPanel
-            title="Operational next action"
-            description="Open the clinic context or return to the stream with the report evidence preserved in the URL."
-          >
-            <Link
-              className={buttonVariants({ size: "sm", variant: "outline" })}
-              href={clinicDetailHref}
-            >
-              Review clinic context
-            </Link>
-            <Link
-              className={buttonVariants({ size: "sm", variant: "outline" })}
-              href={returnHref}
-            >
-              Return to report stream
-            </Link>
-          </AdminDetailActionPanel>
-          <AdminDetailTimeline
+          <EvidenceDecisionPanel
+            decision={{
+              eyebrow: "Selected signal decision",
+              title: decisionCopy.title,
+              scoreLabel: "Report",
+              scoreValue: report.id,
+              chips,
+              nextStep: decisionCopy.nextStep,
+              nextStepTone: decisionCopy.tone,
+              impactTitle: "Patient impact",
+              impact: decisionCopy.impact,
+              verificationTitle: "Verification",
+              verification: decisionCopy.verification,
+              evidence: {
+                label: report.reason,
+                detail: `${report.reporterName} - ${formatDateTime(report.receivedAt)}`,
+                tone: statusTone,
+              },
+              actions,
+            }}
+          />
+          <EvidenceTimeline
             title="Evidence timeline"
             description="How this signal moved from field capture into the command view."
-            items={[
-              {
-                label: "Submitted",
-                title: "Report submitted",
-                description: `${report.reporterName} submitted the field signal.`,
-                timestamp: formatDateTime(report.submittedAt),
-                tone: "info",
-              },
-              {
-                label: "Received",
-                title: report.offlineCreated ? "Offline report synced" : "Report received",
-                description: report.offlineCreated
-                  ? "The report was created offline and synced once connectivity returned."
-                  : "The report entered the live stream without offline delay.",
-                timestamp: formatDateTime(report.receivedAt),
-                tone: report.offlineCreated ? "attention" : "clear",
-              },
-              {
-                label: "Current consequence",
-                title: "Command evidence updated",
-                description: auditConsequence,
-                tone: "attention",
-              },
-            ]}
+            items={timeline}
           />
         </div>
       </div>

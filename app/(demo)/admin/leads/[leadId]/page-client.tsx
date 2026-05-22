@@ -1,22 +1,32 @@
 "use client";
 
-import Link from "next/link";
 import { useParams } from "next/navigation";
-import { AlertTriangle, Mail } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { useMemo } from "react";
 
 import {
-  AdminDetailActionPanel,
-  AdminDetailEvidenceList,
-  AdminDetailHero,
   AdminDetailShell,
-  AdminDetailSignalBar,
-  AdminDetailTimeline,
 } from "@/components/product/admin-detail";
-import { buttonVariants } from "@/components/ui/button";
+import {
+  EvidenceCommandChip,
+  EvidenceCommandHeader,
+  EvidenceCommandMetricStrip,
+  EvidenceDecisionPanel,
+  EvidencePacketPanel,
+  EvidenceTimeline,
+} from "@/components/product/evidence-command";
 import { useDemoStore } from "@/lib/demo/demo-store";
-import type { DemoLead } from "@/lib/demo/types";
 import type { AdminReturnTarget } from "@/lib/product/admin-detail-routes";
+import {
+  buildLeadDecisionCopy,
+  formatEvidenceLabel,
+  getLeadStatusTone,
+  type EvidenceCommandAction,
+  type EvidenceCommandChip as EvidenceCommandChipModel,
+  type EvidenceCommandField,
+  type EvidenceCommandMetric,
+  type EvidenceCommandTimelineItem,
+} from "@/lib/product/evidence-command";
 
 function getRouteParam(value: string | string[] | undefined) {
   if (Array.isArray(value)) {
@@ -31,22 +41,6 @@ function formatDateTime(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
-}
-
-function formatLabel(value: string) {
-  return value.replaceAll("_", " ");
-}
-
-function leadStatusTone(status: DemoLead["status"]) {
-  if (status === "completed") {
-    return "clear" as const;
-  }
-
-  if (status === "new") {
-    return "attention" as const;
-  }
-
-  return "info" as const;
 }
 
 export default function LeadDetailPageClient({
@@ -91,6 +85,131 @@ export default function LeadDetailPageClient({
     );
   }
 
+  const statusTone = getLeadStatusTone(lead.status);
+  const decisionCopy = buildLeadDecisionCopy({
+    interest: lead.interest,
+    status: lead.status,
+  });
+  const actions: EvidenceCommandAction[] = [
+    {
+      label: "Email stakeholder",
+      href: `mailto:${lead.workEmail}`,
+      priority: "primary",
+      icon: "mail",
+    },
+    {
+      label: "Return to queue",
+      href: returnTarget.href,
+      priority: "secondary",
+      icon: "queue",
+    },
+  ];
+  const headerActions = actions.filter((action) => action.priority === "secondary");
+  const chips: EvidenceCommandChipModel[] = [
+    {
+      label: formatEvidenceLabel(lead.status),
+      tone: statusTone,
+    },
+    {
+      label: formatEvidenceLabel(lead.interest),
+      tone: "info",
+    },
+    {
+      label: lead.organization,
+      tone: "neutral",
+    },
+  ];
+  const metrics: EvidenceCommandMetric[] = [
+    {
+      label: "Follow-up state",
+      value: formatEvidenceLabel(lead.status),
+      detail: "Current activity queue status",
+      tone: statusTone,
+      icon: "user",
+    },
+    {
+      label: "Focus",
+      value: formatEvidenceLabel(lead.interest),
+      detail: "Buying or partner context",
+      tone: "info",
+      icon: "activity",
+    },
+    {
+      label: "Created",
+      value: formatDateTime(lead.createdAt),
+      detail: "Inbound request timestamp",
+      tone: "neutral",
+      icon: "clock",
+    },
+    {
+      label: "Contact",
+      value: lead.name,
+      detail: lead.role,
+      tone: "neutral",
+      icon: "mail",
+    },
+  ];
+  const fields: EvidenceCommandField[] = [
+    {
+      label: "Name",
+      value: lead.name,
+      emphasis: true,
+    },
+    {
+      label: "Email",
+      value: lead.workEmail,
+      href: `mailto:${lead.workEmail}`,
+    },
+    {
+      label: "Organisation",
+      value: lead.organization,
+    },
+    {
+      label: "Role",
+      value: lead.role,
+    },
+    {
+      label: "Focus",
+      value: formatEvidenceLabel(lead.interest),
+      tone: "info",
+    },
+    {
+      label: "Status",
+      value: formatEvidenceLabel(lead.status),
+      tone: statusTone,
+    },
+    {
+      label: "Created",
+      value: formatDateTime(lead.createdAt),
+    },
+    {
+      label: "Follow-up note",
+      value: lead.note,
+      emphasis: true,
+    },
+  ];
+  const timeline: EvidenceCommandTimelineItem[] = [
+    {
+      label: "Captured",
+      title: "Stakeholder request recorded",
+      description: `${lead.name} entered the operations queue from the booking/demo workflow.`,
+      timestamp: formatDateTime(lead.createdAt),
+      tone: "info",
+    },
+    {
+      label: "Current status",
+      title: `${formatEvidenceLabel(lead.status)} follow-up`,
+      description: lead.note,
+      tone: statusTone,
+    },
+    {
+      label: "Next",
+      title: decisionCopy.title,
+      description: decisionCopy.nextStep,
+      tone: decisionCopy.tone,
+    },
+  ];
+
   return (
     <AdminDetailShell
       eyebrow="Operations evidence"
@@ -100,160 +219,57 @@ export default function LeadDetailPageClient({
       returnLabel={returnTarget.label}
       hideHeader
     >
-      <AdminDetailHero
+      <EvidenceCommandHeader
         eyebrow="Operations evidence"
-        title="Lead detail"
+        title="Stakeholder follow-up brief"
         description={lead.note}
-        status={
-          <span className="rounded-md border border-border-subtle bg-bg-muted px-2 py-1 text-xs font-medium capitalize text-content-default">
-            {formatLabel(lead.status)}
-          </span>
-        }
-        actions={
-          <>
-            <Link
-              className={buttonVariants({ size: "sm" })}
-              href={`mailto:${lead.workEmail}`}
-            >
-              <Mail className="size-3.5" />
-              Contact lead
-            </Link>
-            <Link
-              className={buttonVariants({ size: "sm", variant: "outline" })}
-              href={returnTarget.href}
-            >
-              Return to queue
-            </Link>
-          </>
-        }
+        actions={headerActions}
       >
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span className="font-medium text-foreground">{lead.name}</span>
           <span>{lead.role}</span>
           <span>{lead.organization}</span>
         </div>
-      </AdminDetailHero>
-      <AdminDetailSignalBar
-        signals={[
-          {
-            label: "Status",
-            value: formatLabel(lead.status),
-            detail: "Follow-up state",
-            tone: leadStatusTone(lead.status),
-          },
-          {
-            label: "Focus",
-            value: formatLabel(lead.interest),
-            detail: "Buying context",
-            tone: "info",
-          },
-          {
-            label: "Created",
-            value: formatDateTime(lead.createdAt),
-            detail: "Inbound request timestamp",
-            tone: "neutral",
-          },
-          {
-            label: "Organisation",
-            value: lead.organization,
-            detail: lead.role,
-            tone: "neutral",
-          },
-        ]}
-      />
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {chips.map((chip) => (
+            <EvidenceCommandChip chip={chip} key={`${chip.label}-${chip.tone}`} />
+          ))}
+        </div>
+      </EvidenceCommandHeader>
+      <EvidenceCommandMetricStrip metrics={metrics} />
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
         <div className="grid min-w-0 gap-4">
-          <AdminDetailEvidenceList
-            title="Stakeholder properties"
-            description="Follow-up details captured from the stakeholder activity queue."
-            items={[
-              {
-                label: "Name",
-                value: lead.name,
-              },
-              {
-                label: "Email",
-                value: (
-                  <Link
-                    className="break-all underline-offset-4 hover:underline"
-                    href={`mailto:${lead.workEmail}`}
-                  >
-                    {lead.workEmail}
-                  </Link>
-                ),
-              },
-              {
-                label: "Organisation",
-                value: lead.organization,
-              },
-              {
-                label: "Role",
-                value: lead.role,
-              },
-              {
-                label: "Focus",
-                value: formatLabel(lead.interest),
-              },
-              {
-                label: "Status",
-                value: formatLabel(lead.status),
-              },
-              {
-                label: "Created",
-                value: formatDateTime(lead.createdAt),
-              },
-              {
-                label: "Follow-up note",
-                value: lead.note,
-                emphasis: true,
-              },
-            ]}
+          <EvidencePacketPanel
+            title="Stakeholder packet"
+            description="Follow-up evidence captured from the stakeholder activity queue."
+            fields={fields}
           />
         </div>
         <div className="grid min-w-0 gap-4 content-start">
-          <AdminDetailActionPanel
-            title="Recommended next action"
-            description="Contact the stakeholder or return to the activity queue to review adjacent leads."
-          >
-            <Link
-              className={buttonVariants({ size: "sm", variant: "outline" })}
-              href={`mailto:${lead.workEmail}`}
-            >
-              <Mail className="size-3.5" />
-              Email stakeholder
-            </Link>
-            <Link
-              className={buttonVariants({ size: "sm", variant: "outline" })}
-              href="/admin#users-roles"
-            >
-              Back to stakeholder queue
-            </Link>
-          </AdminDetailActionPanel>
-          <AdminDetailTimeline
+          <EvidenceDecisionPanel
+            decision={{
+              eyebrow: "Selected lead decision",
+              title: decisionCopy.title,
+              scoreLabel: "State",
+              scoreValue: formatEvidenceLabel(lead.status),
+              chips,
+              nextStep: decisionCopy.nextStep,
+              nextStepTone: decisionCopy.tone,
+              impactTitle: "Pipeline impact",
+              impact: decisionCopy.impact,
+              verificationTitle: "Qualification check",
+              verification: decisionCopy.verification,
+              evidence: {
+                label: lead.note,
+                detail: `${lead.name} - ${lead.organization}`,
+              },
+              actions,
+            }}
+          />
+          <EvidenceTimeline
             title="Lead timeline"
             description="The operational context for deciding how this stakeholder should be handled."
-            items={[
-              {
-                label: "Captured",
-                title: "Stakeholder request recorded",
-                description: `${lead.name} entered the operations queue from the booking/demo workflow.`,
-                timestamp: formatDateTime(lead.createdAt),
-                tone: "info",
-              },
-              {
-                label: "Current status",
-                title: `${formatLabel(lead.status)} follow-up`,
-                description: lead.note,
-                tone: leadStatusTone(lead.status),
-              },
-              {
-                label: "Next",
-                title: "Review access and readiness fit",
-                description:
-                  "Use this record to decide whether to schedule, complete, or close follow-up.",
-                tone: "attention",
-              },
-            ]}
+            items={timeline}
           />
         </div>
       </div>

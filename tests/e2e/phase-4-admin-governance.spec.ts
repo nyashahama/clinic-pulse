@@ -186,7 +186,7 @@ test("report review cards open report detail pages", async ({ page }) => {
     page.waitForURL(new RegExp(`/admin/reports/${pendingReport.id}\\?from=admin$`)),
     reportItem.getByRole("link", { name: "Open details" }).click(),
   ]);
-  await expect(page.getByRole("heading", { name: "Report detail" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Report evidence brief" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Back to admin console" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Open clinic detail" })).toBeVisible();
 });
@@ -226,9 +226,9 @@ test("stakeholder activity rows open lead detail pages", async ({ page }) => {
     page.waitForURL(/\/admin\/leads\/lead-001\?from=admin$/),
     leadLink.click(),
   ]);
-  await expect(page.getByRole("heading", { name: "Lead detail" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Stakeholder follow-up brief" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Back to admin console" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Contact lead" })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Email stakeholder" })).toHaveAttribute(
     "href",
     "mailto:thandi.mabuza@gautenghealth.gov.za",
   );
