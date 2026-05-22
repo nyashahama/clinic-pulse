@@ -444,7 +444,7 @@ test.describe("phase 1 role dashboard navigation", () => {
     const ledger = page.getByLabel("Clinic evidence ledger");
 
     await expect(
-      page.locator('[data-district-clinic-evidence-layout="review-first"]'),
+      page.locator('[data-district-clinic-evidence-layout="review-first"]:visible'),
     ).toBeVisible();
     await expect(selectedPacket).toBeVisible();
     await expect(metrics).toBeVisible();
