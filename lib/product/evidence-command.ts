@@ -50,7 +50,7 @@ export type EvidenceCommandTimelineItem = {
 };
 
 export type EvidenceCommandDecision = {
-  eyebrow: string;
+  contextLabel: string;
   title: string;
   scoreLabel?: string;
   scoreValue?: string;

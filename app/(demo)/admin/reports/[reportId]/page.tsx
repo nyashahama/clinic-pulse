@@ -278,7 +278,7 @@ export default async function Page({
         <div className="grid min-w-0 gap-4 content-start">
           <EvidenceDecisionPanel
             decision={{
-              eyebrow: "Selected evidence decision",
+              contextLabel: "Backstop review",
               title: decisionCopy.title,
               scoreLabel: "Report",
               scoreValue: `#${review.reportId}`,

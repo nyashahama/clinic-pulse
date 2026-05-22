@@ -248,7 +248,7 @@ export default function LeadDetailPageClient({
         <div className="grid min-w-0 gap-4 content-start">
           <EvidenceDecisionPanel
             decision={{
-              eyebrow: "Selected lead decision",
+              contextLabel: "Stakeholder handoff",
               title: decisionCopy.title,
               scoreLabel: "State",
               scoreValue: formatEvidenceLabel(lead.status),

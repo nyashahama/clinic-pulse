@@ -296,6 +296,15 @@ it("uses operational detail layouts for report and lead details", () => {
   expect(adminReportDetail).toContain("buildReportDecisionCopy");
   expect(demoReportDetail).toContain("buildReportDecisionCopy");
   expect(leadDetail).toContain("buildLeadDecisionCopy");
+  expect(adminReportDetail).toContain('contextLabel: "Backstop review"');
+  expect(demoReportDetail).toContain('contextLabel: "Signal response"');
+  expect(leadDetail).toContain('contextLabel: "Stakeholder handoff"');
+
+  for (const source of [adminReportDetail, demoReportDetail, leadDetail]) {
+    expect(source).not.toContain("Selected evidence decision");
+    expect(source).not.toContain("Selected signal decision");
+    expect(source).not.toContain("Selected lead decision");
+  }
 });
 
 it("links admin user evidence rows to user detail", () => {

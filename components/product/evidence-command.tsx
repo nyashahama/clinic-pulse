@@ -293,7 +293,7 @@ export function EvidenceDecisionPanel({
       <div className="flex min-w-0 flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-            {decision.eyebrow}
+            {decision.contextLabel}
           </p>
           <h2 className="mt-1 break-words text-base font-semibold leading-tight text-foreground">
             {decision.title}

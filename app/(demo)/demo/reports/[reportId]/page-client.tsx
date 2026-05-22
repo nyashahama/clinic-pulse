@@ -312,7 +312,7 @@ export default function ReportDetailPageClient({
         <div className="grid min-w-0 gap-4 content-start">
           <EvidenceDecisionPanel
             decision={{
-              eyebrow: "Selected signal decision",
+              contextLabel: "Signal response",
               title: decisionCopy.title,
               scoreLabel: "Report",
               scoreValue: report.id,

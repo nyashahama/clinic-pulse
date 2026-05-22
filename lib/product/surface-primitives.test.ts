@@ -331,7 +331,7 @@ describe("product surface primitives", () => {
         }),
         createElement(EvidenceDecisionPanel, {
           decision: {
-            eyebrow: "Selected signal decision",
+            contextLabel: "Signal response",
             title: "Capacity risk decision",
             chips: [{ label: "degraded", tone: "attention" }],
             nextStep: "Review the clinic context before accepting the field evidence.",
@@ -346,9 +346,11 @@ describe("product surface primitives", () => {
 
     expect(html).toContain("Report evidence brief");
     expect(html).toContain("Evidence packet");
+    expect(html).toContain("Signal response");
     expect(html).toContain("Capacity risk decision");
     expect(html).toContain("Open clinic detail");
     expect(html).toContain("Return to queue");
+    expect(html).toContain("group/button");
     expect(html).toContain("bg-primary");
     expect(html).toContain("bg-bg-muted/60");
   });
