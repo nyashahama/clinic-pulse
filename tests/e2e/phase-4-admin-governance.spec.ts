@@ -188,7 +188,7 @@ test("report review cards open report detail pages", async ({ page }) => {
   ]);
   await expect(page.getByRole("heading", { name: "Report evidence brief" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Back to admin console" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Open clinic detail" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Review clinic context" })).toBeVisible();
 });
 
 test("admin overview preview controls open detail pages", async ({ page }) => {

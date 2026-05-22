@@ -36,6 +36,7 @@ import {
   getAdminDetailPressureTone,
 } from "@/components/product/admin-detail";
 import {
+  EvidenceCaseBriefPanel,
   EvidenceCommandHeader,
   EvidenceCommandMetricStrip,
   EvidenceDecisionPanel,
@@ -50,6 +51,7 @@ import {
   getClinicStatusCopy,
   normalizeClinicStatus,
 } from "@/lib/product/clinic-status";
+import { formatEvidenceSource } from "@/lib/product/evidence-command";
 import type { PendingReportReview } from "@/lib/product/report-review";
 
 describe("product surface primitives", () => {
@@ -355,6 +357,65 @@ describe("product surface primitives", () => {
     expect(html).toContain("bg-bg-muted/60");
   });
 
+  it("renders evidence case briefs as grouped operational summaries", () => {
+    const html = renderToStaticMarkup(
+      createElement(EvidenceCaseBriefPanel, {
+        title: "Case brief",
+        description: "Decision-ready evidence without the raw record table.",
+        summary: {
+          label: "Signal summary",
+          value: "Power outage closed the triage room.",
+          emphasis: true,
+        },
+        primaryFields: [
+          {
+            label: "Clinic",
+            value: "Mamelodi East Clinic",
+            href: "/district/clinics/clinic-mamelodi-east",
+            emphasis: true,
+          },
+          {
+            label: "Facility",
+            value: "GP-TND-001",
+          },
+        ],
+        sections: [
+          {
+            title: "Operational pressure",
+            fields: [
+              {
+                label: "Queue",
+                value: "high",
+                tone: "critical",
+              },
+              {
+                label: "Staff",
+                value: "strained",
+                tone: "attention",
+              },
+              {
+                label: "Notes",
+                value: "Generator handover needs confirmation.",
+                fullWidth: true,
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain("Case brief");
+    expect(html).toContain("Signal summary");
+    expect(html).toContain("Power outage closed the triage room.");
+    expect(html).toContain("Operational pressure");
+    expect(html).toContain("Mamelodi East Clinic");
+    expect(html).toContain("GP-TND-001");
+    expect(html).toContain("Generator handover needs confirmation.");
+    expect(html).toContain("md:col-span-2");
+    expect(html).toContain("grid-cols");
+    expect(html).not.toContain("divide-y divide-border-subtle");
+  });
+
   it("maps report pressure values to operational detail tones", () => {
     expect(getAdminDetailPressureTone("unknown")).toBe("neutral");
     expect(getAdminDetailPressureTone("moderate")).toBe("attention");
@@ -374,6 +435,14 @@ describe("product surface primitives", () => {
   it("normalizes landing and demo status spellings to one product status key", () => {
     expect(normalizeClinicStatus("non-functional")).toBe("non_functional");
     expect(normalizeClinicStatus("non_functional")).toBe("non_functional");
+  });
+
+  it("formats internal evidence sources for product-facing briefs", () => {
+    expect(formatEvidenceSource("seed")).toBe("scenario seed");
+    expect(formatEvidenceSource("field_worker")).toBe("field worker");
+    expect(formatEvidenceSource("field_worker", { offlineCreated: true })).toBe(
+      "field worker / synced offline",
+    );
   });
 
   it("owns shared clinic status copy in one product module", () => {

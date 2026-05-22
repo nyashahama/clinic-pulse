@@ -286,9 +286,10 @@ it("uses operational detail layouts for report and lead details", () => {
   for (const source of [adminReportDetail, demoReportDetail, leadDetail]) {
     expect(source).toContain("EvidenceCommandHeader");
     expect(source).toContain("EvidenceCommandMetricStrip");
-    expect(source).toContain("EvidencePacketPanel");
+    expect(source).toContain("EvidenceCaseBriefPanel");
     expect(source).toContain("EvidenceDecisionPanel");
     expect(source).toContain("EvidenceTimeline");
+    expect(source).not.toContain("<EvidencePacketPanel");
     expect(source).not.toContain("AdminDetailStatStrip");
     expect(source).not.toContain("AdminDetailFieldGrid");
   }
@@ -299,6 +300,15 @@ it("uses operational detail layouts for report and lead details", () => {
   expect(adminReportDetail).toContain('contextLabel: "Backstop review"');
   expect(demoReportDetail).toContain('contextLabel: "Signal response"');
   expect(leadDetail).toContain('contextLabel: "Stakeholder handoff"');
+  expect(adminReportDetail).toContain('label: "Signal summary"');
+  expect(demoReportDetail).toContain('label: "Signal summary"');
+  expect(leadDetail).toContain('label: "Follow-up summary"');
+  expect(adminReportDetail).toContain('title: "Operational pressure"');
+  expect(demoReportDetail).toContain('title: "Operational pressure"');
+  expect(leadDetail).toContain('title: "Qualification"');
+  expect(adminReportDetail).toContain("content-start gap-4");
+  expect(demoReportDetail).toContain("content-start gap-4");
+  expect(leadDetail).toContain("content-start gap-4");
 
   for (const source of [adminReportDetail, demoReportDetail, leadDetail]) {
     expect(source).not.toContain("Selected evidence decision");

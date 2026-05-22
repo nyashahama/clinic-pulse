@@ -25,6 +25,13 @@ export type EvidenceCommandField = {
   href?: string;
   tone?: EvidenceCommandTone;
   emphasis?: boolean;
+  fullWidth?: boolean;
+};
+
+export type EvidenceCommandSection = {
+  title: string;
+  description?: string;
+  fields: EvidenceCommandField[];
 };
 
 export type EvidenceCommandEvidenceLink = {
@@ -75,6 +82,19 @@ export type EvidenceCommandDecisionCopy = {
 
 export function formatEvidenceLabel(value: string) {
   return value.replaceAll("_", " ");
+}
+
+export function formatEvidenceSource(
+  value: string,
+  options: { offlineCreated?: boolean } = {},
+) {
+  const source = value === "seed" ? "scenario seed" : formatEvidenceLabel(value);
+
+  if (options.offlineCreated) {
+    return `${source} / synced offline`;
+  }
+
+  return source;
 }
 
 export function getReportStatusTone(status: string): EvidenceCommandTone {

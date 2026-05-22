@@ -4,11 +4,11 @@ import {
   AdminDetailShell,
 } from "@/components/product/admin-detail";
 import {
+  EvidenceCaseBriefPanel,
   EvidenceCommandChip,
   EvidenceCommandHeader,
   EvidenceCommandMetricStrip,
   EvidenceDecisionPanel,
-  EvidencePacketPanel,
   EvidenceTimeline,
 } from "@/components/product/evidence-command";
 import { getSessionCookieHeader } from "@/lib/auth/session";
@@ -29,12 +29,14 @@ import {
 import {
   buildReportDecisionCopy,
   formatEvidenceLabel,
+  formatEvidenceSource,
   getPressureTone,
   getReportStatusTone,
   type EvidenceCommandAction,
   type EvidenceCommandChip as EvidenceCommandChipModel,
   type EvidenceCommandField,
   type EvidenceCommandMetric,
+  type EvidenceCommandSection,
   type EvidenceCommandTimelineItem,
 } from "@/lib/product/evidence-command";
 import { requireDemoWorkflowAccess } from "../../../workflow-guard";
@@ -95,7 +97,7 @@ export default async function Page({
   });
   const actions: EvidenceCommandAction[] = [
     {
-      label: "Open clinic detail",
+      label: "Review clinic context",
       href: clinicDetailHref,
       priority: "primary",
       icon: "clinic",
@@ -118,7 +120,7 @@ export default async function Page({
       tone: "attention",
     },
     {
-      label: review.offlineCreated ? "offline sync" : formatEvidenceLabel(review.source),
+      label: review.offlineCreated ? "offline sync" : formatEvidenceSource(review.source),
       tone: review.offlineCreated ? "attention" : "neutral",
     },
   ];
@@ -147,12 +149,12 @@ export default async function Page({
     {
       label: "Received",
       value: formatDateTime(review.receivedAt),
-      detail: review.offlineCreated ? "Synced offline" : formatEvidenceLabel(review.source),
+      detail: review.offlineCreated ? "Synced offline" : formatEvidenceSource(review.source),
       tone: "info",
       icon: "clock",
     },
   ];
-  const fields: EvidenceCommandField[] = [
+  const primaryFields: EvidenceCommandField[] = [
     {
       label: "Clinic",
       value: review.clinicName,
@@ -167,49 +169,61 @@ export default async function Page({
       label: "District",
       value: review.district,
     },
+  ];
+  const evidenceSections: EvidenceCommandSection[] = [
     {
-      label: "Status",
-      value: formatEvidenceLabel(String(review.status)),
-      tone: statusTone,
+      title: "Operational pressure",
+      fields: [
+        {
+          label: "Queue",
+          value: formatEvidenceLabel(String(review.queuePressure)),
+          tone: getPressureTone(String(review.queuePressure), "queue"),
+        },
+        {
+          label: "Staff",
+          value: formatEvidenceLabel(String(review.staffPressure)),
+          tone: getPressureTone(String(review.staffPressure), "staff"),
+        },
+        {
+          label: "Stock",
+          value: formatEvidenceLabel(String(review.stockPressure)),
+          tone: getPressureTone(String(review.stockPressure), "stock"),
+        },
+      ],
     },
     {
-      label: "Review state",
-      value: formatEvidenceLabel(review.reviewState),
-      tone: "attention",
+      title: "Field handling",
+      fields: [
+        {
+          label: "Source",
+          value: formatEvidenceSource(review.source, {
+            offlineCreated: review.offlineCreated,
+          }),
+        },
+        {
+          label: "Reporter",
+          value: review.reporterName,
+        },
+        {
+          label: "Submitted",
+          value: formatDateTime(review.submittedAt),
+        },
+        {
+          label: "Received",
+          value: formatDateTime(review.receivedAt),
+        },
+      ],
     },
     {
-      label: "Source",
-      value: review.offlineCreated
-        ? `${formatEvidenceLabel(review.source)} / synced offline`
-        : formatEvidenceLabel(review.source),
-    },
-    {
-      label: "Reporter",
-      value: review.reporterName,
-    },
-    {
-      label: "Submitted",
-      value: formatDateTime(review.submittedAt),
-    },
-    {
-      label: "Received",
-      value: formatDateTime(review.receivedAt),
-    },
-    {
-      label: "Pressure",
-      value: `staff ${formatEvidenceLabel(String(review.staffPressure))}; stock ${formatEvidenceLabel(
-        String(review.stockPressure),
-      )}; queue ${formatEvidenceLabel(String(review.queuePressure))}`,
-    },
-    {
-      label: "Reason",
-      value: review.reason,
-      emphasis: true,
-    },
-    {
-      label: "Notes",
-      value: review.notes || "No notes supplied.",
-      emphasis: Boolean(review.notes),
+      title: "Field note",
+      fields: [
+        {
+          label: "Notes",
+          value: review.notes || "No notes supplied.",
+          emphasis: Boolean(review.notes),
+          fullWidth: true,
+        },
+      ],
     },
   ];
   const timeline: EvidenceCommandTimelineItem[] = [
@@ -268,11 +282,17 @@ export default async function Page({
       </EvidenceCommandHeader>
       <EvidenceCommandMetricStrip metrics={metrics} />
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
-        <div className="grid min-w-0 gap-4">
-          <EvidencePacketPanel
-            title="Evidence packet"
-            description="Operational facts captured with the pending field report."
-            fields={fields}
+        <div className="grid min-w-0 content-start gap-4">
+          <EvidenceCaseBriefPanel
+            title="Case brief"
+            description="Decision-ready evidence from the pending field report."
+            summary={{
+              label: "Signal summary",
+              value: review.reason,
+              emphasis: true,
+            }}
+            primaryFields={primaryFields}
+            sections={evidenceSections}
           />
         </div>
         <div className="grid min-w-0 gap-4 content-start">

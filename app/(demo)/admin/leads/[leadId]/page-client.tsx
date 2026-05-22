@@ -8,11 +8,11 @@ import {
   AdminDetailShell,
 } from "@/components/product/admin-detail";
 import {
+  EvidenceCaseBriefPanel,
   EvidenceCommandChip,
   EvidenceCommandHeader,
   EvidenceCommandMetricStrip,
   EvidenceDecisionPanel,
-  EvidencePacketPanel,
   EvidenceTimeline,
 } from "@/components/product/evidence-command";
 import { useDemoStore } from "@/lib/demo/demo-store";
@@ -25,6 +25,7 @@ import {
   type EvidenceCommandChip as EvidenceCommandChipModel,
   type EvidenceCommandField,
   type EvidenceCommandMetric,
+  type EvidenceCommandSection,
   type EvidenceCommandTimelineItem,
 } from "@/lib/product/evidence-command";
 
@@ -149,16 +150,11 @@ export default function LeadDetailPageClient({
       icon: "mail",
     },
   ];
-  const fields: EvidenceCommandField[] = [
+  const primaryFields: EvidenceCommandField[] = [
     {
       label: "Name",
       value: lead.name,
       emphasis: true,
-    },
-    {
-      label: "Email",
-      value: lead.workEmail,
-      href: `mailto:${lead.workEmail}`,
     },
     {
       label: "Organisation",
@@ -168,24 +164,36 @@ export default function LeadDetailPageClient({
       label: "Role",
       value: lead.role,
     },
+  ];
+  const evidenceSections: EvidenceCommandSection[] = [
     {
-      label: "Focus",
-      value: formatEvidenceLabel(lead.interest),
-      tone: "info",
+      title: "Qualification",
+      fields: [
+        {
+          label: "Focus",
+          value: formatEvidenceLabel(lead.interest),
+          tone: "info",
+        },
+        {
+          label: "Status",
+          value: formatEvidenceLabel(lead.status),
+          tone: statusTone,
+        },
+        {
+          label: "Created",
+          value: formatDateTime(lead.createdAt),
+        },
+      ],
     },
     {
-      label: "Status",
-      value: formatEvidenceLabel(lead.status),
-      tone: statusTone,
-    },
-    {
-      label: "Created",
-      value: formatDateTime(lead.createdAt),
-    },
-    {
-      label: "Follow-up note",
-      value: lead.note,
-      emphasis: true,
+      title: "Contact path",
+      fields: [
+        {
+          label: "Email",
+          value: lead.workEmail,
+          href: `mailto:${lead.workEmail}`,
+        },
+      ],
     },
   ];
   const timeline: EvidenceCommandTimelineItem[] = [
@@ -238,11 +246,17 @@ export default function LeadDetailPageClient({
       </EvidenceCommandHeader>
       <EvidenceCommandMetricStrip metrics={metrics} />
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
-        <div className="grid min-w-0 gap-4">
-          <EvidencePacketPanel
-            title="Stakeholder packet"
-            description="Follow-up evidence captured from the stakeholder activity queue."
-            fields={fields}
+        <div className="grid min-w-0 content-start gap-4">
+          <EvidenceCaseBriefPanel
+            title="Stakeholder brief"
+            description="Decision-ready context from the stakeholder activity queue."
+            summary={{
+              label: "Follow-up summary",
+              value: lead.note,
+              emphasis: true,
+            }}
+            primaryFields={primaryFields}
+            sections={evidenceSections}
           />
         </div>
         <div className="grid min-w-0 gap-4 content-start">

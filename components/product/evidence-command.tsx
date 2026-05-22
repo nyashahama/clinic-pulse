@@ -22,6 +22,7 @@ import type {
   EvidenceCommandEvidenceLink,
   EvidenceCommandField,
   EvidenceCommandMetric,
+  EvidenceCommandSection,
   EvidenceCommandTimelineItem,
   EvidenceCommandTone,
 } from "@/lib/product/evidence-command";
@@ -283,6 +284,83 @@ export function EvidencePacketPanel({
   );
 }
 
+export function EvidenceCaseBriefPanel({
+  description,
+  primaryFields,
+  sections,
+  summary,
+  title,
+}: {
+  description: string;
+  primaryFields: EvidenceCommandField[];
+  sections: EvidenceCommandSection[];
+  summary: EvidenceCommandField;
+  title: string;
+}) {
+  return (
+    <section className="min-w-0 overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm">
+      <div className="border-b border-border-subtle px-4 py-3">
+        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+        <p className="mt-1 text-xs leading-4 text-muted-foreground">{description}</p>
+      </div>
+      <div className="space-y-4 p-4">
+        <div
+          className={cn(
+            "rounded-md border border-border-subtle border-l-2 bg-bg-muted/60 p-3",
+            toneCalloutClassName[summary.tone ?? "info"],
+          )}
+        >
+          <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+            {summary.label}
+          </p>
+          <p
+            className={cn(
+              "mt-1 break-words text-sm leading-5 text-foreground",
+              summary.emphasis ? "font-medium" : "font-normal",
+            )}
+          >
+            {summary.href ? (
+              <Link className="underline-offset-4 hover:underline" href={summary.href}>
+                {summary.value}
+              </Link>
+            ) : (
+              summary.value
+            )}
+          </p>
+        </div>
+
+        {primaryFields.length ? (
+          <dl className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            {primaryFields.map((field) => (
+              <EvidenceBriefField field={field} key={field.label} />
+            ))}
+          </dl>
+        ) : null}
+
+        {sections.map((section) => (
+          <section className="border-t border-border-subtle pt-4" key={section.title}>
+            <div className="min-w-0">
+              <h3 className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                {section.title}
+              </h3>
+              {section.description ? (
+                <p className="mt-1 text-xs leading-4 text-muted-foreground">
+                  {section.description}
+                </p>
+              ) : null}
+            </div>
+            <dl className="mt-3 grid gap-2 md:grid-cols-2">
+              {section.fields.map((field) => (
+                <EvidenceBriefField field={field} key={field.label} />
+              ))}
+            </dl>
+          </section>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function EvidenceDecisionPanel({
   decision,
 }: {
@@ -371,6 +449,37 @@ export function EvidenceDecisionPanel({
         ))}
       </div>
     </section>
+  );
+}
+
+function EvidenceBriefField({ field }: { field: EvidenceCommandField }) {
+  return (
+    <div
+      className={cn(
+        "min-w-0 rounded-md border border-border-subtle bg-bg-muted/45 px-3 py-2",
+        field.fullWidth && "md:col-span-2 xl:col-span-3",
+      )}
+    >
+      <dt className="text-[0.6875rem] font-semibold uppercase tracking-normal text-muted-foreground">
+        {field.label}
+      </dt>
+      <dd
+        className={cn(
+          "mt-1 min-w-0 break-words text-sm text-foreground",
+          field.emphasis ? "font-semibold" : "font-medium",
+        )}
+      >
+        {field.tone ? (
+          <EvidenceCommandChip chip={{ label: field.value, tone: field.tone }} />
+        ) : field.href ? (
+          <Link className="break-words underline-offset-4 hover:underline" href={field.href}>
+            {field.value}
+          </Link>
+        ) : (
+          field.value
+        )}
+      </dd>
+    </div>
   );
 }
 

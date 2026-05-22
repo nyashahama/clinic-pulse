@@ -8,11 +8,11 @@ import {
   AdminDetailShell,
 } from "@/components/product/admin-detail";
 import {
+  EvidenceCaseBriefPanel,
   EvidenceCommandChip,
   EvidenceCommandHeader,
   EvidenceCommandMetricStrip,
   EvidenceDecisionPanel,
-  EvidencePacketPanel,
   EvidenceTimeline,
 } from "@/components/product/evidence-command";
 import { useDemoStore } from "@/lib/demo/demo-store";
@@ -24,12 +24,14 @@ import {
 import {
   buildReportDecisionCopy,
   formatEvidenceLabel,
+  formatEvidenceSource,
   getPressureTone,
   getReportStatusTone,
   type EvidenceCommandAction,
   type EvidenceCommandChip as EvidenceCommandChipModel,
   type EvidenceCommandField,
   type EvidenceCommandMetric,
+  type EvidenceCommandSection,
   type EvidenceCommandTimelineItem,
 } from "@/lib/product/evidence-command";
 
@@ -122,7 +124,7 @@ export default function ReportDetailPageClient({
   });
   const actions: EvidenceCommandAction[] = [
     {
-      label: "Open clinic detail",
+      label: "Review clinic context",
       href: clinicDetailHref,
       priority: "primary",
       icon: "clinic",
@@ -141,7 +143,7 @@ export default function ReportDetailPageClient({
       tone: statusTone,
     },
     {
-      label: report.offlineCreated ? "offline sync" : formatEvidenceLabel(report.source),
+      label: report.offlineCreated ? "offline sync" : formatEvidenceSource(report.source),
       tone: report.offlineCreated ? "attention" : "neutral",
     },
     {
@@ -155,7 +157,7 @@ export default function ReportDetailPageClient({
       value: formatEvidenceLabel(report.status),
       detail: report.offlineCreated
         ? "Synced after offline capture"
-        : formatEvidenceLabel(report.source),
+        : formatEvidenceSource(report.source),
       tone: statusTone,
       icon: "alert",
     },
@@ -181,7 +183,7 @@ export default function ReportDetailPageClient({
       icon: "clock",
     },
   ];
-  const fields: EvidenceCommandField[] = [
+  const primaryFields: EvidenceCommandField[] = [
     {
       label: "Clinic",
       value: report.clinicName,
@@ -200,53 +202,71 @@ export default function ReportDetailPageClient({
       label: "Report ID",
       value: report.id,
     },
+  ];
+  const evidenceSections: EvidenceCommandSection[] = [
     {
-      label: "Status",
-      value: formatEvidenceLabel(report.status),
-      tone: statusTone,
+      title: "Operational pressure",
+      fields: [
+        {
+          label: "Queue",
+          value: formatEvidenceLabel(report.queuePressure),
+          tone: getPressureTone(report.queuePressure, "queue"),
+        },
+        {
+          label: "Staff",
+          value: formatEvidenceLabel(report.staffPressure),
+          tone: getPressureTone(report.staffPressure, "staff"),
+        },
+        {
+          label: "Stock",
+          value: formatEvidenceLabel(report.stockPressure),
+          tone: getPressureTone(report.stockPressure, "stock"),
+        },
+      ],
     },
     {
-      label: "Source",
-      value: report.offlineCreated
-        ? `${formatEvidenceLabel(report.source)} / synced offline`
-        : formatEvidenceLabel(report.source),
+      title: "Field handling",
+      fields: [
+        {
+          label: "Source",
+          value: formatEvidenceSource(report.source, {
+            offlineCreated: report.offlineCreated,
+          }),
+        },
+        {
+          label: "Reporter",
+          value: report.reporterName,
+        },
+        {
+          label: "Submitted",
+          value: formatDateTime(report.submittedAt),
+        },
+        {
+          label: "Received",
+          value: formatDateTime(report.receivedAt),
+        },
+        {
+          label: "Offline created",
+          value: formatBoolean(report.offlineCreated),
+        },
+      ],
     },
     {
-      label: "Reporter",
-      value: report.reporterName,
-    },
-    {
-      label: "Submitted",
-      value: formatDateTime(report.submittedAt),
-    },
-    {
-      label: "Received",
-      value: formatDateTime(report.receivedAt),
-    },
-    {
-      label: "Offline created",
-      value: formatBoolean(report.offlineCreated),
-    },
-    {
-      label: "Pressure",
-      value: `staff ${formatEvidenceLabel(report.staffPressure)}; stock ${formatEvidenceLabel(
-        report.stockPressure,
-      )}; queue ${formatEvidenceLabel(report.queuePressure)}`,
-    },
-    {
-      label: "Reason",
-      value: report.reason,
-      emphasis: true,
-    },
-    {
-      label: "Notes",
-      value: report.notes || "No notes supplied.",
-      emphasis: Boolean(report.notes),
-    },
-    {
-      label: "Audit consequence",
-      value: auditConsequence,
-      emphasis: Boolean(auditEvents[0]?.summary),
+      title: "Audit context",
+      fields: [
+        {
+          label: "Consequence",
+          value: auditConsequence,
+          emphasis: Boolean(auditEvents[0]?.summary),
+          fullWidth: true,
+        },
+        {
+          label: "Notes",
+          value: report.notes || "No notes supplied.",
+          emphasis: Boolean(report.notes),
+          fullWidth: true,
+        },
+      ],
     },
   ];
   const timeline: EvidenceCommandTimelineItem[] = [
@@ -302,11 +322,17 @@ export default function ReportDetailPageClient({
       </EvidenceCommandHeader>
       <EvidenceCommandMetricStrip metrics={metrics} />
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
-        <div className="grid min-w-0 gap-4">
-          <EvidencePacketPanel
-            title="Evidence packet"
-            description="Operational facts captured with this incoming field signal."
-            fields={fields}
+        <div className="grid min-w-0 content-start gap-4">
+          <EvidenceCaseBriefPanel
+            title="Case brief"
+            description="Decision-ready evidence from this incoming field signal."
+            summary={{
+              label: "Signal summary",
+              value: report.reason,
+              emphasis: true,
+            }}
+            primaryFields={primaryFields}
+            sections={evidenceSections}
           />
         </div>
         <div className="grid min-w-0 gap-4 content-start">
