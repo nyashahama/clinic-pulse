@@ -46,6 +46,10 @@ import {
   buildPendingReportReviews,
   summarizePendingReportReviews,
 } from "@/lib/product/report-review";
+import {
+  buildAdminLeadDetailHref,
+  buildAdminReportDetailHref,
+} from "@/lib/product/admin-detail-routes";
 import { reviewPendingReportAction } from "../report-review-actions";
 
 type LeadStatusCount = Record<DemoLead["status"], number>;
@@ -164,6 +168,7 @@ export default function AdminPage({
   const evidenceAnchor = isSystemAdmin ? "security" : "partner-readiness";
   const exportAnchor = isSystemAdmin ? "audit-evidence" : "exports";
   const controlsAnchor = "demo-controls";
+  const returnSource = "admin";
   const reportCompleteness = Math.max(0, 100 - queuedReports * 8);
   const pendingReviewCount = pendingReportSummary.pending;
   const totalReportPressureCount = queuedReports + pendingReviewCount;
@@ -406,6 +411,9 @@ export default function AdminPage({
           {pendingReportReviews.length > 0 ? (
             <ReportReviewQueue
               items={pendingReportReviews}
+              getReportDetailHref={(item) =>
+                buildAdminReportDetailHref(item.reportId, returnSource)
+              }
               onReview={reviewPendingReportAction}
               title={isSystemAdmin ? "Ingestion backstop queue" : "Governance backstop queue"}
               description={
@@ -513,10 +521,10 @@ export default function AdminPage({
           description="Existing local records are presented as operational follow-up for rollout and access review."
         >
           <div className="min-w-0 overflow-x-auto">
-            <Table className="min-w-full md:min-w-[56rem]">
+            <Table aria-label="Stakeholder activity queue" className="min-w-full md:min-w-[64rem]">
               <TableHeader>
                 <TableRow className="text-xs uppercase tracking-[0.08em]">
-                  {["Name", "Organisation", "Role", "Focus", "Status", "Updated"].map((heading) => (
+                  {["Name", "Organisation", "Role", "Focus", "Status", "Updated", "Detail"].map((heading) => (
                     <TableHead key={heading} className="font-medium">
                       {heading}
                     </TableHead>
@@ -527,7 +535,13 @@ export default function AdminPage({
                 {state.leads.map((lead) => (
                   <TableRow key={lead.id} className="align-top">
                     <TableCell className="font-medium text-card-foreground">
-                      {lead.name}
+                      <Link
+                        href={buildAdminLeadDetailHref(lead.id, returnSource)}
+                        className="underline-offset-4 hover:underline"
+                        aria-label={`Open lead detail for ${lead.name}`}
+                      >
+                        {lead.name}
+                      </Link>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {lead.organization}
@@ -546,6 +560,14 @@ export default function AdminPage({
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       {formatDate(lead.createdAt)}
                     </TableCell>
+                    <TableCell>
+                      <Link
+                        href={buildAdminLeadDetailHref(lead.id, returnSource)}
+                        className={buttonVariants({ size: "sm", variant: "outline" })}
+                      >
+                        Open lead detail
+                      </Link>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -557,15 +579,16 @@ export default function AdminPage({
           <div id={isSystemAdmin ? undefined : "audit-evidence"}>
             <ExportPreview
               payload={exportPayload}
-              onOpen={() => {
-                // No-op stub for visual audit in this phase.
-              }}
+              exportSchemaHref="/admin/export-schema?from=admin"
             />
           </div>
         </div>
 
         <div data-admin-section={adminWorkspaceSections[2]}>
-          <APIPreview clinicCount={clinics.length} onOpen={() => {}} />
+          <APIPreview
+            apiContractHref="/admin/api-contract?from=admin"
+            clinicCount={clinics.length}
+          />
         </div>
 
         <div data-admin-section={adminWorkspaceSections[3]}>

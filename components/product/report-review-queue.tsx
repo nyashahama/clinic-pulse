@@ -1,12 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useReducer, useState } from "react";
-import { Check, X } from "lucide-react";
+import { Check, FileText, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { ProductPanel } from "@/components/product/panel";
 import { SurfaceState } from "@/components/product/surface-state";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import type { PendingReportReview } from "@/lib/product/report-review";
 
 export type ReportReviewDecision = "accepted" | "rejected";
@@ -21,6 +22,7 @@ type ReportReviewQueueProps = {
   items: PendingReportReview[];
   onReview: (input: ReportReviewQueueActionInput) => Promise<unknown>;
   onReviewed?: () => void;
+  getReportDetailHref?: (item: PendingReportReview) => string;
   title?: string;
   description?: string;
 };
@@ -186,6 +188,7 @@ export function ReportReviewQueueView({
   items,
   onReview,
   onReviewed,
+  getReportDetailHref,
   title = defaultTitle,
   description = defaultDescription,
 }: ReportReviewQueueProps) {
@@ -269,6 +272,7 @@ export function ReportReviewQueueView({
               const isActionDisabled =
                 pendingReportIds.has(item.reportId) ||
                 reviewedReportIds.has(item.reportId);
+              const reportDetailHref = getReportDetailHref?.(item);
 
               return (
                 <article
@@ -333,7 +337,16 @@ export function ReportReviewQueueView({
                       </p>
                     </div>
 
-                    <div className="flex shrink-0 gap-2">
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      {reportDetailHref ? (
+                        <Link
+                          className={buttonVariants({ size: "sm", variant: "outline" })}
+                          href={reportDetailHref}
+                        >
+                          <FileText aria-hidden="true" className="size-3.5" />
+                          Open details
+                        </Link>
+                      ) : null}
                       <Button
                         data-testid="accept-report-review"
                         disabled={isActionDisabled}

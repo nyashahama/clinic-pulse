@@ -1,10 +1,13 @@
 import { AlertTriangle, CheckCircle2, Info, ShieldCheck } from "lucide-react";
 
 import { SectionHeader } from "@/components/demo/section-header";
+import {
+  getReadinessBadgeToneClassName,
+  getReadinessMetricToneClassName,
+} from "@/components/demo/readiness-tones";
 import type { SyncSummaryApiResponse } from "@/lib/demo/api-types";
 import {
   buildPilotReadinessModel,
-  type PilotReadinessMetric,
   type PilotReadinessSeverity,
 } from "@/lib/demo/pilot-readiness";
 import { cn } from "@/lib/utils";
@@ -13,46 +16,20 @@ type PilotReadinessPanelProps = {
   summary: SyncSummaryApiResponse;
 };
 
-const severityStyles: Record<
-  PilotReadinessSeverity,
-  {
-    icon: typeof CheckCircle2;
-    badgeClassName: string;
-  }
-> = {
-  clear: {
-    icon: CheckCircle2,
-    badgeClassName:
-      "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200",
-  },
-  watch: {
-    icon: ShieldCheck,
-    badgeClassName:
-      "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100",
-  },
-  attention: {
-    icon: AlertTriangle,
-    badgeClassName:
-      "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-200",
-  },
-};
-
-const metricToneClassNames: Record<PilotReadinessMetric["tone"], string> = {
-  clear: "text-emerald-700 dark:text-emerald-300",
-  watch: "text-amber-700 dark:text-amber-200",
-  attention: "text-rose-700 dark:text-rose-300",
-  info: "text-content-emphasis",
+const severityIcons: Record<PilotReadinessSeverity, typeof CheckCircle2> = {
+  clear: CheckCircle2,
+  watch: ShieldCheck,
+  attention: AlertTriangle,
 };
 
 function ReadinessBadge({ severity }: { severity: PilotReadinessSeverity }) {
-  const styles = severityStyles[severity];
-  const Icon = styles.icon;
+  const Icon = severityIcons[severity];
 
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold capitalize",
-        styles.badgeClassName,
+        getReadinessBadgeToneClassName(severity),
       )}
     >
       <Icon aria-hidden="true" className="size-3.5 shrink-0" />
@@ -90,7 +67,7 @@ export function PilotReadinessPanel({ summary }: PilotReadinessPanelProps) {
             <dd
               className={cn(
                 "mt-1 break-words text-2xl font-semibold leading-tight tabular-nums",
-                metricToneClassNames[metric.tone],
+                getReadinessMetricToneClassName(metric.tone),
               )}
             >
               {metric.value}
