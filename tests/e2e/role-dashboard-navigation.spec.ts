@@ -358,10 +358,14 @@ test.describe("phase 1 role dashboard navigation", () => {
     ]);
 
     await expect(page.getByRole("heading", { name: "Report evidence" })).toBeVisible();
+    await expect(page.getByText("Evidence brief", { exact: true })).toBeVisible();
+    await expect(page.getByText("Priority signal", { exact: true })).toBeVisible();
     await expect(page.getByText("What happened", { exact: true })).toBeVisible();
     await expect(page.getByText("Decision context", { exact: true })).toBeVisible();
+    await expect(page.getByText("Recommended action", { exact: true })).toBeVisible();
     await expect(page.getByText("Trust and provenance", { exact: true })).toBeVisible();
     await expect(page.getByText("Operational signals", { exact: true })).toBeVisible();
+    await expect(page.getByText("Signal pressure", { exact: true })).toBeVisible();
     await expect(page.getByText("Evidence timeline", { exact: true })).toBeVisible();
     await expect(page.getByText('"reporterName"')).toBeHidden();
     await page.getByText("Technical payload", { exact: true }).click();

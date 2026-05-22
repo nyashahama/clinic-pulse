@@ -5,16 +5,20 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  BadgeCheck,
   CheckCircle2,
   Clock3,
   ClipboardCheck,
   FileJson,
   FileText,
+  Inbox,
   MapPin,
+  PackageCheck,
   Radio,
+  Send,
   ShieldCheck,
   Stethoscope,
-  UserRound,
+  UsersRound,
   WifiOff,
   type LucideIcon,
 } from "lucide-react";
@@ -68,6 +72,19 @@ const toneClassName: Record<EvidenceTone, string> = {
   info:
     "border-sky-200 bg-sky-50 text-sky-950 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-100",
   neutral: "border-border-subtle bg-bg-muted text-muted-foreground",
+};
+
+const iconToneClassName: Record<EvidenceTone, string> = {
+  attention:
+    "border-amber-200 bg-amber-100 text-amber-950 shadow-amber-950/5 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100",
+  blocked:
+    "border-red-200 bg-red-100 text-red-950 shadow-red-950/5 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-100",
+  clear:
+    "border-emerald-200 bg-emerald-100 text-emerald-950 shadow-emerald-950/5 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-100",
+  info:
+    "border-sky-200 bg-sky-100 text-sky-950 shadow-sky-950/5 dark:border-sky-900/60 dark:bg-sky-950/40 dark:text-sky-100",
+  neutral:
+    "border-border-subtle bg-bg-default text-content-default shadow-black/5 dark:bg-bg-muted",
 };
 
 function formatDateTime(value: string) {
@@ -212,23 +229,83 @@ function EvidenceBadge({
   );
 }
 
+function EvidenceIcon({
+  className,
+  icon: Icon,
+  size = "md",
+  tone = "neutral",
+}: {
+  className?: string;
+  icon: LucideIcon;
+  size?: "sm" | "md" | "lg";
+  tone?: EvidenceTone;
+}) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center rounded-lg border shadow-sm",
+        size === "sm" && "size-8",
+        size === "md" && "size-10",
+        size === "lg" && "size-12",
+        iconToneClassName[tone],
+        className,
+      )}
+    >
+      <Icon
+        className={cn(
+          size === "sm" && "size-3.5",
+          size === "md" && "size-4",
+          size === "lg" && "size-5",
+        )}
+      />
+    </span>
+  );
+}
+
+function EvidenceFact({
+  detail,
+  icon,
+  label,
+  tone,
+  value,
+}: {
+  detail: string;
+  icon: LucideIcon;
+  label: string;
+  tone: EvidenceTone;
+  value: string;
+}) {
+  return (
+    <div className="min-w-0 rounded-lg border border-border-subtle bg-bg-muted/50 p-3">
+      <div className="flex min-w-0 items-start gap-3">
+        <EvidenceIcon icon={icon} size="sm" tone={tone} />
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+            {label}
+          </p>
+          <p className="mt-1 break-words text-sm font-semibold text-foreground">{value}</p>
+          <p className="mt-1 break-words text-xs leading-4 text-muted-foreground">{detail}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SectionHeader({
   icon: Icon,
+  tone = "neutral",
   title,
   description,
 }: {
   icon: LucideIcon;
+  tone?: EvidenceTone;
   title: string;
   description?: string;
 }) {
   return (
     <div className="flex min-w-0 items-start gap-3">
-      <span
-        aria-hidden="true"
-        className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-border-subtle bg-bg-muted text-muted-foreground"
-      >
-        <Icon className="size-4" />
-      </span>
+      <EvidenceIcon className="mt-0.5" icon={Icon} size="sm" tone={tone} />
       <div className="min-w-0">
         <h2 className="text-sm font-semibold uppercase tracking-normal text-foreground">
           {title}
@@ -265,20 +342,17 @@ function ProvenanceRow({
   value,
   detail,
   icon: Icon,
+  tone = "neutral",
 }: {
   label: string;
   value: ReactNode;
   detail?: ReactNode;
   icon: LucideIcon;
+  tone?: EvidenceTone;
 }) {
   return (
     <div className="flex min-w-0 gap-3 py-3 first:pt-0 last:pb-0">
-      <span
-        aria-hidden="true"
-        className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md border border-border-subtle bg-bg-muted text-muted-foreground"
-      >
-        <Icon className="size-3.5" />
-      </span>
+      <EvidenceIcon className="mt-0.5" icon={Icon} size="sm" tone={tone} />
       <div className="min-w-0">
         <dt className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
           {label}
@@ -310,15 +384,7 @@ function SignalRow({
   return (
     <div className="flex min-w-0 items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
       <div className="flex min-w-0 gap-3">
-        <span
-          aria-hidden="true"
-          className={cn(
-            "mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md border",
-            toneClassName[tone],
-          )}
-        >
-          <Icon className="size-3.5" />
-        </span>
+        <EvidenceIcon className="mt-0.5" icon={Icon} size="sm" tone={tone} />
         <div className="min-w-0">
           <dt className="text-sm font-medium text-foreground">{label}</dt>
           <dd className="mt-1 text-xs leading-4 text-muted-foreground">{detail}</dd>
@@ -334,23 +400,28 @@ function SignalRow({
 function TimelineItem({
   detail,
   icon: Icon,
+  isLast = false,
   time,
   title,
+  tone = "neutral",
 }: {
   detail: string;
   icon: LucideIcon;
+  isLast?: boolean;
   time: string;
   title: string;
+  tone?: EvidenceTone;
 }) {
   return (
-    <li className="relative pb-5 pl-8 last:pb-0">
-      <span
-        aria-hidden="true"
-        className="absolute left-0 top-0 inline-flex size-6 items-center justify-center rounded-md border border-border-subtle bg-bg-default text-muted-foreground"
-      >
-        <Icon className="size-3.5" />
-      </span>
-      <div className="min-w-0">
+    <li className="relative flex gap-3 pb-5 last:pb-0">
+      {!isLast ? (
+        <span
+          aria-hidden="true"
+          className="absolute left-4 top-9 h-[calc(100%-2.25rem)] w-px bg-border-subtle"
+        />
+      ) : null}
+      <EvidenceIcon className="relative z-10" icon={Icon} size="sm" tone={tone} />
+      <div className="min-w-0 pt-1">
         <p className="text-sm font-medium text-foreground">{title}</p>
         <p className="mt-1 text-xs leading-4 text-muted-foreground">{detail}</p>
         <p className="mt-1 text-xs font-medium text-content-default">{time}</p>
@@ -412,33 +483,70 @@ export default async function DistrictReportEvidencePage({
         <span>{target.label}</span>
       </Link>
 
-      <EvidencePanel>
-        <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0">
+      <EvidencePanel className="overflow-hidden p-0">
+        <div className="border-b border-border-subtle bg-bg-muted/35 px-4 py-3 sm:px-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-              District evidence
+              Evidence brief
             </p>
-            <h1 className="mt-1 text-2xl font-semibold leading-tight text-foreground">
-              Report evidence
-            </h1>
-            <p className="mt-2 break-words text-lg font-medium leading-6 text-content-emphasis">
-              {report.clinicName}
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {report.facilityCode} - Received {formatDateTime(report.receivedAt)}
-            </p>
+            <div className="flex max-w-full flex-wrap gap-2 lg:justify-end">
+              <EvidenceBadge tone={statusTone[report.status] ?? "info"} icon={Activity}>
+                {formatLabel(report.status)}
+              </EvidenceBadge>
+              <EvidenceBadge tone="info" icon={Radio}>
+                {sourceLabel(report.source)}
+              </EvidenceBadge>
+              <EvidenceBadge tone={isOfflineEvidence ? "attention" : "clear"} icon={WifiOff}>
+                {isOfflineEvidence ? "Offline synced" : "Online report"}
+              </EvidenceBadge>
+            </div>
+          </div>
+        </div>
+        <div className="px-4 py-5 sm:px-5">
+          <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex min-w-0 gap-4">
+              <EvidenceIcon
+                className="mt-0.5"
+                icon={Activity}
+                size="lg"
+                tone={statusTone[report.status] ?? "info"}
+              />
+              <div className="min-w-0">
+                <h1 className="text-2xl font-semibold leading-tight text-foreground">
+                  Report evidence
+                </h1>
+                <p className="mt-2 break-words text-lg font-medium leading-6 text-content-emphasis">
+                  {report.clinicName}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {report.facilityCode} - Received {formatDateTime(report.receivedAt)}
+                </p>
+              </div>
+            </div>
           </div>
 
-          <div className="flex max-w-full flex-wrap gap-2 lg:justify-end">
-            <EvidenceBadge tone={statusTone[report.status] ?? "info"} icon={Activity}>
-              {formatLabel(report.status)}
-            </EvidenceBadge>
-            <EvidenceBadge tone="info" icon={Radio}>
-              {sourceLabel(report.source)}
-            </EvidenceBadge>
-            <EvidenceBadge tone={isOfflineEvidence ? "attention" : "clear"} icon={WifiOff}>
-              {isOfflineEvidence ? "Offline synced" : "Online report"}
-            </EvidenceBadge>
+          <div className="mt-5 grid gap-2 md:grid-cols-3">
+            <EvidenceFact
+              detail="Current service state carried by this report."
+              icon={AlertTriangle}
+              label="Priority signal"
+              tone={statusTone[report.status] ?? "info"}
+              value={formatLabel(report.status)}
+            />
+            <EvidenceFact
+              detail="Who supplied the latest attached evidence."
+              icon={BadgeCheck}
+              label="Source"
+              tone="info"
+              value={sourceLabel(report.source)}
+            />
+            <EvidenceFact
+              detail={isOfflineEvidence ? "Captured offline before sync." : "Received online."}
+              icon={isOfflineEvidence ? WifiOff : Radio}
+              label="Signal path"
+              tone={isOfflineEvidence ? "attention" : "clear"}
+              value={syncDelay}
+            />
           </div>
         </div>
       </EvidencePanel>
@@ -448,6 +556,7 @@ export default async function DistrictReportEvidencePage({
           <EvidencePanel>
             <SectionHeader
               icon={FileText}
+              tone={statusTone[report.status] ?? "info"}
               title="What happened"
               description="The latest report attached to this queue decision."
             />
@@ -469,31 +578,37 @@ export default async function DistrictReportEvidencePage({
           <EvidencePanel>
             <SectionHeader
               icon={ClipboardCheck}
+              tone="attention"
               title="Decision context"
               description="Why this evidence is visible from the severity queue."
             />
-            <div className="mt-5 divide-y divide-border-subtle border-y border-border-subtle">
-              <div className="grid gap-4 py-4 md:grid-cols-[12rem_minmax(0,1fr)]">
-                <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                  Queue decision
-                </p>
-                <p className="break-words text-base font-semibold leading-6 text-foreground">
-                  {recommendation}
-                </p>
+            <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-900/60 dark:bg-amber-950/20">
+              <div className="flex min-w-0 gap-3">
+                <EvidenceIcon icon={ClipboardCheck} size="sm" tone="attention" />
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-normal text-amber-950 dark:text-amber-100">
+                    Recommended action
+                  </p>
+                  <p className="mt-2 break-words text-base font-semibold leading-6 text-foreground">
+                    {recommendation}
+                  </p>
+                </div>
               </div>
-              <div className="grid gap-4 py-4 md:grid-cols-[12rem_minmax(0,1fr)]">
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <div className="rounded-lg border border-border-subtle bg-bg-muted/45 p-4">
                 <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
                   Patient impact
                 </p>
-                <p className="break-words text-sm leading-6 text-content-default">
+                <p className="mt-2 break-words text-sm leading-6 text-content-default">
                   {patientImpact}
                 </p>
               </div>
-              <div className="grid gap-4 py-4 md:grid-cols-[12rem_minmax(0,1fr)]">
+              <div className="rounded-lg border border-border-subtle bg-bg-muted/45 p-4">
                 <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
                   Alternative capacity
                 </p>
-                <p className="text-sm leading-6 text-content-default">
+                <p className="mt-2 text-sm leading-6 text-content-default">
                   {decision
                     ? `${decision.availableAlternatives} alternatives available from the current queue model.`
                     : "Alternative capacity is unavailable for this report."}
@@ -505,27 +620,32 @@ export default async function DistrictReportEvidencePage({
           <EvidencePanel>
             <SectionHeader
               icon={Clock3}
+              tone="info"
               title="Evidence timeline"
               description="The report path from field submission to district review."
             />
-            <ol className="relative mt-5 border-l border-border-subtle">
+            <ol className="mt-5">
               <TimelineItem
-                icon={UserRound}
+                icon={Send}
                 title="Submitted by reporter"
                 detail={`${report.reporterName} submitted from ${sourceLabel(report.source)}.`}
                 time={formatDateTime(report.submittedAt)}
+                tone="info"
               />
               <TimelineItem
-                icon={Radio}
+                icon={Inbox}
                 title="Received by district queue"
                 detail={`${syncDelay} after submission${isOfflineEvidence ? "; created offline and synced later" : ""}.`}
                 time={formatDateTime(report.receivedAt)}
+                tone={isOfflineEvidence ? "attention" : "clear"}
               />
               <TimelineItem
                 icon={ClipboardCheck}
+                isLast
                 title="Attached to severity queue"
                 detail={`${report.clinicName} uses this evidence in the current district decision context.`}
                 time="Current scenario state"
+                tone={statusTone[report.status] ?? "info"}
               />
             </ol>
           </EvidencePanel>
@@ -555,27 +675,31 @@ export default async function DistrictReportEvidencePage({
           <EvidencePanel>
             <SectionHeader
               icon={ShieldCheck}
+              tone="clear"
               title="Trust and provenance"
               description="Source metadata for validating the signal."
             />
             <dl className="mt-5 divide-y divide-border-subtle">
               <ProvenanceRow
-                icon={UserRound}
+                icon={BadgeCheck}
                 label="Reporter"
                 value={report.reporterName}
                 detail={sourceLabel(report.source)}
+                tone="clear"
               />
               <ProvenanceRow
                 icon={MapPin}
                 label="Clinic"
                 value={report.clinicName}
                 detail={report.facilityCode}
+                tone="neutral"
               />
               <ProvenanceRow
                 icon={Clock3}
                 label="Received"
                 value={formatDateTime(report.receivedAt)}
                 detail={`${syncDelay} after submission`}
+                tone="info"
               />
               <ProvenanceRow
                 icon={WifiOff}
@@ -586,6 +710,7 @@ export default async function DistrictReportEvidencePage({
                     ? "Captured before connectivity returned."
                     : "Received without offline backlog."
                 }
+                tone={isOfflineEvidence ? "attention" : "clear"}
               />
             </dl>
           </EvidencePanel>
@@ -593,19 +718,23 @@ export default async function DistrictReportEvidencePage({
           <EvidencePanel>
             <SectionHeader
               icon={Stethoscope}
+              tone={statusTone[report.status] ?? "info"}
               title="Operational signals"
               description="Pressure indicators carried by this report."
             />
-            <dl className="mt-5 divide-y divide-border-subtle">
+            <p className="mt-5 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+              Signal pressure
+            </p>
+            <dl className="mt-2 divide-y divide-border-subtle">
               <SignalRow
-                icon={AlertTriangle}
+                icon={UsersRound}
                 label="Staff pressure"
                 value={formatLabel(report.staffPressure)}
                 tone={pressureTone("staff", report.staffPressure)}
                 detail="Capacity available to keep service lines running."
               />
               <SignalRow
-                icon={ShieldCheck}
+                icon={PackageCheck}
                 label="Stock pressure"
                 value={formatLabel(report.stockPressure)}
                 tone={pressureTone("stock", report.stockPressure)}
