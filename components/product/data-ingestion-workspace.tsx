@@ -8,6 +8,7 @@ import {
   CircleDotIcon,
   ClipboardCheckIcon,
   FileSearchIcon,
+  ListChecksIcon,
   RadioTowerIcon,
   ShieldAlertIcon,
 } from "lucide-react";
@@ -51,13 +52,39 @@ export type DataIngestionTriageItem = {
 export type DataIngestionWorkspaceSummary = {
   readinessLabel: string;
   pendingLabel: string;
+  offlineQueueLabel: string;
+  validationFailureLabel: string;
   syncWindowLabel: string;
+};
+
+export type DataIngestionDiagnostic = {
+  id: string;
+  label: string;
+  value: string;
+  evidence: string;
+  tone: AdminTone;
+  windowLabel: string;
+};
+
+export type DataIngestionBacklogItem = {
+  id: string;
+  clinicName: string;
+  district: string;
+  freshnessLabel: string;
+  freshnessTone: AdminTone;
+  trustLabel: string;
+  trustTone: AdminTone;
+  trustDescription: string;
+  lastUpdateLabel: string;
+  clinicHref: string;
 };
 
 type DataIngestionWorkspaceProps = {
   summary: DataIngestionWorkspaceSummary;
   stages: DataIngestionStage[];
   items: DataIngestionTriageItem[];
+  diagnostics: DataIngestionDiagnostic[];
+  backlogItems: DataIngestionBacklogItem[];
 };
 
 const toneRailClassName: Record<AdminTone, string> = {
@@ -92,7 +119,13 @@ function stageIcon(stageId: string) {
   return <RadioTowerIcon className={className} />;
 }
 
-export function DataIngestionWorkspace({ summary, stages, items }: DataIngestionWorkspaceProps) {
+export function DataIngestionWorkspace({
+  summary,
+  stages,
+  items,
+  diagnostics,
+  backlogItems,
+}: DataIngestionWorkspaceProps) {
   const [selectedId, setSelectedId] = useState(items[0]?.id ?? null);
   const selectedItem = useMemo(
     () => items.find((item) => item.id === selectedId) ?? items[0] ?? null,
@@ -135,6 +168,14 @@ export function DataIngestionWorkspace({ summary, stages, items }: DataIngestion
             <div className="flex items-center justify-between gap-3">
               <span className="text-slate-300">Pending evidence</span>
               <span className="font-mono font-semibold">{summary.pendingLabel}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-slate-300">Offline queue</span>
+              <span className="font-mono font-semibold">{summary.offlineQueueLabel}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-slate-300">Validation failures</span>
+              <span className="font-mono font-semibold">{summary.validationFailureLabel}</span>
             </div>
             <div className="flex items-center justify-between gap-3">
               <span className="text-slate-300">Window</span>
@@ -385,6 +426,105 @@ export function DataIngestionWorkspace({ summary, stages, items }: DataIngestion
             </div>
           )}
         </aside>
+      </div>
+
+      <div className="grid gap-4 border-t border-border-subtle bg-bg-muted/25 p-4 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+        <section
+          aria-label="Ingestion signal diagnostics"
+          className="overflow-hidden rounded-xl border border-border-subtle bg-bg-default shadow-sm"
+        >
+          <div className="border-b border-border-subtle px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+              Operational diagnostics
+            </p>
+            <h3 className="mt-1 text-lg font-semibold tracking-[-0.02em] text-foreground">
+              Ingestion signal evidence
+            </h3>
+          </div>
+          <div className="grid gap-3 p-4 sm:grid-cols-2">
+            {diagnostics.map((diagnostic) => (
+              <article
+                key={diagnostic.id}
+                className={cn(
+                  "min-w-0 rounded-xl border p-3",
+                  tonePanelClassName[diagnostic.tone],
+                )}
+              >
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="break-words text-sm font-semibold">{diagnostic.label}</p>
+                    <p className="mt-2 break-words text-xs leading-5 opacity-80">
+                      {diagnostic.evidence}
+                    </p>
+                  </div>
+                  <span className="font-mono text-2xl font-semibold leading-none">
+                    {diagnostic.value}
+                  </span>
+                </div>
+                <p className="mt-3 rounded-lg border border-current/15 bg-white/45 px-2 py-1 text-xs font-medium">
+                  Window started {diagnostic.windowLabel}
+                </p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section
+          aria-label="Clinic freshness backlog"
+          className="overflow-hidden rounded-xl border border-border-subtle bg-bg-default shadow-sm"
+        >
+          <div className="border-b border-border-subtle px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+              Clinic backlog
+            </p>
+            <h3 className="mt-1 text-lg font-semibold tracking-[-0.02em] text-foreground">
+              Freshness and confirmation follow-up
+            </h3>
+          </div>
+          <div className="grid gap-3 p-4">
+            {backlogItems.length ? (
+              backlogItems.map((item) => (
+                <article
+                  key={item.id}
+                  aria-label={`Open ${item.clinicName} clinic ingestion detail`}
+                  className="grid gap-3 rounded-xl border border-border-subtle bg-bg-muted/20 p-3 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)_auto]"
+                >
+                  <div className="min-w-0">
+                    <p className="break-words font-semibold text-foreground">{item.clinicName}</p>
+                    <p className="mt-1 break-words text-sm text-muted-foreground">{item.district}</p>
+                  </div>
+                  <div className="min-w-0 space-y-2">
+                    <div className="flex flex-wrap gap-1.5">
+                      <AdminStatusBadge tone={item.freshnessTone}>
+                        {item.freshnessLabel}
+                      </AdminStatusBadge>
+                      <AdminStatusBadge tone={item.trustTone}>{item.trustLabel}</AdminStatusBadge>
+                    </div>
+                    <p className="break-words text-xs leading-5 text-muted-foreground">
+                      {item.trustDescription}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Last update {item.lastUpdateLabel}
+                    </p>
+                  </div>
+                  <Link
+                    href={item.clinicHref}
+                    aria-label={`Open ${item.clinicName} clinic ingestion detail`}
+                    className="inline-flex w-fit items-center gap-1.5 self-start rounded-full border border-border-subtle bg-bg-default px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-bg-muted"
+                  >
+                    Open clinic
+                    <ArrowRightIcon className="size-3" aria-hidden="true" />
+                  </Link>
+                </article>
+              ))
+            ) : (
+              <div className="flex items-start gap-3 rounded-xl border border-border-subtle bg-bg-muted/25 p-4 text-sm text-muted-foreground">
+                <ListChecksIcon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                <p>All clinic current-status records have usable freshness evidence.</p>
+              </div>
+            )}
+          </div>
+        </section>
       </div>
     </section>
   );

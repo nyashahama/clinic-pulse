@@ -1,12 +1,11 @@
 import {
-  AdminEmptyState,
-  AdminEvidenceTable,
   AdminFilterBar,
-  AdminMetricStrip,
   AdminModuleHeader,
   type AdminTone,
 } from "@/components/product/admin-module";
 import {
+  type DataIngestionBacklogItem,
+  type DataIngestionDiagnostic,
   DataIngestionWorkspace,
   type DataIngestionStage,
   type DataIngestionTriageItem,
@@ -334,38 +333,6 @@ export default async function Page() {
         title="Ingestion pressure"
         description="Read-only review of sync freshness, pending field reports, offline queue, validation failures, and clinic confirmation pressure."
       />
-      <AdminMetricStrip
-        metrics={[
-          {
-            label: "Coverage readiness",
-            value: `${formatCount(coverage.readinessPercent)}%`,
-            detail: coverage.blockers.length
-              ? coverage.blockers.join("; ")
-              : "No current ingestion blockers",
-            tone: coverage.tone,
-          },
-          {
-            label: "Pending report evidence",
-            value: formatCount(pendingReports.length),
-            detail: "Field reports awaiting review before status promotion",
-            tone: toneForAttention(pendingReports.length),
-          },
-          {
-            label: "Offline queue",
-            value: formatCount(syncSummary.pendingOfflineReports),
-            detail: `${formatCount(syncSummary.offlineReportsReceived)} received in window`,
-            tone: toneForAttention(syncSummary.pendingOfflineReports),
-          },
-          {
-            label: "Validation failures",
-            value: formatCount(syncSummary.validationFailures),
-            detail: `${formatCount(syncSummary.conflictsNeedingAttention)} conflicts need attention`,
-            tone: toneForAttention(
-              syncSummary.validationFailures + syncSummary.conflictsNeedingAttention,
-            ),
-          },
-        ]}
-      />
       <AdminFilterBar>
         <StatusBadge tone={coverage.tone}>Read only ingestion evidence</StatusBadge>
         <span className="text-sm text-muted-foreground">
@@ -377,94 +344,38 @@ export default async function Page() {
         summary={{
           readinessLabel: `${formatCount(coverage.readinessPercent)}%`,
           pendingLabel: formatCount(pendingReports.length),
+          offlineQueueLabel: formatCount(syncSummary.pendingOfflineReports),
+          validationFailureLabel: formatCount(syncSummary.validationFailures),
           syncWindowLabel: formatDateTime(syncSummary.windowStartedAt),
         }}
         stages={ingestionStages}
         items={ingestionItems}
-      />
-      <AdminEvidenceTable
-        label="Ingestion signal evidence"
-        rows={ingestionSignals}
-        getRowKey={(row) => row.id}
-        columns={[
-          {
-            key: "signal",
-            header: "Signal",
-            render: (row) => <StatusBadge tone={row.tone}>{row.signal}</StatusBadge>,
-          },
-          {
-            key: "value",
-            header: "Count",
-            render: (row) => formatCount(row.value),
-          },
-          {
-            key: "evidence",
-            header: "Evidence",
-            render: (row) => <p className="max-w-md text-sm">{row.evidence}</p>,
-          },
-          {
-            key: "window",
-            header: "Window started",
-            render: () => formatDateTime(syncSummary.windowStartedAt),
-          },
-        ]}
-      />
-      <AdminEvidenceTable
-        label="Clinic freshness backlog"
-        rows={clinicsNeedingReview}
-        getRowAriaLabel={(row) => `Open ${row.clinic.name} clinic ingestion detail`}
-        getRowHref={(row) => buildClinicDetailHref(row.clinic.id)}
-        getRowKey={(row) => row.clinic.id}
-        emptyState={
-          <AdminEmptyState
-            title="No stale clinic ingestion evidence"
-            description="All clinic current-status records have usable freshness evidence."
-          />
-        }
-        columns={[
-          {
-            key: "clinic",
-            header: "Clinic",
-            render: (row) => row.clinic.name,
-          },
-          {
-            key: "district",
-            header: "District",
-            render: (row) => row.clinic.district,
-          },
-          {
-            key: "freshness",
-            header: "Freshness",
-            render: (row) => (
-              <StatusBadge
-                tone={
-                  clinicNeedsIngestionReview(row) ? "attention" : "clear"
-                }
-              >
-                {formatLabel(row.currentStatus?.freshness)}
-              </StatusBadge>
-            ),
-          },
-          {
-            key: "trust",
-            header: "Data trust",
-            render: (row) => {
-              const trust = dataTrustForClinic(row);
+        diagnostics={ingestionSignals.map(
+          (signal): DataIngestionDiagnostic => ({
+            id: signal.id,
+            label: signal.signal,
+            value: formatCount(signal.value),
+            evidence: signal.evidence,
+            tone: signal.tone,
+            windowLabel: formatDateTime(syncSummary.windowStartedAt),
+          }),
+        )}
+        backlogItems={clinicsNeedingReview.map((row): DataIngestionBacklogItem => {
+          const trust = dataTrustForClinic(row);
 
-              return (
-                <div className="space-y-1">
-                  <StatusBadge tone={trust.tone}>{trust.label}</StatusBadge>
-                  <p className="max-w-xs text-xs text-muted-foreground">{trust.description}</p>
-                </div>
-              );
-            },
-          },
-          {
-            key: "updated",
-            header: "Last update",
-            render: (row) => formatDateTime(row.currentStatus?.updatedAt),
-          },
-        ]}
+          return {
+            id: row.clinic.id,
+            clinicName: row.clinic.name,
+            district: row.clinic.district,
+            freshnessLabel: formatLabel(row.currentStatus?.freshness),
+            freshnessTone: clinicNeedsIngestionReview(row) ? "attention" : "clear",
+            trustLabel: trust.label,
+            trustTone: trust.tone,
+            trustDescription: trust.description,
+            lastUpdateLabel: formatDateTime(row.currentStatus?.updatedAt),
+            clinicHref: buildClinicDetailHref(row.clinic.id),
+          };
+        })}
       />
     </div>
   );

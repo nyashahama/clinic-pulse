@@ -239,9 +239,10 @@ it("links data-ingestion clinic and report rows to operational clinic detail", (
   expect(source).toContain(
     '`/district/clinics/${encodeURIComponent(clinicId)}?from=${returnSource}`',
   );
-  expect(source).toContain(
-    "getRowAriaLabel={(row) => `Open ${row.clinic.name} clinic ingestion detail`}",
+  expect(componentSource).toContain(
+    "aria-label={`Open ${item.clinicName} clinic ingestion detail`}",
   );
+  expect(componentSource).toContain("href={item.clinicHref}");
 });
 
 it("uses admin clinic detail return sources for back navigation", () => {
@@ -258,13 +259,13 @@ it("uses admin clinic detail return sources for back navigation", () => {
 });
 
 it("keeps aggregate data-ingestion signal rows static", () => {
-  const source = readFileSync("app/(demo)/admin/data-ingestion/page.tsx", "utf8");
-  const signalTableStart = source.indexOf('label="Ingestion signal evidence"');
-  const freshnessTableStart = source.indexOf('label="Clinic freshness backlog"');
+  const componentSource = readFileSync("components/product/data-ingestion-workspace.tsx", "utf8");
+  const signalSectionStart = componentSource.indexOf('aria-label="Ingestion signal diagnostics"');
+  const backlogSectionStart = componentSource.indexOf('aria-label="Clinic freshness backlog"');
 
-  expect(signalTableStart).toBeGreaterThan(-1);
-  expect(freshnessTableStart).toBeGreaterThan(signalTableStart);
-  expect(source.slice(signalTableStart, freshnessTableStart)).not.toContain("getRowHref");
+  expect(signalSectionStart).toBeGreaterThan(-1);
+  expect(backlogSectionStart).toBeGreaterThan(signalSectionStart);
+  expect(componentSource.slice(signalSectionStart, backlogSectionStart)).not.toContain("href=");
 });
 
 it("defines canonical detail routes for entity-backed admin evidence rows", () => {
