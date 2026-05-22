@@ -34,6 +34,7 @@ import type {
   DistrictClinicEvidenceFilters,
   DistrictClinicEvidenceMetric,
   DistrictClinicEvidencePacket,
+  DistrictClinicEvidenceQueueChip,
   DistrictClinicEvidenceRow,
   DistrictClinicEvidenceTone,
   DistrictClinicEvidenceViewModel,
@@ -87,6 +88,16 @@ const railClassName: Record<DistrictClinicEvidenceTone, string> = {
   info: "bg-sky-500",
 };
 
+const readinessPanelClassName: Record<DistrictClinicEvidenceTone, string> = {
+  clear:
+    "border-emerald-300 bg-emerald-50/40 dark:border-emerald-900/60 dark:bg-emerald-950/20",
+  attention:
+    "border-amber-300 bg-amber-50/50 dark:border-amber-900/60 dark:bg-amber-950/20",
+  blocked:
+    "border-destructive/35 bg-destructive/5 dark:border-destructive/50 dark:bg-destructive/15",
+  info: "border-sky-300 bg-sky-50/50 dark:border-sky-900/60 dark:bg-sky-950/20",
+};
+
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("en-ZA", {
     month: "short",
@@ -138,6 +149,39 @@ function RowIcon({ row }: { row: DistrictClinicEvidenceRow }) {
   }
 
   return <HistoryIcon className={className} />;
+}
+
+function ToneBadge({
+  children,
+  tone,
+}: {
+  children: ReactNode;
+  tone: DistrictClinicEvidenceTone;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex max-w-full items-start rounded-md border px-2 py-0.5 text-left text-xs font-medium",
+        toneClassName[tone],
+      )}
+    >
+      <span className="min-w-0 break-words">{children}</span>
+    </span>
+  );
+}
+
+function QueueChip({ chip }: { chip: DistrictClinicEvidenceQueueChip }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium",
+        toneClassName[chip.tone],
+      )}
+    >
+      <span>{chip.label}</span>
+      <span className="font-mono">{chip.count}</span>
+    </span>
+  );
 }
 
 function FacetedFilter({
@@ -196,6 +240,84 @@ function FacetedFilter({
   );
 }
 
+export function ClinicEvidenceCommandHeader({
+  header,
+}: {
+  header: DistrictClinicEvidenceViewModel["header"];
+}) {
+  return (
+    <section className="overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm">
+      <div className="grid min-w-0 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
+        <div className="min-w-0 p-4 sm:p-5">
+          <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+            {header.eyebrow}
+          </p>
+          <h1 className="mt-1 break-words text-2xl font-semibold leading-tight text-foreground">
+            {header.title}
+          </h1>
+          <p className="mt-2 max-w-4xl break-words text-sm leading-5 text-muted-foreground">
+            {header.description}
+          </p>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <ToneBadge tone="info">{header.scope}</ToneBadge>
+            <ToneBadge tone={header.readiness.tone}>
+              {header.readiness.detail}
+            </ToneBadge>
+          </div>
+        </div>
+        <div
+          className={cn(
+            "grid min-w-0 content-between gap-4 border-t p-4 lg:border-l lg:border-t-0 sm:p-5",
+            readinessPanelClassName[header.readiness.tone],
+          )}
+        >
+          <div className="min-w-0">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                {header.readiness.label}
+              </p>
+              <ToneBadge tone={header.readiness.tone}>
+                {header.readiness.tone === "blocked" ? "Needs review" : "Clear"}
+              </ToneBadge>
+            </div>
+            <p className="mt-2 font-mono text-4xl font-semibold leading-none text-foreground">
+              {header.readiness.value}
+            </p>
+            <p className="mt-3 max-w-sm break-words text-xs leading-4 text-muted-foreground">
+              Blocking records that still need district verification.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              className={cn(buttonVariants({ size: "sm" }), "justify-between gap-2")}
+              href={header.primaryAction.href}
+            >
+              <span className="inline-flex min-w-0 items-center gap-1.5">
+                <ActivityIcon className="size-3.5" />
+                <span className="truncate">{header.primaryAction.label}</span>
+              </span>
+              <ArrowRightIcon className="size-3.5" />
+            </Link>
+            <Link
+              className={cn(
+                buttonVariants({ size: "sm", variant: "outline" }),
+                "justify-between gap-2",
+              )}
+              href={header.secondaryAction.href}
+            >
+              <span className="inline-flex min-w-0 items-center gap-1.5">
+                <MapPinIcon className="size-3.5" />
+                <span className="truncate">{header.secondaryAction.label}</span>
+              </span>
+              <ArrowRightIcon className="size-3.5" />
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function ClinicEvidenceMetricStrip({
   metrics,
 }: {
@@ -245,12 +367,14 @@ export function ClinicEvidenceMetricStrip({
 
 export function ClinicEvidenceFilterToolbar({
   clinicOptions,
+  embedded = false,
   filters,
   onClearFilters,
   onFilterChange,
   visibleEvidenceCount,
 }: {
   clinicOptions: DistrictClinicEvidenceViewModel["filterOptions"]["clinics"];
+  embedded?: boolean;
   filters: DistrictClinicEvidenceFilters;
   onClearFilters: () => void;
   onFilterChange: <Key extends keyof DistrictClinicEvidenceFilters>(
@@ -268,7 +392,12 @@ export function ClinicEvidenceFilterToolbar({
   return (
     <section
       aria-label="Clinic evidence filters"
-      className="rounded-lg border border-border-subtle bg-bg-default p-3 text-content-default shadow-sm"
+      className={cn(
+        "p-3 text-content-default",
+        embedded
+          ? "border-t border-border-subtle bg-bg-muted/25"
+          : "rounded-lg border border-border-subtle bg-bg-default shadow-sm",
+      )}
       data-district-clinic-evidence-toolbar
     >
       <div className="grid min-w-0 gap-3">
@@ -299,7 +428,7 @@ export function ClinicEvidenceFilterToolbar({
           </div>
         </div>
 
-        <div className="grid min-w-0 gap-2 xl:grid-cols-[minmax(14rem,1fr)_auto]">
+        <div className="grid min-w-0 gap-2">
           <label className="relative min-w-0">
             <span className="sr-only">Search clinic evidence</span>
             <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -350,11 +479,55 @@ export function ClinicEvidenceFilterToolbar({
   );
 }
 
+export function ClinicEvidenceReviewQueue({
+  children,
+  queue,
+}: {
+  children: ReactNode;
+  queue: DistrictClinicEvidenceViewModel["queue"];
+}) {
+  return (
+    <section
+      aria-label={queue.title}
+      className="min-w-0 overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm"
+    >
+      <div className="grid gap-3 border-b border-border-subtle px-4 py-3">
+        <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+              Evidence workspace
+            </p>
+            <h2 className="mt-1 break-words text-base font-semibold text-foreground">
+              {queue.title}
+            </h2>
+            <p className="mt-1 max-w-2xl break-words text-sm leading-5 text-muted-foreground">
+              {queue.description}
+            </p>
+          </div>
+          <div className="flex min-w-0 flex-wrap gap-2">
+            {queue.chips.slice(0, 2).map((chip) => (
+              <QueueChip chip={chip} key={chip.id} />
+            ))}
+          </div>
+        </div>
+        <div className="flex min-w-0 flex-wrap gap-2" aria-label="Evidence queue mix">
+          {queue.chips.slice(2).map((chip) => (
+            <QueueChip chip={chip} key={chip.id} />
+          ))}
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
 export function ClinicEvidenceLedger({
+  embedded = false,
   rows,
   selectedEvidenceId,
   onSelectEvidence,
 }: {
+  embedded?: boolean;
   rows: DistrictClinicEvidenceViewModel["rows"];
   selectedEvidenceId: string | null;
   onSelectEvidence: (evidenceId: string) => void;
@@ -362,7 +535,12 @@ export function ClinicEvidenceLedger({
   return (
     <section
       aria-label="Clinic evidence ledger"
-      className="overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm"
+      className={cn(
+        "overflow-hidden bg-bg-default text-content-default",
+        embedded
+          ? "border-t border-border-subtle"
+          : "rounded-lg border border-border-subtle shadow-sm",
+      )}
     >
       <div className="hidden grid-cols-[minmax(14rem,1fr)_minmax(7rem,0.42fr)_minmax(8rem,0.5fr)] border-b border-border-subtle bg-bg-muted/60 px-3 py-2 text-xs font-semibold uppercase tracking-normal text-content-default sm:grid">
         <span>Evidence</span>
@@ -454,7 +632,10 @@ export function ClinicEvidenceSelectedPacket({
 }) {
   if (!selectedPacket) {
     return (
-      <section className="rounded-lg border border-border-subtle bg-bg-default p-4 text-content-default shadow-sm">
+      <section
+        className="rounded-lg border border-border-subtle bg-bg-default p-4 text-content-default shadow-sm"
+        data-district-clinic-evidence-selected-packet
+      >
         <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
           Selected evidence packet
         </p>
@@ -467,7 +648,10 @@ export function ClinicEvidenceSelectedPacket({
   }
 
   return (
-    <section className="rounded-lg border border-border-subtle bg-bg-default p-3 text-content-default shadow-sm">
+    <section
+      className="rounded-lg border border-border-subtle bg-bg-default p-3 text-content-default shadow-sm"
+      data-district-clinic-evidence-selected-packet
+    >
       <div className="flex min-w-0 flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
@@ -498,29 +682,45 @@ export function ClinicEvidenceSelectedPacket({
         </span>
       </div>
 
-      <div className="mt-4 rounded-md border border-border-subtle border-l-2 border-l-primary bg-bg-muted/60 p-3">
+      <div
+        className={cn(
+          "mt-4 rounded-md border border-border-subtle border-l-2 bg-bg-muted/60 p-3",
+          selectedPacket.actionTone === "blocked" && "border-l-destructive",
+          selectedPacket.actionTone === "attention" &&
+            "border-l-amber-400 dark:border-l-amber-700",
+          selectedPacket.actionTone === "clear" &&
+            "border-l-emerald-400 dark:border-l-emerald-700",
+          selectedPacket.actionTone === "info" &&
+            "border-l-sky-400 dark:border-l-sky-700",
+        )}
+      >
         <div className="flex min-w-0 gap-2.5">
-          <span className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md border border-primary/25 bg-primary/5 text-primary">
+          <span
+            className={cn(
+              "mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md border",
+              toneClassName[selectedPacket.actionTone],
+            )}
+          >
             <ActivityIcon className="size-3.5" />
           </span>
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-              Evidence summary
+              Next evidence action
             </p>
             <p className="mt-0.5 break-words text-sm font-medium leading-5 text-foreground">
-              {selectedPacket.title}
-            </p>
-            <p className="mt-1 break-words text-xs leading-4 text-muted-foreground">
-              {selectedPacket.detail}
+              {selectedPacket.recommendedAction}
             </p>
           </div>
         </div>
       </div>
 
       <div className="mt-4 grid gap-3">
-        <PacketSection title="Recommended action">
-          <p className="text-sm leading-5 text-foreground">
-            {selectedPacket.recommendedAction}
+        <PacketSection title="Evidence summary">
+          <p className="text-sm font-medium leading-5 text-foreground">
+            {selectedPacket.title}
+          </p>
+          <p className="mt-1 text-sm leading-5 text-muted-foreground">
+            {selectedPacket.detail}
           </p>
         </PacketSection>
         <PacketSection title="Verification need">
@@ -539,6 +739,9 @@ export function ClinicEvidenceSelectedPacket({
           </dl>
         </PacketSection>
         <PacketSection title="Clinic evidence timeline">
+          <p className="mb-2 text-xs leading-4 text-muted-foreground">
+            {selectedPacket.timelineSummary}
+          </p>
           <div className="grid gap-2">
             {timeline.slice(0, 4).map((item) => (
               <div

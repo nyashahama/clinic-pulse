@@ -405,6 +405,35 @@ test.describe("phase 1 role dashboard navigation", () => {
     await expect(page.getByRole("heading", { name: "Report evidence brief" })).toBeVisible();
   });
 
+  test("clinic evidence is review-first on mobile", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile-chrome", "Mobile Clinic evidence hierarchy");
+
+    await signInAs(page, "district-manager@clinicpulse.local", "/district");
+    await page.goto("/district/clinic-evidence");
+
+    const selectedPacket = page.locator(
+      "[data-district-clinic-evidence-selected-packet]",
+    );
+    const metrics = page.locator("[data-district-clinic-evidence-metrics]");
+    const ledger = page.getByLabel("Clinic evidence ledger");
+
+    await expect(
+      page.locator('[data-district-clinic-evidence-layout="review-first"]'),
+    ).toBeVisible();
+    await expect(selectedPacket).toBeVisible();
+    await expect(metrics).toBeVisible();
+    await expect(ledger).toBeVisible();
+    await expect(page.getByText("Evidence review queue")).toBeVisible();
+    await expect(page.getByText("Evidence readiness")).toBeVisible();
+
+    const packetBox = await selectedPacket.boundingBox();
+    const metricsBox = await metrics.boundingBox();
+    const ledgerBox = await ledger.boundingBox();
+
+    expect(packetBox?.y).toBeLessThan(metricsBox?.y ?? Number.POSITIVE_INFINITY);
+    expect(packetBox?.y).toBeLessThan(ledgerBox?.y ?? Number.POSITIVE_INFINITY);
+  });
+
   test("district severity queue filters update queue state and URL", async ({
     page,
   }, testInfo) => {

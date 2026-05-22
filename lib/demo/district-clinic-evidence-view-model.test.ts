@@ -24,6 +24,35 @@ describe("buildDistrictClinicEvidenceViewModel", () => {
     });
 
     expect(viewModel.metrics).toHaveLength(4);
+    expect(viewModel.header).toMatchObject({
+      eyebrow: "District command",
+      title: "Clinic evidence",
+      readiness: {
+        label: "Evidence readiness",
+        value: String(viewModel.rows.filter((row) => row.tone === "blocked").length),
+        tone: "blocked",
+      },
+      primaryAction: {
+        href: "/district/severity-queue",
+        label: "Open severity queue",
+      },
+      secondaryAction: {
+        href: "/district/clinic-network",
+        label: "Open clinic network",
+      },
+    });
+    expect(viewModel.header.readiness.detail).toContain("require district verification");
+    expect(viewModel.queue.chips).toEqual([
+      expect.objectContaining({ id: "all", label: "All", count: viewModel.rows.length }),
+      expect.objectContaining({
+        id: "needs_action",
+        label: "Needs action",
+        count: viewModel.rows.filter((row) => row.tone !== "clear").length,
+      }),
+      expect.objectContaining({ id: "reports", label: "Reports" }),
+      expect.objectContaining({ id: "alerts", label: "Alerts" }),
+      expect.objectContaining({ id: "audit", label: "Audit" }),
+    ]);
     expect(viewModel.rows.length).toBe(
       state.reports.length + state.auditEvents.length + state.alerts.length,
     );
@@ -40,6 +69,8 @@ describe("buildDistrictClinicEvidenceViewModel", () => {
     expect(viewModel.selectedPacket?.clinicHref).toMatch(
       /^\/district\/clinics\/[^?]+\?from=district-clinic-evidence$/,
     );
+    expect(viewModel.selectedPacket?.actionTone).toBe("blocked");
+    expect(viewModel.selectedPacket?.timelineSummary).toContain("linked evidence records");
     expect(viewModel.filterOptions.clinics).toContainEqual(
       expect.objectContaining({
         label: "Mabopane Station Clinic",

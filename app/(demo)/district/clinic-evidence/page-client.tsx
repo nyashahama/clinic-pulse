@@ -1,19 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import {
+  ClinicEvidenceCommandHeader,
   ClinicEvidenceFilterToolbar,
   ClinicEvidenceLedger,
   ClinicEvidenceMetricStrip,
+  ClinicEvidenceReviewQueue,
   ClinicEvidenceSelectedPacket,
 } from "@/components/demo/command-center/clinic-evidence-module";
-import {
-  AdminEmptyState,
-  AdminModuleHeader,
-} from "@/components/product/admin-module";
+import { AdminEmptyState } from "@/components/product/admin-module";
 import { useDemoStore } from "@/lib/demo/demo-store";
 import {
   buildDistrictClinicEvidenceViewModel,
@@ -185,55 +183,43 @@ export default function DistrictClinicEvidencePageClient() {
 
   return (
     <div className="grid min-w-0 gap-4 pb-6" data-district-module="clinic-evidence">
-      <AdminModuleHeader
-        eyebrow="District command"
-        title="Clinic evidence"
-        description="Decision-ready clinic reports, alerts, and audit trail records for district verification."
-        actions={[
-          {
-            label: "Open severity queue",
-            buttonProps: {
-              nativeButton: false,
-              render: <Link href="/district/severity-queue" />,
-              variant: "outline",
-            },
-          },
-          {
-            label: "Open clinic network",
-            buttonProps: {
-              nativeButton: false,
-              render: <Link href="/district/clinic-network" />,
-              variant: "outline",
-            },
-          },
-        ]}
-      />
-
-      <ClinicEvidenceMetricStrip metrics={viewModel.metrics} />
-
-      <ClinicEvidenceFilterToolbar
-        clinicOptions={filterOptions.clinics}
-        filters={filters}
-        visibleEvidenceCount={viewModel.rows.length}
-        onClearFilters={clearFilters}
-        onFilterChange={updateFilter}
-      />
+      <ClinicEvidenceCommandHeader header={viewModel.header} />
 
       {viewModel.rows.length ? (
-        <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-          <div className="order-2 min-w-0 xl:order-none">
-            <ClinicEvidenceLedger
-              rows={viewModel.rows}
-              selectedEvidenceId={viewModel.selectedPacket?.evidenceId ?? null}
-              onSelectEvidence={selectEvidence}
-            />
+        <div
+          className="grid min-w-0 gap-4"
+          data-district-clinic-evidence-layout="review-first"
+        >
+          <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,390px)] xl:items-start">
+            <div className="order-2 min-w-0 xl:order-1">
+              <ClinicEvidenceReviewQueue queue={viewModel.queue}>
+                <ClinicEvidenceFilterToolbar
+                  embedded
+                  clinicOptions={filterOptions.clinics}
+                  filters={filters}
+                  visibleEvidenceCount={viewModel.rows.length}
+                  onClearFilters={clearFilters}
+                  onFilterChange={updateFilter}
+                />
+                <ClinicEvidenceLedger
+                  embedded
+                  rows={viewModel.rows}
+                  selectedEvidenceId={viewModel.selectedPacket?.evidenceId ?? null}
+                  onSelectEvidence={selectEvidence}
+                />
+              </ClinicEvidenceReviewQueue>
+            </div>
+            <div
+              ref={selectedPacketRef}
+              className="order-1 min-w-0 scroll-mt-4 xl:order-2 xl:sticky xl:top-4"
+            >
+              <ClinicEvidenceSelectedPacket
+                selectedPacket={viewModel.selectedPacket}
+                timeline={viewModel.timeline}
+              />
+            </div>
           </div>
-          <div ref={selectedPacketRef} className="order-1 min-w-0 scroll-mt-4 xl:order-none">
-            <ClinicEvidenceSelectedPacket
-              selectedPacket={viewModel.selectedPacket}
-              timeline={viewModel.timeline}
-            />
-          </div>
+          <ClinicEvidenceMetricStrip metrics={viewModel.metrics} />
         </div>
       ) : (
         <AdminEmptyState
