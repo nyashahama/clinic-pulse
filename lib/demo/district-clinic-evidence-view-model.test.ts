@@ -127,6 +127,20 @@ describe("buildDistrictClinicEvidenceViewModel", () => {
     );
   });
 
+  it("defaults the selected packet to the highest-priority evidence", () => {
+    const state = createInitialDemoState();
+    const viewModel = buildDistrictClinicEvidenceViewModel({
+      state,
+      filters: emptyFilters,
+      selectedEvidenceId: null,
+    });
+
+    expect(viewModel.rows[0]?.tone).toBe("blocked");
+    expect(viewModel.selectedPacket?.tone).toBe("blocked");
+    expect(viewModel.selectedPacket?.evidenceId).toBe(viewModel.rows[0]?.evidenceId);
+    expect(viewModel.selectedPacket?.verificationNeed).toContain("clinic owner");
+  });
+
   it("falls back to the first filtered row and exposes an empty state", () => {
     const state = createInitialDemoState();
     const filtered = buildDistrictClinicEvidenceViewModel({
@@ -138,7 +152,7 @@ describe("buildDistrictClinicEvidenceViewModel", () => {
       selectedEvidenceId: "missing-evidence",
     });
 
-    expect(filtered.selectedPacket?.evidenceId).toBe(filtered.rows[0]?.evidenceId);
+    expect(filtered.selectedPacket?.tone).toBe("blocked");
 
     const empty = buildDistrictClinicEvidenceViewModel({
       state,

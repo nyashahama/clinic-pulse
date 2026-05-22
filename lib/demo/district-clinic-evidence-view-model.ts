@@ -258,6 +258,42 @@ function sortEvidenceRows(
   return left.evidenceId.localeCompare(right.evidenceId);
 }
 
+function evidencePriority(row: DistrictClinicEvidenceRow) {
+  if (row.tone === "blocked") {
+    return 0;
+  }
+
+  if (row.tone === "attention") {
+    return 1;
+  }
+
+  if (row.kind === "alert") {
+    return 2;
+  }
+
+  if (row.kind === "report") {
+    return 3;
+  }
+
+  return 4;
+}
+
+function selectDefaultEvidenceRow(rows: DistrictClinicEvidenceRow[]) {
+  return sortReviewRows(rows)[0] ?? null;
+}
+
+function sortReviewRows(rows: DistrictClinicEvidenceRow[]) {
+  return [...rows].sort((left, right) => {
+    const priorityDelta = evidencePriority(left) - evidencePriority(right);
+
+    if (priorityDelta !== 0) {
+      return priorityDelta;
+    }
+
+    return sortEvidenceRows(left, right);
+  });
+}
+
 function rowMatchesQuery(row: DistrictClinicEvidenceRow, query: string) {
   const normalized = query.trim().toLowerCase();
 
@@ -460,11 +496,12 @@ export function buildDistrictClinicEvidenceViewModel({
       alertToEvidenceRow(alert, getClinicById(clinics, alert.clinicId)),
     ),
   ].sort(sortEvidenceRows);
-  const filteredRows = rows.filter((row) => rowMatchesFilters(row, filters));
+  const filteredRows = sortReviewRows(
+    rows.filter((row) => rowMatchesFilters(row, filters)),
+  );
   const selectedRow =
     filteredRows.find((row) => row.evidenceId === selectedEvidenceId) ??
-    filteredRows[0] ??
-    null;
+    selectDefaultEvidenceRow(filteredRows);
   const timeline = selectedRow
     ? rows.filter((row) => row.clinicId === selectedRow.clinicId).sort(sortEvidenceRows)
     : [];
