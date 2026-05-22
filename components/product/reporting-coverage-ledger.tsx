@@ -436,7 +436,7 @@ function CoverageLedgerWorkspace({
                 Coverage workspace
               </p>
               <h2 className="mt-1 break-words text-base font-semibold text-foreground">
-                Clinic reporting coverage
+                Clinic coverage ledger
               </h2>
               <p className="mt-1 break-words text-sm leading-5 text-muted-foreground">
                 {viewModel.ledger.description}
