@@ -181,7 +181,7 @@ export function DataIngestionWorkspace({
         </div>
 
         <div className="grid gap-4 p-3 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]">
-          <section aria-label="Pending report queue" className="flex min-w-0 flex-col gap-3 self-start">
+          <section aria-label="Ingestion evidence events" className="flex min-w-0 flex-col gap-3 self-start">
             <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
@@ -263,7 +263,7 @@ export function DataIngestionWorkspace({
                 })
               ) : (
                 <div className="rounded-xl border border-border-subtle bg-bg-muted/25 p-4 text-sm text-muted-foreground">
-                  No pending report evidence needs review.
+                  No ingestion evidence events need review.
                 </div>
               )}
             </div>

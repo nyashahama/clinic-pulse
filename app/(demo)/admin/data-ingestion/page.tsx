@@ -20,6 +20,7 @@ import { summarizeReportingCoverage } from "@/lib/product/admin-governance";
 import {
   buildDataTrustState,
   type DataFreshness,
+  type DataSource,
   type ReviewState,
 } from "@/lib/product/data-trust";
 import { requireDemoWorkflowAccess } from "../../workflow-guard";
@@ -38,6 +39,11 @@ type IngestionSignal = {
   signal: string;
   value: number;
   evidence: string;
+  tone: AdminTone;
+};
+
+type IngestionIssue = {
+  label: string;
   tone: AdminTone;
 };
 
@@ -102,13 +108,31 @@ function dataTrustForReport(report: ReportApiResponse) {
   });
 }
 
+function trustSourceForClinicStatus(clinic: ClinicDetailApiResponse): DataSource {
+  if (!clinic.currentStatus) {
+    return "seeded_demo";
+  }
+
+  const source = clinic.currentStatus.source?.toLowerCase() ?? "";
+
+  if (source.includes("reconciliation")) {
+    return "system_reconciliation";
+  }
+
+  if (source.includes("partner")) {
+    return "partner_export";
+  }
+
+  if (source.includes("field")) {
+    return "field_report";
+  }
+
+  return "pilot_import";
+}
+
 function dataTrustForClinic(clinic: ClinicDetailApiResponse) {
   return buildDataTrustState({
-    source: clinic.currentStatus?.source?.toLowerCase().includes("reconciliation")
-      ? "system_reconciliation"
-      : clinic.currentStatus
-        ? "field_report"
-        : "seeded_demo",
+    source: trustSourceForClinicStatus(clinic),
     freshness: dataFreshnessForClinic(clinic),
     reviewState: clinic.currentStatus ? "not_required" : "unknown",
     lastVerifiedAt: clinic.currentStatus?.lastReportedAt ?? clinic.currentStatus?.updatedAt,
@@ -138,44 +162,31 @@ function actionForReport(report: ReportApiResponse) {
   return "Keep in intake watchlist";
 }
 
-function stageForReport(report: ReportApiResponse): {
-  id: string;
-  label: string;
-  tone: AdminTone;
-  blocker: string;
-} {
+function classifyReportIssue(report: ReportApiResponse): IngestionIssue {
   if (report.offlineCreated) {
     return {
-      id: "captured",
-      label: "Captured",
       tone: "attention",
-      blocker: "Offline source waiting for validation",
+      label: "Offline source waiting for validation",
     };
   }
 
   if (report.reviewState === "pending") {
     return {
-      id: "reviewed",
-      label: "Reviewed",
       tone: "attention",
-      blocker: "Human review gate",
+      label: "Human review gate",
     };
   }
 
   if (report.reviewState === "rejected") {
     return {
-      id: "validated",
-      label: "Validated",
       tone: "blocked",
-      blocker: "Rejected source payload",
+      label: "Rejected source payload",
     };
   }
 
   return {
-    id: "promoted",
-    label: "Promoted",
     tone: "clear",
-    blocker: "Ready for clinic status promotion",
+    label: "Ready for clinic status promotion",
   };
 }
 
@@ -184,7 +195,7 @@ function buildIngestionLedgerItem(
   clinicLabel?: string,
 ): DataIngestionLedgerItem {
   const trust = dataTrustForReport(report);
-  const issue = stageForReport(report);
+  const issue = classifyReportIssue(report);
   const sourceLabel = report.offlineCreated ? "Offline field report" : "Direct field report";
   const submittedLabel = formatDateTime(report.submittedAt);
   const receivedLabel = formatDateTime(report.receivedAt);
@@ -199,7 +210,7 @@ function buildIngestionLedgerItem(
     evidence: reportEvidence(report),
     submittedLabel,
     receivedLabel,
-    issueLabel: issue.blocker,
+    issueLabel: issue.label,
     issueTone: issue.tone,
     reviewLabel,
     reviewTone: toneForAttention(report.reviewState === "pending" ? 1 : 0),
@@ -216,7 +227,7 @@ function buildIngestionLedgerItem(
     ],
     payloadChecks: [
       `One-clinic context: ${clinicLabel ?? report.clinicId}`,
-      `Source review: ${issue.blocker}`,
+      `Source review: ${issue.label}`,
       `Trust result: ${trust.label}`,
     ],
   };
@@ -233,7 +244,7 @@ function buildClinicBacklogLedgerItem(row: ClinicDetailApiResponse): DataIngesti
   const reporterLabel = "Clinic status evidence";
   const issueLabel = freshness === "stale" ? "Freshness risk" : "Needs confirmation";
   const actionLabel = freshness === "stale" ? "Refresh clinic status" : "Confirm status evidence";
-  const evidence = "Clinic current-status evidence needs ingestion follow-up before promotion.";
+  const evidence = "Clinic current status evidence needs ingestion follow-up before promotion.";
 
   return {
     id: `clinic-backlog-${row.clinic.id}`,
