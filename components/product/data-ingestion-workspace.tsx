@@ -188,7 +188,7 @@ export function DataIngestionWorkspace({
                   Primary ledger
                 </p>
                 <h3 className="text-lg font-semibold tracking-[-0.02em] text-foreground">
-                  Pending report evidence
+                  Ingestion evidence events
                 </h3>
               </div>
               <p className="max-w-xl text-sm text-muted-foreground">

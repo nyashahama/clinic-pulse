@@ -220,6 +220,51 @@ function buildIngestionLedgerItem(
   };
 }
 
+function buildClinicBacklogLedgerItem(row: ClinicDetailApiResponse): DataIngestionLedgerItem {
+  const currentStatus = row.currentStatus;
+  const trust = dataTrustForClinic(row);
+  const freshness = currentStatus?.freshness ?? "unknown";
+  const freshnessLabel = formatLabel(freshness);
+  const submittedLabel = formatDateTime(currentStatus?.lastReportedAt ?? currentStatus?.updatedAt);
+  const receivedLabel = formatDateTime(currentStatus?.updatedAt ?? currentStatus?.lastReportedAt);
+  const sourceLabel = currentStatus?.source ? formatLabel(currentStatus.source) : "Current Status";
+  const reporterLabel = "Clinic status evidence";
+  const issueLabel = freshness === "stale" ? "Freshness risk" : "Needs confirmation";
+  const actionLabel = freshness === "stale" ? "Refresh clinic status" : "Confirm status evidence";
+  const evidence = "Clinic current-status evidence needs ingestion follow-up before promotion.";
+
+  return {
+    id: `clinic-backlog-${row.clinic.id}`,
+    clinicId: row.clinic.id,
+    clinicLabel: row.clinic.name,
+    reporterLabel,
+    sourceLabel,
+    evidence,
+    submittedLabel,
+    receivedLabel,
+    issueLabel,
+    issueTone: "attention",
+    reviewLabel: freshnessLabel,
+    reviewTone: "attention",
+    trustLabel: trust.label,
+    trustTone: trust.tone,
+    trustDescription: trust.description,
+    actionLabel,
+    clinicHref: buildClinicDetailHref(row.clinic.id),
+    receiptTrail: [
+      `Loaded from ${sourceLabel}`,
+      `Last reported ${submittedLabel}`,
+      `Ledger updated ${receivedLabel}`,
+      `Freshness state is ${freshnessLabel}`,
+    ],
+    payloadChecks: [
+      `One-clinic context: ${row.clinic.name}`,
+      `Freshness review: ${freshnessLabel}`,
+      `Trust result: ${trust.label}`,
+    ],
+  };
+}
+
 export default async function Page() {
   await requireDemoWorkflowAccess("admin");
 
@@ -239,9 +284,14 @@ export default async function Page() {
   });
   const clinicsNeedingReview = clinics.filter(clinicNeedsIngestionReview);
   const clinicNameById = new Map(clinics.map((row) => [row.clinic.id, row.clinic.name]));
-  const ingestionItems = pendingReports.map((report) =>
+  const pendingReportClinicIds = new Set(pendingReports.map((report) => report.clinicId));
+  const ingestionReportItems = pendingReports.map((report) =>
     buildIngestionLedgerItem(report, clinicNameById.get(report.clinicId)),
   );
+  const ingestionBacklogItems = clinicsNeedingReview
+    .filter((row) => !pendingReportClinicIds.has(row.clinic.id))
+    .map(buildClinicBacklogLedgerItem);
+  const ingestionItems = [...ingestionReportItems, ...ingestionBacklogItems];
   const ingestionMetrics: DataIngestionSummaryMetric[] = [
     {
       id: "coverage-readiness",

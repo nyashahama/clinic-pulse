@@ -72,6 +72,7 @@ test("data ingestion clinic-backed rows open operational detail", async ({ page 
   await page.goto("/admin/data-ingestion");
 
   const pendingReportQueue = page.getByLabel("Pending report queue");
+  await expect(pendingReportQueue.getByText("Winterveldt West Clinic")).toBeVisible();
   const pendingReportRow = pendingReportQueue.getByRole("article", {
     name: /Ingestion event for clinic-atteridgeville-extension/i,
   });

@@ -218,6 +218,8 @@ it("links data-ingestion clinic and report rows to operational clinic detail", (
 
   expect(source).toContain("DataIngestionWorkspace");
   expect(source).toContain("ingestionMetrics");
+  expect(source).toContain("buildClinicBacklogLedgerItem");
+  expect(source).toContain("ingestionBacklogItems");
   expect(componentSource).toContain('aria-label="Pending report queue"');
   expect(componentSource).toContain('aria-label="Ingestion evidence workspace"');
   expect(componentSource).toContain("Ingestion evidence ledger");
