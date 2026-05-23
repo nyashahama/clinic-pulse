@@ -24,7 +24,7 @@ const roleScenarios: Array<{
     role: "district_manager",
     email: "district-manager@clinicpulse.local",
     home: "/district",
-    heading: "Unified severity queue",
+    heading: "Tshwane North District operating picture",
     sidebarLabels: [
       "Command Center",
       "Severity queue",
@@ -33,6 +33,7 @@ const roleScenarios: Array<{
       "Interventions",
     ],
     landmarks: [
+      "district-home",
       "severity-queue",
       "clinic-network",
       "clinic-evidence",
@@ -213,6 +214,42 @@ test.describe("phase 1 role dashboard navigation", () => {
       }
     });
   }
+
+  test("district manager home presents the full command page entry points", async ({
+    page,
+  }) => {
+    await signInAs(page, "district-manager@clinicpulse.local", "/district");
+
+    const districtHome = page.locator('[data-district-home="command-page"]');
+    const hero = districtHome.locator('section[aria-labelledby="district-home-title"]');
+
+    await expect(districtHome).toBeVisible();
+    await expect(hero.getByText("Primary district decision")).toBeVisible();
+    await expect(
+      hero.getByRole("heading", { name: "Mabopane Station Clinic" }),
+    ).toBeVisible();
+
+    const moduleCards = page.locator("[data-district-home-module]");
+    await expect(moduleCards).toHaveCount(4);
+    await expect(moduleCards).toContainText([
+      "Severity queue",
+      "Clinic network",
+      "Clinic evidence",
+      "Interventions",
+    ]);
+    await expect(
+      moduleCards.getByRole("link", { name: /Triage queue: Severity queue/i }),
+    ).toHaveAttribute("href", "/district/severity-queue");
+    await expect(
+      moduleCards.getByRole("link", { name: /Inspect capacity: Clinic network/i }),
+    ).toHaveAttribute("href", "/district/clinic-network");
+    await expect(
+      moduleCards.getByRole("link", { name: /Review evidence: Clinic evidence/i }),
+    ).toHaveAttribute("href", "/district/clinic-evidence");
+    await expect(
+      moduleCards.getByRole("link", { name: /Manage plans: Interventions/i }),
+    ).toHaveAttribute("href", "/district/interventions");
+  });
 
   test("district manager opens severity queue as a standalone module", async ({
     page,
