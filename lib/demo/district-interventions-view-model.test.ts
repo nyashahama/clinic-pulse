@@ -120,6 +120,31 @@ describe("buildDistrictInterventionsViewModel", () => {
     ).toBe(true);
   });
 
+  it("scopes stage lane counts to the other active filters", () => {
+    const state = createInitialDemoState();
+    const criticalPlans = buildDistrictInterventionsViewModel({
+      state,
+      filters: {
+        ...emptyFilters,
+        priority: "critical",
+      },
+      selectedPlanId: null,
+    });
+
+    const laneCounts = new Map(
+      criticalPlans.stageLanes.map((lane) => [lane.id, lane.count]),
+    );
+
+    for (const lane of criticalPlans.stageLanes) {
+      expect(lane.count).toBe(
+        criticalPlans.plans.filter((plan) => plan.stage === lane.id).length,
+      );
+    }
+    expect(Array.from(laneCounts.values()).reduce((total, count) => total + count, 0)).toBe(
+      criticalPlans.plans.length,
+    );
+  });
+
   it("selects a requested plan and falls back when shared filters make it stale", () => {
     const state = createInitialDemoState();
     const allPlans = buildDistrictInterventionsViewModel({
@@ -148,6 +173,31 @@ describe("buildDistrictInterventionsViewModel", () => {
     expect(selected.selectedPlan?.planId).toBe(secondPlan.planId);
     expect(staleSelection.selectedPlan).toBeNull();
     expect(staleSelection.emptyState.title).toBe("No intervention plans match these filters");
+  });
+
+  it("exposes navigation through the filtered intervention plans", () => {
+    const state = createInitialDemoState();
+    const allPlans = buildDistrictInterventionsViewModel({
+      state,
+      filters: emptyFilters,
+      selectedPlanId: null,
+    });
+    const secondPlan = allPlans.plans[1];
+
+    expect(secondPlan).toBeDefined();
+
+    const selected = buildDistrictInterventionsViewModel({
+      state,
+      filters: emptyFilters,
+      selectedPlanId: secondPlan.planId,
+    });
+
+    expect(selected.selectedPlan?.navigation).toEqual({
+      nextPlanId: allPlans.plans[2]?.planId ?? null,
+      position: 2,
+      previousPlanId: allPlans.plans[0]?.planId ?? null,
+      total: allPlans.plans.length,
+    });
   });
 
   it("returns a calm empty state when no clinic signal is loaded", () => {

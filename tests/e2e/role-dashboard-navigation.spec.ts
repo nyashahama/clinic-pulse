@@ -522,6 +522,15 @@ test.describe("phase 1 role dashboard navigation", () => {
     await expect(page.getByRole("tab", { name: "Proof" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Timeline" })).toBeVisible();
     await expect(page.getByText("Owner / proof")).toBeVisible();
+
+    const selectedPlan = page.locator("[data-district-interventions-selected-plan]");
+    await expect(selectedPlan).toContainText(/Plan 1 of \d+/);
+    await selectedPlan.getByRole("button", { name: "Next intervention plan" }).click();
+    await expect.poll(() => new URL(page.url()).searchParams.get("plan")).toMatch(
+      /^intervention-/,
+    );
+    await expect(selectedPlan).toContainText(/Plan 2 of \d+/);
+
     await page.getByRole("button", { name: "Stage plan" }).click();
     await expect(page.getByText("Plan staged")).toBeVisible();
 
@@ -563,11 +572,25 @@ test.describe("phase 1 role dashboard navigation", () => {
     const selectedBox = await selectedPlan.boundingBox();
     const metricsBox = await metrics.boundingBox();
     const ledgerBox = await ledger.boundingBox();
+    const selectedPrecedesMetricsInDom = await page.evaluate(() => {
+      const selected = document.querySelector(
+        "[data-district-interventions-selected-plan]",
+      );
+      const metricsElement = document.querySelector("[data-district-interventions-metrics]");
+
+      return Boolean(
+        selected &&
+          metricsElement &&
+          selected.compareDocumentPosition(metricsElement) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+    });
 
     expect(selectedBox?.y).toBeLessThan(280);
     expect(selectedBox?.height).toBeLessThan(940);
     expect(selectedBox?.y).toBeLessThan(metricsBox?.y ?? Number.POSITIVE_INFINITY);
     expect(selectedBox?.y).toBeLessThan(ledgerBox?.y ?? Number.POSITIVE_INFINITY);
+    expect(selectedPrecedesMetricsInDom).toBe(true);
     await expect(page.getByRole("tab", { name: "Decision" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Route" })).toBeVisible();
   });

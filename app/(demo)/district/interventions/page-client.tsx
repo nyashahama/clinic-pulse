@@ -193,6 +193,15 @@ export default function DistrictInterventionsPageClient() {
         className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,0.43fr)]"
         data-district-interventions-layout="plan-first"
       >
+        <div className="order-1 min-w-0 xl:order-2" ref={selectedPlanRef}>
+          <div className="xl:sticky xl:top-4">
+            <InterventionsSelectedPlan
+              selectedPlan={viewModel.selectedPlan}
+              onSelectPlan={selectPlan}
+            />
+          </div>
+        </div>
+
         <div className="order-2 grid min-w-0 gap-4 xl:order-1">
           <InterventionsMetricStrip metrics={viewModel.metrics} />
           <InterventionsFilterToolbar
@@ -219,10 +228,6 @@ export default function DistrictInterventionsPageClient() {
               description={viewModel.emptyState.description}
             />
           )}
-        </div>
-
-        <div className="order-1 min-w-0 xl:order-2" ref={selectedPlanRef}>
-          <InterventionsSelectedPlan selectedPlan={viewModel.selectedPlan} />
         </div>
       </div>
     </div>

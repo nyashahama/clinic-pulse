@@ -5,6 +5,8 @@ import { useState, type ReactNode } from "react";
 import {
   ActivityIcon,
   ArrowRightIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   CheckCircle2Icon,
   ClipboardCheckIcon,
   FilterIcon,
@@ -529,8 +531,10 @@ export function InterventionsLedger({
 }
 
 export function InterventionsSelectedPlan({
+  onSelectPlan,
   selectedPlan,
 }: {
+  onSelectPlan: (planId: string) => void;
   selectedPlan: DistrictInterventionsViewModel["selectedPlan"];
 }) {
   const [activeTabState, setActiveTabState] = useState<{
@@ -617,6 +621,44 @@ export function InterventionsSelectedPlan({
               </Button>
             ),
           )}
+        </div>
+
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+          <Button
+            aria-label="Previous intervention plan"
+            className="h-8 justify-start gap-1.5 px-2 text-xs"
+            disabled={!selectedPlan.navigation.previousPlanId}
+            onClick={() => {
+              if (selectedPlan.navigation.previousPlanId) {
+                onSelectPlan(selectedPlan.navigation.previousPlanId);
+              }
+            }}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <ChevronLeftIcon className="size-3.5" />
+            Previous
+          </Button>
+          <span className="inline-flex h-8 min-w-0 items-center justify-center rounded-md border border-border-subtle bg-bg-muted px-2 text-xs font-medium text-muted-foreground">
+            Plan {selectedPlan.navigation.position} of {selectedPlan.navigation.total}
+          </span>
+          <Button
+            aria-label="Next intervention plan"
+            className="h-8 justify-end gap-1.5 px-2 text-xs"
+            disabled={!selectedPlan.navigation.nextPlanId}
+            onClick={() => {
+              if (selectedPlan.navigation.nextPlanId) {
+                onSelectPlan(selectedPlan.navigation.nextPlanId);
+              }
+            }}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            Next
+            <ChevronRightIcon className="size-3.5" />
+          </Button>
         </div>
 
         {stagedPlanId === selectedPlan.planId ? (

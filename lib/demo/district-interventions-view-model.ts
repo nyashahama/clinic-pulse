@@ -127,6 +127,12 @@ export type DistrictInterventionSelectedPlan = DistrictInterventionPlan & {
     detail: string;
     tone: DistrictInterventionsTone;
   }>;
+  navigation: {
+    nextPlanId: string | null;
+    position: number;
+    previousPlanId: string | null;
+    total: number;
+  };
   tabs: Array<{
     id: "decision" | "route" | "proof" | "timeline";
     label: string;
@@ -432,6 +438,7 @@ function buildSelectedPlan(
   alerts: Alert[],
   reports: ReportStreamItem[],
   auditEvents: AuditEvent[],
+  navigation: DistrictInterventionSelectedPlan["navigation"],
 ): DistrictInterventionSelectedPlan {
   return {
     ...plan,
@@ -456,6 +463,7 @@ function buildSelectedPlan(
         tone: plan.proofTone,
       },
     ],
+    navigation,
     tabs: [
       { id: "decision", label: "Decision" },
       { id: "route", label: "Route" },
@@ -494,6 +502,17 @@ function planMatchesFilters(
 ) {
   return (
     (filters.lens === "all" || plan.stage === filters.lens) &&
+    (filters.priority === "all" || plan.priority === filters.priority) &&
+    (filters.service === "all" || plan.services.includes(filters.service)) &&
+    planMatchesQuery(plan, filters.query)
+  );
+}
+
+function planMatchesStageLaneScope(
+  plan: DistrictInterventionPlan,
+  filters: DistrictInterventionsFilters,
+) {
+  return (
     (filters.priority === "all" || plan.priority === filters.priority) &&
     (filters.service === "all" || plan.services.includes(filters.service)) &&
     planMatchesQuery(plan, filters.query)
@@ -645,15 +664,27 @@ export function buildDistrictInterventionsViewModel({
       };
     })
     .filter((plan): plan is DistrictInterventionPlan => plan !== null);
+  const stageLanePlans = allPlans.filter((plan) =>
+    planMatchesStageLaneScope(plan, filters),
+  );
   const plans = allPlans.filter((plan) => planMatchesFilters(plan, filters));
   const selectedBase =
     plans.find((plan) => plan.planId === selectedPlanId) ?? plans[0] ?? null;
+  const selectedIndex = selectedBase
+    ? plans.findIndex((plan) => plan.planId === selectedBase.planId)
+    : -1;
   const selectedPlan = selectedBase
     ? buildSelectedPlan(
         selectedBase,
         alerts,
         reports,
         getClinicAuditEvents(state, selectedBase.clinicId),
+        {
+          nextPlanId: plans[selectedIndex + 1]?.planId ?? null,
+          position: selectedIndex + 1,
+          previousPlanId: plans[selectedIndex - 1]?.planId ?? null,
+          total: plans.length,
+        },
       )
     : null;
 
@@ -673,7 +704,7 @@ export function buildDistrictInterventionsViewModel({
       },
     },
     metrics: buildMetrics(allPlans),
-    stageLanes: buildStageLanes(allPlans),
+    stageLanes: buildStageLanes(stageLanePlans),
     plans,
     selectedPlan,
     filterOptions: {
