@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useState, type KeyboardEvent, type ReactNode } from "react";
 import {
   ActivityIcon,
   ArrowRightIcon,
@@ -35,6 +35,7 @@ import {
 import { Input } from "@/components/ui/input";
 import type {
   DistrictInterventionPlan,
+  DistrictInterventionSelectedPlan,
   DistrictInterventionsFilters,
   DistrictInterventionsLens,
   DistrictInterventionsMetric,
@@ -48,6 +49,7 @@ type FilterOption = {
   label: string;
   value: string;
 };
+type InterventionPlanTabId = DistrictInterventionSelectedPlan["tabs"][number]["id"];
 
 const stageOptions = [
   { label: "All stages", value: "all" },
@@ -539,7 +541,7 @@ export function InterventionsSelectedPlan({
 }) {
   const [activeTabState, setActiveTabState] = useState<{
     planId: string | null;
-    tab: "decision" | "route" | "proof" | "timeline";
+    tab: InterventionPlanTabId;
   }>({ planId: null, tab: "decision" });
   const [stagedPlanId, setStagedPlanId] = useState<string | null>(null);
 
@@ -565,6 +567,54 @@ export function InterventionsSelectedPlan({
       : selectedPlan.priority === "stable"
         ? "clear"
         : "attention";
+  const tabIds = selectedPlan.tabs.map((tab) => tab.id);
+  const selectTab = (tab: InterventionPlanTabId) => {
+    setActiveTabState({ planId: selectedPlan.planId, tab });
+  };
+  const focusTab = (tab: InterventionPlanTabId) => {
+    window.requestAnimationFrame(() => {
+      document.getElementById(`intervention-${selectedPlan.planId}-${tab}-tab`)?.focus();
+    });
+  };
+  const handleTabKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    tab: InterventionPlanTabId,
+  ) => {
+    const currentIndex = tabIds.indexOf(tab);
+    const lastIndex = tabIds.length - 1;
+    let nextIndex: number | null = null;
+
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      nextIndex = currentIndex === lastIndex ? 0 : currentIndex + 1;
+    }
+
+    if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      nextIndex = currentIndex <= 0 ? lastIndex : currentIndex - 1;
+    }
+
+    if (event.key === "Home") {
+      nextIndex = 0;
+    }
+
+    if (event.key === "End") {
+      nextIndex = lastIndex;
+    }
+
+    if (nextIndex === null) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const nextTab = tabIds[nextIndex];
+
+    if (!nextTab) {
+      return;
+    }
+
+    selectTab(nextTab);
+    focusTab(nextTab);
+  };
 
   return (
     <section
@@ -680,7 +730,8 @@ export function InterventionsSelectedPlan({
               aria-selected={activeTab === tab.id}
               aria-controls={`intervention-${selectedPlan.planId}-${tab.id}`}
               id={`intervention-${selectedPlan.planId}-${tab.id}-tab`}
-              onClick={() => setActiveTabState({ planId: selectedPlan.planId, tab: tab.id })}
+              onClick={() => selectTab(tab.id)}
+              onKeyDown={(event) => handleTabKeyDown(event, tab.id)}
               className={cn(
                 "min-h-8 rounded-md px-2 text-xs font-medium text-muted-foreground transition hover:bg-bg-default hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 activeTab === tab.id && "bg-bg-default text-foreground shadow-sm",

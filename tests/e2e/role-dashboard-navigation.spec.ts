@@ -524,6 +524,14 @@ test.describe("phase 1 role dashboard navigation", () => {
     await expect(page.getByText("Owner / proof")).toBeVisible();
 
     const selectedPlan = page.locator("[data-district-interventions-selected-plan]");
+    await expect(selectedPlan).not.toContainText("/district/clinic-evidence");
+    await selectedPlan.getByRole("tab", { name: "Decision", exact: true }).focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(
+      selectedPlan.getByRole("tab", { name: "Route", exact: true }),
+    ).toHaveAttribute("aria-selected", "true");
+    await expect(selectedPlan.getByText(/Stabilise .* document the next owner/i)).toBeVisible();
+
     await expect(selectedPlan).toContainText(/Plan 1 of \d+/);
     await selectedPlan.getByRole("button", { name: "Next intervention plan" }).click();
     await expect.poll(() => new URL(page.url()).searchParams.get("plan")).toMatch(

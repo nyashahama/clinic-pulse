@@ -459,7 +459,7 @@ function buildSelectedPlan(
       {
         label: "Proof",
         value: plan.proofStatus,
-        detail: plan.evidenceHref,
+        detail: "Review linked clinic evidence before closing or changing this plan.",
         tone: plan.proofTone,
       },
     ],

@@ -200,6 +200,22 @@ describe("buildDistrictInterventionsViewModel", () => {
     });
   });
 
+  it("keeps decision summary copy operator-readable instead of exposing route URLs", () => {
+    const state = createInitialDemoState();
+    const viewModel = buildDistrictInterventionsViewModel({
+      state,
+      filters: emptyFilters,
+      selectedPlanId: null,
+    });
+    const proofSummary = viewModel.selectedPlan?.decisionSummary.find(
+      (item) => item.label === "Proof",
+    );
+
+    expect(proofSummary).toBeDefined();
+    expect(proofSummary?.detail).not.toContain("/district/");
+    expect(proofSummary?.detail).toMatch(/evidence/i);
+  });
+
   it("returns a calm empty state when no clinic signal is loaded", () => {
     const state = {
       ...createInitialDemoState(),
