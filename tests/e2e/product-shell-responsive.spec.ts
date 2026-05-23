@@ -63,6 +63,10 @@ test.describe("product shell responsive behavior", () => {
 
     await page.goto("/district");
     await expect(page).toHaveURL(/\/district$/);
-    await expect(page.getByRole("heading", { name: "Unified severity queue" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Tshwane North District operating picture" }),
+    ).toBeVisible();
+    await expect(page.locator('[data-district-home="command-page"]')).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Unified severity queue" })).toBeHidden();
   });
 });
