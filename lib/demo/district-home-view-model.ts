@@ -187,14 +187,9 @@ export function buildDistrictHomeViewModel({
   });
   const selectedItem = commandCenter.selectedItem;
   const selectedTone = toneForSeverity(selectedItem?.severityLabel ?? null);
-  const routingMoves =
-    Number(
-      interventions.metrics.find((metric) => metric.id === "routing_moves")?.value ?? 0,
-    ) || 0;
-  const activePlanCount =
-    Number(interventions.metrics.find((metric) => metric.id === "active_plans")?.value ?? 0) ||
-    interventions.plans.length;
-  const evidenceDueCount = Number(evidence.header.readiness.value) || 0;
+  const routingMoves = interventions.plans.filter((plan) => plan.stage === "routing").length;
+  const activePlanCount = interventions.plans.filter((plan) => plan.stage !== "monitoring").length;
+  const evidenceDueCount = evidence.rows.filter((row) => row.tone === "blocked").length;
   const alertCount = commandCenter.analytics.activeAlertCount;
   const districtLabel =
     session.district ?? session.organisationName ?? commandCenter.brief.districtLabel;

@@ -89,6 +89,8 @@ describe("buildDistrictHomeViewModel", () => {
         href: "/district/interventions",
         title: "Interventions",
         actionLabel: "Manage plans",
+        label: "Active plans",
+        value: "5",
       }),
     );
 

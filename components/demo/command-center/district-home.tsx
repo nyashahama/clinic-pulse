@@ -86,24 +86,24 @@ export function DistrictHome({ children, viewModel }: DistrictHomeProps) {
     >
       <section
         aria-labelledby="district-home-title"
-        className="grid min-w-0 gap-4 rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm lg:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.95fr)] lg:items-start"
+        className="grid min-w-0 gap-4"
       >
-        <div className="grid min-w-0 content-start gap-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                {viewModel.hero.eyebrow}
-              </p>
-              <h1
-                className="mt-1 text-2xl font-semibold tracking-normal text-foreground sm:text-3xl"
-                id="district-home-title"
-              >
-                {viewModel.hero.title}
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                {viewModel.hero.description}
-              </p>
-            </div>
+        <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+              {viewModel.hero.eyebrow}
+            </p>
+            <h1
+              className="mt-1 max-w-3xl text-2xl font-semibold tracking-normal text-foreground sm:text-3xl"
+              id="district-home-title"
+            >
+              {viewModel.hero.title}
+            </h1>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+              {viewModel.hero.description}
+            </p>
+          </div>
+          <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
             <Link
               className={buttonVariants({
                 className: "w-full md:w-auto",
@@ -114,15 +114,54 @@ export function DistrictHome({ children, viewModel }: DistrictHomeProps) {
               <ActivityIcon data-icon="inline-start" />
               {viewModel.hero.primaryAction.label}
             </Link>
+            <Link
+              className={buttonVariants({
+                className: "w-full border-border-subtle bg-bg-default shadow-sm md:w-auto",
+                size: "lg",
+                variant: "outline",
+              })}
+              href={viewModel.hero.secondaryAction.href}
+            >
+              <FileSearchIcon data-icon="inline-start" />
+              {viewModel.hero.secondaryAction.label}
+            </Link>
           </div>
+        </div>
 
-          <div
-            className={cn(
-              "grid gap-3 border-l-4 bg-bg-muted/50 p-3",
-              decisionTone.border,
-              decisionTone.rail,
-            )}
-          >
+        <div className="order-3 grid grid-cols-2 gap-2 lg:order-none lg:grid-cols-4">
+          {viewModel.hero.signals.map((signal) => {
+            const tone = toneClasses(signal.tone);
+
+            return (
+              <div
+                className={cn(
+                  "min-w-0 rounded-lg border bg-bg-default p-3 shadow-sm",
+                  tone.border,
+                )}
+                key={signal.label}
+              >
+                <p className="truncate text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                  {signal.label}
+                </p>
+                <p className="mt-2 text-2xl font-semibold text-foreground">
+                  {signal.value}
+                </p>
+                <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                  {signal.detail}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        <article
+          className={cn(
+            "order-1 grid gap-3 border-l-4 bg-bg-muted/50 p-3 lg:order-none lg:grid-cols-[minmax(0,1fr)_minmax(16rem,0.42fr)] lg:items-end",
+            decisionTone.border,
+            decisionTone.rail,
+          )}
+        >
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
                 Primary district decision
@@ -136,115 +175,88 @@ export function DistrictHome({ children, viewModel }: DistrictHomeProps) {
                 {viewModel.hero.primaryDecision.label} {viewModel.hero.primaryDecision.score}
               </span>
             </div>
-            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(13rem,0.6fr)] md:items-end">
-              <div className="min-w-0">
-                <h2 className="text-xl font-semibold tracking-normal text-foreground">
-                  {viewModel.hero.primaryDecision.clinicName}
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-content-default">
-                  {viewModel.hero.primaryDecision.action}
-                </p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  {viewModel.hero.primaryDecision.impact}
-                </p>
-              </div>
-              <div className="rounded-lg border border-border-subtle bg-bg-default p-3">
-                <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                  <ShieldCheckIcon className="size-4" />
-                  Verify before action
-                </p>
-                <p className="mt-2 text-sm leading-5 text-foreground">
-                  {viewModel.hero.primaryDecision.verification}
-                </p>
-              </div>
+            <h2 className="mt-3 text-xl font-semibold tracking-normal text-foreground">
+              {viewModel.hero.primaryDecision.clinicName}
+            </h2>
+            <div className="mt-2 grid gap-3 text-sm leading-6 md:grid-cols-2">
+              <p className="text-content-default">
+                {viewModel.hero.primaryDecision.action}
+              </p>
+              <p className="text-muted-foreground">
+                {viewModel.hero.primaryDecision.impact}
+              </p>
             </div>
           </div>
+          <div className="rounded-lg border border-border-subtle bg-bg-default p-3">
+            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+              <ShieldCheckIcon className="size-4" />
+              Verify before action
+            </p>
+            <p className="mt-2 text-sm leading-5 text-foreground">
+              {viewModel.hero.primaryDecision.verification}
+            </p>
+          </div>
+        </article>
 
-          <p className="rounded-lg border border-border-subtle bg-bg-muted/60 p-3 text-xs leading-5 text-muted-foreground">
-            Pilot safety: confirm stale or pending data before operational decisions.{" "}
-            <Link href="/legal/safety" className="font-medium text-foreground underline">
-              Read safety notes
-            </Link>
-            .
-          </p>
-        </div>
+        <div
+          className="order-2 grid grid-cols-2 gap-2 lg:order-none lg:grid-cols-4"
+          id="district-modules"
+        >
+          {viewModel.moduleCards.map((card) => {
+            const tone = toneClasses(card.tone);
 
-        <div className="grid min-w-0 content-start gap-3">
-          <div className="order-2 grid grid-cols-2 gap-2 lg:order-1">
-            {viewModel.hero.signals.map((signal) => {
-              const tone = toneClasses(signal.tone);
-
-              return (
-                <div
-                  className={cn(
-                    "min-w-0 rounded-lg border bg-bg-muted/45 p-3",
-                    tone.border,
-                  )}
-                  key={signal.label}
-                >
-                  <p className="truncate text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                    {signal.label}
+            return (
+              <article
+                className={cn(
+                  "grid min-h-[10.5rem] min-w-0 content-between gap-3 rounded-lg border bg-bg-default p-3 shadow-sm",
+                  tone.border,
+                )}
+                data-district-home-module={card.id}
+                key={card.id}
+              >
+                <div className="min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className={cn("rounded-md border p-1.5", tone.chip)}>
+                      {moduleIcons[card.id]}
+                    </span>
+                    <span className="text-2xl font-semibold leading-none text-foreground">
+                      {card.value}
+                    </span>
+                  </div>
+                  <h3 className="mt-3 text-sm font-semibold text-foreground">
+                    {card.title}
+                  </h3>
+                  <p className="mt-1 text-xs font-medium text-muted-foreground">
+                    {card.label}
                   </p>
-                  <p className="mt-2 text-2xl font-semibold text-foreground">
-                    {signal.value}
-                  </p>
-                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
-                    {signal.detail}
+                  <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                    {card.detail}
                   </p>
                 </div>
-              );
-            })}
-          </div>
-
-          <div className="order-1 grid grid-cols-2 gap-2 lg:order-2" id="district-modules">
-            {viewModel.moduleCards.map((card) => {
-              const tone = toneClasses(card.tone);
-
-              return (
-                <article
-                  className={cn(
-                    "grid min-h-[10.5rem] min-w-0 content-between gap-3 rounded-lg border bg-bg-default p-3 shadow-sm",
-                    tone.border,
-                  )}
-                  data-district-home-module={card.id}
-                  key={card.id}
+                <Link
+                  aria-label={moduleAriaLabel(card)}
+                  className={buttonVariants({
+                    className: "w-full justify-between",
+                    size: "sm",
+                    variant: card.id === "severity" ? "default" : "outline",
+                  })}
+                  href={card.href}
                 >
-                  <div className="min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <span className={cn("rounded-md border p-1.5", tone.chip)}>
-                        {moduleIcons[card.id]}
-                      </span>
-                      <span className="text-2xl font-semibold leading-none text-foreground">
-                        {card.value}
-                      </span>
-                    </div>
-                    <h3 className="mt-3 text-sm font-semibold text-foreground">
-                      {card.title}
-                    </h3>
-                    <p className="mt-1 text-xs font-medium text-muted-foreground">
-                      {card.label}
-                    </p>
-                    <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
-                      {card.detail}
-                    </p>
-                  </div>
-                  <Link
-                    aria-label={moduleAriaLabel(card)}
-                    className={buttonVariants({
-                      className: "w-full justify-between",
-                      size: "sm",
-                      variant: card.id === "severity" ? "default" : "outline",
-                    })}
-                    href={card.href}
-                  >
-                    {card.actionLabel}
-                    <ArrowRightIcon data-icon="inline-end" />
-                  </Link>
-                </article>
-              );
-            })}
-          </div>
+                  {card.actionLabel}
+                  <ArrowRightIcon data-icon="inline-end" />
+                </Link>
+              </article>
+            );
+          })}
         </div>
+
+        <p className="order-4 rounded-lg border border-border-subtle bg-bg-muted/60 p-3 text-xs leading-5 text-muted-foreground lg:order-none">
+          Pilot safety: confirm stale or pending data before operational decisions.{" "}
+          <Link href="/legal/safety" className="font-medium text-foreground underline">
+            Read safety notes
+          </Link>
+          .
+        </p>
       </section>
 
       <section
