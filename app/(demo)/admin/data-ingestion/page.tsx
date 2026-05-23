@@ -106,7 +106,9 @@ function dataTrustForClinic(clinic: ClinicDetailApiResponse) {
   return buildDataTrustState({
     source: clinic.currentStatus?.source?.toLowerCase().includes("reconciliation")
       ? "system_reconciliation"
-      : "seeded_demo",
+      : clinic.currentStatus
+        ? "field_report"
+        : "seeded_demo",
     freshness: dataFreshnessForClinic(clinic),
     reviewState: clinic.currentStatus ? "not_required" : "unknown",
     lastVerifiedAt: clinic.currentStatus?.lastReportedAt ?? clinic.currentStatus?.updatedAt,
@@ -183,7 +185,7 @@ function buildIngestionLedgerItem(
 ): DataIngestionLedgerItem {
   const trust = dataTrustForReport(report);
   const issue = stageForReport(report);
-  const sourceLabel = report.offlineCreated ? "Offline field report" : formatLabel(report.source);
+  const sourceLabel = report.offlineCreated ? "Offline field report" : "Direct field report";
   const submittedLabel = formatDateTime(report.submittedAt);
   const receivedLabel = formatDateTime(report.receivedAt);
   const reviewLabel = formatLabel(report.reviewState);
@@ -227,7 +229,7 @@ function buildClinicBacklogLedgerItem(row: ClinicDetailApiResponse): DataIngesti
   const freshnessLabel = formatLabel(freshness);
   const submittedLabel = formatDateTime(currentStatus?.lastReportedAt ?? currentStatus?.updatedAt);
   const receivedLabel = formatDateTime(currentStatus?.updatedAt ?? currentStatus?.lastReportedAt);
-  const sourceLabel = currentStatus?.source ? formatLabel(currentStatus.source) : "Current Status";
+  const sourceLabel = "Clinic current status";
   const reporterLabel = "Clinic status evidence";
   const issueLabel = freshness === "stale" ? "Freshness risk" : "Needs confirmation";
   const actionLabel = freshness === "stale" ? "Refresh clinic status" : "Confirm status evidence";

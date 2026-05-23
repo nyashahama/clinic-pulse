@@ -350,8 +350,11 @@ test.describe("phase 1 role dashboard navigation", () => {
     await signInAs(page, "district-manager@clinicpulse.local", "/district");
     await page.goto("/district/clinic-network");
 
-    const commandSurface = page.locator("[data-district-clinic-network-command-surface]");
-    const metrics = page.locator("[data-district-clinic-network-metrics]");
+    const commandSurface = page
+      .locator("[data-district-clinic-network-command-surface]")
+      .filter({ visible: true })
+      .first();
+    const metrics = page.locator("[data-district-clinic-network-metrics]").filter({ visible: true }).first();
 
     await expect(commandSurface).toBeVisible();
     await expect(metrics).toBeVisible();
