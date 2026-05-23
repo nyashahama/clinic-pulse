@@ -8,6 +8,7 @@ import { AlertList } from "@/components/demo/alert-list";
 import { ClinicMap } from "@/components/demo/clinic-map";
 import { ClinicTable } from "@/components/demo/clinic-table";
 import { DistrictCommandBrief } from "@/components/demo/command-center/district-command-brief";
+import { DistrictHome } from "@/components/demo/command-center/district-home";
 import { InterventionRail } from "@/components/demo/command-center/intervention-rail";
 import { SeverityQueue } from "@/components/demo/command-center/severity-queue";
 import { SignalAnalytics } from "@/components/demo/command-center/signal-analytics";
@@ -31,6 +32,7 @@ import {
   buildDistrictCommandCenter,
   type DistrictCommandClinicInput,
 } from "@/lib/demo/district-command-center";
+import { buildDistrictHomeViewModel } from "@/lib/demo/district-home-view-model";
 import {
   INCIDENT_REPLAY_SOURCE_CLINIC_ID,
   buildIncidentReplayWebhookPreview,
@@ -148,6 +150,7 @@ export default function DistrictConsolePage({
 }: DistrictConsolePageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const isDistrictWorkspace = consoleHref === "/district";
   const {
     state,
     resetDemo,
@@ -301,6 +304,16 @@ export default function DistrictConsolePage({
       state.lastSyncAt,
       state.offlineQueue.length,
     ],
+  );
+  const districtHomeViewModel = useMemo(
+    () =>
+      buildDistrictHomeViewModel({
+        pendingEvidenceReportCount: pendingReports?.length ?? 0,
+        session,
+        state,
+        syncSummary,
+      }),
+    [pendingReports?.length, session, state, syncSummary],
   );
 
   useEffect(() => {
@@ -555,75 +568,8 @@ export default function DistrictConsolePage({
     setRerouteClinicId(null);
   };
 
-  return (
-    <div className="grid min-w-0 gap-5 pb-6" data-role-dashboard={session.role}>
-      <ReferenceSectionCards
-        cards={[
-          {
-            title: "Severity queue",
-            value: String(commandCenter.queue.length),
-            badge: commandCenter.queue.length > 0 ? "Action" : "Stable",
-            trend: commandCenter.queue.length > 0 ? "down" : "neutral",
-            footer: "Clinics ranked by action urgency",
-            detail: "District users start with the queue before maps and reports.",
-          },
-          {
-            title: "Open alerts",
-            value: String(activeAlerts.length),
-            badge: activeAlerts.length > 0 ? "Review" : "Clear",
-            trend: activeAlerts.length > 0 ? "down" : "neutral",
-            footer: "Signals requiring district attention",
-            detail: "Alerts stay connected to clinic detail and intervention handoff.",
-          },
-          {
-            title: "Offline reports",
-            value: String(state.offlineQueue.length),
-            badge: state.offlineQueue.length > 0 ? "Sync" : "Ready",
-            trend: state.offlineQueue.length > 0 ? "down" : "neutral",
-            footer: "Field updates waiting to merge",
-            detail: "Offline queue pressure is visible before readiness evidence.",
-          },
-          {
-            title: "Clinics in scope",
-            value: String(clinicRows.length),
-            badge: "District",
-            trend: "up",
-            footer: "Command view is scoped to assigned facilities",
-            detail: "Map, queue, and table stay aligned to the same clinic set.",
-          },
-        ]}
-      />
-
-      <DistrictCommandBrief brief={commandCenter.brief} />
-
-      <div
-        id="severity-queue"
-        className="grid min-w-0 gap-5 2xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]"
-      >
-        <SeverityQueue
-          items={commandCenter.queue}
-          selectedClinicId={commandCenter.selectedItem?.clinicId ?? null}
-          onSelectClinic={selectCommandClinic}
-        />
-        <div id="interventions" className="min-w-0">
-          <InterventionRail
-            selectedItem={commandCenter.selectedItem}
-            intervention={commandCenter.intervention}
-            replayDisabled={replayNonIdle}
-            onOpenClinic={openClinicDetail}
-            onTriggerReroute={handleTriggerSelectedCommandReroute}
-            onSyncOfflineReports={handleSyncOfflineReports}
-            onStartIncidentReplay={startIncidentReplay}
-          />
-        </div>
-      </div>
-
-      <div id="clinic-network">
-        <SignalAnalytics analytics={commandCenter.analytics} />
-      </div>
-      <div id="verification-handoff">
-        <VerificationHandover handover={commandCenter.handover} />
-      </div>
+  const supportingOperations = (
+    <>
       {showReportReview && pendingReportSummary ? (
         <div
           id="report-review"
@@ -772,7 +718,7 @@ export default function DistrictConsolePage({
         />
 
         <div
-          id="clinic-evidence"
+          id={isDistrictWorkspace ? "field-signal-stream" : "clinic-evidence"}
           className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]"
         >
           <AlertList alerts={activeAlerts} clinics={clinicRows} onSelectClinic={openClinicDetail} />
@@ -793,6 +739,90 @@ export default function DistrictConsolePage({
           onSelectClinic={openClinicDetail}
         />
       </SupportingOperations>
+    </>
+  );
+
+  if (isDistrictWorkspace) {
+    return (
+      <DistrictHome viewModel={districtHomeViewModel}>
+        <div id="verification-handoff">
+          <VerificationHandover handover={commandCenter.handover} />
+        </div>
+        {supportingOperations}
+      </DistrictHome>
+    );
+  }
+
+  return (
+    <div className="grid min-w-0 gap-5 pb-6" data-role-dashboard={session.role}>
+      <ReferenceSectionCards
+        cards={[
+          {
+            title: "Severity queue",
+            value: String(commandCenter.queue.length),
+            badge: commandCenter.queue.length > 0 ? "Action" : "Stable",
+            trend: commandCenter.queue.length > 0 ? "down" : "neutral",
+            footer: "Clinics ranked by action urgency",
+            detail: "District users start with the queue before maps and reports.",
+          },
+          {
+            title: "Open alerts",
+            value: String(activeAlerts.length),
+            badge: activeAlerts.length > 0 ? "Review" : "Clear",
+            trend: activeAlerts.length > 0 ? "down" : "neutral",
+            footer: "Signals requiring district attention",
+            detail: "Alerts stay connected to clinic detail and intervention handoff.",
+          },
+          {
+            title: "Offline reports",
+            value: String(state.offlineQueue.length),
+            badge: state.offlineQueue.length > 0 ? "Sync" : "Ready",
+            trend: state.offlineQueue.length > 0 ? "down" : "neutral",
+            footer: "Field updates waiting to merge",
+            detail: "Offline queue pressure is visible before readiness evidence.",
+          },
+          {
+            title: "Clinics in scope",
+            value: String(clinicRows.length),
+            badge: "District",
+            trend: "up",
+            footer: "Command view is scoped to assigned facilities",
+            detail: "Map, queue, and table stay aligned to the same clinic set.",
+          },
+        ]}
+      />
+
+      <DistrictCommandBrief brief={commandCenter.brief} />
+
+      <div
+        id="severity-queue"
+        className="grid min-w-0 gap-5 2xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]"
+      >
+        <SeverityQueue
+          items={commandCenter.queue}
+          selectedClinicId={commandCenter.selectedItem?.clinicId ?? null}
+          onSelectClinic={selectCommandClinic}
+        />
+        <div id="interventions" className="min-w-0">
+          <InterventionRail
+            selectedItem={commandCenter.selectedItem}
+            intervention={commandCenter.intervention}
+            replayDisabled={replayNonIdle}
+            onOpenClinic={openClinicDetail}
+            onTriggerReroute={handleTriggerSelectedCommandReroute}
+            onSyncOfflineReports={handleSyncOfflineReports}
+            onStartIncidentReplay={startIncidentReplay}
+          />
+        </div>
+      </div>
+
+      <div id="clinic-network">
+        <SignalAnalytics analytics={commandCenter.analytics} />
+      </div>
+      <div id="verification-handoff">
+        <VerificationHandover handover={commandCenter.handover} />
+      </div>
+      {supportingOperations}
     </div>
   );
 }
