@@ -99,7 +99,6 @@ const hiddenStandaloneHrefs = [
   "/field/drafts-sync",
   "/field/recent-reports",
   "/field/sync-queue",
-  "/district/interventions",
   "/admin/exports",
 ];
 
@@ -490,6 +489,134 @@ test.describe("phase 1 role dashboard navigation", () => {
     expect(packetBox?.y).toBeLessThan(ledgerBox?.y ?? Number.POSITIVE_INFINITY);
     await expect(page.getByRole("tab", { name: "Decision" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Trace" })).toBeVisible();
+  });
+
+  test("district manager opens interventions as a standalone module", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop-chrome", "Desktop sidebar navigation regression");
+
+    await signInAs(page, "district-manager@clinicpulse.local", "/district");
+
+    const sidebar = await openDashboardSidebar(page);
+    const link = sidebar.getByRole("link", { name: "Interventions", exact: true });
+
+    await expect(link).toHaveAttribute("href", "/district/interventions");
+    await Promise.all([
+      page.waitForURL(/\/district\/interventions$/),
+      link.click(),
+    ]);
+
+    await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
+    await expect(page.locator('[data-district-module="interventions"]')).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Interventions" })).toBeVisible();
+    await expect(page.locator("[data-district-interventions-metrics]")).toBeVisible();
+    await expect(page.locator("[data-district-interventions-toolbar]")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Stage filter/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Priority filter/i })).toBeVisible();
+    await expect(page.getByRole("searchbox", { name: "Search intervention plans" })).toBeVisible();
+    await expect(page.getByLabel("Intervention plan ledger")).toBeVisible();
+    await expect(page.getByText("Selected intervention plan")).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Decision" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Route" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Proof" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Timeline" })).toBeVisible();
+    await expect(page.getByText("Owner / proof")).toBeVisible();
+
+    const selectedPlan = page.locator("[data-district-interventions-selected-plan]");
+    await expect(selectedPlan).not.toContainText("/district/clinic-evidence");
+    await expect(selectedPlan.getByRole("tab", { name: "Decision", exact: true })).toHaveAttribute(
+      "tabindex",
+      "0",
+    );
+    await expect(selectedPlan.getByRole("tab", { name: "Route", exact: true })).toHaveAttribute(
+      "tabindex",
+      "-1",
+    );
+    await selectedPlan.getByRole("tab", { name: "Decision", exact: true }).focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(
+      selectedPlan.getByRole("tab", { name: "Route", exact: true }),
+    ).toHaveAttribute("aria-selected", "true");
+    await expect(selectedPlan.getByRole("tab", { name: "Decision", exact: true })).toHaveAttribute(
+      "tabindex",
+      "-1",
+    );
+    await expect(selectedPlan.getByRole("tab", { name: "Route", exact: true })).toHaveAttribute(
+      "tabindex",
+      "0",
+    );
+    await expect(selectedPlan.getByText(/Stabilise .* document the next owner/i)).toBeVisible();
+
+    await expect(selectedPlan).toContainText(/Plan 1 of \d+/);
+    await selectedPlan.getByRole("button", { name: "Next intervention plan" }).click();
+    await expect.poll(() => new URL(page.url()).searchParams.get("plan")).toMatch(
+      /^intervention-/,
+    );
+    await expect(selectedPlan).toContainText(/Plan 2 of \d+/);
+
+    await page.getByRole("button", { name: "Stage plan" }).click();
+    await expect(page.getByText("Plan staged")).toBeVisible();
+
+    await page.getByRole("button", { name: /Stage filter: All stages/i }).click();
+    await page.getByRole("menuitemradio", { name: "Routing" }).click();
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("stage"))
+      .toBe("routing");
+    await expect(page.locator("[data-district-interventions-toolbar]")).toContainText(
+      "Routing",
+    );
+
+    await Promise.all([
+      page.waitForURL(/\/district\/clinic-evidence\?clinic=/),
+      page.getByRole("link", { name: "Review evidence" }).click(),
+    ]);
+    await expect(page.getByRole("heading", { name: "Clinic evidence" })).toBeVisible();
+  });
+
+  test("interventions is plan-first on mobile", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile-chrome", "Mobile interventions hierarchy");
+
+    await signInAs(page, "district-manager@clinicpulse.local", "/district");
+    await page.goto("/district/interventions");
+
+    const selectedPlan = page.locator(
+      "[data-district-interventions-selected-plan]:visible",
+    );
+    const metrics = page.locator("[data-district-interventions-metrics]:visible");
+    const ledger = page.locator('[aria-label="Intervention plan ledger"]:visible');
+
+    await expect(
+      page.locator('[data-district-interventions-layout="plan-first"]:visible'),
+    ).toBeVisible();
+    await expect(selectedPlan).toBeVisible();
+    await expect(metrics).toBeVisible();
+    await expect(ledger).toBeVisible();
+
+    const selectedBox = await selectedPlan.boundingBox();
+    const metricsBox = await metrics.boundingBox();
+    const ledgerBox = await ledger.boundingBox();
+    const selectedPrecedesMetricsInDom = await page.evaluate(() => {
+      const selected = document.querySelector(
+        "[data-district-interventions-selected-plan]",
+      );
+      const metricsElement = document.querySelector("[data-district-interventions-metrics]");
+
+      return Boolean(
+        selected &&
+          metricsElement &&
+          selected.compareDocumentPosition(metricsElement) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+    });
+
+    expect(selectedBox?.y).toBeLessThan(280);
+    expect(selectedBox?.height).toBeLessThan(940);
+    expect(selectedBox?.y).toBeLessThan(metricsBox?.y ?? Number.POSITIVE_INFINITY);
+    expect(selectedBox?.y).toBeLessThan(ledgerBox?.y ?? Number.POSITIVE_INFINITY);
+    expect(selectedPrecedesMetricsInDom).toBe(true);
+    await expect(page.getByRole("tab", { name: "Decision" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Route" })).toBeVisible();
   });
 
   test("district severity queue filters update queue state and URL", async ({
