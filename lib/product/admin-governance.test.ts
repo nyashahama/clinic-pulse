@@ -214,19 +214,41 @@ it("links reporting coverage clinic rows to operational clinic detail", () => {
 
 it("links data-ingestion clinic and report rows to operational clinic detail", () => {
   const source = readFileSync("app/(demo)/admin/data-ingestion/page.tsx", "utf8");
+  const componentSource = readFileSync("components/product/data-ingestion-workspace.tsx", "utf8");
 
-  expect(source).toContain(
-    "getRowAriaLabel={(row) => `Open pending report evidence for ${row.clinicId}`}",
+  expect(source).toContain("DataIngestionWorkspace");
+  expect(source).toContain("ingestionMetrics");
+  expect(source).toContain("buildClinicBacklogLedgerItem");
+  expect(source).toContain("ingestionBacklogItems");
+  expect(source).toContain("classifyReportIssue");
+  expect(source).toContain("trustSourceForClinicStatus");
+  expect(source).not.toContain("stageForReport");
+  expect(componentSource).toContain('aria-label="Ingestion evidence events"');
+  expect(componentSource).not.toContain('aria-label="Pending report queue"');
+  expect(componentSource).toContain('aria-label="Ingestion evidence workspace"');
+  expect(componentSource).toContain("Ingestion evidence ledger");
+  expect(componentSource).toContain("Evidence inspector");
+  expect(componentSource).toContain("Receipt and payload checks");
+  expect(componentSource).toContain("Receipt trail");
+  expect(componentSource).toContain("Payload checks");
+  expect(componentSource).toContain(
+    "aria-label={`Inspect evidence for ${item.clinicId}`}",
   );
+  expect(componentSource).toContain(
+    "aria-label={`Open clinic context for ${item.clinicId}`}",
+  );
+  expect(componentSource).toContain("href={item.clinicHref}");
+  expect(componentSource).toContain("href={selectedItem.clinicHref}");
   expect(source).toContain(
     'const returnSource = "admin-data-ingestion";',
   );
   expect(source).toContain(
     '`/district/clinics/${encodeURIComponent(clinicId)}?from=${returnSource}`',
   );
-  expect(source).toContain(
-    "getRowAriaLabel={(row) => `Open ${row.clinic.name} clinic ingestion detail`}",
+  expect(componentSource).toContain(
+    "aria-label={`Open ${item.clinicName} clinic ingestion detail`}",
   );
+  expect(componentSource).toContain("href={item.clinicHref}");
 });
 
 it("uses admin clinic detail return sources for back navigation", () => {
@@ -243,13 +265,13 @@ it("uses admin clinic detail return sources for back navigation", () => {
 });
 
 it("keeps aggregate data-ingestion signal rows static", () => {
-  const source = readFileSync("app/(demo)/admin/data-ingestion/page.tsx", "utf8");
-  const signalTableStart = source.indexOf('label="Ingestion signal evidence"');
-  const pendingTableStart = source.indexOf('label="Pending report evidence"');
+  const componentSource = readFileSync("components/product/data-ingestion-workspace.tsx", "utf8");
+  const signalSectionStart = componentSource.indexOf('aria-label="Ingestion signal diagnostics"');
+  const backlogSectionStart = componentSource.indexOf('aria-label="Clinic freshness backlog"');
 
-  expect(signalTableStart).toBeGreaterThan(-1);
-  expect(pendingTableStart).toBeGreaterThan(signalTableStart);
-  expect(source.slice(signalTableStart, pendingTableStart)).not.toContain("getRowHref");
+  expect(signalSectionStart).toBeGreaterThan(-1);
+  expect(backlogSectionStart).toBeGreaterThan(signalSectionStart);
+  expect(componentSource.slice(signalSectionStart, backlogSectionStart)).not.toContain("href=");
 });
 
 it("defines canonical detail routes for entity-backed admin evidence rows", () => {

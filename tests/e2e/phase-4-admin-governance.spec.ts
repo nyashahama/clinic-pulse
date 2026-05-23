@@ -71,15 +71,24 @@ test("data ingestion clinic-backed rows open operational detail", async ({ page 
   await signIn(page, "system-admin@clinicpulse.local");
   await page.goto("/admin/data-ingestion");
 
-  const pendingReportTable = page.getByLabel("Pending report evidence");
-  const pendingReportRow = pendingReportTable.getByRole("row", {
-    name: /Open pending report evidence for clinic-atteridgeville-extension/i,
+  const pendingReportQueue = page.getByLabel("Ingestion evidence events");
+  await expect(pendingReportQueue.getByText("Winterveldt West Clinic")).toBeVisible();
+  const pendingReportRow = pendingReportQueue.getByRole("article", {
+    name: /Ingestion event for clinic-atteridgeville-extension/i,
   });
 
   await expect(pendingReportRow).toBeVisible();
+  await pendingReportRow
+    .getByRole("button", { name: "Inspect evidence for clinic-atteridgeville-extension" })
+    .click();
+  await expect(page.getByLabel("Ingestion evidence console")).toContainText(
+    "clinic-atteridgeville-extension",
+  );
   await Promise.all([
     page.waitForURL(/\/district\/clinics\/clinic-atteridgeville-extension\?from=admin-data-ingestion$/),
-    pendingReportRow.getByText("clinic-atteridgeville-extension").click(),
+    pendingReportRow
+      .getByRole("link", { name: "Open clinic context for clinic-atteridgeville-extension" })
+      .click(),
   ]);
   await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
   await Promise.all([
@@ -88,15 +97,17 @@ test("data ingestion clinic-backed rows open operational detail", async ({ page 
   ]);
 
   await page.goto("/admin/data-ingestion");
-  const freshnessTable = page.getByLabel("Clinic ingestion freshness");
-  const freshnessRow = freshnessTable.getByRole("row", {
+  const freshnessBacklog = page.getByLabel("Clinic freshness backlog");
+  const freshnessRow = freshnessBacklog.getByRole("article", {
     name: /Open Atteridgeville Extension Clinic clinic ingestion detail/i,
   });
 
   await expect(freshnessRow).toBeVisible();
   await Promise.all([
     page.waitForURL(/\/district\/clinics\/clinic-atteridgeville-extension\?from=admin-data-ingestion$/),
-    freshnessRow.getByText("Atteridgeville Extension Clinic").click(),
+    freshnessRow
+      .getByRole("link", { name: "Open Atteridgeville Extension Clinic clinic ingestion detail" })
+      .click(),
   ]);
   await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Back to data ingestion" })).toBeVisible();
