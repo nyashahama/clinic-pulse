@@ -251,6 +251,55 @@ it("links data-ingestion clinic and report rows to operational clinic detail", (
   expect(componentSource).toContain("href={item.clinicHref}");
 });
 
+it("links security posture evidence to detail pages through a dedicated workspace", () => {
+  const source = readFileSync("app/(demo)/admin/security/page.tsx", "utf8");
+  const componentSource = readFileSync("components/product/security-posture-workspace.tsx", "utf8");
+  const primitiveSource = readFileSync("components/product/security-posture-primitives.tsx", "utf8");
+
+  expect(source).toContain("SecurityPostureWorkspace");
+  expect(source).toContain("securityFindings");
+  expect(source).toContain("credentialRows");
+  expect(source).toContain("privilegedAccessRows");
+  expect(source).toContain("webhookEvidenceRows");
+  expect(source).toContain("accessAuditRows");
+  expect(source).not.toContain("AdminEvidenceTable");
+  expect(componentSource).toContain('aria-label="Security posture workspace"');
+  expect(componentSource).toContain("Security evidence review");
+  expect(componentSource).not.toContain("Security control room");
+  expect(componentSource).not.toContain("Security operations board");
+  expect(componentSource).toContain('aria-label="Security exposure map"');
+  expect(componentSource).toContain('aria-label="Security review areas"');
+  expect(componentSource).toContain('aria-label="Security advisor findings"');
+  expect(componentSource).toContain('aria-label="Security evidence dossier"');
+  expect(componentSource).toContain('aria-label="Security event timeline"');
+  expect(componentSource).toContain('aria-label="Security lane filters"');
+  expect(componentSource).toContain('aria-label="Audit review mode"');
+  expect(componentSource).toContain("security-posture-primitives");
+  expect(componentSource).not.toContain("function LaneTab");
+  expect(primitiveSource).toContain("export function LaneTab");
+  expect(primitiveSource).toContain("aria-controls");
+  expect(componentSource).toContain("role=\"tabpanel\"");
+  expect(componentSource).not.toContain("metrics[0]?.value");
+  expect(componentSource).toContain("Review areas");
+  expect(componentSource).toContain("Evidence map");
+  expect(componentSource).toContain("Evidence detail");
+  expect(componentSource).toContain("Source");
+  expect(componentSource).toContain("Evidence basis");
+  expect(componentSource).toContain("Next step");
+  expect(componentSource).toContain("Grouped audit review");
+  expect(componentSource).toContain("Occurrence stream");
+  expect(componentSource).toContain("Review state");
+  expect(componentSource).toContain('aria-label="Credential exposure ledger"');
+  expect(componentSource).toContain('aria-label="Privileged access evidence"');
+  expect(componentSource).toContain('aria-label="Webhook delivery evidence"');
+  expect(componentSource).toContain('aria-label="Access audit trail"');
+  expect(componentSource).toContain(
+    "aria-label={`Inspect security finding ${finding.title}`}",
+  );
+  expect(componentSource).toContain("href={row.href}");
+  expect(source).toContain('const returnSource = "admin-security";');
+});
+
 it("uses admin clinic detail return sources for back navigation", () => {
   const source = readFileSync("app/(demo)/demo/clinics/[clinicId]/page-client.tsx", "utf8");
 
@@ -392,9 +441,11 @@ it("links integration and security entity rows to canonical details", () => {
   expect(integrations).toContain("buildAdminIntegrationCheckDetailHref(row.id, returnSource)");
 
   expect(security).toContain('const returnSource = "admin-security";');
-  expect(security).toContain("buildAdminApiKeyDetailHref(row.id, returnSource)");
-  expect(security).toContain("buildAdminUserDetailHref(row.userId, returnSource)");
-  expect(security).toContain("buildAdminAuditEventDetailHref(row.id, returnSource)");
+  expect(security).toContain("buildAdminApiKeyDetailHref(apiKey.id, returnSource)");
+  expect(security).toContain("buildAdminUserDetailHref(user.userId, returnSource)");
+  expect(security).toContain("buildAdminAuditEventDetailHref(event.id, returnSource)");
+  expect(security).toContain("buildAdminWebhookSubscriptionDetailHref(subscription.id, returnSource)");
+  expect(security).toContain("buildAdminWebhookEventDetailHref(event.id, returnSource)");
 });
 
 it("links report review cards to report detail", () => {

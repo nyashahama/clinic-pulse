@@ -244,14 +244,22 @@ test("security admin entity-backed rows open detail pages", async ({ page }) => 
 
   await page.goto("/admin/security");
   const privilegedAccessTable = page.getByLabel("Privileged access evidence");
-  const privilegedUserRow = privilegedAccessTable.getByRole("row", {
+  await expect(page.getByRole("heading", { name: "Security evidence review" })).toBeVisible();
+  await expect(page.getByLabel("Security exposure map")).toBeVisible();
+  await expect(page.getByLabel("Security lane filters")).toBeVisible();
+  await expect(page.getByLabel("Security advisor findings")).toBeVisible();
+  const securityDossier = page.getByLabel("Security evidence dossier");
+  await expect(securityDossier.getByText("Source", { exact: true })).toBeVisible();
+  await expect(securityDossier.getByText("Evidence basis", { exact: true })).toBeVisible();
+  await expect(securityDossier.getByText("Next step", { exact: true })).toBeVisible();
+  const privilegedUserRow = privilegedAccessTable.getByRole("link", {
     name: /Open System Admin user detail/i,
   });
 
   await expect(privilegedUserRow).toBeVisible();
   await Promise.all([
     page.waitForURL(/\/admin\/users-roles\/\d+\?from=admin-security$/),
-    privilegedUserRow.getByText("System Admin", { exact: true }).click(),
+    privilegedUserRow.click(),
   ]);
   await expect(page.getByRole("heading", { name: "User detail" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Back to security posture" })).toBeVisible();
@@ -331,8 +339,14 @@ test("system admin sees productized platform governance modules", async ({ page 
       path: "/admin/security",
       marker: "security",
       content: [
-        "Security posture",
-        "API key evidence",
+        "Security evidence review",
+        "Evidence map",
+        "Review areas",
+        "Evidence detail",
+        "Grouped audit review",
+        "Occurrence stream",
+        "Advisor findings",
+        "Credential exposure ledger",
         "Privileged access evidence",
       ],
     },
