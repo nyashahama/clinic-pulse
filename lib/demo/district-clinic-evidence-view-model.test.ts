@@ -71,6 +71,21 @@ describe("buildDistrictClinicEvidenceViewModel", () => {
       /^\/district\/clinics\/[^?]+\?from=district-clinic-evidence$/,
     );
     expect(viewModel.selectedPacket?.actionTone).toBe("blocked");
+    expect(viewModel.selectedPacket?.decisionActions).toEqual([
+      expect.objectContaining({
+        id: "confirm_signal",
+        label: "Stage decision",
+        tone: "blocked",
+      }),
+      expect.objectContaining({
+        id: "assign_owner",
+        label: "Assign owner",
+      }),
+      expect.objectContaining({
+        id: "protect_route",
+        label: "Protect routing",
+      }),
+    ]);
     expect(viewModel.selectedPacket?.decisionSummary).toEqual([
       expect.objectContaining({
         label: "Decision",
@@ -101,6 +116,13 @@ describe("buildDistrictClinicEvidenceViewModel", () => {
       expect.objectContaining({
         label: "Mabopane Station Clinic",
         value: "clinic-mabopane-station",
+      }),
+    );
+    expect(viewModel.rows[0]).toEqual(
+      expect.objectContaining({
+        operatorSignal: "Blocked",
+        ownerLabel: "District alerting",
+        recordedLabel: "01 May, 08:13",
       }),
     );
     expect(viewModel.timeline.length).toBeGreaterThan(0);

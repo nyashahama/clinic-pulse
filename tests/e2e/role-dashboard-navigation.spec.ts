@@ -392,7 +392,17 @@ test.describe("phase 1 role dashboard navigation", () => {
     await expect(page.getByRole("searchbox", { name: "Search clinic evidence" })).toBeVisible();
     await expect(page.getByLabel("Clinic evidence ledger")).toBeVisible();
     await expect(page.getByText("Selected evidence packet")).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Decision" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Trace" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Context" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Timeline" })).toBeVisible();
+    await expect(page.getByText("Evidence trace")).toBeHidden();
+    await page.getByRole("tab", { name: "Trace" }).click();
     await expect(page.getByText("Evidence trace")).toBeVisible();
+    await page.getByRole("tab", { name: "Decision" }).click();
+    await page.getByRole("button", { name: "Stage decision" }).click();
+    await expect(page.getByText("Decision staged")).toBeVisible();
+    await expect(page.getByText("Owner / age")).toBeVisible();
 
     await page
       .locator("[data-district-clinic-evidence-selected-packet]")
@@ -474,9 +484,12 @@ test.describe("phase 1 role dashboard navigation", () => {
     const metricsBox = await metrics.boundingBox();
     const ledgerBox = await ledger.boundingBox();
 
-    expect(packetBox?.y).toBeLessThan(300);
+    expect(packetBox?.y).toBeLessThan(260);
+    expect(packetBox?.height).toBeLessThan(980);
     expect(packetBox?.y).toBeLessThan(metricsBox?.y ?? Number.POSITIVE_INFINITY);
     expect(packetBox?.y).toBeLessThan(ledgerBox?.y ?? Number.POSITIVE_INFINITY);
+    await expect(page.getByRole("tab", { name: "Decision" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Trace" })).toBeVisible();
   });
 
   test("district severity queue filters update queue state and URL", async ({

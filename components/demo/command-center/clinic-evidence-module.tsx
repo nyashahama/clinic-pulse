@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   ActivityIcon,
   AlertTriangleIcon,
@@ -258,19 +258,19 @@ export function ClinicEvidenceCommandHeader({
   return (
     <section
       className={cn(
-        "rounded-lg border border-l-2 border-border-subtle bg-bg-default px-3 py-3 text-content-default shadow-sm sm:px-4",
+        "rounded-lg border border-l-2 border-border-subtle bg-bg-default px-3 py-2 text-content-default shadow-sm sm:px-4 sm:py-3",
         readinessAccentClassName[header.readiness.tone],
       )}
     >
-      <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+      <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+            <p className="hidden text-xs font-semibold uppercase tracking-normal text-muted-foreground sm:block">
               {header.eyebrow}
             </p>
             <ToneBadge tone="info">{header.scope}</ToneBadge>
           </div>
-          <h1 className="mt-1 break-words text-lg font-semibold leading-tight text-foreground sm:text-2xl">
+          <h1 className="mt-1 break-words text-base font-semibold leading-tight text-foreground sm:text-2xl">
             {header.title}
           </h1>
           <p className="mt-1 hidden max-w-3xl break-words text-sm leading-5 text-muted-foreground sm:block">
@@ -286,7 +286,7 @@ export function ClinicEvidenceCommandHeader({
               <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
                 {header.readiness.label}
               </p>
-              <p className="mt-0.5 max-w-sm break-words text-xs leading-4 text-muted-foreground sm:mt-1">
+              <p className="mt-0.5 hidden max-w-sm break-words text-xs leading-4 text-muted-foreground sm:mt-1 sm:block">
                 {header.readiness.detail}
               </p>
             </div>
@@ -552,10 +552,10 @@ export function ClinicEvidenceLedger({
           : "rounded-lg border border-border-subtle shadow-sm",
       )}
     >
-      <div className="hidden grid-cols-[minmax(14rem,1fr)_minmax(7rem,0.42fr)_minmax(8rem,0.5fr)] border-b border-border-subtle bg-bg-muted/60 px-3 py-2 text-xs font-semibold uppercase tracking-normal text-content-default sm:grid">
+      <div className="hidden grid-cols-[minmax(14rem,1fr)_minmax(8rem,0.44fr)_minmax(8rem,0.42fr)] border-b border-border-subtle bg-bg-muted/60 px-3 py-2 text-xs font-semibold uppercase tracking-normal text-content-default sm:grid">
         <span>Evidence</span>
-        <span>Signal</span>
-        <span className="text-right">Recorded</span>
+        <span>Owner / age</span>
+        <span className="text-right">Next action</span>
       </div>
       {rows.map((row) => {
         const isSelected = row.evidenceId === selectedEvidenceId;
@@ -569,7 +569,7 @@ export function ClinicEvidenceLedger({
             data-district-clinic-evidence-row
             onClick={() => onSelectEvidence(row.evidenceId)}
             className={cn(
-              "relative grid w-full min-w-0 gap-3 border-b border-border-subtle px-3 py-3 text-left last:border-b-0 hover:bg-bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:grid-cols-[minmax(14rem,1fr)_minmax(7rem,0.42fr)_minmax(8rem,0.5fr)]",
+              "relative grid w-full min-w-0 gap-3 border-b border-border-subtle px-3 py-3 text-left last:border-b-0 hover:bg-bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:grid-cols-[minmax(14rem,1fr)_minmax(8rem,0.44fr)_minmax(8rem,0.42fr)]",
               isSelected && "bg-primary/5",
             )}
           >
@@ -595,18 +595,28 @@ export function ClinicEvidenceLedger({
                 </span>
               </span>
             </span>
-            <span className="flex min-w-0 flex-wrap items-center gap-1.5 self-start">
-              <StatusBadge className="shrink-0" status={row.status} />
-              <span className="inline-flex h-6 shrink-0 items-center rounded-full border border-border-subtle bg-bg-muted px-2 text-[11px] font-semibold capitalize tracking-normal text-muted-foreground">
-                {formatLabel(row.kind)}
+            <span className="grid min-w-0 gap-1 self-start">
+              <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+                <StatusBadge className="shrink-0" status={row.status} />
+                <span
+                  className={cn(
+                    "inline-flex h-6 shrink-0 items-center rounded-full border px-2 text-[11px] font-semibold tracking-normal",
+                    toneClassName[row.tone],
+                  )}
+                >
+                  {row.operatorSignal}
+                </span>
+              </span>
+              <span className="break-words text-xs text-muted-foreground">
+                {row.ownerLabel} · {row.recordedLabel}
               </span>
             </span>
             <span className="grid justify-items-start gap-1 sm:justify-items-end">
-              <span className="text-xs font-medium capitalize text-foreground">
-                {formatLabel(row.source)}
+              <span className="text-xs font-medium text-foreground">
+                {row.actionLabel}
               </span>
-              <span className="text-xs text-muted-foreground">
-                {formatDateTime(row.occurredAt)}
+              <span className="inline-flex h-6 shrink-0 items-center rounded-full border border-border-subtle bg-bg-muted px-2 text-[11px] font-semibold capitalize tracking-normal text-muted-foreground">
+                {formatLabel(row.kind)}
               </span>
             </span>
           </button>
@@ -641,15 +651,20 @@ type PacketProperty = {
 };
 
 function PacketPropertyTable({
+  compact = false,
   items,
 }: {
+  compact?: boolean;
   items: PacketProperty[];
 }) {
   return (
     <dl className="divide-y divide-border-subtle border-y border-border-subtle">
       {items.map((item, index) => (
         <div
-          className="grid min-w-0 gap-1 py-2 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:gap-3"
+          className={cn(
+            "grid min-w-0 gap-1 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:gap-3",
+            compact ? "py-1.5 sm:py-2" : "py-2",
+          )}
           key={index}
         >
           <dt className="text-xs font-medium text-muted-foreground">{item.label}</dt>
@@ -666,7 +681,12 @@ function PacketPropertyTable({
               </span>
             </span>
             {item.detail ? (
-              <span className="mt-0.5 block break-words text-xs leading-4 text-muted-foreground">
+              <span
+                className={cn(
+                  "mt-0.5 break-words text-xs leading-4 text-muted-foreground",
+                  compact ? "hidden sm:block" : "block",
+                )}
+              >
                 {item.detail}
               </span>
             ) : null}
@@ -716,6 +736,24 @@ function PacketTraceList({
   );
 }
 
+type PacketTab = "decision" | "trace" | "context" | "timeline";
+
+const packetTabs: Array<{ id: PacketTab; label: string }> = [
+  { id: "decision", label: "Decision" },
+  { id: "trace", label: "Trace" },
+  { id: "context", label: "Context" },
+  { id: "timeline", label: "Timeline" },
+];
+
+const decisionActionShortLabel: Record<
+  DistrictClinicEvidencePacket["decisionActions"][number]["id"],
+  string
+> = {
+  assign_owner: "Owner",
+  confirm_signal: "Stage",
+  protect_route: "Route",
+};
+
 export function ClinicEvidenceSelectedPacket({
   onSelectEvidence,
   selectedPacket,
@@ -725,6 +763,15 @@ export function ClinicEvidenceSelectedPacket({
   selectedPacket: DistrictClinicEvidencePacket | null;
   timeline: DistrictClinicEvidenceViewModel["timeline"];
 }) {
+  const [activeTabState, setActiveTabState] = useState<{
+    evidenceId: string;
+    tab: PacketTab;
+  } | null>(null);
+  const [stagedDecisionState, setStagedDecisionState] = useState<{
+    actionId: string;
+    evidenceId: string;
+  } | null>(null);
+
   if (!selectedPacket) {
     return (
       <section
@@ -742,12 +789,21 @@ export function ClinicEvidenceSelectedPacket({
     );
   }
 
+  const activeTab =
+    activeTabState?.evidenceId === selectedPacket.evidenceId
+      ? activeTabState.tab
+      : "decision";
+  const stagedDecisionId =
+    stagedDecisionState?.evidenceId === selectedPacket.evidenceId
+      ? stagedDecisionState.actionId
+      : null;
+
   return (
     <section
       className="rounded-lg border border-border-subtle bg-bg-default p-3 text-content-default shadow-sm"
       data-district-clinic-evidence-selected-packet
     >
-      <div className="flex min-w-0 flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex min-w-0 items-start justify-between gap-2.5">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
             Selected evidence packet
@@ -759,7 +815,7 @@ export function ClinicEvidenceSelectedPacket({
             {selectedPacket.evidenceId} · {formatDateTime(selectedPacket.occurredAt)}
           </p>
         </div>
-        <span className="inline-flex h-7 shrink-0 items-center gap-1.5 self-start rounded-md border border-border-subtle bg-bg-muted px-2 text-xs font-medium capitalize text-muted-foreground">
+        <span className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border-subtle bg-bg-muted px-2 text-xs font-medium capitalize text-muted-foreground">
           <ClipboardCheckIcon className="size-3.5" />
           {formatLabel(selectedPacket.kind)}
         </span>
@@ -812,98 +868,229 @@ export function ClinicEvidenceSelectedPacket({
         </Button>
       </div>
 
-      <div className="mt-4 grid gap-3">
+      <div
+        className="mt-3 grid grid-cols-4 gap-1 rounded-md border border-border-subtle bg-bg-muted p-1"
+        role="tablist"
+        aria-label="Evidence packet sections"
+      >
+        {packetTabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            aria-controls={`clinic-evidence-${tab.id}-panel`}
+            id={`clinic-evidence-${tab.id}-tab`}
+            onClick={() =>
+              setActiveTabState({
+                evidenceId: selectedPacket.evidenceId,
+                tab: tab.id,
+              })
+            }
+            className={cn(
+              "min-w-0 rounded px-2 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-bg-default hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              activeTab === tab.id && "bg-bg-default text-foreground shadow-sm",
+            )}
+          >
+            <span className="block truncate">{tab.label}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3 grid gap-3">
         <div
-          className={cn(
-            "rounded-md border border-border-subtle border-l-2 bg-bg-muted/60 p-2.5",
-            selectedPacket.actionTone === "blocked" && "border-l-destructive",
-            selectedPacket.actionTone === "attention" &&
-              "border-l-amber-400 dark:border-l-amber-700",
-            selectedPacket.actionTone === "clear" &&
-              "border-l-emerald-400 dark:border-l-emerald-700",
-            selectedPacket.actionTone === "info" &&
-              "border-l-sky-400 dark:border-l-sky-700",
-          )}
+          id="clinic-evidence-decision-panel"
+          role="tabpanel"
+          aria-labelledby="clinic-evidence-decision-tab"
+          hidden={activeTab !== "decision"}
+          className="grid gap-3"
         >
-          <div className="flex min-w-0 gap-2.5">
-            <span
-              className={cn(
-                "mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md border",
-                toneClassName[selectedPacket.actionTone],
-              )}
-            >
-              <ActivityIcon className="size-3.5" />
-            </span>
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                Next evidence action
-              </p>
-              <p className="mt-0.5 break-words text-sm font-medium leading-5 text-foreground">
-                {selectedPacket.recommendedAction}
-              </p>
+          <div
+            className={cn(
+              "rounded-md border border-border-subtle border-l-2 bg-bg-muted/60 p-2.5",
+              selectedPacket.actionTone === "blocked" && "border-l-destructive",
+              selectedPacket.actionTone === "attention" &&
+                "border-l-amber-400 dark:border-l-amber-700",
+              selectedPacket.actionTone === "clear" &&
+                "border-l-emerald-400 dark:border-l-emerald-700",
+              selectedPacket.actionTone === "info" &&
+                "border-l-sky-400 dark:border-l-sky-700",
+            )}
+          >
+            <div className="flex min-w-0 gap-2.5">
+              <span
+                className={cn(
+                  "mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md border",
+                  toneClassName[selectedPacket.actionTone],
+                )}
+              >
+                <ActivityIcon className="size-3.5" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                  Next evidence action
+                </p>
+                <p className="mt-0.5 break-words text-sm font-medium leading-5 text-foreground">
+                  {selectedPacket.recommendedAction}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-        <PacketSection title="Decision summary">
-          <div data-district-clinic-evidence-decision-summary>
-            <PacketPropertyTable items={selectedPacket.decisionSummary} />
-          </div>
-        </PacketSection>
-        <PacketSection title="Evidence trace">
-          <PacketTraceList trace={selectedPacket.trace} />
-        </PacketSection>
-        <PacketSection title="Evidence context">
-          <PacketPropertyTable
-            items={[
-              {
-                detail: selectedPacket.detail,
-                label: "Summary",
-                tone: selectedPacket.tone,
-                value: selectedPacket.title,
-              },
-              {
-                detail: selectedPacket.verificationNeed,
-                label: "Verification",
-                tone: selectedPacket.status === "operational" ? "clear" : selectedPacket.tone,
-                value:
-                  selectedPacket.status === "operational"
-                    ? "Audit-ready"
-                    : "Clinic owner confirmation",
-              },
-              ...selectedPacket.provenance,
-            ]}
-          />
-        </PacketSection>
-        <PacketSection title="Clinic evidence timeline">
-          <p className="mb-2 text-xs leading-4 text-muted-foreground">
-            {selectedPacket.timelineSummary}
-          </p>
-          <div className="divide-y divide-border-subtle border-y border-border-subtle">
-            {timeline.slice(0, 4).map((item) => (
-              <div
-                key={item.id}
-                className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-2 py-2"
+          <PacketSection title="Decision actions">
+            <div
+              className="grid grid-cols-3 gap-2"
+              data-district-clinic-evidence-decision-actions
+            >
+              {selectedPacket.decisionActions.map((action) => {
+                const isPrimary = action.id === "confirm_signal";
+                const content = (
+                  <>
+                    <span className="inline-flex min-w-0 items-center gap-1.5">
+                      <ShieldCheckIcon className="size-3.5" />
+                      <span className="truncate">{decisionActionShortLabel[action.id]}</span>
+                    </span>
+                    {action.href ? (
+                      <ArrowRightIcon className="hidden size-3.5 sm:block" />
+                    ) : null}
+                  </>
+                );
+
+                return (
+                  <div
+                    className={cn(
+                      "grid min-w-0 gap-1 rounded-md border p-1.5 sm:p-2",
+                      toneClassName[action.tone],
+                    )}
+                    key={action.id}
+                  >
+                    {action.href ? (
+                      <Link
+                        aria-label={action.label}
+                        className={cn(
+                          buttonVariants({
+                            size: "sm",
+                            variant: isPrimary ? "default" : "outline",
+                          }),
+                          "min-w-0 justify-between",
+                        )}
+                        href={action.href}
+                      >
+                        {content}
+                      </Link>
+                    ) : (
+                      <Button
+                        aria-label={action.label}
+                        className="min-w-0 justify-between"
+                        onClick={() =>
+                          setStagedDecisionState({
+                            actionId: action.id,
+                            evidenceId: selectedPacket.evidenceId,
+                          })
+                        }
+                        size="sm"
+                        variant={isPrimary ? "default" : "outline"}
+                      >
+                        {content}
+                      </Button>
+                    )}
+                    <p className="hidden break-words text-xs leading-4 text-current/75 sm:block">
+                      {action.detail}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+            {stagedDecisionId ? (
+              <p
+                className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-xs font-medium text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100"
+                data-district-clinic-evidence-decision-state
               >
-                <span
-                  className={cn(
-                    "mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md border bg-bg-default",
-                    toneClassName[item.tone],
-                  )}
+                Decision staged for this packet.
+              </p>
+            ) : null}
+          </PacketSection>
+          <PacketSection title="Decision summary">
+            <div data-district-clinic-evidence-decision-summary>
+              <PacketPropertyTable compact items={selectedPacket.decisionSummary} />
+            </div>
+          </PacketSection>
+        </div>
+        <div
+          id="clinic-evidence-trace-panel"
+          role="tabpanel"
+          aria-labelledby="clinic-evidence-trace-tab"
+          hidden={activeTab !== "trace"}
+        >
+          <PacketSection title="Evidence trace">
+            <PacketTraceList trace={selectedPacket.trace} />
+          </PacketSection>
+        </div>
+        <div
+          id="clinic-evidence-context-panel"
+          role="tabpanel"
+          aria-labelledby="clinic-evidence-context-tab"
+          hidden={activeTab !== "context"}
+        >
+          <PacketSection title="Evidence context">
+            <PacketPropertyTable
+              items={[
+                {
+                  detail: selectedPacket.detail,
+                  label: "Summary",
+                  tone: selectedPacket.tone,
+                  value: selectedPacket.title,
+                },
+                {
+                  detail: selectedPacket.verificationNeed,
+                  label: "Verification",
+                  tone: selectedPacket.status === "operational" ? "clear" : selectedPacket.tone,
+                  value:
+                    selectedPacket.status === "operational"
+                      ? "Audit-ready"
+                      : "Clinic owner confirmation",
+                },
+                ...selectedPacket.provenance,
+              ]}
+            />
+          </PacketSection>
+        </div>
+        <div
+          id="clinic-evidence-timeline-panel"
+          role="tabpanel"
+          aria-labelledby="clinic-evidence-timeline-tab"
+          hidden={activeTab !== "timeline"}
+        >
+          <PacketSection title="Clinic evidence timeline">
+            <p className="mb-2 text-xs leading-4 text-muted-foreground">
+              {selectedPacket.timelineSummary}
+            </p>
+            <div className="divide-y divide-border-subtle border-y border-border-subtle">
+              {timeline.slice(0, 4).map((item) => (
+                <div
+                  key={item.id}
+                  className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-2 py-2"
                 >
-                  <RowIcon row={item} />
-                </span>
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium text-foreground">
-                    {item.title}
+                  <span
+                    className={cn(
+                      "mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md border bg-bg-default",
+                      toneClassName[item.tone],
+                    )}
+                  >
+                    <RowIcon row={item} />
                   </span>
-                  <span className="mt-0.5 block text-xs capitalize text-muted-foreground">
-                    {formatLabel(item.kind)} · {formatDateTime(item.occurredAt)}
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-foreground">
+                      {item.title}
+                    </span>
+                    <span className="mt-0.5 block text-xs capitalize text-muted-foreground">
+                      {formatLabel(item.kind)} · {formatDateTime(item.occurredAt)}
+                    </span>
                   </span>
-                </span>
-              </div>
-            ))}
-          </div>
-        </PacketSection>
+                </div>
+              ))}
+            </div>
+          </PacketSection>
+        </div>
       </div>
 
       <div className="mt-4 grid gap-2 border-t border-border-subtle pt-3 sm:grid-cols-2">
