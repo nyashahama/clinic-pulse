@@ -201,6 +201,7 @@ function formatValueLabel(value: string) {
 
 function formatRecordedLabel(value: string) {
   return new Intl.DateTimeFormat("en-ZA", {
+    timeZone: "Africa/Johannesburg",
     month: "short",
     day: "2-digit",
     hour: "2-digit",
