@@ -26,8 +26,14 @@ describe("buildDistrictInterventionsViewModel", () => {
     expect(viewModel.metrics.map((metric) => metric.label)).toEqual([
       "Active plans",
       "Routing moves",
-      "Proof due",
+      "Evidence due",
       "Owner load",
+    ]);
+    expect(viewModel.metrics.map((metric) => metric.id)).toEqual([
+      "active_plans",
+      "routing_moves",
+      "evidence_due",
+      "owner_load",
     ]);
     expect(viewModel.plans.length).toBeGreaterThan(0);
     expect(viewModel.stageLanes.map((lane) => lane.label)).toEqual([

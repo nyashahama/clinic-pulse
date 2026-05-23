@@ -29,6 +29,11 @@ export type DistrictInterventionsLens =
 export type DistrictInterventionsStage = Exclude<DistrictInterventionsLens, "all">;
 export type DistrictInterventionsPriority = DistrictSeverityLabel | "all";
 export type DistrictInterventionsTone = "clear" | "attention" | "blocked" | "info";
+export type DistrictInterventionsMetricId =
+  | "active_plans"
+  | "routing_moves"
+  | "evidence_due"
+  | "owner_load";
 
 export type DistrictInterventionsFilters = {
   lens: DistrictInterventionsLens;
@@ -38,6 +43,7 @@ export type DistrictInterventionsFilters = {
 };
 
 export type DistrictInterventionsMetric = {
+  id: DistrictInterventionsMetricId;
   label: string;
   value: string;
   detail: string;
@@ -527,24 +533,28 @@ function buildMetrics(plans: DistrictInterventionPlan[]): DistrictInterventionsM
 
   return [
     {
+      id: "active_plans",
       label: "Active plans",
       value: formatCount(activePlans),
       detail: "Clinics needing district follow-up",
       tone: activePlans > 0 ? "attention" : "clear",
     },
     {
+      id: "routing_moves",
       label: "Routing moves",
       value: formatCount(routingMoves),
       detail: "Plans changing or protecting patient routing",
       tone: routingMoves > 0 ? "blocked" : "clear",
     },
     {
-      label: "Proof due",
+      id: "evidence_due",
+      label: "Evidence due",
       value: formatCount(proofDue),
       detail: "Plans waiting for attached evidence",
       tone: proofDue > 0 ? "attention" : "clear",
     },
     {
+      id: "owner_load",
       label: "Owner load",
       value: formatCount(owners.size),
       detail: "Distinct owners carrying open plans",

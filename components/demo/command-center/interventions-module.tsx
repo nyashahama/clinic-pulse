@@ -109,15 +109,15 @@ function activeFilterCount(filters: DistrictInterventionsFilters) {
 function MetricIcon({ metric }: { metric: DistrictInterventionsMetric }) {
   const className = "size-4";
 
-  if (metric.label === "Routing moves") {
+  if (metric.id === "routing_moves") {
     return <RouteIcon className={className} />;
   }
 
-  if (metric.label === "Proof due") {
+  if (metric.id === "evidence_due") {
     return <ClipboardCheckIcon className={className} />;
   }
 
-  if (metric.label === "Owner load") {
+  if (metric.id === "owner_load") {
     return <UserRoundCheckIcon className={className} />;
   }
 
@@ -732,6 +732,7 @@ export function InterventionsSelectedPlan({
               id={`intervention-${selectedPlan.planId}-${tab.id}-tab`}
               onClick={() => selectTab(tab.id)}
               onKeyDown={(event) => handleTabKeyDown(event, tab.id)}
+              tabIndex={activeTab === tab.id ? 0 : -1}
               className={cn(
                 "min-h-8 rounded-md px-2 text-xs font-medium text-muted-foreground transition hover:bg-bg-default hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 activeTab === tab.id && "bg-bg-default text-foreground shadow-sm",

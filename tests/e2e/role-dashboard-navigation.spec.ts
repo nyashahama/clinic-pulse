@@ -525,11 +525,27 @@ test.describe("phase 1 role dashboard navigation", () => {
 
     const selectedPlan = page.locator("[data-district-interventions-selected-plan]");
     await expect(selectedPlan).not.toContainText("/district/clinic-evidence");
+    await expect(selectedPlan.getByRole("tab", { name: "Decision", exact: true })).toHaveAttribute(
+      "tabindex",
+      "0",
+    );
+    await expect(selectedPlan.getByRole("tab", { name: "Route", exact: true })).toHaveAttribute(
+      "tabindex",
+      "-1",
+    );
     await selectedPlan.getByRole("tab", { name: "Decision", exact: true }).focus();
     await page.keyboard.press("ArrowRight");
     await expect(
       selectedPlan.getByRole("tab", { name: "Route", exact: true }),
     ).toHaveAttribute("aria-selected", "true");
+    await expect(selectedPlan.getByRole("tab", { name: "Decision", exact: true })).toHaveAttribute(
+      "tabindex",
+      "-1",
+    );
+    await expect(selectedPlan.getByRole("tab", { name: "Route", exact: true })).toHaveAttribute(
+      "tabindex",
+      "0",
+    );
     await expect(selectedPlan.getByText(/Stabilise .* document the next owner/i)).toBeVisible();
 
     await expect(selectedPlan).toContainText(/Plan 1 of \d+/);
