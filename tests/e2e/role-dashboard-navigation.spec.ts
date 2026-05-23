@@ -350,11 +350,10 @@ test.describe("phase 1 role dashboard navigation", () => {
     await signInAs(page, "district-manager@clinicpulse.local", "/district");
     await page.goto("/district/clinic-network");
 
-    const commandSurface = page
-      .locator("[data-district-clinic-network-command-surface]")
-      .filter({ visible: true })
-      .first();
-    const metrics = page.locator("[data-district-clinic-network-metrics]").filter({ visible: true }).first();
+    const commandSurface = page.locator(
+      "[data-district-clinic-network-command-surface]:visible",
+    );
+    const metrics = page.locator("[data-district-clinic-network-metrics]:visible");
 
     await expect(commandSurface).toBeVisible();
     await expect(metrics).toBeVisible();
@@ -393,6 +392,50 @@ test.describe("phase 1 role dashboard navigation", () => {
     await expect(page.getByRole("searchbox", { name: "Search clinic evidence" })).toBeVisible();
     await expect(page.getByLabel("Clinic evidence ledger")).toBeVisible();
     await expect(page.getByText("Selected evidence packet")).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Decision" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Trace" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Context" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Timeline" })).toBeVisible();
+    await expect(page.getByText("Evidence trace")).toBeHidden();
+    await page.getByRole("tab", { name: "Trace" }).click();
+    await expect(page.getByText("Evidence trace")).toBeVisible();
+    await page.getByRole("tab", { name: "Decision" }).click();
+    await page.getByRole("button", { name: "Stage decision" }).click();
+    await expect(page.getByText("Decision staged")).toBeVisible();
+    await expect(page.getByText("Owner / age")).toBeVisible();
+
+    await page
+      .locator("[data-district-clinic-evidence-selected-packet]")
+      .getByRole("button", { name: /Next/i })
+      .click();
+    await expect(
+      page.locator("[data-district-clinic-evidence-selected-packet]"),
+    ).toContainText("audit-001");
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("evidence"))
+      .toBe("audit-001");
+
+    await page.goto("/district/clinic-evidence?evidence=audit-001");
+    await expect(
+      page.locator("[data-district-clinic-evidence-selected-packet]"),
+    ).toContainText("audit-001");
+
+    await page.getByRole("button", { name: /Needs action/i }).click();
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("queue"))
+      .toBe("needs_action");
+    await expect(page.getByRole("button", { name: /Needs action/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    await page.goto("/district/clinic-evidence?queue=alerts&evidence=report-005");
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("evidence"))
+      .toBeNull();
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("queue"))
+      .toBe("alerts");
 
     await page.getByRole("button", { name: /Evidence type filter: All evidence/i }).click();
     await page.getByRole("menuitemradio", { name: "Reports" }).click();
@@ -400,12 +443,53 @@ test.describe("phase 1 role dashboard navigation", () => {
       .poll(() => new URL(page.url()).searchParams.get("kind"))
       .toBe("report");
     await expect(page.locator("[data-district-clinic-evidence-toolbar]")).toContainText("Reports");
+    await expect(page.getByText("No evidence matches these filters")).toBeVisible();
+
+    await page.goto("/district/clinic-evidence");
+    await page.getByRole("button", { name: /Evidence type filter: All evidence/i }).click();
+    await page.getByRole("menuitemradio", { name: "Reports" }).click();
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("kind"))
+      .toBe("report");
 
     await Promise.all([
       page.waitForURL(/\/district\/reports\/[^?]+\?from=district-clinic-evidence$/),
       page.getByRole("link", { name: "Open report evidence" }).click(),
     ]);
     await expect(page.getByRole("heading", { name: "Report evidence brief" })).toBeVisible();
+  });
+
+  test("clinic evidence is review-first on mobile", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile-chrome", "Mobile Clinic evidence hierarchy");
+
+    await signInAs(page, "district-manager@clinicpulse.local", "/district");
+    await page.goto("/district/clinic-evidence");
+
+    const selectedPacket = page.locator(
+      "[data-district-clinic-evidence-selected-packet]:visible",
+    );
+    const metrics = page.locator("[data-district-clinic-evidence-metrics]:visible");
+    const ledger = page.locator('[aria-label="Clinic evidence ledger"]:visible');
+
+    await expect(
+      page.locator('[data-district-clinic-evidence-layout="review-first"]:visible'),
+    ).toBeVisible();
+    await expect(selectedPacket).toBeVisible();
+    await expect(metrics).toBeVisible();
+    await expect(ledger).toBeVisible();
+    await expect(page.getByText("Evidence review queue")).toBeVisible();
+    await expect(page.getByText("Evidence readiness")).toBeVisible();
+
+    const packetBox = await selectedPacket.boundingBox();
+    const metricsBox = await metrics.boundingBox();
+    const ledgerBox = await ledger.boundingBox();
+
+    expect(packetBox?.y).toBeLessThan(260);
+    expect(packetBox?.height).toBeLessThan(980);
+    expect(packetBox?.y).toBeLessThan(metricsBox?.y ?? Number.POSITIVE_INFINITY);
+    expect(packetBox?.y).toBeLessThan(ledgerBox?.y ?? Number.POSITIVE_INFINITY);
+    await expect(page.getByRole("tab", { name: "Decision" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Trace" })).toBeVisible();
   });
 
   test("district severity queue filters update queue state and URL", async ({

@@ -1,19 +1,17 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import {
+  ClinicEvidenceCommandHeader,
   ClinicEvidenceFilterToolbar,
   ClinicEvidenceLedger,
   ClinicEvidenceMetricStrip,
+  ClinicEvidenceReviewQueue,
   ClinicEvidenceSelectedPacket,
 } from "@/components/demo/command-center/clinic-evidence-module";
-import {
-  AdminEmptyState,
-  AdminModuleHeader,
-} from "@/components/product/admin-module";
+import { AdminEmptyState } from "@/components/product/admin-module";
 import { useDemoStore } from "@/lib/demo/demo-store";
 import {
   buildDistrictClinicEvidenceViewModel,
@@ -22,6 +20,7 @@ import {
 
 const defaultFilters: DistrictClinicEvidenceFilters = {
   kind: "all",
+  queue: "all",
   status: "all",
   source: "all",
   clinic: "all",
@@ -31,6 +30,14 @@ const defaultFilters: DistrictClinicEvidenceFilters = {
 const kindFilterValues = ["all", "report", "audit", "alert"] satisfies ReadonlyArray<
   DistrictClinicEvidenceFilters["kind"]
 >;
+
+const queueFilterValues = [
+  "all",
+  "needs_action",
+  "reports",
+  "alerts",
+  "audit",
+] satisfies ReadonlyArray<DistrictClinicEvidenceFilters["queue"]>;
 
 const statusFilterValues = [
   "all",
@@ -62,6 +69,7 @@ function parseFiltersFromSearchParams(
   clinicIds: string[],
 ): DistrictClinicEvidenceFilters {
   const kind = searchParams.get("kind");
+  const queue = searchParams.get("queue");
   const status = searchParams.get("status");
   const source = searchParams.get("source");
   const clinic = searchParams.get("clinic");
@@ -69,6 +77,7 @@ function parseFiltersFromSearchParams(
 
   return {
     kind: includesValue(kindFilterValues, kind) ? kind : "all",
+    queue: includesValue(queueFilterValues, queue) ? queue : "all",
     status: includesValue(statusFilterValues, status) ? status : "all",
     source: includesValue(sourceFilterValues, source) ? source : "all",
     clinic: clinic && clinicIds.includes(clinic) ? clinic : "all",
@@ -76,11 +85,24 @@ function parseFiltersFromSearchParams(
   };
 }
 
-function serializeFiltersToSearchParams(filters: DistrictClinicEvidenceFilters) {
+function parseSelectedEvidenceId(searchParams: Pick<URLSearchParams, "get">) {
+  const evidenceId = searchParams.get("evidence")?.trim();
+
+  return evidenceId || null;
+}
+
+function serializeFiltersToSearchParams(
+  filters: DistrictClinicEvidenceFilters,
+  selectedEvidenceId?: string | null,
+) {
   const nextSearchParams = new URLSearchParams();
 
   if (filters.kind !== "all") {
     nextSearchParams.set("kind", filters.kind);
+  }
+
+  if (filters.queue !== "all") {
+    nextSearchParams.set("queue", filters.queue);
   }
 
   if (filters.status !== "all") {
@@ -99,6 +121,10 @@ function serializeFiltersToSearchParams(filters: DistrictClinicEvidenceFilters) 
     nextSearchParams.set("q", filters.query.trim());
   }
 
+  if (selectedEvidenceId?.trim()) {
+    nextSearchParams.set("evidence", selectedEvidenceId.trim());
+  }
+
   return nextSearchParams.toString();
 }
 
@@ -107,7 +133,6 @@ export default function DistrictClinicEvidencePageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { state } = useDemoStore();
-  const [selectedEvidenceId, setSelectedEvidenceId] = useState<string | null>(null);
   const selectedPacketRef = useRef<HTMLDivElement>(null);
   const filterOptions = useMemo(
     () =>
@@ -126,7 +151,10 @@ export default function DistrictClinicEvidencePageClient() {
     () => parseFiltersFromSearchParams(searchParams, clinicIds),
     [clinicIds, searchParams],
   );
-  const serializedFilters = serializeFiltersToSearchParams(filters);
+  const selectedEvidenceId = useMemo(
+    () => parseSelectedEvidenceId(searchParams),
+    [searchParams],
+  );
   const viewModel = useMemo(
     () =>
       buildDistrictClinicEvidenceViewModel({
@@ -136,24 +164,32 @@ export default function DistrictClinicEvidencePageClient() {
       }),
     [filters, selectedEvidenceId, state],
   );
+  const normalizedSelectedEvidenceId =
+    selectedEvidenceId &&
+    viewModel.selectedPacket?.evidenceId === selectedEvidenceId
+      ? selectedEvidenceId
+      : null;
+  const serializedSearch = serializeFiltersToSearchParams(
+    filters,
+    normalizedSelectedEvidenceId,
+  );
 
   useEffect(() => {
     const currentSearch = searchParams.toString();
 
-    if (currentSearch === serializedFilters) {
+    if (currentSearch === serializedSearch) {
       return;
     }
 
     router.replace(
-      serializedFilters ? `${pathname}?${serializedFilters}` : pathname,
+      serializedSearch ? `${pathname}?${serializedSearch}` : pathname,
       { scroll: false },
     );
-  }, [pathname, router, searchParams, serializedFilters]);
+  }, [pathname, router, searchParams, serializedSearch]);
 
   const replaceFilters = (nextFilters: DistrictClinicEvidenceFilters) => {
     const nextSearch = serializeFiltersToSearchParams(nextFilters);
 
-    setSelectedEvidenceId(null);
     router.replace(nextSearch ? `${pathname}?${nextSearch}` : pathname, {
       scroll: false,
     });
@@ -171,7 +207,11 @@ export default function DistrictClinicEvidencePageClient() {
   };
 
   const selectEvidence = (evidenceId: string) => {
-    setSelectedEvidenceId(evidenceId);
+    const nextSearch = serializeFiltersToSearchParams(filters, evidenceId);
+
+    router.replace(nextSearch ? `${pathname}?${nextSearch}` : pathname, {
+      scroll: false,
+    });
 
     if (window.matchMedia("(max-width: 1279px)").matches) {
       window.requestAnimationFrame(() => {
@@ -185,70 +225,62 @@ export default function DistrictClinicEvidencePageClient() {
 
   return (
     <div className="grid min-w-0 gap-4 pb-6" data-district-module="clinic-evidence">
-      <AdminModuleHeader
-        eyebrow="District command"
-        title="Clinic evidence"
-        description="Decision-ready clinic reports, alerts, and audit trail records for district verification."
-        actions={[
-          {
-            label: "Open severity queue",
-            buttonProps: {
-              nativeButton: false,
-              render: <Link href="/district/severity-queue" />,
-              variant: "outline",
-            },
-          },
-          {
-            label: "Open clinic network",
-            buttonProps: {
-              nativeButton: false,
-              render: <Link href="/district/clinic-network" />,
-              variant: "outline",
-            },
-          },
-        ]}
-      />
+      <ClinicEvidenceCommandHeader header={viewModel.header} />
 
-      <ClinicEvidenceMetricStrip metrics={viewModel.metrics} />
-
-      <ClinicEvidenceFilterToolbar
-        clinicOptions={filterOptions.clinics}
-        filters={filters}
-        visibleEvidenceCount={viewModel.rows.length}
-        onClearFilters={clearFilters}
-        onFilterChange={updateFilter}
-      />
-
-      {viewModel.rows.length ? (
-        <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-          <div className="order-2 min-w-0 xl:order-none">
-            <ClinicEvidenceLedger
-              rows={viewModel.rows}
-              selectedEvidenceId={viewModel.selectedPacket?.evidenceId ?? null}
-              onSelectEvidence={selectEvidence}
-            />
+      <div
+        className="grid min-w-0 gap-4"
+        data-district-clinic-evidence-layout="review-first"
+      >
+        <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,390px)] xl:items-start">
+          <div className="order-2 min-w-0 xl:order-1">
+            <ClinicEvidenceReviewQueue
+              queue={viewModel.queue}
+              onQueueChange={(queue) => updateFilter("queue", queue)}
+            >
+              <ClinicEvidenceFilterToolbar
+                embedded
+                clinicOptions={filterOptions.clinics}
+                filters={filters}
+                visibleEvidenceCount={viewModel.rows.length}
+                onClearFilters={clearFilters}
+                onFilterChange={updateFilter}
+              />
+              {viewModel.rows.length ? (
+                <ClinicEvidenceLedger
+                  embedded
+                  rows={viewModel.rows}
+                  selectedEvidenceId={viewModel.selectedPacket?.evidenceId ?? null}
+                  onSelectEvidence={selectEvidence}
+                />
+              ) : (
+                <AdminEmptyState
+                  title={viewModel.emptyState.title}
+                  description={viewModel.emptyState.description}
+                  action={{
+                    label: "Clear filters",
+                    buttonProps: {
+                      onClick: clearFilters,
+                      variant: "outline",
+                    },
+                  }}
+                  className="border-t border-border-subtle"
+                />
+              )}
+            </ClinicEvidenceReviewQueue>
           </div>
-          <div ref={selectedPacketRef} className="order-1 min-w-0 scroll-mt-4 xl:order-none">
+          <div
+            ref={selectedPacketRef}
+            className="order-1 min-w-0 scroll-mt-4 xl:order-2 xl:sticky xl:top-4"
+          >
             <ClinicEvidenceSelectedPacket
               selectedPacket={viewModel.selectedPacket}
+              onSelectEvidence={selectEvidence}
               timeline={viewModel.timeline}
             />
           </div>
         </div>
-      ) : (
-        <AdminEmptyState
-          title={viewModel.emptyState.title}
-          description={viewModel.emptyState.description}
-          action={{
-            label: "Clear filters",
-            buttonProps: {
-              onClick: clearFilters,
-              variant: "outline",
-            },
-          }}
-          className="rounded-lg border border-border-subtle bg-bg-default shadow-sm"
-        />
-      )}
+        <ClinicEvidenceMetricStrip metrics={viewModel.metrics} />
+      </div>
     </div>
   );
 }
