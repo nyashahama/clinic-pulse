@@ -98,6 +98,33 @@ describe("buildDistrictHomeViewModel", () => {
     expect(viewModel.commandPreview.selectedClinic?.clinicName).toBe(
       viewModel.hero.primaryDecision.clinicName,
     );
+    expect(viewModel.commandPreview.commandMap.scopeLabel).toBe("Tshwane North");
+    expect(viewModel.commandPreview.commandMap.pins).toHaveLength(8);
+    expect(viewModel.commandPreview.commandMap.pins[0]).toEqual(
+      expect.objectContaining({
+        clinicId: "clinic-mabopane-station",
+        clinicName: "Mabopane Station Clinic",
+        href: "/district/clinics/clinic-mabopane-station?from=district-home",
+        isSelected: true,
+        score: viewModel.hero.primaryDecision.score,
+        tone: viewModel.hero.primaryDecision.tone,
+      }),
+    );
+    expect(viewModel.commandPreview.decisionPacket).toEqual(
+      expect.objectContaining({
+        clinicId: "clinic-mabopane-station",
+        clinicName: "Mabopane Station Clinic",
+        evidenceTitle: expect.any(String),
+        interventionTitle: "Routing",
+        routePlan: expect.stringContaining("Protect"),
+        verification: viewModel.hero.primaryDecision.verification,
+      }),
+    );
+    expect(viewModel.commandPreview.decisionPacket.timeline.map((item) => item.id)).toEqual([
+      "severity",
+      "evidence",
+      "intervention",
+    ]);
     expect(viewModel.commandPreview.interventionPlan?.clinicName).toBe(
       viewModel.hero.primaryDecision.clinicName,
     );

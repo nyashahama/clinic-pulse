@@ -67,6 +67,12 @@ test.describe("product shell responsive behavior", () => {
       page.getByRole("heading", { name: "Tshwane North District operating picture" }),
     ).toBeVisible();
     await expect(page.locator('[data-district-home="command-page"]')).toBeVisible();
+    await expect(page.locator("[data-district-command-map]")).toBeVisible();
+    await expect(page.locator("[data-district-command-queue]")).toBeVisible();
+    await expect(page.locator("[data-district-decision-packet]")).toBeVisible();
+    await expect(
+      page.getByText("Supporting operations", { exact: true }),
+    ).toHaveCount(1);
     await expect(page.getByRole("heading", { name: "Unified severity queue" })).toBeHidden();
   });
 });
