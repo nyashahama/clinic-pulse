@@ -34,6 +34,12 @@ const partnerPanel = path.join(
   "demo",
   "partner-readiness-panel.tsx",
 );
+const partnerReadinessModel = path.join(
+  process.cwd(),
+  "lib",
+  "demo",
+  "partner-readiness.ts",
+);
 
 function readSource(filePath: string) {
   try {
@@ -62,6 +68,32 @@ describe("admin partner readiness workflow", () => {
     expect(partnerReadinessClientSource).toContain("onCreateWebhook={handleCreatePartnerWebhook}");
     expect(panelSource).toContain("onCreateWebhook");
     expect(panelSource).toContain("Create webhook");
+  });
+
+  it("renders the partner launch cockpit and delivery console from referenced model data", () => {
+    const panelSource = readSource(partnerPanel);
+
+    expect(panelSource).toContain("buildPartnerLaunchCockpitModel");
+    expect(panelSource).toContain("Partner Launch Cockpit");
+    expect(panelSource).toContain("Readiness gates");
+    expect(panelSource).toContain("Handoff packet");
+    expect(panelSource).toContain("Event delivery console");
+    expect(panelSource).toContain("Event catalog");
+    expect(panelSource).toContain("Reference map");
+  });
+
+  it("shows the source projects that informed the partner readiness work", () => {
+    const panelSource = readSource(partnerPanel);
+    const modelSource = readSource(partnerReadinessModel);
+
+    expect(panelSource).toContain("cockpit.references");
+    expect(panelSource).toContain("reference.name");
+    expect(modelSource).toContain("Hookdeck Outpost");
+    expect(modelSource).toContain("Svix App Portal");
+    expect(modelSource).toContain("Dub Webhooks");
+    expect(modelSource).toContain("Trigger.dev Runs");
+    expect(modelSource).toContain("Infisical Audit Logs");
+    expect(modelSource).toContain("Unkey Permissions");
   });
 
   it("keeps the admin overview compact and links to the dedicated partner readiness route", () => {

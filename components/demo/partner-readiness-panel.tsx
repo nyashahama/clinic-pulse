@@ -2,12 +2,18 @@
 
 import {
   AlertTriangle,
+  BookOpen,
+  Braces,
   CheckCircle2,
+  ClipboardList,
   Copy,
+  ExternalLink,
   FileJson,
   KeyRound,
   ListChecks,
+  PackageCheck,
   PlayCircle,
+  RadioTower,
   ShieldCheck,
   Webhook,
   X,
@@ -23,10 +29,13 @@ import {
 import { Button } from "@/components/ui/button";
 import type { PartnerReadinessApiResponse } from "@/lib/demo/api-types";
 import {
+  buildPartnerLaunchCockpitModel,
   buildPartnerReadinessModel,
   isPartnerApiKeyActive,
   type OneTimePartnerApiKeySecret,
   type OneTimePartnerWebhookSecret,
+  type PartnerHandoffPacketItem,
+  type PartnerLaunchGate,
   type PartnerReadinessSeverity,
 } from "@/lib/demo/partner-readiness";
 import { cn } from "@/lib/utils";
@@ -123,7 +132,7 @@ function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold capitalize",
+        "inline-flex max-w-full items-center gap-1.5 break-words rounded-full border px-2.5 py-1 text-xs font-semibold capitalize",
         getReadinessBadgeToneClassName(tone),
       )}
     >
@@ -175,6 +184,69 @@ function StateRow({
         </div>
       </div>
       {action ? <div className="flex md:justify-end">{action}</div> : null}
+    </div>
+  );
+}
+
+function SectionTitle({
+  icon: Icon,
+  title,
+  detail,
+}: {
+  icon: typeof ClipboardList;
+  title: string;
+  detail?: string;
+}) {
+  return (
+    <div className="flex min-w-0 items-start justify-between gap-3">
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border-subtle bg-bg-subtle text-content-subtle">
+          <Icon aria-hidden="true" className="size-4" />
+        </span>
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold text-content-emphasis">{title}</h3>
+          {detail ? (
+            <p className="mt-0.5 break-words text-xs text-content-subtle">{detail}</p>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GateRow({ gate }: { gate: PartnerLaunchGate }) {
+  return (
+    <div className="grid gap-2 border-t border-border-subtle py-3 first:border-t-0 first:pt-0 last:pb-0 md:grid-cols-[9rem_minmax(0,1fr)_auto] md:items-start">
+      <div className="flex min-w-0 items-center gap-2">
+        <span
+          className={cn(
+            "size-2.5 shrink-0 rounded-full",
+            gate.tone === "clear"
+              ? "bg-emerald-500"
+              : gate.tone === "watch"
+                ? "bg-amber-500"
+                : "bg-rose-500",
+          )}
+        />
+        <p className="text-sm font-semibold text-content-emphasis">{gate.label}</p>
+      </div>
+      <div className="min-w-0">
+        <p className="break-words text-sm text-content-default">{gate.summary}</p>
+        <p className="mt-1 break-words text-xs text-content-subtle">{gate.detail}</p>
+      </div>
+      <Badge label={gate.status} tone={gate.tone} />
+    </div>
+  );
+}
+
+function HandoffItem({ item }: { item: PartnerHandoffPacketItem }) {
+  return (
+    <div className="grid gap-2 border-t border-border-subtle py-3 first:border-t-0 first:pt-0 last:pb-0">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-semibold text-content-emphasis">{item.label}</p>
+        <Badge label={item.value} tone={item.tone} />
+      </div>
+      <p className="break-words text-xs text-content-subtle">{item.detail}</p>
     </div>
   );
 }
@@ -239,7 +311,8 @@ export function PartnerReadinessPanel({
   onClearOneTimeApiKeySecret,
   onClearOneTimeWebhookSecret,
 }: PartnerReadinessPanelProps) {
-  const model = buildPartnerReadinessModel(readiness);
+  const readinessModel = buildPartnerReadinessModel(readiness);
+  const cockpit = buildPartnerLaunchCockpitModel(readiness);
   const activeApiKeys = readiness.apiKeys.filter((apiKey) =>
     isPartnerApiKeyActive(apiKey),
   );
@@ -273,9 +346,9 @@ export function PartnerReadinessPanel({
     <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
       <SectionHeader
         eyebrow="Partner readiness"
-        title={model.title}
-        description={model.description}
-        actions={<SeverityBadge severity={model.severity} />}
+        title="Partner Launch Cockpit"
+        description={readinessModel.description}
+        actions={<SeverityBadge severity={readinessModel.severity} />}
       />
 
       {actionError ? (
@@ -307,7 +380,7 @@ export function PartnerReadinessPanel({
       ) : null}
 
       <dl className="mt-4 grid min-w-0 gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
-        {model.metrics.map((metric) => (
+        {readinessModel.metrics.map((metric) => (
           <div
             key={metric.label}
             className="min-w-0 border-t border-border-subtle pt-3"
@@ -331,6 +404,40 @@ export function PartnerReadinessPanel({
           </div>
         ))}
       </dl>
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.9fr)]">
+        <div className="min-w-0 rounded-md border border-border-subtle p-4">
+          <SectionTitle
+            icon={ClipboardList}
+            title="Readiness gates"
+            detail="Launch decision grouped by access, contract, delivery, and operations evidence."
+          />
+          <div className="mt-4">
+            {cockpit.gates.map((gate) => (
+              <GateRow key={gate.id} gate={gate} />
+            ))}
+          </div>
+        </div>
+
+        <div className="min-w-0 rounded-md border border-border-subtle p-4">
+          <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+            <SectionTitle
+              icon={PackageCheck}
+              title="Handoff packet"
+              detail={cockpit.handoffPacket.summary}
+            />
+            <Badge
+              label={cockpit.handoffPacket.status}
+              tone={cockpit.handoffPacket.tone}
+            />
+          </div>
+          <div className="mt-4">
+            {cockpit.handoffPacket.items.map((item) => (
+              <HandoffItem key={item.label} item={item} />
+            ))}
+          </div>
+        </div>
+      </div>
 
       <div className="mt-4 grid gap-3">
         <StateRow
@@ -425,6 +532,96 @@ export function PartnerReadinessPanel({
         />
       </div>
 
+      <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.85fr)]">
+        <div className="min-w-0 rounded-md border border-border-subtle p-4">
+          <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+            <SectionTitle
+              icon={RadioTower}
+              title="Event delivery console"
+              detail="Latest partner webhook events, ordered like an operations run log."
+            />
+            {selectedWebhookIsActive ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={webhookTestDisabled}
+                onClick={() => {
+                  if (webhookSubscription && onTestWebhook) {
+                    onTestWebhook(webhookSubscription.id);
+                  }
+                }}
+              >
+                <PlayCircle className="size-3.5" />
+                Send test event
+              </Button>
+            ) : null}
+          </div>
+
+          <div className="mt-4 overflow-hidden rounded-md border border-border-subtle">
+            {cockpit.deliveryRows.length > 0 ? (
+              <div className="divide-y divide-border-subtle">
+                <div className="grid gap-2 bg-bg-muted/60 px-3 py-2 text-xs font-semibold uppercase tracking-normal text-content-subtle md:grid-cols-[minmax(0,1.2fr)_auto_minmax(0,0.9fr)_auto_auto]">
+                  <span>Event</span>
+                  <span>State</span>
+                  <span>Target</span>
+                  <span>Attempts</span>
+                  <span>Updated</span>
+                </div>
+                {cockpit.deliveryRows.map((row) => (
+                  <div
+                    key={row.id}
+                    className="grid gap-2 px-3 py-3 text-sm md:grid-cols-[minmax(0,1.2fr)_auto_minmax(0,0.9fr)_auto_auto] md:items-center"
+                  >
+                    <div className="min-w-0">
+                      <p className="break-words font-semibold text-content-emphasis">
+                        {row.eventType}
+                      </p>
+                      <p className="mt-1 break-words text-xs text-content-subtle">
+                        {row.detail}
+                      </p>
+                    </div>
+                    <Badge label={formatStatusLabel(row.state)} tone={row.tone} />
+                    <p className="break-words text-sm text-content-default">{row.target}</p>
+                    <p className="text-sm tabular-nums text-content-default">{row.attempts}</p>
+                    <p className="text-sm tabular-nums text-content-subtle">
+                      {formatDate(row.updatedAt)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="px-3 py-4 text-sm text-content-subtle">
+                No webhook delivery evidence recorded
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="min-w-0 rounded-md border border-border-subtle p-4">
+          <SectionTitle
+            icon={Braces}
+            title="Event catalog"
+            detail="Partner-visible event types expected during pilot handoff."
+          />
+          <div className="mt-4 divide-y divide-border-subtle">
+            {cockpit.eventCatalog.map((event) => (
+              <div key={event.eventType} className="py-3 first:pt-0 last:pb-0">
+                <p className="break-words font-mono text-xs font-semibold text-content-emphasis">
+                  {event.eventType}
+                </p>
+                <p className="mt-1 break-words text-xs text-content-subtle">
+                  {event.source}
+                </p>
+                <p className="mt-1 break-words text-sm text-content-default">
+                  {event.purpose}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div className="mt-4 border-t border-border-subtle pt-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
@@ -464,6 +661,41 @@ export function PartnerReadinessPanel({
               No checks reported
             </div>
           )}
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-md border border-border-subtle p-4">
+        <SectionTitle
+          icon={BookOpen}
+          title="Reference map"
+          detail="Source patterns used to shape this partner-readiness workspace."
+        />
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {cockpit.references.map((reference) => (
+            <a
+              key={reference.name}
+              href={reference.url}
+              target="_blank"
+              rel="noreferrer"
+              className="group min-w-0 rounded-md border border-border-subtle p-3 transition-colors hover:border-border-strong hover:bg-bg-subtle"
+            >
+              <div className="flex min-w-0 items-start justify-between gap-2">
+                <p className="break-words text-sm font-semibold text-content-emphasis">
+                  {reference.name}
+                </p>
+                <ExternalLink
+                  aria-hidden="true"
+                  className="mt-0.5 size-3.5 shrink-0 text-content-subtle group-hover:text-content-emphasis"
+                />
+              </div>
+              <p className="mt-1 break-words text-xs text-content-subtle">
+                {reference.source}
+              </p>
+              <p className="mt-2 break-words text-xs leading-5 text-content-default">
+                {reference.appliedTo}
+              </p>
+            </a>
+          ))}
         </div>
       </div>
     </section>
