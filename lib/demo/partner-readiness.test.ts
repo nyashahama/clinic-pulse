@@ -6,8 +6,10 @@ import type {
   PartnerExportRunApiResponse,
   PartnerReadinessApiResponse,
   PartnerWebhookEventApiResponse,
+  PartnerWebhookSubscriptionApiResponse,
 } from "@/lib/demo/api-types";
 import {
+  buildPartnerLaunchCockpitModel,
   buildPartnerReadinessModel,
   createEmptyPartnerReadiness,
   createOneTimePartnerApiKeySecret,
@@ -63,6 +65,25 @@ function makeWebhookEvent(
     status: overrides.status ?? "preview_only",
     attemptCount: overrides.attemptCount ?? 0,
     createdAt: overrides.createdAt ?? checkedAt,
+  };
+}
+
+function makeWebhookSubscription(
+  overrides: Partial<PartnerWebhookSubscriptionApiResponse> = {},
+): PartnerWebhookSubscriptionApiResponse {
+  return {
+    id: overrides.id ?? 1,
+    name: overrides.name ?? "Operations partner webhook",
+    targetUrl:
+      overrides.targetUrl ?? "https://partner.example.test/webhooks/clinicpulse",
+    eventTypes: overrides.eventTypes ?? ["clinic.status_changed"],
+    status: overrides.status ?? "active",
+    lastTestedAt: overrides.lastTestedAt,
+    lastTestStatus: overrides.lastTestStatus,
+    lastTestMetadata: overrides.lastTestMetadata ?? {},
+    lastError: overrides.lastError,
+    createdAt: overrides.createdAt ?? checkedAt,
+    updatedAt: overrides.updatedAt ?? checkedAt,
   };
 }
 
@@ -215,5 +236,118 @@ describe("partner readiness helpers", () => {
       keyPrefix: "cp_demo_once",
       secret: "cp_demo_raw_secret",
     });
+  });
+
+  it("builds launch cockpit gates for access, contract, delivery, and operations", () => {
+    const model = buildPartnerLaunchCockpitModel(
+      makeReadyReadiness({
+        webhookSubscriptions: [makeWebhookSubscription()],
+      }),
+    );
+
+    expect(model.gates.map((gate) => gate.id)).toEqual([
+      "access",
+      "contract",
+      "delivery",
+      "operations",
+    ]);
+    expect(model.gates).toContainEqual(
+      expect.objectContaining({
+        id: "access",
+        label: "Access",
+        tone: "clear",
+        status: "Ready",
+      }),
+    );
+    expect(model.handoffPacket.items.map((item) => item.label)).toEqual([
+      "API credential",
+      "Endpoint contract",
+      "Webhook evidence",
+      "Export checksum",
+    ]);
+  });
+
+  it("marks the launch access gate as attention when required scopes are missing", () => {
+    const model = buildPartnerLaunchCockpitModel(
+      makeReadyReadiness({
+        apiKeys: [makeApiKey({ scopes: ["clinics:read"] })],
+      }),
+    );
+
+    expect(model.gates).toContainEqual(
+      expect.objectContaining({
+        id: "access",
+        tone: "attention",
+        status: "Scope gap",
+      }),
+    );
+    expect(model.gates.find((gate) => gate.id === "access")?.summary).toContain(
+      "Missing status:read, alternatives:read, exports:read",
+    );
+  });
+
+  it("sorts event delivery rows newest-first with status, attempts, and target labels", () => {
+    const model = buildPartnerLaunchCockpitModel(
+      makeReadyReadiness({
+        webhookSubscriptions: [
+          makeWebhookSubscription({ id: 7, name: "District partner receiver" }),
+        ],
+        webhookEvents: [
+          makeWebhookEvent({
+            id: 1,
+            subscriptionId: 7,
+            eventType: "clinic.status_changed",
+            status: "delivered",
+            attemptCount: 2,
+            createdAt: "2026-05-04T09:00:00.000Z",
+            deliveredAt: "2026-05-04T09:01:00.000Z",
+          }),
+          makeWebhookEvent({
+            id: 2,
+            subscriptionId: 7,
+            eventType: "partner.export_ready",
+            status: "queued",
+            attemptCount: 1,
+            createdAt: "2026-05-04T10:00:00.000Z",
+          }),
+        ],
+      }),
+    );
+
+    expect(model.deliveryRows.map((row) => row.eventType)).toEqual([
+      "partner.export_ready",
+      "clinic.status_changed",
+    ]);
+    expect(model.deliveryRows[0]).toEqual(
+      expect.objectContaining({
+        state: "queued",
+        attempts: "1 attempt",
+        target: "District partner receiver",
+        tone: "watch",
+      }),
+    );
+  });
+
+  it("lists the source references used by the partner launch cockpit", () => {
+    const model = buildPartnerLaunchCockpitModel(makeReadyReadiness());
+
+    expect(model.references.map((reference) => reference.name)).toEqual([
+      "Hookdeck Outpost",
+      "Svix App Portal",
+      "Dub Webhooks",
+      "Trigger.dev Runs",
+      "Infisical Audit Logs",
+      "Appwrite Webhooks",
+      "Unkey Permissions",
+      "Scalar API References",
+      "Standard Webhooks",
+    ]);
+    expect(model.references).toContainEqual(
+      expect.objectContaining({
+        source:
+          "reference-projects/dub/apps/web/ui/modals/send-test-webhook-modal.tsx",
+        appliedTo: "Webhook test event action and delivery console CTA",
+      }),
+    );
   });
 });
