@@ -239,19 +239,46 @@ test("stakeholder activity rows open lead detail pages", async ({ page }) => {
   );
 });
 
-test("security admin entity-backed rows open detail pages", async ({ page }) => {
+test("security admin selects evidence rows before opening source detail", async ({ page }) => {
   await signIn(page, "system-admin@clinicpulse.local");
 
   await page.goto("/admin/security");
-  const privilegedAccessTable = page.getByLabel("Privileged access evidence");
-  const privilegedUserRow = privilegedAccessTable.getByRole("row", {
-    name: /Open System Admin user detail/i,
-  });
+  await expect(page.getByRole("heading", { name: "Security posture" })).toBeVisible();
+  await expect(page.getByLabel("Security evidence workspace")).toBeVisible();
+  await expect(page.getByLabel("Security evidence controls")).toBeVisible();
+  await expect(page.getByLabel("Security evidence lanes")).toBeVisible();
+  await expect(page.getByLabel("Selected security evidence")).toBeVisible();
+  await expect(page.getByText("Evidence map")).toHaveCount(0);
+  await expect(page.getByText("Security evidence dossier")).toHaveCount(0);
 
-  await expect(privilegedUserRow).toBeVisible();
+  await page.getByLabel("Search security evidence").fill("no matching security evidence");
+  await expect(page.getByText("No matching evidence")).toBeVisible();
+  await expect(
+    page.getByLabel("Selected security evidence").getByText("Select an evidence row"),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Clear filters" }).click();
+  await expect(page.getByText("No matching evidence")).toHaveCount(0);
+
+  await page.getByRole("tab", { name: /Privileged access/i }).click();
+  const systemAdminRow = page.getByRole("button", {
+    name: /Inspect security evidence for System Admin/i,
+  }).first();
+
+  await expect(systemAdminRow).toBeVisible();
+  await systemAdminRow.click();
+  await expect(page).toHaveURL(/\/admin\/security$/);
+
+  const selectedEvidence = page.getByLabel("Selected security evidence");
+  await expect(selectedEvidence.getByRole("heading", { name: "System Admin" })).toBeVisible();
+  await expect(selectedEvidence.getByText("Evidence basis")).toBeVisible();
+  await expect(selectedEvidence.getByText("Review state")).toBeVisible();
+  await expect(selectedEvidence.getByText("Next step")).toBeVisible();
+
+  const sourceLink = selectedEvidence.getByRole("link", { name: /Open source evidence/i });
+  await expect(sourceLink).toHaveAttribute("href", /\/admin\/users-roles\/\d+\?from=admin-security$/);
   await Promise.all([
     page.waitForURL(/\/admin\/users-roles\/\d+\?from=admin-security$/),
-    privilegedUserRow.getByText("System Admin", { exact: true }).click(),
+    sourceLink.click(),
   ]);
   await expect(page.getByRole("heading", { name: "User detail" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Back to security posture" })).toBeVisible();
@@ -332,8 +359,15 @@ test("system admin sees productized platform governance modules", async ({ page 
       marker: "security",
       content: [
         "Security posture",
-        "API key evidence",
-        "Privileged access evidence",
+        "Security posture evidence",
+        "Security evidence workspace",
+        "All evidence",
+        "Credentials",
+        "Webhooks",
+        "Privileged access",
+        "Audit trail",
+        "Selected evidence",
+        "Open source evidence",
       ],
     },
   ]) {
