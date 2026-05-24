@@ -251,53 +251,35 @@ it("links data-ingestion clinic and report rows to operational clinic detail", (
   expect(componentSource).toContain("href={item.clinicHref}");
 });
 
-it("links security posture evidence to detail pages through a dedicated workspace", () => {
+it("links security evidence through an Unkey-style selected-row workspace", () => {
   const source = readFileSync("app/(demo)/admin/security/page.tsx", "utf8");
-  const componentSource = readFileSync("components/product/security-posture-workspace.tsx", "utf8");
-  const primitiveSource = readFileSync("components/product/security-posture-primitives.tsx", "utf8");
+  const componentSource = readFileSync("components/product/security-evidence-workspace.tsx", "utf8");
+  const modelSource = readFileSync("lib/demo/admin-security-evidence.ts", "utf8");
 
-  expect(source).toContain("SecurityPostureWorkspace");
-  expect(source).toContain("securityFindings");
-  expect(source).toContain("credentialRows");
-  expect(source).toContain("privilegedAccessRows");
-  expect(source).toContain("webhookEvidenceRows");
-  expect(source).toContain("accessAuditRows");
-  expect(source).not.toContain("AdminEvidenceTable");
-  expect(componentSource).toContain('aria-label="Security posture workspace"');
-  expect(componentSource).toContain("Security evidence review");
-  expect(componentSource).not.toContain("Security control room");
-  expect(componentSource).not.toContain("Security operations board");
-  expect(componentSource).toContain('aria-label="Security exposure map"');
-  expect(componentSource).toContain('aria-label="Security review areas"');
-  expect(componentSource).toContain('aria-label="Security advisor findings"');
-  expect(componentSource).toContain('aria-label="Security evidence dossier"');
-  expect(componentSource).toContain('aria-label="Security event timeline"');
-  expect(componentSource).toContain('aria-label="Security lane filters"');
-  expect(componentSource).toContain('aria-label="Audit review mode"');
-  expect(componentSource).toContain("security-posture-primitives");
-  expect(componentSource).not.toContain("function LaneTab");
-  expect(primitiveSource).toContain("export function LaneTab");
-  expect(primitiveSource).toContain("aria-controls");
-  expect(componentSource).toContain("role=\"tabpanel\"");
-  expect(componentSource).not.toContain("metrics[0]?.value");
-  expect(componentSource).toContain("Review areas");
-  expect(componentSource).toContain("Evidence map");
-  expect(componentSource).toContain("Evidence detail");
-  expect(componentSource).toContain("Source");
-  expect(componentSource).toContain("Evidence basis");
-  expect(componentSource).toContain("Next step");
-  expect(componentSource).toContain("Grouped audit review");
-  expect(componentSource).toContain("Occurrence stream");
-  expect(componentSource).toContain("Review state");
-  expect(componentSource).toContain('aria-label="Credential exposure ledger"');
-  expect(componentSource).toContain('aria-label="Privileged access evidence"');
-  expect(componentSource).toContain('aria-label="Webhook delivery evidence"');
-  expect(componentSource).toContain('aria-label="Access audit trail"');
-  expect(componentSource).toContain(
-    "aria-label={`Inspect security finding ${finding.title}`}",
-  );
-  expect(componentSource).toContain("href={row.href}");
-  expect(source).toContain('const returnSource = "admin-security";');
+  expect(source).toContain("SecurityEvidenceWorkspace");
+  expect(source).toContain("buildSecurityEvidenceViewModel");
+  expect(source).not.toContain("SecurityPostureWorkspace");
+  expect(source).not.toContain("securityFindings");
+  expect(componentSource).toContain('aria-label="Security evidence workspace"');
+  expect(componentSource).toContain('aria-label="Security evidence summary"');
+  expect(componentSource).toContain('aria-label="Security evidence controls"');
+  expect(componentSource).toContain('aria-label="Security evidence lanes"');
+  expect(componentSource).toContain('aria-label="Security evidence rows"');
+  expect(componentSource).toContain('aria-label="Selected security evidence"');
+  expect(componentSource).toContain("Clear filters");
+  expect(componentSource).toContain("Open source evidence");
+  expect(componentSource).toContain("onSelectRow(row.id)");
+  expect(componentSource).toContain("aria-pressed={isSelected}");
+  expect(componentSource).toContain("filterSecurityEvidenceRows");
+  expect(componentSource).not.toContain("Evidence map");
+  expect(componentSource).not.toContain("Security evidence dossier");
+  expect(componentSource).not.toContain("Security exposure map");
+  expect(modelSource).toContain('const returnSource = "admin-security";');
+  expect(modelSource).toContain("buildAdminApiKeyDetailHref");
+  expect(modelSource).toContain("buildAdminWebhookEventDetailHref");
+  expect(modelSource).toContain("buildAdminWebhookSubscriptionDetailHref");
+  expect(modelSource).toContain("buildAdminUserDetailHref");
+  expect(modelSource).toContain("buildAdminAuditEventDetailHref");
 });
 
 it("uses admin clinic detail return sources for back navigation", () => {
@@ -431,7 +413,7 @@ it("links audit evidence rows to canonical entity details", () => {
 
 it("links integration and security entity rows to canonical details", () => {
   const integrations = readFileSync("app/(demo)/admin/integrations/page.tsx", "utf8");
-  const security = readFileSync("app/(demo)/admin/security/page.tsx", "utf8");
+  const security = readFileSync("lib/demo/admin-security-evidence.ts", "utf8");
 
   expect(integrations).toContain('const returnSource = "admin-integrations";');
   expect(integrations).toContain("buildAdminApiKeyDetailHref(row.id, returnSource)");
