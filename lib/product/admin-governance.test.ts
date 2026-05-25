@@ -294,6 +294,7 @@ it("uses a scenario operations workspace instead of generic action cards", () =>
   expect(componentSource).toContain('aria-label="Scenario controls workspace"');
   expect(componentSource).toContain('aria-label="Scenario runbook"');
   expect(componentSource).toContain('aria-label="Scenario command panel"');
+  expect(componentSource).toContain('aria-label="Selected scenario evidence flow"');
   expect(componentSource).toContain('aria-label="Scenario evidence timeline"');
   expect(componentSource).toContain('aria-label="Scenario safety checks"');
   expect(componentSource).toContain("onSelectCommand(command.id)");

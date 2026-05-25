@@ -43,6 +43,26 @@ describe("buildScenarioControlsViewModel", () => {
       "Stockout alert",
       "Audit trail entry",
     ]);
+    expect(viewModel.selectedCommand.evidenceStages).toEqual([
+      {
+        id: "clinic-status-update",
+        label: "Clinic status update",
+        detail: "Operating state changes are visible to district users.",
+        tone: "blocked",
+      },
+      {
+        id: "stockout-alert",
+        label: "Stockout alert",
+        detail: "Open alert tells the operations desk what needs follow-up.",
+        tone: "attention",
+      },
+      {
+        id: "audit-trail-entry",
+        label: "Audit trail entry",
+        detail: "Scenario action is captured in the evidence timeline.",
+        tone: "info",
+      },
+    ]);
   });
 
   it("summarizes state, safety notes, and recent evidence for the workspace", () => {
@@ -55,14 +75,15 @@ describe("buildScenarioControlsViewModel", () => {
     });
 
     expect(viewModel.summaryMetrics.map((metric) => metric.id)).toEqual([
-      "run_state",
+      "control_state",
       "active_alerts",
       "offline_queue",
       "audit_events",
     ]);
     expect(viewModel.summaryMetrics[0]).toMatchObject({
-      label: "Run state",
+      label: "Controls",
       value: "Ready",
+      detail: "Scenario commands available",
       tone: "clear",
     });
     expect(viewModel.statusMessage).toBe("Incident replay applied across the platform.");

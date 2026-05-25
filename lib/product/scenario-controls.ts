@@ -11,9 +11,16 @@ export type ScenarioControlCommandId =
 export type ScenarioControlTone = "clear" | "attention" | "blocked" | "info";
 
 export type ScenarioControlsMetric = {
-  id: "run_state" | "active_alerts" | "offline_queue" | "audit_events";
+  id: "control_state" | "active_alerts" | "offline_queue" | "audit_events";
   label: string;
   value: string;
+  detail: string;
+  tone: ScenarioControlTone;
+};
+
+export type ScenarioControlEvidenceStage = {
+  id: string;
+  label: string;
   detail: string;
   tone: ScenarioControlTone;
 };
@@ -27,6 +34,7 @@ export type ScenarioControlCommand = {
   impactLabel: string;
   impactDescription: string;
   expectedEvidence: string[];
+  evidenceStages: ScenarioControlEvidenceStage[];
   tone: ScenarioControlTone;
 };
 
@@ -85,6 +93,19 @@ function toneForCount(count: number): ScenarioControlTone {
   return count > 0 ? "attention" : "clear";
 }
 
+function evidenceStage(
+  label: string,
+  detail: string,
+  tone: ScenarioControlTone,
+): ScenarioControlEvidenceStage {
+  return {
+    id: label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+    label,
+    detail,
+    tone,
+  };
+}
+
 function buildEvidenceRows(
   auditEvents: AuditEvent[],
   clinicNameById: Map<string, string>,
@@ -128,6 +149,23 @@ function buildCommandGroups({
             "Open alerts restored",
             "Audit stream reset",
           ],
+          evidenceStages: [
+            evidenceStage(
+              "Seeded clinic state",
+              "Clinic states return to the known operating baseline.",
+              "info",
+            ),
+            evidenceStage(
+              "Open alerts restored",
+              "Alert pressure returns to the seeded scenario baseline.",
+              "attention",
+            ),
+            evidenceStage(
+              "Audit stream reset",
+              "The timeline returns to the original evidence set.",
+              "info",
+            ),
+          ],
           tone: "info",
         },
       ],
@@ -152,6 +190,28 @@ function buildCommandGroups({
             "Reroute recommendation",
             "Partner webhook",
           ],
+          evidenceStages: [
+            evidenceStage(
+              "Field report",
+              "The incident starts with a field report from the source clinic.",
+              "info",
+            ),
+            evidenceStage(
+              "District alert",
+              "Operations receives an open alert for the affected service.",
+              "attention",
+            ),
+            evidenceStage(
+              "Reroute recommendation",
+              "The routing engine records the preferred alternative clinic.",
+              "attention",
+            ),
+            evidenceStage(
+              "Partner webhook",
+              "Partner delivery evidence closes the handoff loop.",
+              "clear",
+            ),
+          ],
           tone: "attention",
         },
         {
@@ -167,6 +227,23 @@ function buildCommandGroups({
             "Clinic status update",
             "Stockout alert",
             "Audit trail entry",
+          ],
+          evidenceStages: [
+            evidenceStage(
+              "Clinic status update",
+              "Operating state changes are visible to district users.",
+              "blocked",
+            ),
+            evidenceStage(
+              "Stockout alert",
+              "Open alert tells the operations desk what needs follow-up.",
+              "attention",
+            ),
+            evidenceStage(
+              "Audit trail entry",
+              "Scenario action is captured in the evidence timeline.",
+              "info",
+            ),
           ],
           tone: "blocked",
         },
@@ -184,6 +261,23 @@ function buildCommandGroups({
             "Staffing alert",
             "Audit trail entry",
           ],
+          evidenceStages: [
+            evidenceStage(
+              "Clinic status update",
+              "Throughput pressure updates the selected clinic state.",
+              "attention",
+            ),
+            evidenceStage(
+              "Staffing alert",
+              "Staffing risk becomes visible in the alert queue.",
+              "attention",
+            ),
+            evidenceStage(
+              "Audit trail entry",
+              "The staffing rehearsal is traceable in the timeline.",
+              "info",
+            ),
+          ],
           tone: "attention",
         },
         {
@@ -199,6 +293,23 @@ function buildCommandGroups({
             "Stock pressure",
             "Alternative route",
             "Audit trail entry",
+          ],
+          evidenceStages: [
+            evidenceStage(
+              "Stock pressure",
+              "The source clinic carries enough pressure to justify rerouting.",
+              "attention",
+            ),
+            evidenceStage(
+              "Alternative route",
+              "The selected alternative is recorded for patient guidance.",
+              "clear",
+            ),
+            evidenceStage(
+              "Audit trail entry",
+              "The reroute decision is visible in the timeline.",
+              "info",
+            ),
           ],
           tone: "attention",
         },
@@ -229,6 +340,23 @@ function buildCommandGroups({
             "Sync event",
             "Last sync update",
           ],
+          evidenceStages: [
+            evidenceStage(
+              "Offline receipt",
+              "A queued field report creates the local receipt.",
+              "attention",
+            ),
+            evidenceStage(
+              "Sync event",
+              "The queued report is flushed into the district stream.",
+              "clear",
+            ),
+            evidenceStage(
+              "Last sync update",
+              "The workspace reflects the refreshed sync state.",
+              "info",
+            ),
+          ],
           tone: offlineQueueCount > 0 ? "attention" : "info",
         },
       ],
@@ -245,9 +373,6 @@ export function buildScenarioControlsViewModel({
 }: BuildScenarioControlsViewModelInput): ScenarioControlsViewModel {
   const activeAlerts = state.alerts.filter((alert) => alert.status !== "resolved");
   const offlineQueueCount = state.offlineQueue.length;
-  const nonOperationalClinicCount = state.clinicStates.filter(
-    (clinicState) => clinicState.status !== "operational",
-  ).length;
   const clinicNameById = new Map(
     state.clinics.map((clinic) => [clinic.id, clinic.name]),
   );
@@ -263,13 +388,10 @@ export function buildScenarioControlsViewModel({
   return {
     summaryMetrics: [
       {
-        id: "run_state",
-        label: "Run state",
+        id: "control_state",
+        label: "Controls",
         value: "Ready",
-        detail:
-          nonOperationalClinicCount > 0
-            ? `${pluralize(nonOperationalClinicCount, "clinic", "clinics")} outside baseline`
-            : "All clinics match the operating baseline",
+        detail: "Scenario commands available",
         tone: "clear",
       },
       {

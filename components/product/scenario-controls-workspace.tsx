@@ -250,16 +250,42 @@ export function ScenarioControlsWorkspace({
             </div>
 
             <div className="border-t border-border-subtle px-4 py-3">
-              <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
-                Expected evidence
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {selectedCommand.expectedEvidence.map((evidence) => (
-                  <AdminStatusBadge key={evidence} tone="info">
-                    {evidence}
-                  </AdminStatusBadge>
-                ))}
+              <div className="flex min-w-0 items-center justify-between gap-3">
+                <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
+                  Evidence flow
+                </p>
+                <span className="text-xs text-muted-foreground">
+                  {selectedCommand.evidenceStages.length} steps
+                </span>
               </div>
+              <ol
+                aria-label="Selected scenario evidence flow"
+                className="mt-3 grid gap-2 md:grid-cols-2"
+              >
+                {selectedCommand.evidenceStages.map((stage, index) => (
+                  <li
+                    key={stage.id}
+                    className={cn(
+                      "relative min-w-0 rounded-lg border px-3 py-2",
+                      toneClassName[stage.tone],
+                    )}
+                  >
+                    <div className="flex items-start gap-2">
+                      <span className="flex size-5 shrink-0 items-center justify-center rounded-full border border-current/25 bg-bg-default/70 font-mono text-[0.68rem] font-semibold leading-none">
+                        {index + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="break-words text-sm font-medium leading-5 text-current">
+                          {stage.label}
+                        </p>
+                        <p className="mt-1 text-xs leading-4 text-current/75">
+                          {stage.detail}
+                        </p>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ol>
             </div>
         </section>
 
