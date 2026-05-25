@@ -47,10 +47,19 @@ async function clickSidebarLink(page: Page, name: string, path: string) {
 async function expectIntegrationsModule(page: Page) {
   await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
   await expect(page.locator('[data-admin-module="integrations"]')).toBeVisible();
-  await expect(page.getByText("Partner API contract", { exact: true })).toBeVisible();
-  await expect(page.getByText("Credential scope coverage", { exact: true })).toBeVisible();
-  await expect(page.getByText("Webhook delivery evidence", { exact: true })).toBeVisible();
-  await expect(page.getByText("Export package evidence", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Integration operations" })).toBeVisible();
+  await expect(page.getByText("Integration command center", { exact: true })).toBeVisible();
+  await expect(page.getByText("Integration evidence workspace", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("searchbox", { name: "Search integration evidence" }),
+  ).toBeVisible();
+  await expect(page.getByText("Selected integration evidence", { exact: true })).toBeVisible();
+  await expect(page.getByText("Developer handoff", { exact: true })).toBeVisible();
+  await expect(page.getByText("Webhook delivery log", { exact: true })).toBeVisible();
+  await expect(page.getByText("$CLINICPULSE_PARTNER_API_KEY").first()).toBeVisible();
+  await expect(page.getByText("Reference map", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Hookdeck Outpost", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Dub Webhooks", { exact: true })).toHaveCount(0);
 }
 
 async function expectPartnerReadinessLaunchCockpit(page: Page) {
@@ -88,7 +97,6 @@ test("partner integrations route exposes handoff evidence directly", async ({ pa
   await signIn(page, "org-admin@clinicpulse.local");
   await page.goto("/admin/integrations");
   await expectIntegrationsModule(page);
-  await expect(page.getByText("$CLINICPULSE_PARTNER_API_KEY").first()).toBeVisible();
 });
 
 test("partner readiness route exposes launch cockpit without external references", async ({ page }) => {

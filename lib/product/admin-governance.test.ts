@@ -412,7 +412,7 @@ it("links audit evidence rows to canonical entity details", () => {
 });
 
 it("links integration and security entity rows to canonical details", () => {
-  const integrations = readFileSync("app/(demo)/admin/integrations/page.tsx", "utf8");
+  const integrations = readFileSync("lib/product/integration-operations.ts", "utf8");
   const security = readFileSync("lib/demo/admin-security-evidence.ts", "utf8");
 
   expect(integrations).toContain('const returnSource = "admin-integrations";');
@@ -428,6 +428,51 @@ it("links integration and security entity rows to canonical details", () => {
   expect(security).toContain("buildAdminAuditEventDetailHref(event.id, returnSource)");
   expect(security).toContain("buildAdminWebhookSubscriptionDetailHref(subscription.id, returnSource)");
   expect(security).toContain("buildAdminWebhookEventDetailHref(event.id, returnSource)");
+});
+
+it("uses an operations workspace for integration evidence", () => {
+  const source = readFileSync("app/(demo)/admin/integrations/page.tsx", "utf8");
+  const componentSource = readFileSync(
+    "components/product/integration-operations-workspace.tsx",
+    "utf8",
+  );
+  const modelSource = readFileSync("lib/product/integration-operations.ts", "utf8");
+
+  expect(source).toContain("IntegrationOperationsWorkspace");
+  expect(source).toContain("IntegrationOperationsSummary");
+  expect(source).toContain("buildIntegrationOperationsModel");
+  expect(source).toContain('aria-label="Integration command center"');
+  expect(source).toContain('aria-label="Developer handoff"');
+  expect(source).toContain('aria-label="Webhook delivery log"');
+  expect(source).toContain('id="webhook-delivery-log"');
+  expect(source).toContain("commandCardAccentClassName");
+  expect(source).toContain("whitespace-pre");
+  expect(source).not.toContain("<AdminEvidenceTable");
+  expect(source).not.toContain("<AdminMetricStrip");
+  expect(source).not.toContain("getAdminToneClassName(card.tone)");
+
+  expect(componentSource).toContain('aria-label="Integration evidence workspace"');
+  expect(componentSource).toContain('aria-label="Integration evidence summary"');
+  expect(componentSource).toContain('aria-label="Integration evidence controls"');
+  expect(componentSource).toContain('aria-label="Integration evidence lanes"');
+  expect(componentSource).toContain('aria-label="Integration evidence rows"');
+  expect(componentSource).toContain('aria-label="Selected integration evidence"');
+  expect(componentSource).toContain("Clear filters");
+  expect(componentSource).toContain("Open source evidence");
+  expect(componentSource).toContain("onSelectRow(row.id)");
+  expect(componentSource).toContain("aria-pressed={isSelected}");
+  expect(componentSource).toContain("filterIntegrationEvidenceRows");
+  expect(componentSource).toContain("hidden sm:inline");
+  expect(componentSource).toContain("md:sticky md:top-3");
+  expect(componentSource).not.toContain("Reference map");
+  expect(componentSource).not.toContain("Hookdeck");
+  expect(componentSource).not.toContain("Dub");
+  expect(modelSource).toContain('const returnSource = "admin-integrations";');
+  expect(modelSource).toContain("buildAdminApiKeyDetailHref(row.id, returnSource)");
+  expect(modelSource).toContain("buildAdminWebhookSubscriptionDetailHref");
+  expect(modelSource).toContain("buildAdminWebhookEventDetailHref");
+  expect(modelSource).toContain("buildAdminExportRunDetailHref(row.id, returnSource)");
+  expect(modelSource).toContain("buildAdminIntegrationCheckDetailHref(row.id, returnSource)");
 });
 
 it("links report review cards to report detail", () => {

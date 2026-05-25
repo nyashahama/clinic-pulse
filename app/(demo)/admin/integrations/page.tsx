@@ -1,513 +1,354 @@
+import Link from "next/link";
 import {
-  AdminEmptyState,
-  AdminEvidenceTable,
-  AdminFilterBar,
-  AdminMetricStrip,
+  ArrowUpRightIcon,
+  FileJsonIcon,
+  KeyRoundIcon,
+  RadioTowerIcon,
+  TerminalSquareIcon,
+} from "lucide-react";
+
+import {
   AdminModuleHeader,
-  type AdminTone,
+  AdminStatusBadge,
 } from "@/components/product/admin-module";
-import type {
-  IntegrationStatusCheckApiResponse,
-  PartnerApiKeyApiResponse,
-  PartnerExportRunApiResponse,
-  PartnerWebhookEventApiResponse,
-  PartnerWebhookSubscriptionApiResponse,
-} from "@/lib/demo/api-types";
-import { isPartnerApiKeyActive } from "@/lib/demo/partner-readiness";
+import { IntegrationOperationsWorkspace } from "@/components/product/integration-operations-workspace";
 import {
-  buildAdminApiKeyDetailHref,
-  buildAdminExportRunDetailHref,
-  buildAdminIntegrationCheckDetailHref,
-  buildAdminWebhookEventDetailHref,
-  buildAdminWebhookSubscriptionDetailHref,
-} from "@/lib/product/admin-detail-routes";
+  buildIntegrationOperationsModel,
+  type IntegrationActionCard,
+  type IntegrationSummaryMetric,
+  type IntegrationTone,
+} from "@/lib/product/integration-operations";
+import { cn } from "@/lib/utils";
 import { requireDemoWorkflowAccess } from "../../workflow-guard";
 import { loadAdminPartnerReadiness } from "../admin-loaders";
-import {
-  formatCount,
-  formatDateTime,
-  formatLabel,
-  StatusBadge,
-  toneForAttention,
-} from "../governance-formatters";
 
-type PartnerEndpointRow = {
-  method: string;
-  path: string;
-  scope: string;
-  purpose: string;
+const commandCardIcons: Record<string, typeof KeyRoundIcon> = {
+  "credential-owner": KeyRoundIcon,
+  "receiver-health": RadioTowerIcon,
+  "package-proof": FileJsonIcon,
 };
 
-type WebhookEvidenceRow = {
-  id: string;
-  href: string;
-  ariaLabel: string;
-  type: string;
-  name: string;
-  target: string;
-  state: string;
-  evidence: string;
-  updatedAt: string;
-  tone: AdminTone;
+const commandCardAccentClassName: Record<IntegrationTone, string> = {
+  clear: "border-l-emerald-400 text-emerald-700",
+  attention: "border-l-amber-400 text-amber-700",
+  blocked: "border-l-rose-400 text-rose-700",
+  info: "border-l-sky-400 text-sky-700",
 };
 
-const returnSource = "admin-integrations";
-
-const partnerEndpointRows: PartnerEndpointRow[] = [
-  {
-    method: "GET",
-    path: "/v1/partner/clinics",
-    scope: "clinics:read",
-    purpose: "Partner-safe clinic directory and current public status.",
-  },
-  {
-    method: "GET",
-    path: "/v1/partner/clinics/{clinicId}/status",
-    scope: "status:read",
-    purpose: "Partner-safe operational status for a selected clinic.",
-  },
-  {
-    method: "GET",
-    path: "/v1/partner/alternatives",
-    scope: "alternatives:read",
-    purpose: "Alternative clinic recommendations for a clinic and service.",
-  },
-  {
-    method: "GET",
-    path: "/v1/partner/export/latest",
-    scope: "exports:read",
-    purpose: "Latest generated partner export package metadata.",
-  },
-  {
-    method: "GET",
-    path: "/v1/partner/integration-status",
-    scope: "status:read",
-    purpose: "Partner-visible readiness and integration check state.",
-  },
-];
-
-function activeKeys(apiKeys: PartnerApiKeyApiResponse[]) {
-  const now = new Date();
-  return apiKeys.filter((apiKey) => isPartnerApiKeyActive(apiKey, now));
-}
-
-function activeScopes(apiKeys: PartnerApiKeyApiResponse[]) {
-  const scopes = new Set<string>();
-  for (const apiKey of activeKeys(apiKeys)) {
-    for (const scope of apiKey.scopes) {
-      scopes.add(scope);
-    }
-  }
-  return scopes;
-}
-
-function apiKeyState(apiKey: PartnerApiKeyApiResponse): {
-  label: string;
-  tone: AdminTone;
-} {
-  if (apiKey.revokedAt) {
-    return { label: "Revoked", tone: "blocked" };
-  }
-
-  if (isPartnerApiKeyActive(apiKey)) {
-    return { label: "Active", tone: "clear" };
-  }
-
-  return { label: "Review", tone: "attention" };
-}
-
-function formatList(values: string[]) {
-  if (!values.length) {
-    return "All";
-  }
-
-  return values.map(formatLabel).join(", ");
-}
-
-function compactRecord(value: Record<string, unknown>) {
-  const entries = Object.entries(value);
-  if (!entries.length) {
-    return "Unavailable";
-  }
-
-  return entries
-    .map(([key, entryValue]) => `${formatLabel(key)}: ${String(entryValue)}`)
-    .join("; ");
-}
-
-function webhookStatusTone(status?: string | null): AdminTone {
-  const normalized = status?.toLowerCase();
-
-  if (!normalized) {
-    return "info";
-  }
-
-  if (normalized.includes("fail") || normalized.includes("disabled")) {
-    return "attention";
-  }
-
-  if (normalized.includes("active") || normalized.includes("delivered")) {
-    return "clear";
-  }
-
-  return "info";
-}
-
-function webhookEvidenceRows({
-  subscriptions,
-  events,
-  source,
-}: {
-  subscriptions: PartnerWebhookSubscriptionApiResponse[];
-  events: PartnerWebhookEventApiResponse[];
-  source: string;
-}): WebhookEvidenceRow[] {
-  return [
-    ...subscriptions.map(
-      (subscription): WebhookEvidenceRow => ({
-        id: `subscription-${subscription.id}`,
-        href: buildAdminWebhookSubscriptionDetailHref(subscription.id, source),
-        ariaLabel: `Open webhook subscription ${subscription.id} detail`,
-        type: "Subscription",
-        name: subscription.name,
-        target: subscription.targetUrl,
-        state: subscription.lastTestStatus ?? subscription.status,
-        evidence: subscription.lastError
-          ? subscription.lastError
-          : compactRecord(subscription.lastTestMetadata),
-        updatedAt: subscription.lastTestedAt ?? subscription.updatedAt,
-        tone: webhookStatusTone(subscription.lastTestStatus ?? subscription.status),
-      }),
-    ),
-    ...events.map(
-      (event): WebhookEvidenceRow => ({
-        id: `event-${event.id}`,
-        href: buildAdminWebhookEventDetailHref(event.id, source),
-        ariaLabel: `Open webhook event ${event.id} detail`,
-        type: "Preview event",
-        name: event.eventType,
-        target: `Subscription ${event.subscriptionId}`,
-        state: event.status,
-        evidence: event.lastError ?? compactRecord(event.metadata),
-        updatedAt: event.deliveredAt ?? event.createdAt,
-        tone: webhookStatusTone(event.status),
-      }),
-    ),
-  ];
-}
-
-function checkTone(check: IntegrationStatusCheckApiResponse): AdminTone {
-  const normalized = check.status.toLowerCase();
-
-  if (normalized === "passing") {
-    return "clear";
-  }
-
-  if (normalized === "failing") {
-    return "blocked";
-  }
-
-  return "attention";
-}
-
-function latestExport(exportRuns: PartnerExportRunApiResponse[]) {
-  return [...exportRuns].sort((left, right) =>
-    right.createdAt.localeCompare(left.createdAt),
-  )[0];
-}
-
-function smokeCommand(path: string) {
-  return `curl -H "Authorization: Bearer $CLINICPULSE_PARTNER_API_KEY" "$CLINICPULSE_API_BASE_URL${path}"`;
-}
+const summaryMetricAccentClassName: Record<IntegrationTone, string> = {
+  clear: "border-l-emerald-400",
+  attention: "border-l-amber-400",
+  blocked: "border-l-rose-400",
+  info: "border-l-sky-400",
+};
 
 export default async function Page() {
   await requireDemoWorkflowAccess("admin");
 
   const partnerReadiness = await loadAdminPartnerReadiness();
-  const keys = partnerReadiness.apiKeys;
-  const activeApiKeys = activeKeys(keys);
-  const coveredScopes = activeScopes(keys);
-  const endpointCoverage = partnerEndpointRows.filter((row) =>
-    coveredScopes.has(row.scope),
-  ).length;
-  const webhookRows = webhookEvidenceRows({
-    subscriptions: partnerReadiness.webhookSubscriptions,
-    events: partnerReadiness.webhookEvents,
-    source: returnSource,
-  });
-  const exportRun = latestExport(partnerReadiness.exportRuns);
+  const model = buildIntegrationOperationsModel(partnerReadiness);
 
   return (
     <div className="space-y-4" data-admin-module="integrations">
       <AdminModuleHeader
         eyebrow="Partner operations"
-        title="Integrations"
-        description="Partner handoff surface for API scope coverage, endpoint smoke tests, webhook evidence, export packages, and readiness checks."
+        title="Integration operations"
+        description="Monitor partner credentials, endpoint coverage, webhook delivery, export proof, and integration checks from one operations console."
       />
 
-      <AdminMetricStrip
-        metrics={[
-          {
-            label: "Active partner keys",
-            value: formatCount(activeApiKeys.length),
-            detail: `${formatCount(keys.length)} total credentials`,
-            tone: activeApiKeys.length > 0 ? "clear" : "attention",
-          },
-          {
-            label: "Endpoint coverage",
-            value: `${formatCount(endpointCoverage)} / ${formatCount(
-              partnerEndpointRows.length,
-            )}`,
-            detail: "Covered by active key scopes",
-            tone:
-              endpointCoverage === partnerEndpointRows.length ? "clear" : "attention",
-          },
-          {
-            label: "Webhook evidence",
-            value: formatCount(webhookRows.length),
-            detail: `${formatCount(
-              partnerReadiness.webhookSubscriptions.length,
-            )} subscriptions`,
-            tone: webhookRows.length > 0 ? "clear" : "attention",
-          },
-          {
-            label: "Export package evidence",
-            value: formatCount(partnerReadiness.exportRuns.length),
-            detail: exportRun ? formatDateTime(exportRun.createdAt) : "No export generated",
-            tone: exportRun ? "clear" : "attention",
-          },
-        ]}
+      <IntegrationOperationsSummary metrics={model.summaryMetrics} />
+
+      <section
+        aria-label="Integration command center"
+        className="rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm"
+      >
+        <div className="flex min-w-0 flex-col gap-2 border-b border-border-subtle px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
+              Integration command center
+            </p>
+            <p className="mt-1 max-w-3xl text-sm leading-5 text-muted-foreground">
+              Track owner readiness, receiver health, and export proof before opening source evidence.
+            </p>
+          </div>
+          <AdminStatusBadge tone={model.consoleState.tone}>
+            {model.consoleState.tone === "clear" ? "Operational" : "Review"}
+          </AdminStatusBadge>
+        </div>
+
+        <div className="grid gap-3 p-3 lg:grid-cols-3">
+          {model.actionCards.map((card) => (
+            <IntegrationCommandCard key={card.id} card={card} />
+          ))}
+        </div>
+      </section>
+
+      <IntegrationOperationsWorkspace
+        metrics={model.workspaceMetrics}
+        rows={model.evidenceRows}
+        consoleState={model.consoleState}
       />
 
-      <AdminFilterBar>
-        <StatusBadge tone={toneForAttention(partnerEndpointRows.length - endpointCoverage)}>
-          Partner handoff readiness
-        </StatusBadge>
-        <span className="text-sm text-muted-foreground">
-          Create keys, exports, and webhooks in Partner readiness; review the handoff package here.
-        </span>
-      </AdminFilterBar>
+      <section
+        aria-label="Developer handoff"
+        className="overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm"
+      >
+        <div className="flex min-w-0 flex-col gap-2 border-b border-border-subtle px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
+              Developer handoff
+            </p>
+            <p className="mt-1 max-w-3xl text-sm leading-5 text-muted-foreground">
+              Endpoint coverage and smoke commands for partner engineers validating the integration surface.
+            </p>
+          </div>
+          <TerminalSquareIcon className="size-5 text-muted-foreground" aria-hidden="true" />
+        </div>
 
-      <AdminEvidenceTable
-        label="Partner API contract"
-        rows={partnerEndpointRows}
-        getRowKey={(row) => row.path}
-        columns={[
-          {
-            key: "endpoint",
-            header: "Partner API contract",
-            render: (row) => (
-              <div className="space-y-1">
-                <p className="font-medium text-foreground">
-                  {row.method} {row.path}
-                </p>
-                <p className="max-w-md text-sm text-muted-foreground">{row.purpose}</p>
+        <div className="hidden md:block">
+          <table className="w-full table-fixed text-sm">
+            <thead className="bg-bg-muted/60 text-left text-xs uppercase tracking-normal text-muted-foreground">
+              <tr className="border-b border-border-subtle">
+                <th className="w-[24%] px-3 py-3 font-medium">Endpoint contract</th>
+                <th className="w-[13%] px-3 py-3 font-medium">Scope</th>
+                <th className="w-[12%] px-3 py-3 font-medium">Coverage</th>
+                <th className="w-[51%] px-3 py-3 font-medium">Smoke test</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border-subtle">
+              {model.endpointRows.map((row) => (
+                <tr key={row.path} className="align-top">
+                  <td className="whitespace-normal break-words px-3 py-3">
+                    <p className="font-medium text-foreground">
+                      {row.method} {row.path}
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      {row.purpose}
+                    </p>
+                  </td>
+                  <td className="whitespace-normal break-words px-3 py-3">
+                    <AdminStatusBadge tone="info">{row.scope}</AdminStatusBadge>
+                  </td>
+                  <td className="whitespace-normal break-words px-3 py-3">
+                    <AdminStatusBadge tone={row.tone}>
+                      {row.covered ? "Covered" : "Missing"}
+                    </AdminStatusBadge>
+                  </td>
+                  <td className="whitespace-normal break-words px-3 py-3">
+                    <SmokeCommand command={row.command} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="grid gap-2 p-3 md:hidden">
+          {model.endpointRows.map((row) => (
+            <div
+              key={row.path}
+              className="grid min-w-0 gap-3 rounded-lg border border-border-subtle bg-bg-default p-3"
+            >
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="break-words text-sm font-medium text-foreground">
+                    {row.method} {row.path}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    {row.purpose}
+                  </p>
+                </div>
+                <AdminStatusBadge tone={row.tone}>
+                  {row.covered ? "Covered" : "Missing"}
+                </AdminStatusBadge>
               </div>
-            ),
-          },
-          {
-            key: "scope",
-            header: "Required scope",
-            render: (row) => <StatusBadge tone="info">{row.scope}</StatusBadge>,
-          },
-          {
-            key: "coverage",
-            header: "Coverage",
-            render: (row) => {
-              const covered = coveredScopes.has(row.scope);
-              return (
-                <StatusBadge tone={covered ? "clear" : "attention"}>
-                  {covered ? "Covered" : "Missing"}
-                </StatusBadge>
-              );
-            },
-          },
-          {
-            key: "smoke",
-            header: "Smoke test",
-            render: (row) => (
-              <code className="block max-w-md break-all rounded-md bg-bg-muted px-2 py-1 font-mono text-xs text-content-default">
-                {smokeCommand(row.path)}
-              </code>
-            ),
-          },
-        ]}
-      />
+              <AdminStatusBadge tone="info">{row.scope}</AdminStatusBadge>
+              <SmokeCommand command={row.command} />
+            </div>
+          ))}
+        </div>
+      </section>
 
-      <AdminEvidenceTable
-        label="Credential scope coverage"
-        rows={keys}
-        getRowKey={(row) => String(row.id)}
-        getRowAriaLabel={(row) => `Open ${row.name} API key detail`}
-        getRowHref={(row) => buildAdminApiKeyDetailHref(row.id, returnSource)}
-        emptyState={
-          <AdminEmptyState
-            title="Credential scope coverage"
-            description="Create a partner API key before handing this integration to a partner."
-          />
-        }
-        columns={[
-          {
-            key: "key",
-            header: "Credential scope coverage",
-            render: (row) => (
-              <div className="space-y-1">
-                <p className="font-medium text-foreground">{row.name}</p>
-                <p className="font-mono text-xs text-muted-foreground">{row.keyPrefix}</p>
-              </div>
-            ),
-          },
-          {
-            key: "state",
-            header: "State",
-            render: (row) => {
-              const state = apiKeyState(row);
-              return <StatusBadge tone={state.tone}>{state.label}</StatusBadge>;
-            },
-          },
-          {
-            key: "scope",
-            header: "Scopes",
-            render: (row) => formatList(row.scopes),
-          },
-          {
-            key: "districts",
-            header: "Districts",
-            render: (row) => formatList(row.allowedDistricts),
-          },
-          {
-            key: "lastUsed",
-            header: "Last used",
-            render: (row) => formatDateTime(row.lastUsedAt),
-          },
-        ]}
-      />
+      <section
+        id="webhook-delivery-log"
+        aria-label="Webhook delivery log"
+        className="overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm"
+      >
+        <div className="border-b border-border-subtle px-4 py-3">
+          <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
+            Webhook delivery log
+          </p>
+          <p className="mt-1 max-w-3xl text-sm leading-5 text-muted-foreground">
+            Receiver tests and preview events stay linked to source records for delivery debugging.
+          </p>
+        </div>
 
-      <AdminEvidenceTable
-        label="Webhook delivery evidence"
-        rows={webhookRows}
-        getRowKey={(row) => row.id}
-        getRowAriaLabel={(row) => row.ariaLabel}
-        getRowHref={(row) => row.href}
-        emptyState={
-          <AdminEmptyState
-            title="Webhook delivery evidence"
-            description="Create and test a webhook before partner handoff."
-          />
-        }
-        columns={[
-          {
-            key: "name",
-            header: "Webhook delivery evidence",
-            render: (row) => (
-              <div className="space-y-1">
-                <p className="font-medium text-foreground">{row.name}</p>
-                <p className="text-xs text-muted-foreground">{row.type}</p>
-              </div>
-            ),
-          },
-          {
-            key: "state",
-            header: "State",
-            render: (row) => <StatusBadge tone={row.tone}>{formatLabel(row.state)}</StatusBadge>,
-          },
-          {
-            key: "target",
-            header: "Target",
-            render: (row) => <p className="max-w-sm break-words text-sm">{row.target}</p>,
-          },
-          {
-            key: "evidence",
-            header: "Evidence",
-            render: (row) => <p className="max-w-md text-sm">{row.evidence}</p>,
-          },
-          {
-            key: "updated",
-            header: "Updated",
-            render: (row) => formatDateTime(row.updatedAt),
-          },
-        ]}
-      />
+        {model.deliveryLogRows.length ? (
+          <>
+            <div className="hidden md:block">
+              <table className="w-full table-fixed text-sm">
+                <thead className="bg-bg-muted/60 text-left text-xs uppercase tracking-normal text-muted-foreground">
+                  <tr className="border-b border-border-subtle">
+                    <th className="w-[24%] px-3 py-3 font-medium">Event</th>
+                    <th className="w-[14%] px-3 py-3 font-medium">State</th>
+                    <th className="w-[28%] px-3 py-3 font-medium">Target</th>
+                    <th className="w-[14%] px-3 py-3 font-medium">Attempts</th>
+                    <th className="w-[20%] px-3 py-3 font-medium">Updated</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-subtle">
+                  {model.deliveryLogRows.map((row) => (
+                    <tr key={row.id} className="align-top">
+                      <td className="whitespace-normal break-words px-3 py-3">
+                        <Link
+                          href={row.sourceHref}
+                          aria-label={row.ariaLabel}
+                          className="inline-flex min-w-0 items-center gap-1 font-medium text-foreground underline-offset-4 hover:underline"
+                        >
+                          <span className="min-w-0 break-words">{row.eventType}</span>
+                          <ArrowUpRightIcon className="size-3.5 shrink-0" aria-hidden="true" />
+                        </Link>
+                      </td>
+                      <td className="whitespace-normal break-words px-3 py-3">
+                        <AdminStatusBadge tone={row.tone}>{row.stateLabel}</AdminStatusBadge>
+                      </td>
+                      <td className="whitespace-normal break-words px-3 py-3">
+                        {row.target}
+                      </td>
+                      <td className="whitespace-normal break-words px-3 py-3">
+                        {row.attempts}
+                      </td>
+                      <td className="whitespace-normal break-words px-3 py-3 text-xs text-muted-foreground">
+                        {row.observedLabel}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-      <AdminEvidenceTable
-        label="Export package evidence"
-        rows={partnerReadiness.exportRuns}
-        getRowKey={(row) => String(row.id)}
-        getRowAriaLabel={(row) => `Open export run ${row.id} detail`}
-        getRowHref={(row) => buildAdminExportRunDetailHref(row.id, returnSource)}
-        emptyState={
-          <AdminEmptyState
-            title="No export package evidence"
-            description="Generate an export package before partner handoff."
-          />
-        }
-        columns={[
-          {
-            key: "checksum",
-            header: "Export checksum",
-            render: (row) => (
-              <span className="break-all font-mono text-xs text-muted-foreground">
-                {row.checksum}
-              </span>
-            ),
-          },
-          {
-            key: "format",
-            header: "Format",
-            render: (row) => <StatusBadge tone="info">{row.format}</StatusBadge>,
-          },
-          {
-            key: "records",
-            header: "Record counts",
-            render: (row) => compactRecord(row.recordCounts),
-          },
-          {
-            key: "scope",
-            header: "Scope",
-            render: (row) => compactRecord(row.scope),
-          },
-          {
-            key: "created",
-            header: "Created",
-            render: (row) => formatDateTime(row.createdAt),
-          },
-        ]}
-      />
+            <div className="grid gap-2 p-3 md:hidden">
+              {model.deliveryLogRows.map((row) => (
+                <Link
+                  key={row.id}
+                  href={row.sourceHref}
+                  aria-label={row.ariaLabel}
+                  className="grid min-w-0 gap-2 rounded-lg border border-border-subtle bg-bg-default p-3 transition hover:bg-bg-muted/60"
+                >
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="break-words text-sm font-medium text-foreground">
+                        {row.eventType}
+                      </p>
+                      <p className="mt-1 break-words text-xs text-muted-foreground">
+                        {row.target}
+                      </p>
+                    </div>
+                    <AdminStatusBadge tone={row.tone}>{row.stateLabel}</AdminStatusBadge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {row.attempts} / {row.observedLabel}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="p-4 text-sm text-muted-foreground">
+            No webhook delivery records are linked to this integration yet.
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
 
-      <AdminEvidenceTable
-        label="Integration check evidence"
-        rows={partnerReadiness.integrationChecks}
-        getRowKey={(row) => `${row.checkName}:${row.checkedAt}`}
-        getRowAriaLabel={(row) => `Open ${formatLabel(row.checkName)} integration check detail`}
-        getRowHref={(row) => buildAdminIntegrationCheckDetailHref(row.id, returnSource)}
-        columns={[
-          {
-            key: "check",
-            header: "Readiness check",
-            render: (row) => (
-              <div className="space-y-1">
-                <p className="font-medium text-foreground">{formatLabel(row.checkName)}</p>
-                <p className="max-w-md text-sm text-muted-foreground">{row.summary}</p>
-              </div>
-            ),
-          },
-          {
-            key: "state",
-            header: "State",
-            render: (row) => <StatusBadge tone={checkTone(row)}>{formatLabel(row.status)}</StatusBadge>,
-          },
-          {
-            key: "metadata",
-            header: "Metadata",
-            render: (row) => compactRecord(row.metadata),
-          },
-          {
-            key: "checked",
-            header: "Checked",
-            render: (row) => formatDateTime(row.checkedAt),
-          },
-        ]}
-      />
+function IntegrationOperationsSummary({
+  metrics,
+}: {
+  metrics: IntegrationSummaryMetric[];
+}) {
+  return (
+    <section
+      aria-label="Integration operations summary"
+      className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+    >
+      {metrics.map((metric) => (
+        <article
+          key={metric.id}
+          className={cn(
+            "min-w-0 rounded-lg border border-l-4 border-border-subtle bg-bg-default px-4 py-3 text-content-default shadow-sm",
+            summaryMetricAccentClassName[metric.tone],
+          )}
+        >
+          <div className="flex min-w-0 items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="break-words text-xs font-medium text-muted-foreground">
+                {metric.label}
+              </p>
+              <p className="mt-1 break-words text-2xl font-semibold leading-tight text-foreground">
+                {metric.value}
+              </p>
+            </div>
+            <AdminStatusBadge tone={metric.tone}>
+              {metric.tone === "clear" ? "Ready" : "Review"}
+            </AdminStatusBadge>
+          </div>
+          <p className="mt-2 break-words text-xs leading-4 text-muted-foreground">
+            {metric.detail}
+          </p>
+        </article>
+      ))}
+    </section>
+  );
+}
+
+function IntegrationCommandCard({ card }: { card: IntegrationActionCard }) {
+  const Icon = commandCardIcons[card.id] ?? KeyRoundIcon;
+
+  return (
+    <article
+      className={cn(
+        "grid min-w-0 gap-3 rounded-lg border border-l-4 border-border-subtle bg-bg-default p-3 shadow-sm",
+        commandCardAccentClassName[card.tone],
+      )}
+    >
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
+            {card.eyebrow}
+          </p>
+          <h2 className="mt-1 break-words text-base font-semibold leading-tight text-foreground">
+            {card.title}
+          </h2>
+        </div>
+        <Icon className="size-5 shrink-0" aria-hidden="true" />
+      </div>
+
+      <p className="text-sm leading-5 text-muted-foreground">{card.description}</p>
+      <p className="break-words rounded-md border border-border-subtle bg-bg-muted/50 px-2 py-1 font-mono text-xs text-foreground">
+        {card.detail}
+      </p>
+
+      {card.href && card.actionLabel ? (
+        <Link
+          href={card.href}
+          className="inline-flex min-h-8 items-center justify-center gap-2 rounded-lg border border-border-subtle bg-bg-default px-3 py-1.5 text-sm font-medium text-foreground transition hover:bg-bg-muted"
+        >
+          {card.actionLabel}
+          <ArrowUpRightIcon className="size-4" aria-hidden="true" />
+        </Link>
+      ) : null}
+    </article>
+  );
+}
+
+function SmokeCommand({ command }: { command: string }) {
+  return (
+    <div className="overflow-x-auto rounded-md border border-border-subtle bg-bg-muted/70">
+      <code className="block min-w-max whitespace-pre px-2 py-1 font-mono text-xs leading-5 text-content-default">
+        {command}
+      </code>
     </div>
   );
 }
