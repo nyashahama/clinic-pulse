@@ -2,14 +2,11 @@
 
 import { useMemo, useState } from "react";
 
-import { DemoControls } from "@/components/demo/demo-controls";
 import {
-  AdminEmptyState,
-  AdminEvidenceTable,
   AdminFilterBar,
-  AdminMetricStrip,
   AdminModuleHeader,
 } from "@/components/product/admin-module";
+import { ScenarioControlsWorkspace } from "@/components/product/scenario-controls-workspace";
 import {
   INCIDENT_REPLAY_SOURCE_CLINIC_ID,
   incidentReplaySteps,
@@ -19,37 +16,13 @@ import {
   STOCKOUT_TRIGGER_CLINIC_ID,
 } from "@/lib/demo/clinics";
 import { useDemoStore } from "@/lib/demo/demo-store";
-import type { AuditEvent } from "@/lib/demo/types";
 import {
-  formatCount,
-  formatDateTime,
-  formatLabel,
   StatusBadge,
-  toneForAttention,
 } from "../governance-formatters";
-
-type ScenarioAuditRow = {
-  id: string;
-  eventType: string;
-  clinicName: string;
-  actorName: string;
-  summary: string;
-  createdAt: string;
-};
-
-function buildScenarioAuditRows(
-  auditEvents: AuditEvent[],
-  clinicNameById: Map<string, string>,
-): ScenarioAuditRow[] {
-  return auditEvents.slice(0, 6).map((event) => ({
-    id: event.id,
-    eventType: event.eventType,
-    clinicName: clinicNameById.get(event.clinicId) ?? event.clinicId,
-    actorName: event.actorName,
-    summary: event.summary,
-    createdAt: event.createdAt,
-  }));
-}
+import {
+  buildScenarioControlsViewModel,
+  type ScenarioControlCommandId,
+} from "@/lib/product/scenario-controls";
 
 function scenarioActionTimestamp(offsetMinutes = 0) {
   return new Date(Date.now() + offsetMinutes * 60_000).toISOString();
@@ -66,6 +39,8 @@ export default function ScenarioControlsPageClient() {
     triggerStockout,
   } = useDemoStore();
   const [lastAction, setLastAction] = useState("Scenario controls are ready.");
+  const [selectedCommandId, setSelectedCommandId] =
+    useState<ScenarioControlCommandId>("incident_replay");
   const clinicNameById = useMemo(
     () => new Map(state.clinics.map((clinic) => [clinic.id, clinic.name])),
     [state.clinics],
@@ -75,10 +50,17 @@ export default function ScenarioControlsPageClient() {
   const staffingClinicLabel =
     clinicNameById.get(STAFFING_TRIGGER_CLINIC_ID) ?? "Soshanguve Block F";
   const activeAlerts = state.alerts.filter((alert) => alert.status !== "resolved");
-  const nonOperationalClinicCount = state.clinicStates.filter(
-    (clinicState) => clinicState.status !== "operational",
-  ).length;
-  const latestAuditRows = buildScenarioAuditRows(state.auditEvents, clinicNameById);
+  const viewModel = useMemo(
+    () =>
+      buildScenarioControlsViewModel({
+        state,
+        stockoutClinicLabel,
+        staffingClinicLabel,
+        selectedCommandId,
+        lastAction,
+      }),
+    [lastAction, selectedCommandId, staffingClinicLabel, state, stockoutClinicLabel],
+  );
 
   const handleReset = () => {
     resetDemo();
@@ -132,104 +114,51 @@ export default function ScenarioControlsPageClient() {
     setLastAction("Reroute evidence recorded for the active stockout scenario.");
   };
 
+  const handleRunCommand = (commandId: ScenarioControlCommandId) => {
+    setSelectedCommandId(commandId);
+
+    switch (commandId) {
+      case "reset":
+        handleReset();
+        return;
+      case "incident_replay":
+        handleReplayIncident();
+        return;
+      case "stockout":
+        handleTriggerStockout();
+        return;
+      case "staffing_shortage":
+        handleTriggerStaffingShortage();
+        return;
+      case "offline_sync":
+        handleSyncOfflineReports();
+        return;
+      case "reroute":
+        handleTriggerReroute();
+        return;
+    }
+  };
+
   return (
     <div className="grid min-w-0 gap-4 pb-6" data-admin-module="scenario-controls">
       <AdminModuleHeader
         eyebrow="Platform operations"
         title="Scenario controls"
-        description="Reset, replay, and seed scenario state from the platform control plane while keeping the resulting audit evidence visible."
-      />
-
-      <AdminMetricStrip
-        metrics={[
-          {
-            label: "Active alerts",
-            value: formatCount(activeAlerts.length),
-            detail: "Open scenario signals in the shared district state",
-            tone: toneForAttention(activeAlerts.length),
-          },
-          {
-            label: "Offline queue",
-            value: formatCount(state.offlineQueue.length),
-            detail: "Reports waiting for sync from local scenario state",
-            tone: toneForAttention(state.offlineQueue.length),
-          },
-          {
-            label: "Non-operational clinics",
-            value: formatCount(nonOperationalClinicCount),
-            detail: "Clinics outside the operational status baseline",
-            tone: toneForAttention(nonOperationalClinicCount),
-          },
-          {
-            label: "Last sync",
-            value: formatDateTime(state.lastSyncAt),
-            detail: `${formatCount(state.auditEvents.length)} audit evidence events`,
-            tone: "info",
-          },
-        ]}
+        description="Run local incident rehearsals, preview expected state changes, and verify the resulting audit trail from one operations console."
       />
 
       <AdminFilterBar>
         <StatusBadge tone={activeAlerts.length > 0 ? "attention" : "clear"}>
-          Shared scenario state
+          Local scenario state
         </StatusBadge>
         <span className="text-sm text-muted-foreground">{lastAction}</span>
       </AdminFilterBar>
 
-      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(320px,0.42fr)_minmax(0,0.58fr)]">
-        <DemoControls
-          stockoutClinicLabel={stockoutClinicLabel}
-          staffingClinicLabel={staffingClinicLabel}
-          offlineQueueCount={state.offlineQueue.length}
-          replayRunning={false}
-          onReset={handleReset}
-          onReplayIncident={handleReplayIncident}
-          onTriggerStockout={handleTriggerStockout}
-          onTriggerStaffingShortage={handleTriggerStaffingShortage}
-          onSyncOfflineReports={handleSyncOfflineReports}
-          onTriggerReroute={handleTriggerReroute}
-        />
-
-        <AdminEvidenceTable
-          label="Scenario audit evidence"
-          rows={latestAuditRows}
-          getRowKey={(row) => row.id}
-          emptyState={
-            <AdminEmptyState
-              title="No scenario audit evidence"
-              description="Run a scenario control to record audit evidence in the shared demo state."
-            />
-          }
-          columns={[
-            {
-              key: "event",
-              header: "Event",
-              render: (row) => (
-                <StatusBadge tone={row.eventType.includes("webhook") ? "clear" : "info"}>
-                  {formatLabel(row.eventType)}
-                </StatusBadge>
-              ),
-            },
-            {
-              key: "clinic",
-              header: "Clinic",
-              render: (row) => row.clinicName,
-            },
-            {
-              key: "summary",
-              header: "Evidence",
-              render: (row) => (
-                <div className="min-w-0">
-                  <p className="text-sm text-foreground">{row.summary}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {row.actorName} at {formatDateTime(row.createdAt)}
-                  </p>
-                </div>
-              ),
-            },
-          ]}
-        />
-      </div>
+      <ScenarioControlsWorkspace
+        viewModel={viewModel}
+        onSelectCommand={setSelectedCommandId}
+        onRunCommand={handleRunCommand}
+      />
     </div>
   );
 }
