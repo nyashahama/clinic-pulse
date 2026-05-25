@@ -1107,7 +1107,8 @@ func (s Store) Ready(ctx context.Context) error {
 	if s.pool == nil {
 		return errors.New("store: database pool is not configured")
 	}
-	return s.pool.Ping(ctx)
+	_, err := s.sqlc().HealthCheck(ctx)
+	return err
 }
 
 func (s Store) ListClinics(ctx context.Context) ([]ClinicDetail, error) {

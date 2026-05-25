@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"clinicpulse/services/api/internal/db"
+
 	"github.com/jackc/pgx/v5"
 )
 
@@ -209,16 +211,24 @@ ORDER BY role, organisation_id NULLS FIRST, district NULLS FIRST, id`
 )
 
 func (s Store) GetUserByEmail(ctx context.Context, email string) (User, error) {
-	return scanUser(s.pool.QueryRow(ctx, getUserByEmailSQL, email))
+	row, err := s.sqlc().GetUserByEmail(ctx, email)
+	if err != nil {
+		return User{}, err
+	}
+	return userFromSQLC(row), nil
 }
 
 func (s Store) CreateUser(ctx context.Context, input CreateUserInput) (User, error) {
-	return scanUser(s.pool.QueryRow(ctx, createUserSQL,
-		strings.ToLower(strings.TrimSpace(input.Email)),
-		strings.TrimSpace(input.DisplayName),
-		input.PasswordHash,
-		input.PasswordResetRequired,
-	))
+	row, err := s.sqlc().CreateUser(ctx, db.CreateUserParams{
+		Email:                 strings.ToLower(strings.TrimSpace(input.Email)),
+		DisplayName:           strings.TrimSpace(input.DisplayName),
+		PasswordHash:          input.PasswordHash,
+		PasswordResetRequired: input.PasswordResetRequired,
+	})
+	if err != nil {
+		return User{}, err
+	}
+	return userFromSQLC(row), nil
 }
 
 func (s Store) CreateAdminUserWithAccessTx(ctx context.Context, input CreateAdminUserWithAccessInput) (User, OrganisationMembership, AuditEvent, error) {
@@ -228,15 +238,17 @@ func (s Store) CreateAdminUserWithAccessTx(ctx context.Context, input CreateAdmi
 	}
 	defer tx.Rollback(ctx)
 
-	user, err := scanUser(tx.QueryRow(ctx, createUserSQL,
-		strings.ToLower(strings.TrimSpace(input.User.Email)),
-		strings.TrimSpace(input.User.DisplayName),
-		input.User.PasswordHash,
-		input.User.PasswordResetRequired,
-	))
+	queries := s.sqlc().WithTx(tx)
+	row, err := queries.CreateUser(ctx, db.CreateUserParams{
+		Email:                 strings.ToLower(strings.TrimSpace(input.User.Email)),
+		DisplayName:           strings.TrimSpace(input.User.DisplayName),
+		PasswordHash:          input.User.PasswordHash,
+		PasswordResetRequired: input.User.PasswordResetRequired,
+	})
 	if err != nil {
 		return User{}, OrganisationMembership{}, AuditEvent{}, err
 	}
+	user := userFromSQLC(row)
 
 	access := input.Access
 	access.UserID = user.ID
@@ -264,16 +276,24 @@ func (s Store) CreateAdminUserWithAccessTx(ctx context.Context, input CreateAdmi
 }
 
 func (s Store) GetUserByID(ctx context.Context, userID int64) (User, error) {
-	return scanUser(s.pool.QueryRow(ctx, getUserByIDSQL, userID))
+	row, err := s.sqlc().GetUserByID(ctx, userID)
+	if err != nil {
+		return User{}, err
+	}
+	return userFromSQLC(row), nil
 }
 
 func (s Store) UpdateUserLifecycle(ctx context.Context, input UpdateUserLifecycleInput) (User, error) {
-	return scanUser(s.pool.QueryRow(ctx, updateUserLifecycleSQL,
-		input.UserID,
-		input.DisplayName,
-		input.Disabled,
-		input.UpdatedAt,
-	))
+	row, err := s.sqlc().UpdateUserLifecycle(ctx, db.UpdateUserLifecycleParams{
+		ID:          input.UserID,
+		DisplayName: input.DisplayName,
+		Disabled:    input.Disabled,
+		UpdatedAt:   timestamptzFromTime(input.UpdatedAt),
+	})
+	if err != nil {
+		return User{}, err
+	}
+	return userFromSQLC(row), nil
 }
 
 func (s Store) UpdateUserLifecycleWithAuditTx(ctx context.Context, input UpdateUserLifecycleWithAuditInput) (User, AuditEvent, error) {
@@ -283,15 +303,17 @@ func (s Store) UpdateUserLifecycleWithAuditTx(ctx context.Context, input UpdateU
 	}
 	defer tx.Rollback(ctx)
 
-	user, err := scanUser(tx.QueryRow(ctx, updateUserLifecycleSQL,
-		input.User.UserID,
-		input.User.DisplayName,
-		input.User.Disabled,
-		input.User.UpdatedAt,
-	))
+	queries := s.sqlc().WithTx(tx)
+	row, err := queries.UpdateUserLifecycle(ctx, db.UpdateUserLifecycleParams{
+		ID:          input.User.UserID,
+		DisplayName: input.User.DisplayName,
+		Disabled:    input.User.Disabled,
+		UpdatedAt:   timestamptzFromTime(input.User.UpdatedAt),
+	})
 	if err != nil {
 		return User{}, AuditEvent{}, err
 	}
+	user := userFromSQLC(row)
 
 	auditEvent, err := insertAuditEvent(ctx, tx, input.AuditEvent)
 	if err != nil {
@@ -306,7 +328,14 @@ func (s Store) UpdateUserLifecycleWithAuditTx(ctx context.Context, input UpdateU
 }
 
 func (s Store) UpdateUserPassword(ctx context.Context, userID int64, passwordHash string) (User, error) {
-	return scanUser(s.pool.QueryRow(ctx, updateUserPasswordSQL, userID, passwordHash))
+	row, err := s.sqlc().UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
+		ID:           userID,
+		PasswordHash: &passwordHash,
+	})
+	if err != nil {
+		return User{}, err
+	}
+	return userFromSQLC(row), nil
 }
 
 func (s Store) CreateSession(ctx context.Context, input CreateSessionInput) (Session, error) {
@@ -364,35 +393,37 @@ func (s Store) GetSessionByTokenHash(ctx context.Context, tokenHash string) (Ses
 }
 
 func (s Store) RevokeSession(ctx context.Context, tokenHash string) error {
-	_, err := s.pool.Exec(ctx, revokeSessionSQL, tokenHash)
+	_, err := s.sqlc().RevokeSession(ctx, tokenHash)
 	return err
 }
 
 func (s Store) DisableUser(ctx context.Context, userID int64, disabledAt time.Time) error {
-	tag, err := s.pool.Exec(ctx, disableUserSQL, userID, disabledAt)
+	rowsAffected, err := s.sqlc().DisableUser(ctx, db.DisableUserParams{
+		ID:         userID,
+		DisabledAt: timestamptzFromTime(disabledAt),
+	})
 	if err != nil {
 		return err
 	}
-	if tag.RowsAffected() == 0 {
+	if rowsAffected == 0 {
 		return pgx.ErrNoRows
 	}
 	return nil
 }
 
 func (s Store) EnableUser(ctx context.Context, userID int64) error {
-	tag, err := s.pool.Exec(ctx, enableUserSQL, userID)
+	rowsAffected, err := s.sqlc().EnableUser(ctx, userID)
 	if err != nil {
 		return err
 	}
-	if tag.RowsAffected() == 0 {
+	if rowsAffected == 0 {
 		return pgx.ErrNoRows
 	}
 	return nil
 }
 
 func (s Store) RevokeActiveSessionsForUser(ctx context.Context, userID int64) (int64, error) {
-	tag, err := s.pool.Exec(ctx, revokeActiveSessionsForUserSQL, userID)
-	return tag.RowsAffected(), err
+	return s.sqlc().RevokeActiveSessionsForUser(ctx, userID)
 }
 
 func (s Store) RevokeActiveSessionsForUserWithAuditTx(ctx context.Context, input RevokeActiveSessionsWithAuditInput) (int64, AuditEvent, error) {
@@ -402,11 +433,11 @@ func (s Store) RevokeActiveSessionsForUserWithAuditTx(ctx context.Context, input
 	}
 	defer tx.Rollback(ctx)
 
-	tag, err := tx.Exec(ctx, revokeActiveSessionsForUserSQL, input.UserID)
+	queries := s.sqlc().WithTx(tx)
+	revokedSessions, err := queries.RevokeActiveSessionsForUser(ctx, input.UserID)
 	if err != nil {
 		return 0, AuditEvent{}, err
 	}
-	revokedSessions := tag.RowsAffected()
 	input.AuditEvent.Metadata = cloneMetadata(input.AuditEvent.Metadata)
 	input.AuditEvent.Metadata["revokedSessions"] = revokedSessions
 

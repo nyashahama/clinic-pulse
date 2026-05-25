@@ -9,12 +9,13 @@ CLINICPULSE_API_BASE_URL ?= http://localhost:8080
 NEXT_PUBLIC_CLINICPULSE_API_BASE_URL ?= /api/clinicpulse
 API_IMAGE ?= clinicpulse-api:local
 DOCKER_BUILD_ATTEMPTS ?= 3
+SQLC_VERSION ?= v1.31.1
 
 API_DIR := services/api
 AUTH_SEED := $(API_DIR)/seeds/local_phase3_auth_users.sql
 REVIEW_SEED := $(API_DIR)/seeds/local_phase3_review_evidence.sql
 
-.PHONY: db-up db-up-e2e db-wait db-wait-e2e db-migrate db-seed-auth db-seed-review db-bootstrap db-create-e2e db-reset-e2e-empty db-reset-e2e db-reset-review dev-api dev-api-review dev-web dev-web-review test-api test-web test-e2e smoke load-smoke lint build verify verify-openapi audit-web audit-api verify-security build-api-container migrate-api-container test-api-container
+.PHONY: db-up db-up-e2e db-wait db-wait-e2e db-migrate db-seed-auth db-seed-review db-bootstrap db-create-e2e db-reset-e2e-empty db-reset-e2e db-reset-review dev-api dev-api-review dev-web dev-web-review generate-sqlc test-api test-web test-e2e smoke load-smoke lint build verify verify-openapi audit-web audit-api verify-security build-api-container migrate-api-container test-api-container
 
 db-up:
 	CLINICPULSE_POSTGRES_PORT="$(POSTGRES_PORT)" docker compose up -d postgres
@@ -76,6 +77,9 @@ dev-web:
 
 dev-web-review:
 	CLINICPULSE_API_BASE_URL="http://localhost:18080" NEXT_PUBLIC_CLINICPULSE_API_BASE_URL="$(NEXT_PUBLIC_CLINICPULSE_API_BASE_URL)" npm run dev -- --port 3000
+
+generate-sqlc:
+	cd "$(API_DIR)" && go run github.com/sqlc-dev/sqlc/cmd/sqlc@$(SQLC_VERSION) generate
 
 test-api:
 	cd "$(API_DIR)" && go test ./...
