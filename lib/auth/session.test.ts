@@ -10,7 +10,7 @@ import {
 } from "@/lib/auth/api";
 import {
   ADMIN_WORKFLOW_ROLES,
-  DEMO_WORKFLOW_ROLES,
+  DISTRICT_WORKFLOW_ROLES,
   FIELD_WORKFLOW_ROLES,
   type AuthSession,
   getWorkflowInsufficientRoleRedirectPath,
@@ -314,7 +314,7 @@ describe("auth workflow role guards", () => {
   it("keeps district managers in district command workflows", () => {
     const session = authSession("district_manager");
 
-    expect(DEMO_WORKFLOW_ROLES).toEqual([
+    expect(DISTRICT_WORKFLOW_ROLES).toEqual([
       "district_manager",
       "org_admin",
       "system_admin",

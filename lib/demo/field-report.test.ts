@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createFieldReport, syncQueuedFieldReports } from "@/app/(demo)/field/actions";
+import { createFieldReport, syncQueuedFieldReports } from "@/app/(workspace)/field/actions";
 import {
   getCurrentSession,
   getSessionCookieHeader,

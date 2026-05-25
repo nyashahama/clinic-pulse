@@ -131,7 +131,7 @@ test.describe("phase-one operations route checklist", () => {
     await expectNoStagedProductLanguage(page);
     await expect(page.getByRole("heading", { name: "Partner readiness", exact: true })).toBeVisible();
 
-    await page.goto("/admin/demo-controls");
+    await page.goto("/admin/scenario-controls");
     await expectNoStagedProductLanguage(page);
     await expect(page.getByRole("heading", { name: "Scenario controls" })).toBeVisible();
 

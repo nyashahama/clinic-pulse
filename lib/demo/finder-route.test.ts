@@ -7,19 +7,19 @@ const appDir = path.join(process.cwd(), "app");
 const publicFinderPage = path.join(appDir, "finder", "page.tsx");
 const publicFinderClient = path.join(appDir, "finder", "page-client.tsx");
 const publicFinderComponent = path.join(process.cwd(), "components", "demo", "clinic-finder.tsx");
-const demoFinderPage = path.join(appDir, "(demo)", "finder", "page.tsx");
-const demoLayout = path.join(appDir, "(demo)", "layout.tsx");
+const demoFinderPage = path.join(appDir, "(workspace)", "finder", "page.tsx");
+const demoLayout = path.join(appDir, "(workspace)", "layout.tsx");
 const publicClinicDetailPage = path.join(appDir, "clinics", "[clinicId]", "page.tsx");
 const legacyDemoClinicDetailPage = path.join(
   appDir,
-  "(demo)",
+  "(workspace)",
   "clinics",
   "[clinicId]",
   "page.tsx",
 );
 const restrictedDemoClinicDetailPage = path.join(
   appDir,
-  "(demo)",
+  "(workspace)",
   "demo",
   "clinics",
   "[clinicId]",
@@ -27,7 +27,7 @@ const restrictedDemoClinicDetailPage = path.join(
 );
 const restrictedDemoClinicDetailClient = path.join(
   appDir,
-  "(demo)",
+  "(workspace)",
   "demo",
   "clinics",
   "[clinicId]",
@@ -79,7 +79,7 @@ describe("public finder route boundary", () => {
     const pageSource = readFileSync(restrictedDemoClinicDetailPage, "utf8");
     const clientSource = readFileSync(restrictedDemoClinicDetailClient, "utf8");
 
-    expect(pageSource).toContain('requireDemoWorkflowAccess("demo")');
+    expect(pageSource).toContain('requireDashboardWorkflowAccess("demo")');
     expect(pageSource).toContain("connection()");
     expect(pageSource).toContain("ClinicDetailPageClient");
     expect(pageSource).not.toContain('"use client"');

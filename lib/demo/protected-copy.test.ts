@@ -6,8 +6,8 @@ import { describe, expect, it } from "vitest";
 import { PRODUCT_LANGUAGE_BAN_LIST } from "@/lib/demo/operations-scenario";
 
 const productCopyFiles = [
-  "app/(demo)/admin/data-ingestion/page.tsx",
-  "app/(demo)/admin/partner-readiness/page-client.tsx",
+  "app/(workspace)/admin/data-ingestion/page.tsx",
+  "app/(workspace)/admin/partner-readiness/page-client.tsx",
   "app/(auth)/register/page.tsx",
   "app/(legal)/legal/safety/page.tsx",
   "app/(legal)/legal/terms/page.tsx",

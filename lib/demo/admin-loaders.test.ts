@@ -36,7 +36,7 @@ import {
   loadAdminAuditEvents,
   loadAdminGovernanceData,
   loadAdminUsers,
-} from "@/app/(demo)/admin/admin-loaders";
+} from "@/app/(workspace)/admin/admin-loaders";
 import { AuthenticationRequiredError } from "@/lib/auth/session";
 
 const cookieHeader = "clinicpulse_session=session-token";
@@ -82,7 +82,7 @@ describe("admin governance loaders", () => {
   });
 
   it("marks the module as server-only", () => {
-    const source = readFileSync("app/(demo)/admin/admin-loaders.ts", "utf8");
+    const source = readFileSync("app/(workspace)/admin/admin-loaders.ts", "utf8");
 
     expect(source.startsWith('import "server-only";')).toBe(true);
   });

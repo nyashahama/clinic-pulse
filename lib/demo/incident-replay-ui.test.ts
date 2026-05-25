@@ -13,12 +13,12 @@ const demoControlsPath = path.join(
   process.cwd(),
   "components",
   "demo",
-  "demo-controls.tsx",
+  "scenario-controls.tsx",
 );
 const demoPageClientPath = path.join(
   process.cwd(),
   "app",
-  "(demo)",
+  "(workspace)",
   "demo",
   "page-client.tsx",
 );

@@ -201,7 +201,7 @@ describe("product workspace navigation config", () => {
         "/admin/security",
         "/admin/partner-readiness",
         "/admin/integrations",
-        "/admin/demo-controls",
+        "/admin/scenario-controls",
         "/admin/audit-evidence",
       ]),
     );

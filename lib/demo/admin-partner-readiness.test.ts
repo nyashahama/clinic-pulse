@@ -3,11 +3,11 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-const adminClient = path.join(process.cwd(), "app", "(demo)", "admin", "page-client.tsx");
+const adminClient = path.join(process.cwd(), "app", "(workspace)", "admin", "page-client.tsx");
 const partnerReadinessPage = path.join(
   process.cwd(),
   "app",
-  "(demo)",
+  "(workspace)",
   "admin",
   "partner-readiness",
   "page.tsx",
@@ -15,7 +15,7 @@ const partnerReadinessPage = path.join(
 const partnerReadinessClient = path.join(
   process.cwd(),
   "app",
-  "(demo)",
+  "(workspace)",
   "admin",
   "partner-readiness",
   "page-client.tsx",
@@ -23,7 +23,7 @@ const partnerReadinessClient = path.join(
 const integrationsPage = path.join(
   process.cwd(),
   "app",
-  "(demo)",
+  "(workspace)",
   "admin",
   "integrations",
   "page.tsx",
@@ -58,7 +58,7 @@ describe("admin partner readiness workflow", () => {
     const partnerReadinessPageSource = readSource(partnerReadinessPage);
     const panelSource = readSource(partnerPanel);
 
-    expect(partnerReadinessPageSource).toContain('requireDemoWorkflowAccess("admin")');
+    expect(partnerReadinessPageSource).toContain('requireDashboardWorkflowAccess("admin")');
     expect(partnerReadinessPageSource).toContain("loadAdminPartnerReadiness");
     expect(partnerReadinessPageSource).toContain("PartnerReadinessPageClient");
     expect(partnerReadinessClientSource).toContain("createPartnerApiKeyAction");
@@ -117,7 +117,7 @@ describe("admin partner readiness workflow", () => {
   it("productizes the integrations route as a partner handoff module", () => {
     const integrationsPageSource = readSource(integrationsPage);
 
-    expect(integrationsPageSource).toContain('requireDemoWorkflowAccess("admin")');
+    expect(integrationsPageSource).toContain('requireDashboardWorkflowAccess("admin")');
     expect(integrationsPageSource).toContain("loadAdminPartnerReadiness");
     expect(integrationsPageSource).toContain('data-admin-module="integrations"');
     expect(integrationsPageSource).toContain("Partner API contract");

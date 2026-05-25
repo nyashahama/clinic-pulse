@@ -88,7 +88,7 @@ const roleScenarios: Array<{
       "admin-review-pressure",
       "security",
       "partner-readiness",
-      "demo-controls",
+      "scenario-controls",
       "audit-evidence",
     ],
   },
@@ -767,9 +767,9 @@ test.describe("phase 1 role dashboard navigation", () => {
     const sidebar = await openDashboardSidebar(page);
     const link = sidebar.getByRole("link", { name: "Scenario controls", exact: true });
 
-    await expect(link).toHaveAttribute("href", "/admin/demo-controls");
+    await expect(link).toHaveAttribute("href", "/admin/scenario-controls");
     await Promise.all([
-      page.waitForURL(/\/admin\/demo-controls$/),
+      page.waitForURL(/\/admin\/scenario-controls$/),
       link.click(),
     ]);
 

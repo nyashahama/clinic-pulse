@@ -29,7 +29,7 @@ describe("AdminUserLifecycle source", () => {
       "utf8",
     );
     const actionSource = readFileSync(
-      join(process.cwd(), "app/(demo)/admin/users-roles/actions.ts"),
+      join(process.cwd(), "app/(workspace)/admin/users-roles/actions.ts"),
       "utf8",
     );
     const createUserBlock = componentSource.slice(
@@ -46,7 +46,7 @@ describe("AdminUserLifecycle source", () => {
 
   it("wires all lifecycle actions into the users and roles page", () => {
     const pageSource = readFileSync(
-      join(process.cwd(), "app/(demo)/admin/users-roles/page.tsx"),
+      join(process.cwd(), "app/(workspace)/admin/users-roles/page.tsx"),
       "utf8",
     );
 

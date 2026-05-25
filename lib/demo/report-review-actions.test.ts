@@ -25,7 +25,7 @@ vi.mock("@/lib/auth/session", async (importOriginal) => {
 });
 vi.mock("@/lib/demo/api-client", () => apiMocks);
 
-import { reviewPendingReportAction } from "@/app/(demo)/report-review-actions";
+import { reviewPendingReportAction } from "@/app/(workspace)/report-review-actions";
 
 describe("reviewPendingReportAction", () => {
   beforeEach(() => {
