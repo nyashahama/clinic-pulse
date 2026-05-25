@@ -63,11 +63,51 @@ export type PartnerEventCatalogItem = {
   purpose: string;
 };
 
-export type PartnerReadinessReference = {
-  name: string;
-  url: string;
-  source: string;
-  appliedTo: string;
+export type PartnerEvidenceKind =
+  | "credential"
+  | "contract"
+  | "delivery"
+  | "export"
+  | "check";
+
+export type PartnerEvidenceKindFilter = PartnerEvidenceKind | "all";
+
+export type PartnerEvidenceStateFilter =
+  | "all"
+  | "needs-review"
+  | "ready"
+  | "watch"
+  | "info";
+
+export type PartnerEvidenceRow = {
+  id: string;
+  kind: PartnerEvidenceKind;
+  laneLabel: string;
+  title: string;
+  subject: string;
+  sourceLabel: string;
+  stateLabel: string;
+  tone: PartnerReadinessMetric["tone"];
+  evidenceBasis: string;
+  observedLabel: string;
+  nextStep: string;
+  rawFacts: Array<{ label: string; value: string }>;
+  searchText: string;
+};
+
+export type PartnerActionQueueId =
+  | "create-key"
+  | "create-webhook"
+  | "generate-export"
+  | "test-webhook";
+
+export type PartnerActionQueueItem = {
+  id: PartnerActionQueueId;
+  label: string;
+  summary: string;
+  detail: string;
+  tone: PartnerReadinessMetric["tone"];
+  action: PartnerActionQueueId;
 };
 
 export type PartnerLaunchCockpitModel = {
@@ -81,7 +121,8 @@ export type PartnerLaunchCockpitModel = {
   };
   deliveryRows: PartnerEventDeliveryRow[];
   eventCatalog: PartnerEventCatalogItem[];
-  references: PartnerReadinessReference[];
+  evidenceRows: PartnerEvidenceRow[];
+  actionQueue: PartnerActionQueueItem[];
 };
 
 export type OneTimePartnerApiKeySecret = {
@@ -144,6 +185,32 @@ function formatCount(value: number) {
 
 function formatAttemptCount(value: number) {
   return `${formatCount(value)} ${value === 1 ? "attempt" : "attempts"}`;
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) {
+    return "Unavailable";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Unavailable";
+  }
+
+  return new Intl.DateTimeFormat("en-ZA", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function formatLabel(value?: string | null) {
+  if (!value) {
+    return "Unavailable";
+  }
+
+  const normalized = value.replaceAll("_", " ").replaceAll(".", " ");
+
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }
 
 export function isPartnerApiKeyActive(
@@ -232,6 +299,24 @@ function getStatusTone(status: string): PartnerReadinessMetric["tone"] {
   return "info";
 }
 
+function toneForCheckStatus(status: string): PartnerReadinessMetric["tone"] {
+  const normalized = status.trim().toLowerCase();
+
+  if (normalized === "passing") {
+    return "clear";
+  }
+
+  if (normalized === "attention") {
+    return "watch";
+  }
+
+  if (normalized === "failing") {
+    return "attention";
+  }
+
+  return "info";
+}
+
 function isActiveWebhook(subscription: PartnerWebhookSubscriptionApiResponse) {
   return subscription.status.trim().toLowerCase() === "active";
 }
@@ -275,6 +360,463 @@ function buildDeliveryRows(
     }));
 }
 
+function compactRecord(value: Record<string, unknown>) {
+  const entries = Object.entries(value);
+
+  if (!entries.length) {
+    return "Unavailable";
+  }
+
+  return entries
+    .map(([key, entryValue]) => `${formatLabel(key)}: ${String(entryValue)}`)
+    .join("; ");
+}
+
+function withPartnerEvidenceSearchText(
+  row: Omit<PartnerEvidenceRow, "searchText">,
+): PartnerEvidenceRow {
+  const searchText = [
+    row.laneLabel,
+    row.title,
+    row.subject,
+    row.sourceLabel,
+    row.stateLabel,
+    row.evidenceBasis,
+    row.observedLabel,
+    row.nextStep,
+    ...row.rawFacts.flatMap((fact) => [fact.label, fact.value]),
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  return { ...row, searchText };
+}
+
+function buildCredentialEvidenceRows(
+  apiKeys: PartnerApiKeyApiResponse[],
+): PartnerEvidenceRow[] {
+  if (!apiKeys.length) {
+    return [
+      withPartnerEvidenceSearchText({
+        id: "credential-missing",
+        kind: "credential",
+        laneLabel: "Credential",
+        title: "Partner API key",
+        subject: "No scoped key",
+        sourceLabel: "Partner API key",
+        stateLabel: "Needs key",
+        tone: "attention",
+        evidenceBasis:
+          "No partner credential is ready for endpoint smoke tests or handoff.",
+        observedLabel: "Unavailable",
+        nextStep: "Create a scoped partner API key for the launch packet.",
+        rawFacts: [
+          { label: "Active keys", value: "0" },
+          { label: "Required scopes", value: requiredPartnerReadinessScopes.join(", ") },
+        ],
+      }),
+    ];
+  }
+
+  return apiKeys.map((apiKey) => {
+    const active = isPartnerApiKeyActive(apiKey);
+    const missingScopes = getMissingRequiredPartnerScopes([apiKey]);
+    const hasScopeGap = missingScopes.length > 0;
+    const districtLabel = apiKey.allowedDistricts.length
+      ? apiKey.allowedDistricts.join(", ")
+      : "All districts";
+    const stateLabel = !active ? "Inactive" : hasScopeGap ? "Scope gap" : "Ready";
+    const tone: PartnerReadinessMetric["tone"] =
+      !active || hasScopeGap ? "attention" : "clear";
+
+    return withPartnerEvidenceSearchText({
+      id: `credential-${apiKey.id}`,
+      kind: "credential",
+      laneLabel: "Credential",
+      title: apiKey.name,
+      subject: `${apiKey.keyPrefix} / ${formatLabel(apiKey.environment)}`,
+      sourceLabel: "Partner API key",
+      stateLabel,
+      tone,
+      evidenceBasis: hasScopeGap
+        ? `Scope gap: missing ${missingScopes.join(", ")}.`
+        : "Credential covers the required partner read scopes without exposing plaintext secrets.",
+      observedLabel: formatDateTime(apiKey.updatedAt ?? apiKey.createdAt),
+      nextStep: active
+        ? "Rotate or revoke this key only if ownership, scope, or expiry changes before launch."
+        : "Create or restore an active scoped credential before partner handoff.",
+      rawFacts: [
+        { label: "Prefix", value: apiKey.keyPrefix },
+        { label: "Environment", value: formatLabel(apiKey.environment) },
+        { label: "Scopes", value: apiKey.scopes.join(", ") || "No scopes recorded" },
+        { label: "Districts", value: districtLabel },
+        { label: "Expiry", value: formatDateTime(apiKey.expiresAt) },
+      ],
+    });
+  });
+}
+
+function buildContractEvidenceRow({
+  activeKeysCoverRequiredScopes,
+  missingScopes,
+}: {
+  activeKeysCoverRequiredScopes: boolean;
+  missingScopes: string[];
+}) {
+  return withPartnerEvidenceSearchText({
+    id: "contract-required-scopes",
+    kind: "contract",
+    laneLabel: "Contract",
+    title: "Endpoint contract",
+    subject: "Clinics, status, alternatives, and exports",
+    sourceLabel: "Partner API contract",
+    stateLabel: activeKeysCoverRequiredScopes ? "Covered" : "Scope gap",
+    tone: activeKeysCoverRequiredScopes ? "clear" : "attention",
+    evidenceBasis: activeKeysCoverRequiredScopes
+      ? "Active credential scope covers each endpoint family needed for the partner handoff."
+      : `Scope gap: missing ${missingScopes.join(", ")}.`,
+    observedLabel: "Launch packet",
+    nextStep: activeKeysCoverRequiredScopes
+      ? "Share the endpoint contract with the current credential prefix in the handoff packet."
+      : "Create a credential that covers every required partner endpoint before smoke testing.",
+    rawFacts: [
+      { label: "Required scopes", value: requiredPartnerReadinessScopes.join(", ") },
+      {
+        label: "Endpoint families",
+        value: "clinics, current status, alternatives, export packages",
+      },
+    ],
+  });
+}
+
+function buildDeliveryEvidenceRows({
+  subscriptions,
+  events,
+}: {
+  subscriptions: PartnerWebhookSubscriptionApiResponse[];
+  events: PartnerWebhookEventApiResponse[];
+}) {
+  const rows: PartnerEvidenceRow[] = subscriptions.length
+    ? subscriptions.map((subscription) => {
+        const active = isActiveWebhook(subscription);
+        const hasFailure = Boolean(subscription.lastError);
+        const tone: PartnerReadinessMetric["tone"] = hasFailure
+          ? "attention"
+          : active
+            ? "clear"
+            : "watch";
+
+        return withPartnerEvidenceSearchText({
+          id: `delivery-subscription-${subscription.id}`,
+          kind: "delivery",
+          laneLabel: "Delivery",
+          title: subscription.name,
+          subject: subscription.targetUrl,
+          sourceLabel: "Webhook destination",
+          stateLabel: hasFailure ? "Needs review" : formatLabel(subscription.status),
+          tone,
+          evidenceBasis: subscription.lastError
+            ? subscription.lastError
+            : "Destination, event topics, and last test metadata are available for partner verification.",
+          observedLabel: formatDateTime(subscription.updatedAt),
+          nextStep: active
+            ? "Send a test event with the partner present before go-live."
+            : "Activate the webhook receiver before launch testing.",
+          rawFacts: [
+            { label: "Target URL", value: subscription.targetUrl },
+            {
+              label: "Event types",
+              value: subscription.eventTypes.join(", ") || "No event types recorded",
+            },
+            { label: "Last test", value: formatLabel(subscription.lastTestStatus) },
+            {
+              label: "Last test metadata",
+              value: compactRecord(subscription.lastTestMetadata),
+            },
+          ],
+        });
+      })
+    : [
+        withPartnerEvidenceSearchText({
+          id: "delivery-missing",
+          kind: "delivery",
+          laneLabel: "Delivery",
+          title: "Webhook destination",
+          subject: "No active receiver",
+          sourceLabel: "Webhook destination",
+          stateLabel: "Needs receiver",
+          tone: "attention",
+          evidenceBasis:
+            "No partner destination is ready for event delivery testing.",
+          observedLabel: "Unavailable",
+          nextStep: "Create a webhook destination before sending test events.",
+          rawFacts: [
+            { label: "Subscriptions", value: "0" },
+            { label: "Events", value: formatCount(events.length) },
+          ],
+        }),
+      ];
+
+  return rows.concat(
+    events.map((event) =>
+      withPartnerEvidenceSearchText({
+        id: `delivery-event-${event.id}`,
+        kind: "delivery",
+        laneLabel: "Delivery",
+        title: formatLabel(event.eventType),
+        subject: `Subscription ${event.subscriptionId}`,
+        sourceLabel: "Webhook event",
+        stateLabel: formatLabel(event.status),
+        tone: getStatusTone(event.status),
+        evidenceBasis: event.lastError
+          ? event.lastError
+          : `Delivery metadata: ${compactRecord(event.metadata)}.`,
+        observedLabel: formatDateTime(event.deliveredAt ?? event.createdAt),
+        nextStep:
+          "Open the delivery evidence when response metadata, retry behavior, or payload context needs review.",
+        rawFacts: [
+          { label: "Event type", value: event.eventType },
+          { label: "Status", value: formatLabel(event.status) },
+          { label: "Attempts", value: formatAttemptCount(event.attemptCount) },
+        ],
+      }),
+    ),
+  );
+}
+
+function buildExportEvidenceRow(exportRun?: PartnerReadinessApiResponse["exportRuns"][number]) {
+  if (!exportRun) {
+    return withPartnerEvidenceSearchText({
+      id: "export-missing",
+      kind: "export",
+      laneLabel: "Export",
+      title: "Export package",
+      subject: "No package generated",
+      sourceLabel: "Partner export",
+      stateLabel: "Missing export",
+      tone: "attention",
+      evidenceBasis:
+        "The launch packet does not yet include a checksum-backed export package.",
+      observedLabel: "Unavailable",
+      nextStep: "Generate a partner export package after source freshness is reviewed.",
+      rawFacts: [
+        { label: "Packages", value: "0" },
+        { label: "Checksum", value: "Unavailable" },
+      ],
+    });
+  }
+
+  return withPartnerEvidenceSearchText({
+    id: `export-${exportRun.id}`,
+    kind: "export",
+    laneLabel: "Export",
+    title: `${exportRun.format.toUpperCase()} export package`,
+    subject: exportRun.checksum,
+    sourceLabel: "Partner export",
+    stateLabel: "Ready",
+    tone: "clear",
+    evidenceBasis:
+      "Checksum-backed export package is available for partner handoff and source freshness review.",
+    observedLabel: formatDateTime(exportRun.createdAt),
+    nextStep: "Share the checksum with the partner and regenerate if clinic status freshness changes.",
+    rawFacts: [
+      { label: "Format", value: exportRun.format.toUpperCase() },
+      { label: "Checksum", value: exportRun.checksum },
+      { label: "Scope", value: compactRecord(exportRun.scope) },
+      { label: "Record counts", value: compactRecord(exportRun.recordCounts) },
+    ],
+  });
+}
+
+function buildCheckEvidenceRows(checks: IntegrationStatusCheckApiResponse[]) {
+  if (!checks.length) {
+    return [
+      withPartnerEvidenceSearchText({
+        id: "check-missing",
+        kind: "check",
+        laneLabel: "Check",
+        title: "Integration checks",
+        subject: "No checks reported",
+        sourceLabel: "Readiness check",
+        stateLabel: "No checks",
+        tone: "attention",
+        evidenceBasis:
+          "No readiness check evidence has been recorded for the launch packet.",
+        observedLabel: "Unavailable",
+        nextStep: "Run partner readiness checks before handoff.",
+        rawFacts: [{ label: "Checks", value: "0" }],
+      }),
+    ];
+  }
+
+  return checks.map((check, index) =>
+    withPartnerEvidenceSearchText({
+      id: `check-${check.id}-${index}`,
+      kind: "check",
+      laneLabel: "Check",
+      title: formatLabel(check.checkName),
+      subject: check.summary,
+      sourceLabel: "Readiness check",
+      stateLabel: formatLabel(check.status),
+      tone: toneForCheckStatus(check.status),
+      evidenceBasis: check.summary,
+      observedLabel: formatDateTime(check.checkedAt),
+      nextStep:
+        getCheckStatus(check) === "passing"
+          ? "Keep this check in the launch packet as supporting evidence."
+          : "Resolve this check before the partner readiness decision is promoted.",
+      rawFacts: [
+        { label: "Check", value: check.checkName },
+        { label: "Status", value: formatLabel(check.status) },
+        { label: "Metadata", value: compactRecord(check.metadata) },
+      ],
+    }),
+  );
+}
+
+function buildActionQueue({
+  activeKeysCoverRequiredScopes,
+  activeSubscriptions,
+  hasRecordedWebhookTest,
+  latestExport,
+}: {
+  activeKeysCoverRequiredScopes: boolean;
+  activeSubscriptions: PartnerWebhookSubscriptionApiResponse[];
+  hasRecordedWebhookTest: boolean;
+  latestExport?: PartnerReadinessApiResponse["exportRuns"][number];
+}): PartnerActionQueueItem[] {
+  return [
+    {
+      id: "create-key",
+      label: activeKeysCoverRequiredScopes
+        ? "Scoped API key ready"
+        : "Create scoped API key",
+      summary: activeKeysCoverRequiredScopes
+        ? "Credential scope covers partner read access."
+        : "Issue a credential with clinic, status, alternatives, and export scopes.",
+      detail: activeKeysCoverRequiredScopes
+        ? "Use rotation only if ownership or scope changes before launch."
+        : "Needed before endpoint smoke tests or partner handoff.",
+      tone: activeKeysCoverRequiredScopes ? "clear" : "attention",
+      action: "create-key",
+    },
+    {
+      id: "create-webhook",
+      label: activeSubscriptions.length > 0
+        ? "Webhook receiver active"
+        : "Create webhook receiver",
+      summary: activeSubscriptions.length > 0
+        ? `${formatCount(activeSubscriptions.length)} active receiver ready for testing.`
+        : "Create a partner destination before event delivery testing.",
+      detail: activeSubscriptions.length > 0
+        ? "Confirm ownership with the partner before go-live."
+        : "Required for status-change and export-ready delivery evidence.",
+      tone: activeSubscriptions.length > 0 ? "clear" : "attention",
+      action: "create-webhook",
+    },
+    {
+      id: "generate-export",
+      label: latestExport ? "Export package ready" : "Generate export package",
+      summary: latestExport
+        ? "Checksum-backed package is available for the handoff packet."
+        : "Generate a partner package after source freshness review.",
+      detail: latestExport
+        ? latestExport.checksum
+        : "Needed before the partner can reconcile clinic and status data.",
+      tone: latestExport ? "clear" : "attention",
+      action: "generate-export",
+    },
+    {
+      id: "test-webhook",
+      label: hasRecordedWebhookTest ? "Test event recorded" : "Send test event",
+      summary: hasRecordedWebhookTest
+        ? "Delivery evidence is available in the launch packet."
+        : "Send a preview event so the partner can verify receiver handling.",
+      detail: activeSubscriptions.length > 0
+        ? "Use the active receiver selected in the delivery console."
+        : "Create a receiver before a test event can be sent.",
+      tone: hasRecordedWebhookTest
+        ? "clear"
+        : activeSubscriptions.length > 0
+          ? "watch"
+          : "attention",
+      action: "test-webhook",
+    },
+  ];
+}
+
+function buildPartnerEvidenceRows({
+  readiness,
+  activeKeysCoverRequiredScopes,
+  missingScopes,
+  latestExport,
+}: {
+  readiness: PartnerReadinessApiResponse;
+  activeKeysCoverRequiredScopes: boolean;
+  missingScopes: string[];
+  latestExport?: PartnerReadinessApiResponse["exportRuns"][number];
+}) {
+  return [
+    ...buildCredentialEvidenceRows(readiness.apiKeys),
+    buildContractEvidenceRow({ activeKeysCoverRequiredScopes, missingScopes }),
+    ...buildDeliveryEvidenceRows({
+      subscriptions: readiness.webhookSubscriptions,
+      events: readiness.webhookEvents,
+    }),
+    buildExportEvidenceRow(latestExport),
+    ...buildCheckEvidenceRows(readiness.integrationChecks),
+  ].sort(comparePartnerEvidenceRows);
+}
+
+function comparePartnerEvidenceRows(a: PartnerEvidenceRow, b: PartnerEvidenceRow) {
+  return rowPriority(a) - rowPriority(b);
+}
+
+function rowPriority(row: PartnerEvidenceRow) {
+  if (row.tone === "attention") return 0;
+  if (row.tone === "watch") return 1;
+  if (row.kind === "credential") return 2;
+  if (row.kind === "contract") return 3;
+  if (row.kind === "delivery") return 4;
+  if (row.kind === "export") return 5;
+  return 6;
+}
+
+export function getDefaultPartnerEvidenceRowId(rows: PartnerEvidenceRow[]) {
+  return (
+    rows.find((row) => row.tone === "attention" || row.tone === "watch")?.id ??
+    rows[0]?.id ??
+    null
+  );
+}
+
+export function filterPartnerEvidenceRows(
+  rows: PartnerEvidenceRow[],
+  {
+    activeKind,
+    stateFilter,
+    query,
+  }: {
+    activeKind: PartnerEvidenceKindFilter;
+    stateFilter: PartnerEvidenceStateFilter;
+    query: string;
+  },
+) {
+  const normalizedQuery = query.trim().toLowerCase();
+
+  return rows.filter((row) => {
+    const kindMatches = activeKind === "all" || row.kind === activeKind;
+    const stateMatches =
+      stateFilter === "all" ||
+      (stateFilter === "needs-review" && row.tone === "attention") ||
+      (stateFilter === "ready" && row.tone === "clear") ||
+      row.tone === stateFilter;
+    const queryMatches = !normalizedQuery || row.searchText.includes(normalizedQuery);
+
+    return kindMatches && stateMatches && queryMatches;
+  });
+}
+
 const eventCatalog: PartnerEventCatalogItem[] = [
   {
     eventType: "clinic.status_changed",
@@ -295,66 +837,6 @@ const eventCatalog: PartnerEventCatalogItem[] = [
     eventType: "clinicpulse.webhook_test",
     source: "Webhook test action",
     purpose: "Send a safe preview event to validate receiver configuration.",
-  },
-];
-
-const partnerReadinessReferences: PartnerReadinessReference[] = [
-  {
-    name: "Hookdeck Outpost",
-    url: "https://hookdeck.com/docs/outpost/overview",
-    source: "Hookdeck Outpost docs",
-    appliedTo: "Outbound event destinations, topics, retries, and delivery health",
-  },
-  {
-    name: "Svix App Portal",
-    url: "https://docs.svix.com/app-portal",
-    source: "Svix App Portal docs",
-    appliedTo: "Partner self-service endpoint and replay/debugging expectations",
-  },
-  {
-    name: "Dub Webhooks",
-    url: "https://dub.co/docs/webhooks/introduction",
-    source:
-      "reference-projects/dub/apps/web/ui/modals/send-test-webhook-modal.tsx",
-    appliedTo: "Webhook test event action and delivery console CTA",
-  },
-  {
-    name: "Trigger.dev Runs",
-    url: "https://trigger.dev/docs/runs",
-    source:
-      "reference-projects/trigger.dev/apps/webapp/app/components/runs/v3/TaskRunsTable.tsx",
-    appliedTo: "Run-style delivery rows with status, attempts, and timestamps",
-  },
-  {
-    name: "Infisical Audit Logs",
-    url: "https://infisical.com/docs/documentation/getting-started/concepts/audit-logs",
-    source:
-      "reference-projects/infisical/frontend/src/pages/organization/AuditLogsPage/components/LogsTable.tsx",
-    appliedTo: "Timestamped evidence history and empty-state treatment",
-  },
-  {
-    name: "Appwrite Webhooks",
-    url: "https://appwrite.io/docs/advanced/platform/webhooks",
-    source: "Appwrite webhook docs",
-    appliedTo: "Webhook configuration and event subscription framing",
-  },
-  {
-    name: "Unkey Permissions",
-    url: "https://www.unkey.com/docs/platform/root-keys/permissions",
-    source: "Unkey permissions docs",
-    appliedTo: "Credential scope clarity and least-privilege language",
-  },
-  {
-    name: "Scalar API References",
-    url: "https://scalar.com/products/api-references/getting-started",
-    source: "Scalar API reference docs",
-    appliedTo: "API contract handoff reference posture",
-  },
-  {
-    name: "Standard Webhooks",
-    url: "https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md",
-    source: "Standard Webhooks specification",
-    appliedTo: "Webhook signature and receiver interoperability language",
   },
 ];
 
@@ -566,7 +1048,18 @@ export function buildPartnerLaunchCockpitModel(
       readiness.webhookSubscriptions,
     ),
     eventCatalog,
-    references: partnerReadinessReferences,
+    evidenceRows: buildPartnerEvidenceRows({
+      readiness,
+      activeKeysCoverRequiredScopes,
+      missingScopes,
+      latestExport,
+    }),
+    actionQueue: buildActionQueue({
+      activeKeysCoverRequiredScopes,
+      activeSubscriptions,
+      hasRecordedWebhookTest,
+      latestExport,
+    }),
   };
 }
 

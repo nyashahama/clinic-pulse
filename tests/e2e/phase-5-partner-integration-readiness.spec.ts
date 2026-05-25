@@ -61,11 +61,15 @@ async function expectPartnerReadinessLaunchCockpit(page: Page) {
   ).toBeVisible();
   await expect(page.getByText("Readiness gates", { exact: true })).toBeVisible();
   await expect(page.getByText("Handoff packet", { exact: true })).toBeVisible();
+  await expect(page.getByText("Partner action queue", { exact: true })).toBeVisible();
+  await expect(page.getByText("Partner evidence ledger", { exact: true })).toBeVisible();
+  await expect(page.getByText("Selected partner evidence", { exact: true })).toBeVisible();
+  await expect(page.getByRole("searchbox", { name: "Search partner evidence" })).toBeVisible();
   await expect(page.getByText("Event delivery console", { exact: true })).toBeVisible();
   await expect(page.getByText("Event catalog", { exact: true })).toBeVisible();
-  await expect(page.getByText("Reference map", { exact: true })).toBeVisible();
-  await expect(page.getByText("Hookdeck Outpost", { exact: true })).toBeVisible();
-  await expect(page.getByText("Dub Webhooks", { exact: true })).toBeVisible();
+  await expect(page.getByText("Reference map", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Hookdeck Outpost", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Dub Webhooks", { exact: true })).toHaveCount(0);
 }
 
 test("organisation admin opens partner integrations from navigation", async ({ page }) => {
@@ -87,7 +91,7 @@ test("partner integrations route exposes handoff evidence directly", async ({ pa
   await expect(page.getByText("$CLINICPULSE_PARTNER_API_KEY").first()).toBeVisible();
 });
 
-test("partner readiness route exposes launch cockpit and source references", async ({ page }) => {
+test("partner readiness route exposes launch cockpit without external references", async ({ page }) => {
   await signIn(page, "org-admin@clinicpulse.local");
   await page.goto("/admin/partner-readiness");
   await expectPartnerReadinessLaunchCockpit(page);

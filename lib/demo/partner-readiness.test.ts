@@ -13,6 +13,8 @@ import {
   buildPartnerReadinessModel,
   createEmptyPartnerReadiness,
   createOneTimePartnerApiKeySecret,
+  filterPartnerEvidenceRows,
+  getDefaultPartnerEvidenceRowId,
 } from "@/lib/demo/partner-readiness";
 
 const checkedAt = "2026-05-04T09:00:00.000Z";
@@ -328,26 +330,93 @@ describe("partner readiness helpers", () => {
     );
   });
 
-  it("lists the source references used by the partner launch cockpit", () => {
-    const model = buildPartnerLaunchCockpitModel(makeReadyReadiness());
-
-    expect(model.references.map((reference) => reference.name)).toEqual([
-      "Hookdeck Outpost",
-      "Svix App Portal",
-      "Dub Webhooks",
-      "Trigger.dev Runs",
-      "Infisical Audit Logs",
-      "Appwrite Webhooks",
-      "Unkey Permissions",
-      "Scalar API References",
-      "Standard Webhooks",
-    ]);
-    expect(model.references).toContainEqual(
-      expect.objectContaining({
-        source:
-          "reference-projects/dub/apps/web/ui/modals/send-test-webhook-modal.tsx",
-        appliedTo: "Webhook test event action and delivery console CTA",
+  it("builds a partner evidence ledger from credentials, contract, delivery, export, and checks", () => {
+    const model = buildPartnerLaunchCockpitModel(
+      makeReadyReadiness({
+        webhookSubscriptions: [
+          makeWebhookSubscription({ id: 7, name: "District partner receiver" }),
+        ],
       }),
     );
+
+    expect(model.evidenceRows.map((row) => row.kind)).toEqual(
+      expect.arrayContaining([
+        "credential",
+        "contract",
+        "delivery",
+        "export",
+        "check",
+      ]),
+    );
+    expect(model.evidenceRows).toContainEqual(
+      expect.objectContaining({
+        id: "credential-1",
+        title: "Demo partner",
+        laneLabel: "Credential",
+        sourceLabel: "Partner API key",
+        nextStep: expect.stringContaining("Rotate or revoke"),
+      }),
+    );
+    expect(model.evidenceRows).toContainEqual(
+      expect.objectContaining({
+        id: "contract-required-scopes",
+        title: "Endpoint contract",
+        laneLabel: "Contract",
+        rawFacts: expect.arrayContaining([
+          { label: "Required scopes", value: "clinics:read, status:read, alternatives:read, exports:read" },
+        ]),
+      }),
+    );
+  });
+
+  it("filters partner evidence rows by lane, state, and query", () => {
+    const model = buildPartnerLaunchCockpitModel(
+      makeReadyReadiness({
+        apiKeys: [makeApiKey({ scopes: ["clinics:read"] })],
+        webhookSubscriptions: [
+          makeWebhookSubscription({ id: 7, name: "District partner receiver" }),
+        ],
+      }),
+    );
+
+    expect(getDefaultPartnerEvidenceRowId(model.evidenceRows)).toBe("credential-1");
+    expect(
+      filterPartnerEvidenceRows(model.evidenceRows, {
+        activeKind: "credential",
+        stateFilter: "needs-review",
+        query: "scope gap",
+      }).map((row) => row.id),
+    ).toEqual(["credential-1"]);
+  });
+
+  it("builds an action queue for the next partner launch actions", () => {
+    const model = buildPartnerLaunchCockpitModel(
+      makeReadyReadiness({
+        apiKeys: [],
+        webhookSubscriptions: [],
+        webhookEvents: [],
+        exportRuns: [],
+      }),
+    );
+
+    expect(model.actionQueue.map((item) => item.id)).toEqual([
+      "create-key",
+      "create-webhook",
+      "generate-export",
+      "test-webhook",
+    ]);
+    expect(model.actionQueue[0]).toEqual(
+      expect.objectContaining({
+        label: "Create scoped API key",
+        tone: "attention",
+        action: "create-key",
+      }),
+    );
+  });
+
+  it("does not expose external source references in the partner launch cockpit model", () => {
+    const model = buildPartnerLaunchCockpitModel(makeReadyReadiness());
+
+    expect(model).not.toHaveProperty("references");
   });
 });
