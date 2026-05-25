@@ -34,6 +34,12 @@ const partnerPanel = path.join(
   "demo",
   "partner-readiness-panel.tsx",
 );
+const partnerReadinessModel = path.join(
+  process.cwd(),
+  "lib",
+  "demo",
+  "partner-readiness.ts",
+);
 
 function readSource(filePath: string) {
   try {
@@ -62,6 +68,38 @@ describe("admin partner readiness workflow", () => {
     expect(partnerReadinessClientSource).toContain("onCreateWebhook={handleCreatePartnerWebhook}");
     expect(panelSource).toContain("onCreateWebhook");
     expect(panelSource).toContain("Create webhook");
+  });
+
+  it("renders the partner launch cockpit and delivery console from referenced model data", () => {
+    const panelSource = readSource(partnerPanel);
+
+    expect(panelSource).toContain("buildPartnerLaunchCockpitModel");
+    expect(panelSource).toContain("Partner Launch Cockpit");
+    expect(panelSource).toContain('aria-label="Partner launch workspace"');
+    expect(panelSource).toContain("Readiness gates");
+    expect(panelSource).toContain("Handoff packet");
+    expect(panelSource).toContain("Partner action queue");
+    expect(panelSource).toContain("Partner evidence ledger");
+    expect(panelSource).toContain("Selected partner evidence");
+    expect(panelSource).toContain("Event delivery console");
+    expect(panelSource).toContain("Event catalog");
+    expect(panelSource).toContain("filterPartnerEvidenceRows");
+    expect(panelSource).toContain("getDefaultPartnerEvidenceRowId");
+    expect(panelSource).not.toContain("Reference map");
+  });
+
+  it("keeps external reference sites out of the partner readiness product UI", () => {
+    const panelSource = readSource(partnerPanel);
+    const modelSource = readSource(partnerReadinessModel);
+
+    expect(panelSource).not.toContain("cockpit.references");
+    expect(panelSource).not.toContain("reference.name");
+    expect(modelSource).not.toContain("Hookdeck Outpost");
+    expect(modelSource).not.toContain("Svix App Portal");
+    expect(modelSource).not.toContain("Dub Webhooks");
+    expect(modelSource).not.toContain("Trigger.dev Runs");
+    expect(modelSource).not.toContain("Infisical Audit Logs");
+    expect(modelSource).not.toContain("Unkey Permissions");
   });
 
   it("keeps the admin overview compact and links to the dedicated partner readiness route", () => {

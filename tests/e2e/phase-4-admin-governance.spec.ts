@@ -323,13 +323,14 @@ test("organisation admin sees productized partner readiness module", async ({ pa
 
   await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
   await expect(page.locator('[data-admin-module="partner-readiness"]')).toBeVisible();
-  await expect(page.getByText("API key state")).toBeVisible();
-  await expect(page.getByText("Export package state")).toBeVisible();
-  await expect(page.getByText("Webhook preview state")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Partner Launch Cockpit" })).toBeVisible();
+  await expect(page.getByText("Partner action queue")).toBeVisible();
+  await expect(page.getByText("Partner evidence ledger")).toBeVisible();
+  await expect(page.getByLabel("Search partner evidence")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Integration checks", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Create key" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Generate export" })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Create webhook|Test webhook/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Create webhook|Send test event/ }).first()).toBeVisible();
 });
 
 test("system admin sees productized platform governance modules", async ({ page }) => {
