@@ -98,13 +98,74 @@ describe("buildDistrictHomeViewModel", () => {
     expect(viewModel.commandPreview.selectedClinic?.clinicName).toBe(
       viewModel.hero.primaryDecision.clinicName,
     );
+    expect(viewModel.commandPreview.commandMap.scopeLabel).toBe("Tshwane North");
+    expect(viewModel.commandPreview.commandMap.pins).toHaveLength(8);
+    expect(viewModel.commandPreview.commandMap.pins[0]).toEqual(
+      expect.objectContaining({
+        clinicId: "clinic-mabopane-station",
+        clinicName: "Mabopane Station Clinic",
+        href: "/district/clinics/clinic-mabopane-station?from=district-home",
+        isSelected: true,
+        score: viewModel.hero.primaryDecision.score,
+        tone: viewModel.hero.primaryDecision.tone,
+      }),
+    );
+    expect(viewModel.commandPreview.commandMap.routes).toHaveLength(3);
+    expect(viewModel.commandPreview.commandMap.routes[0]).toEqual(
+      expect.objectContaining({
+        fromClinicId: "clinic-mabopane-station",
+        fromClinicName: "Mabopane Station Clinic",
+        isPrimary: true,
+        label: expect.stringContaining("Recommended route"),
+        matchedService: expect.any(String),
+        toClinicId: expect.any(String),
+        toClinicName: expect.any(String),
+      }),
+    );
+    expect(viewModel.commandPreview.commandMap.routes[0].x1).toBe(
+      viewModel.commandPreview.commandMap.pins[0].x,
+    );
+    expect(viewModel.commandPreview.commandMap.routes[0].y1).toBe(
+      viewModel.commandPreview.commandMap.pins[0].y,
+    );
+    expect(viewModel.commandPreview.commandMap.routes[0].x2).toEqual(expect.any(Number));
+    expect(viewModel.commandPreview.commandMap.routes[0].y2).toEqual(expect.any(Number));
+    expect(
+      viewModel.commandPreview.commandMap.pins
+        .filter((pin) => pin.labelVisibility !== "dot")
+        .map((pin) => pin.clinicName),
+    ).toEqual([
+      "Mabopane Station Clinic",
+      "Hammanskraal Unit D Clinic",
+      "Atteridgeville Extension Clinic",
+      "Winterveldt West Clinic",
+    ]);
+    expect(
+      viewModel.commandPreview.commandMap.pins.find(
+        (pin) => pin.clinicName === "Mamelodi East Community Clinic",
+      )?.labelVisibility,
+    ).toBe("dot");
+    expect(viewModel.commandPreview.decisionPacket).toEqual(
+      expect.objectContaining({
+        clinicId: "clinic-mabopane-station",
+        clinicName: "Mabopane Station Clinic",
+        evidenceTitle: expect.any(String),
+        interventionTitle: "Routing",
+        routePlan: expect.stringContaining("Protect"),
+        verification: viewModel.hero.primaryDecision.verification,
+      }),
+    );
+    expect(viewModel.commandPreview.decisionPacket.timeline.map((item) => item.id)).toEqual([
+      "severity",
+      "evidence",
+      "intervention",
+    ]);
     expect(viewModel.commandPreview.interventionPlan?.clinicName).toBe(
       viewModel.hero.primaryDecision.clinicName,
     );
     expect(viewModel.supportingSections.map((section) => section.id)).toEqual([
       "report-review",
       "data-trust",
-      "scenario-controls",
       "field-signal-stream",
       "clinic-roster",
     ]);

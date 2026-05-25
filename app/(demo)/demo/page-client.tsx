@@ -568,6 +568,187 @@ export default function DistrictConsolePage({
     setRerouteClinicId(null);
   };
 
+  const supportingOperationSections = (
+    <>
+      <section
+        id="data-trust"
+        className="rounded-lg border border-border-subtle bg-bg-default p-4 text-content-default shadow-sm"
+      >
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
+              Pilot data trust
+            </p>
+            <h2 className="text-lg font-semibold">Source, freshness, and review state</h2>
+          </div>
+          <p className="max-w-xl text-sm text-muted-foreground">
+            District users can distinguish scenario-seeded, stale, and pending-review data before
+            acting on clinic status.
+          </p>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {dataTrustStates.map(({ clinic, trust }) => (
+            <article
+              key={clinic.id}
+              className="rounded-lg border border-border-subtle bg-bg-muted/40 p-3"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-foreground">{clinic.name}</p>
+                  <p className="text-xs text-muted-foreground">{clinic.district}</p>
+                </div>
+                <span
+                  className={`shrink-0 rounded-md border px-2 py-0.5 text-xs font-medium ${trustToneClassName(
+                    trust.tone,
+                  )}`}
+                >
+                  {trust.label}
+                </span>
+              </div>
+              <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                {trust.description}
+              </p>
+              {trust.evidenceHref ? (
+                <Link
+                  className="mt-2 inline-flex text-xs font-medium text-foreground underline underline-offset-4"
+                  href={trust.evidenceHref}
+                >
+                  Review evidence
+                </Link>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {hasStatusFilter ? (
+        <section className="rounded-lg border border-amber-200/80 bg-amber-50/70 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-100">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p>
+              {isReplayFilterBypassed ? (
+                <>
+                  Status filter is paused during replay. Showing all clinics until replay is reset.
+                </>
+              ) : (
+                <>
+                  Displaying only{" "}
+                  <span className="font-semibold capitalize">{statusFilterLabel}</span> clinics.{" "}
+                  {filteredClinicRows.length === 0 ? "No matches yet." : ""}
+                </>
+              )}
+            </p>
+            <Link href={consoleHref} className={buttonVariants({ size: "sm", variant: "outline" })}>
+              Clear status filter
+            </Link>
+          </div>
+        </section>
+      ) : null}
+
+      {!isDistrictWorkspace ? (
+        <>
+          <div className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <StatusSummary
+              counts={statusCounts}
+              activeAlertCount={activeAlerts.length}
+              offlineQueueCount={state.offlineQueue.length}
+              lastSyncAt={state.lastSyncAt}
+            />
+            {syncSummary ? <PilotReadinessPanel summary={syncSummary} /> : null}
+          </div>
+
+          <ClinicMap
+            clinics={visibleClinicRows}
+            referenceClinics={clinicRows}
+            selectedClinicId={selectedClinicId}
+            rerouteClinicId={rerouteClinicId}
+            onSelectClinic={openClinicDetail}
+          />
+
+          <DemoControls
+            stockoutClinicLabel="Mamelodi East"
+            staffingClinicLabel="Soshanguve Block F"
+            offlineQueueCount={state.offlineQueue.length}
+            replayRunning={replayNonIdle}
+            onReset={handleResetWalkthrough}
+            onReplayIncident={startIncidentReplay}
+            onTriggerStockout={() => {
+              if (replayNonIdle) {
+                return;
+              }
+
+              setSelectedClinicId(STOCKOUT_TRIGGER_CLINIC_ID);
+              setSelectedCommandClinicId(STOCKOUT_TRIGGER_CLINIC_ID);
+              setRerouteClinicId(STOCKOUT_TRIGGER_CLINIC_ID);
+              triggerStockout(STOCKOUT_TRIGGER_CLINIC_ID);
+              openClinicDetail(STOCKOUT_TRIGGER_CLINIC_ID);
+            }}
+            onTriggerStaffingShortage={() => {
+              if (replayNonIdle) {
+                return;
+              }
+
+              setSelectedClinicId(STAFFING_TRIGGER_CLINIC_ID);
+              setSelectedCommandClinicId(STAFFING_TRIGGER_CLINIC_ID);
+              setRerouteClinicId(null);
+              triggerStaffingShortage(STAFFING_TRIGGER_CLINIC_ID);
+              openClinicDetail(STAFFING_TRIGGER_CLINIC_ID);
+            }}
+            onSyncOfflineReports={handleSyncOfflineReports}
+            onTriggerReroute={handleTriggerReroute}
+          />
+
+          <IncidentReplayPanel
+            status={replayStatus}
+            activeStepId={activeReplayStepId}
+            completedStepIds={completedReplayStepIds}
+            completedAtByStepId={completedReplayAtByStepId}
+            webhookPreview={webhookPreview}
+          />
+        </>
+      ) : null}
+
+      <div
+        id={isDistrictWorkspace ? "field-signal-stream" : "clinic-evidence"}
+        className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]"
+      >
+        <AlertList
+          alerts={activeAlerts}
+          clinics={clinicRows}
+          compact={isDistrictWorkspace}
+          limit={isDistrictWorkspace ? 3 : undefined}
+          onSelectClinic={openClinicDetail}
+        />
+        <ReportStream
+          reports={reportStream}
+          selectedClinicId={selectedClinicId}
+          consequenceByReportId={consequenceByReportId}
+          statusChangeByReportId={statusChangeByReportId}
+          onSelectClinic={openClinicDetail}
+          getReportDetailHref={(report) => getReportDetailHref(report.id)}
+          compact={isDistrictWorkspace}
+          limit={isDistrictWorkspace ? 3 : undefined}
+        />
+      </div>
+
+      <div id={isDistrictWorkspace ? "clinic-roster" : undefined}>
+        <ClinicTable
+          clinics={visibleClinicRows}
+          selectedClinicId={selectedClinicId}
+          recommendedActionByClinicId={recommendedActionByClinicId}
+          onSelectClinic={openClinicDetail}
+          limit={isDistrictWorkspace ? 4 : undefined}
+          compact={isDistrictWorkspace}
+          title={isDistrictWorkspace ? "Clinic roster" : undefined}
+          description={
+            isDistrictWorkspace
+              ? "Preview the clinics most likely to affect routing or review. Open the clinic network for the full table."
+              : undefined
+          }
+        />
+      </div>
+    </>
+  );
+
   const supportingOperations = (
     <>
       {showReportReview && pendingReportSummary ? (
@@ -583,162 +764,11 @@ export default function DistrictConsolePage({
         </div>
       ) : null}
 
-      <SupportingOperations>
-        <section
-          id="data-trust"
-          className="rounded-lg border border-border-subtle bg-bg-default p-4 text-content-default shadow-sm"
-        >
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
-                Pilot data trust
-              </p>
-              <h2 className="text-lg font-semibold">Source, freshness, and review state</h2>
-            </div>
-            <p className="max-w-xl text-sm text-muted-foreground">
-              District users can distinguish scenario-seeded, stale, and pending-review data before
-              acting on clinic status.
-            </p>
-          </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {dataTrustStates.map(({ clinic, trust }) => (
-              <article
-                key={clinic.id}
-                className="rounded-lg border border-border-subtle bg-bg-muted/40 p-3"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-foreground">{clinic.name}</p>
-                    <p className="text-xs text-muted-foreground">{clinic.district}</p>
-                  </div>
-                  <span
-                    className={`shrink-0 rounded-md border px-2 py-0.5 text-xs font-medium ${trustToneClassName(
-                      trust.tone,
-                    )}`}
-                  >
-                    {trust.label}
-                  </span>
-                </div>
-                <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
-                  {trust.description}
-                </p>
-                {trust.evidenceHref ? (
-                  <Link
-                    className="mt-2 inline-flex text-xs font-medium text-foreground underline underline-offset-4"
-                    href={trust.evidenceHref}
-                  >
-                    Review evidence
-                  </Link>
-                ) : null}
-              </article>
-            ))}
-          </div>
-        </section>
-
-        {hasStatusFilter ? (
-          <section className="rounded-lg border border-amber-200/80 bg-amber-50/70 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-100">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p>
-                {isReplayFilterBypassed ? (
-                  <>
-                    Status filter is paused during replay. Showing all clinics until replay is reset.
-                  </>
-                ) : (
-                  <>
-                    Displaying only{" "}
-                    <span className="font-semibold capitalize">{statusFilterLabel}</span> clinics.{" "}
-                    {filteredClinicRows.length === 0 ? "No matches yet." : ""}
-                  </>
-                )}
-              </p>
-              <Link href={consoleHref} className={buttonVariants({ size: "sm", variant: "outline" })}>
-                Clear status filter
-              </Link>
-            </div>
-          </section>
-        ) : null}
-
-        <div className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <StatusSummary
-            counts={statusCounts}
-            activeAlertCount={activeAlerts.length}
-            offlineQueueCount={state.offlineQueue.length}
-            lastSyncAt={state.lastSyncAt}
-          />
-          {syncSummary ? <PilotReadinessPanel summary={syncSummary} /> : null}
-        </div>
-
-        <ClinicMap
-          clinics={visibleClinicRows}
-          referenceClinics={clinicRows}
-          selectedClinicId={selectedClinicId}
-          rerouteClinicId={rerouteClinicId}
-          onSelectClinic={openClinicDetail}
-        />
-
-        <DemoControls
-          stockoutClinicLabel="Mamelodi East"
-          staffingClinicLabel="Soshanguve Block F"
-          offlineQueueCount={state.offlineQueue.length}
-          replayRunning={replayNonIdle}
-          onReset={handleResetWalkthrough}
-          onReplayIncident={startIncidentReplay}
-          onTriggerStockout={() => {
-            if (replayNonIdle) {
-              return;
-            }
-
-            setSelectedClinicId(STOCKOUT_TRIGGER_CLINIC_ID);
-            setSelectedCommandClinicId(STOCKOUT_TRIGGER_CLINIC_ID);
-            setRerouteClinicId(STOCKOUT_TRIGGER_CLINIC_ID);
-            triggerStockout(STOCKOUT_TRIGGER_CLINIC_ID);
-            openClinicDetail(STOCKOUT_TRIGGER_CLINIC_ID);
-          }}
-          onTriggerStaffingShortage={() => {
-            if (replayNonIdle) {
-              return;
-            }
-
-            setSelectedClinicId(STAFFING_TRIGGER_CLINIC_ID);
-            setSelectedCommandClinicId(STAFFING_TRIGGER_CLINIC_ID);
-            setRerouteClinicId(null);
-            triggerStaffingShortage(STAFFING_TRIGGER_CLINIC_ID);
-            openClinicDetail(STAFFING_TRIGGER_CLINIC_ID);
-          }}
-          onSyncOfflineReports={handleSyncOfflineReports}
-          onTriggerReroute={handleTriggerReroute}
-        />
-
-        <IncidentReplayPanel
-          status={replayStatus}
-          activeStepId={activeReplayStepId}
-          completedStepIds={completedReplayStepIds}
-          completedAtByStepId={completedReplayAtByStepId}
-          webhookPreview={webhookPreview}
-        />
-
-        <div
-          id={isDistrictWorkspace ? "field-signal-stream" : "clinic-evidence"}
-          className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]"
-        >
-          <AlertList alerts={activeAlerts} clinics={clinicRows} onSelectClinic={openClinicDetail} />
-          <ReportStream
-            reports={reportStream}
-            selectedClinicId={selectedClinicId}
-            consequenceByReportId={consequenceByReportId}
-            statusChangeByReportId={statusChangeByReportId}
-            onSelectClinic={openClinicDetail}
-            getReportDetailHref={(report) => getReportDetailHref(report.id)}
-          />
-        </div>
-
-        <ClinicTable
-          clinics={visibleClinicRows}
-          selectedClinicId={selectedClinicId}
-          recommendedActionByClinicId={recommendedActionByClinicId}
-          onSelectClinic={openClinicDetail}
-        />
-      </SupportingOperations>
+      {isDistrictWorkspace ? (
+        <div className="grid min-w-0 gap-4">{supportingOperationSections}</div>
+      ) : (
+        <SupportingOperations>{supportingOperationSections}</SupportingOperations>
+      )}
     </>
   );
 
