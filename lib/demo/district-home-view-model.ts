@@ -67,6 +67,25 @@ export type DistrictHomeCommandMapPin = {
   tone: DistrictHomeTone;
 };
 
+export type DistrictHomeCommandMapRoute = {
+  id: string;
+  fromClinicId: string;
+  fromClinicName: string;
+  toClinicId: string;
+  toClinicName: string;
+  href: string;
+  label: string;
+  routeLabel: string;
+  matchedService: string;
+  distanceLabel: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  isPrimary: boolean;
+  tone: DistrictHomeTone;
+};
+
 export type DistrictHomeDecisionTimelineItem = {
   id: "severity" | "evidence" | "intervention";
   label: string;
@@ -123,6 +142,7 @@ export type DistrictHomeViewModel = {
     commandMap: {
       scopeLabel: string;
       pins: DistrictHomeCommandMapPin[];
+      routes: DistrictHomeCommandMapRoute[];
     };
     decisionPacket: DistrictHomeDecisionPacket;
     queueItems: Array<{
@@ -295,6 +315,59 @@ function buildCommandMapPins({
     }));
 }
 
+function buildCommandMapRoutes({
+  pins,
+  selectedClinic,
+}: {
+  pins: DistrictHomeCommandMapPin[];
+  selectedClinic: ReturnType<typeof buildDistrictClinicNetworkViewModel>["selectedClinic"];
+}): DistrictHomeCommandMapRoute[] {
+  if (!selectedClinic) {
+    return [];
+  }
+
+  const pinsByClinicId = new Map(pins.map((pin) => [pin.clinicId, pin]));
+  const sourcePin = pinsByClinicId.get(selectedClinic.clinicId);
+
+  if (!sourcePin) {
+    return [];
+  }
+
+  return selectedClinic.routingAlternatives
+    .map((alternative, index): DistrictHomeCommandMapRoute | null => {
+      const targetPin = pinsByClinicId.get(alternative.clinicId);
+
+      if (!targetPin) {
+        return null;
+      }
+
+      const isPrimary = index === 0;
+      const serviceLabel = formatStatusLabel(alternative.matchedService);
+
+      return {
+        id: `${selectedClinic.clinicId}-${alternative.clinicId}-${alternative.matchedService}`,
+        fromClinicId: selectedClinic.clinicId,
+        fromClinicName: selectedClinic.clinicName,
+        toClinicId: alternative.clinicId,
+        toClinicName: alternative.clinicName,
+        href: alternative.clinicHref,
+        label: isPrimary
+          ? `Recommended route to ${alternative.clinicName}`
+          : `Fallback route to ${alternative.clinicName}`,
+        routeLabel: `${selectedClinic.clinicName} to ${alternative.clinicName}`,
+        matchedService: serviceLabel,
+        distanceLabel: alternative.distanceLabel,
+        x1: sourcePin.x,
+        y1: sourcePin.y,
+        x2: targetPin.x,
+        y2: targetPin.y,
+        isPrimary,
+        tone: isPrimary ? "clear" : "attention",
+      };
+    })
+    .filter((route): route is DistrictHomeCommandMapRoute => route !== null);
+}
+
 function buildDecisionPacket({
   evidence,
   interventionPlan,
@@ -441,6 +514,11 @@ export function buildDistrictHomeViewModel({
   const alertCount = commandCenter.analytics.activeAlertCount;
   const districtLabel =
     session.district ?? session.organisationName ?? commandCenter.brief.districtLabel;
+  const commandMapPins = buildCommandMapPins({
+    clinics: network.clinics,
+    queueItems: commandCenter.queue,
+    selectedClinicId,
+  });
 
   return {
     hero: {
@@ -550,10 +628,10 @@ export function buildDistrictHomeViewModel({
     commandPreview: {
       commandMap: {
         scopeLabel: districtLabel,
-        pins: buildCommandMapPins({
-          clinics: network.clinics,
-          queueItems: commandCenter.queue,
-          selectedClinicId,
+        pins: commandMapPins,
+        routes: buildCommandMapRoutes({
+          pins: commandMapPins,
+          selectedClinic: network.selectedClinic,
         }),
       },
       decisionPacket: buildDecisionPacket({

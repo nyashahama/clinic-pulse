@@ -101,10 +101,28 @@ function pinToneClasses(tone: DistrictHomeTone) {
   };
 }
 
+function routePath(route: DistrictHomeViewModel["commandPreview"]["commandMap"]["routes"][number]) {
+  const dx = route.x2 - route.x1;
+  const dy = route.y2 - route.y1;
+  const lift = Math.max(9, Math.min(18, Math.abs(dx) * 0.2 + Math.abs(dy) * 0.1));
+  const firstControlX = route.x1 + dx * 0.34;
+  const secondControlX = route.x1 + dx * 0.66;
+  const firstControlY = route.y1 - lift;
+  const secondControlY = route.y2 - lift;
+
+  return `M ${route.x1} ${route.y1} C ${firstControlX} ${firstControlY}, ${secondControlX} ${secondControlY}, ${route.x2} ${route.y2}`;
+}
+
 export function DistrictHome({ children, viewModel }: DistrictHomeProps) {
   const decisionTone = toneClasses(viewModel.hero.primaryDecision.tone);
   const decisionPacket = viewModel.commandPreview.decisionPacket;
-  const mapPins = viewModel.commandPreview.commandMap.pins;
+  const commandMap = viewModel.commandPreview.commandMap;
+  const mapPins = commandMap.pins;
+  const mapRoutes = commandMap.routes;
+  const renderedRoutes = [...mapRoutes].sort(
+    (left, right) => Number(left.isPrimary) - Number(right.isPrimary),
+  );
+  const primaryRoute = mapRoutes[0];
 
   return (
     <div
@@ -196,14 +214,15 @@ export function DistrictHome({ children, viewModel }: DistrictHomeProps) {
               <div className="min-w-0">
                 <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
                   <MapPinnedIcon className="size-4" />
-                  Network map
+                  Routing map
                 </p>
                 <h2 className="mt-1 text-lg font-semibold text-foreground">
-                  Clinic coverage and active risk
+                  Referral routing and active risk
                 </h2>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  {viewModel.commandPreview.commandMap.scopeLabel} clinics are positioned by
-                  district coordinates and ranked by the current severity model.
+                  {commandMap.scopeLabel} clinics are positioned by district
+                  coordinates, with recommended referral routes elevated for the
+                  current top decision.
                 </p>
               </div>
               <Link
@@ -218,12 +237,76 @@ export function DistrictHome({ children, viewModel }: DistrictHomeProps) {
                 Map filters
               </Link>
             </div>
-            <div className="relative min-h-[21rem] overflow-hidden bg-bg-muted/60">
-              <div className="absolute inset-4 rounded-lg border border-border-subtle/70" />
-              <div className="absolute left-[10%] right-[12%] top-[38%] h-px rotate-[7deg] bg-border-subtle" />
-              <div className="absolute left-[18%] right-[18%] top-[58%] h-px -rotate-[10deg] bg-border-subtle" />
-              <div className="absolute bottom-4 left-4 rounded-md border border-border-subtle bg-bg-default/90 px-2 py-1 text-xs font-medium text-muted-foreground shadow-sm">
-                {mapPins.length} clinics visible
+            <div
+              className="relative min-h-[24rem] overflow-hidden bg-slate-950 text-white"
+              data-district-route-map
+            >
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_34%_42%,rgba(20,184,166,0.22),transparent_18rem),linear-gradient(135deg,#111827_0%,#162033_58%,#0f172a_100%)]" />
+              <div className="absolute inset-4 rounded-lg border border-teal-300/15" />
+              <div className="absolute left-[8%] right-[8%] top-[38%] h-px rotate-[7deg] bg-slate-300/15" />
+              <div className="absolute left-[16%] right-[10%] top-[60%] h-px -rotate-[10deg] bg-slate-300/15" />
+              <div className="absolute left-[52%] right-[-4%] top-[34%] h-px -rotate-[27deg] bg-slate-300/15" />
+              <div className="absolute left-[9%] top-[18%] h-[67%] w-[78%] rounded-[46%_38%_42%_40%/34%_48%_36%_42%] border border-dashed border-teal-300/20 bg-teal-400/[0.03]" />
+              <svg
+                aria-hidden="true"
+                className="absolute inset-0 z-[4] size-full"
+                preserveAspectRatio="none"
+                viewBox="0 0 100 100"
+              >
+                {renderedRoutes.map((route) => (
+                  <g key={route.id}>
+                    <path
+                      className="fill-none"
+                      d={routePath(route)}
+                      opacity={route.isPrimary ? 0.4 : 0.12}
+                      stroke={route.isPrimary ? "#2dd4bf" : "#facc15"}
+                      strokeLinecap="round"
+                      strokeWidth={route.isPrimary ? 2 : 0.9}
+                    />
+                    <path
+                      className="fill-none drop-shadow-sm"
+                      d={routePath(route)}
+                      data-district-route-line
+                      opacity={route.isPrimary ? 1 : 0.42}
+                      stroke={route.isPrimary ? "#5eead4" : "#facc15"}
+                      strokeDasharray={route.isPrimary ? undefined : "1.4 1.6"}
+                      strokeLinecap="round"
+                      strokeWidth={route.isPrimary ? 0.76 : 0.32}
+                    />
+                  </g>
+                ))}
+              </svg>
+              {primaryRoute ? (
+                <Link
+                  className="absolute right-4 top-4 z-30 w-[min(18rem,calc(100%-2rem))] rounded-lg border border-white/10 bg-slate-950/82 p-3 text-left text-xs text-slate-200 shadow-2xl shadow-black/20 backdrop-blur transition hover:border-teal-300/45 hover:bg-slate-900"
+                  data-district-route-summary
+                  href={primaryRoute.href}
+                >
+                  <span className="flex items-center gap-2 font-semibold text-white">
+                    <RouteIcon className="size-4 text-teal-300" />
+                    Recommended route
+                  </span>
+                  <span className="mt-2 block leading-5">
+                    {primaryRoute.fromClinicName} to {primaryRoute.toClinicName}
+                  </span>
+                  <span className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-slate-300">
+                    <span>
+                      Service{" "}
+                      <strong className="block text-white">
+                        {primaryRoute.matchedService}
+                      </strong>
+                    </span>
+                    <span>
+                      Distance{" "}
+                      <strong className="block text-white">
+                        {primaryRoute.distanceLabel}
+                      </strong>
+                    </span>
+                  </span>
+                </Link>
+              ) : null}
+              <div className="absolute bottom-4 left-4 z-30 rounded-full border border-white/10 bg-slate-950/78 px-3 py-1.5 text-xs font-medium text-slate-200 shadow-lg backdrop-blur">
+                {mapPins.length} clinics visible / {mapRoutes.length} route options
               </div>
               {mapPins.map((pin) => {
                 const tone = pinToneClasses(pin.tone);
@@ -242,7 +325,7 @@ export function DistrictHome({ children, viewModel }: DistrictHomeProps) {
                   >
                     <span
                       className={cn(
-                        "block size-4 rounded-full border-2 shadow-lg ring-4 ring-bg-default transition group-hover:scale-110",
+                        "block size-4 rounded-full border-2 shadow-lg ring-4 ring-white/80 transition group-hover:scale-110",
                         tone.dot,
                         pin.isSelected && "size-5 ring-8",
                       )}
@@ -250,11 +333,10 @@ export function DistrictHome({ children, viewModel }: DistrictHomeProps) {
                     {pin.labelVisibility !== "dot" ? (
                       <span
                         className={cn(
-                          "pointer-events-none absolute left-4 top-1/2 min-w-32 max-w-40 -translate-y-1/2 rounded-md border px-2 py-1 text-xs shadow-sm",
-                          tone.label,
+                          "pointer-events-none absolute min-w-32 max-w-44 rounded-md border border-white/10 bg-slate-950/84 px-2 py-1 text-xs text-white shadow-xl shadow-black/20 backdrop-blur",
                           pin.labelVisibility === "primary"
-                            ? "block max-w-48 font-medium"
-                            : "hidden sm:block",
+                            ? "left-5 top-[calc(100%+0.65rem)] block max-w-48 font-medium"
+                            : "left-4 top-1/2 hidden -translate-y-1/2 group-hover:block",
                         )}
                         data-district-map-pin-label
                       >

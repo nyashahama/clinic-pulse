@@ -68,6 +68,11 @@ test.describe("product shell responsive behavior", () => {
     ).toBeVisible();
     await expect(page.locator('[data-district-home="command-page"]')).toBeVisible();
     await expect(page.locator("[data-district-command-map]")).toBeVisible();
+    await expect(page.locator("[data-district-route-map]")).toBeVisible();
+    await expect(page.locator("[data-district-route-line]")).toHaveCount(3);
+    await expect(page.locator("[data-district-route-summary]")).toContainText(
+      "Recommended route",
+    );
     await expect(page.locator("[data-district-command-queue]")).toBeVisible();
     await expect(page.locator("[data-district-decision-packet]")).toBeVisible();
     await expect(

@@ -110,6 +110,26 @@ describe("buildDistrictHomeViewModel", () => {
         tone: viewModel.hero.primaryDecision.tone,
       }),
     );
+    expect(viewModel.commandPreview.commandMap.routes).toHaveLength(3);
+    expect(viewModel.commandPreview.commandMap.routes[0]).toEqual(
+      expect.objectContaining({
+        fromClinicId: "clinic-mabopane-station",
+        fromClinicName: "Mabopane Station Clinic",
+        isPrimary: true,
+        label: expect.stringContaining("Recommended route"),
+        matchedService: expect.any(String),
+        toClinicId: expect.any(String),
+        toClinicName: expect.any(String),
+      }),
+    );
+    expect(viewModel.commandPreview.commandMap.routes[0].x1).toBe(
+      viewModel.commandPreview.commandMap.pins[0].x,
+    );
+    expect(viewModel.commandPreview.commandMap.routes[0].y1).toBe(
+      viewModel.commandPreview.commandMap.pins[0].y,
+    );
+    expect(viewModel.commandPreview.commandMap.routes[0].x2).toEqual(expect.any(Number));
+    expect(viewModel.commandPreview.commandMap.routes[0].y2).toEqual(expect.any(Number));
     expect(
       viewModel.commandPreview.commandMap.pins
         .filter((pin) => pin.labelVisibility !== "dot")
