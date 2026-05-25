@@ -282,6 +282,33 @@ it("links security evidence through an Unkey-style selected-row workspace", () =
   expect(modelSource).toContain("buildAdminAuditEventDetailHref");
 });
 
+it("uses a scenario operations workspace instead of generic action cards", () => {
+  const source = readFileSync("app/(demo)/admin/demo-controls/page-client.tsx", "utf8");
+  const componentSource = readFileSync("components/product/scenario-controls-workspace.tsx", "utf8");
+  const modelSource = readFileSync("lib/product/scenario-controls.ts", "utf8");
+
+  expect(source).toContain("ScenarioControlsWorkspace");
+  expect(source).toContain("buildScenarioControlsViewModel");
+  expect(source).not.toContain("DemoControls");
+  expect(source).not.toContain("AdminEvidenceTable");
+  expect(componentSource).toContain('aria-label="Scenario controls workspace"');
+  expect(componentSource).toContain('aria-label="Scenario runbook"');
+  expect(componentSource).toContain('aria-label="Scenario command panel"');
+  expect(componentSource).toContain('aria-label="Selected scenario evidence flow"');
+  expect(componentSource).toContain('aria-label="Scenario evidence timeline"');
+  expect(componentSource).toContain('aria-label="Scenario safety checks"');
+  expect(componentSource).toContain("onSelectCommand(command.id)");
+  expect(componentSource).toContain("onRunCommand(selectedCommand.id)");
+  expect(componentSource).toContain("aria-pressed={isSelected}");
+  expect(componentSource).not.toContain("Airflow");
+  expect(componentSource).not.toContain("Temporal");
+  expect(componentSource).not.toContain("Backstage");
+  expect(componentSource).not.toContain("Reference map");
+  expect(modelSource).toContain("scenarioControlCommandIds");
+  expect(modelSource).toContain('"incident_replay"');
+  expect(modelSource).toContain('"offline_sync"');
+});
+
 it("uses admin clinic detail return sources for back navigation", () => {
   const source = readFileSync("app/(demo)/demo/clinics/[clinicId]/page-client.tsx", "utf8");
 

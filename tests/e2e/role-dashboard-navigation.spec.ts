@@ -775,6 +775,10 @@ test.describe("phase 1 role dashboard navigation", () => {
 
     await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
     await expect(page.locator('[data-admin-module="scenario-controls"]')).toBeVisible();
+    await expect(page.locator('[aria-label="Scenario controls workspace"]')).toBeVisible();
+    await expect(page.locator('[aria-label="Scenario runbook"]')).toBeVisible();
+    await expect(page.locator('[aria-label="Scenario command panel"]')).toBeVisible();
+    await expect(page.locator('[aria-label="Scenario evidence timeline"]')).toBeVisible();
     await expect(page.getByRole("button", { name: "Reset scenario" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Trigger stockout" })).toBeVisible();
   });
