@@ -110,6 +110,21 @@ describe("buildDistrictHomeViewModel", () => {
         tone: viewModel.hero.primaryDecision.tone,
       }),
     );
+    expect(
+      viewModel.commandPreview.commandMap.pins
+        .filter((pin) => pin.labelVisibility !== "dot")
+        .map((pin) => pin.clinicName),
+    ).toEqual([
+      "Mabopane Station Clinic",
+      "Hammanskraal Unit D Clinic",
+      "Atteridgeville Extension Clinic",
+      "Winterveldt West Clinic",
+    ]);
+    expect(
+      viewModel.commandPreview.commandMap.pins.find(
+        (pin) => pin.clinicName === "Mamelodi East Community Clinic",
+      )?.labelVisibility,
+    ).toBe("dot");
     expect(viewModel.commandPreview.decisionPacket).toEqual(
       expect.objectContaining({
         clinicId: "clinic-mabopane-station",
@@ -131,7 +146,6 @@ describe("buildDistrictHomeViewModel", () => {
     expect(viewModel.supportingSections.map((section) => section.id)).toEqual([
       "report-review",
       "data-trust",
-      "scenario-controls",
       "field-signal-stream",
       "clinic-roster",
     ]);

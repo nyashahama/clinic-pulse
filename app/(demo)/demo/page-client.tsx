@@ -644,70 +644,80 @@ export default function DistrictConsolePage({
         </section>
       ) : null}
 
-      <div className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <StatusSummary
-          counts={statusCounts}
-          activeAlertCount={activeAlerts.length}
-          offlineQueueCount={state.offlineQueue.length}
-          lastSyncAt={state.lastSyncAt}
-        />
-        {syncSummary ? <PilotReadinessPanel summary={syncSummary} /> : null}
-      </div>
+      {!isDistrictWorkspace ? (
+        <>
+          <div className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <StatusSummary
+              counts={statusCounts}
+              activeAlertCount={activeAlerts.length}
+              offlineQueueCount={state.offlineQueue.length}
+              lastSyncAt={state.lastSyncAt}
+            />
+            {syncSummary ? <PilotReadinessPanel summary={syncSummary} /> : null}
+          </div>
 
-      <ClinicMap
-        clinics={visibleClinicRows}
-        referenceClinics={clinicRows}
-        selectedClinicId={selectedClinicId}
-        rerouteClinicId={rerouteClinicId}
-        onSelectClinic={openClinicDetail}
-      />
+          <ClinicMap
+            clinics={visibleClinicRows}
+            referenceClinics={clinicRows}
+            selectedClinicId={selectedClinicId}
+            rerouteClinicId={rerouteClinicId}
+            onSelectClinic={openClinicDetail}
+          />
 
-      <DemoControls
-        stockoutClinicLabel="Mamelodi East"
-        staffingClinicLabel="Soshanguve Block F"
-        offlineQueueCount={state.offlineQueue.length}
-        replayRunning={replayNonIdle}
-        onReset={handleResetWalkthrough}
-        onReplayIncident={startIncidentReplay}
-        onTriggerStockout={() => {
-          if (replayNonIdle) {
-            return;
-          }
+          <DemoControls
+            stockoutClinicLabel="Mamelodi East"
+            staffingClinicLabel="Soshanguve Block F"
+            offlineQueueCount={state.offlineQueue.length}
+            replayRunning={replayNonIdle}
+            onReset={handleResetWalkthrough}
+            onReplayIncident={startIncidentReplay}
+            onTriggerStockout={() => {
+              if (replayNonIdle) {
+                return;
+              }
 
-          setSelectedClinicId(STOCKOUT_TRIGGER_CLINIC_ID);
-          setSelectedCommandClinicId(STOCKOUT_TRIGGER_CLINIC_ID);
-          setRerouteClinicId(STOCKOUT_TRIGGER_CLINIC_ID);
-          triggerStockout(STOCKOUT_TRIGGER_CLINIC_ID);
-          openClinicDetail(STOCKOUT_TRIGGER_CLINIC_ID);
-        }}
-        onTriggerStaffingShortage={() => {
-          if (replayNonIdle) {
-            return;
-          }
+              setSelectedClinicId(STOCKOUT_TRIGGER_CLINIC_ID);
+              setSelectedCommandClinicId(STOCKOUT_TRIGGER_CLINIC_ID);
+              setRerouteClinicId(STOCKOUT_TRIGGER_CLINIC_ID);
+              triggerStockout(STOCKOUT_TRIGGER_CLINIC_ID);
+              openClinicDetail(STOCKOUT_TRIGGER_CLINIC_ID);
+            }}
+            onTriggerStaffingShortage={() => {
+              if (replayNonIdle) {
+                return;
+              }
 
-          setSelectedClinicId(STAFFING_TRIGGER_CLINIC_ID);
-          setSelectedCommandClinicId(STAFFING_TRIGGER_CLINIC_ID);
-          setRerouteClinicId(null);
-          triggerStaffingShortage(STAFFING_TRIGGER_CLINIC_ID);
-          openClinicDetail(STAFFING_TRIGGER_CLINIC_ID);
-        }}
-        onSyncOfflineReports={handleSyncOfflineReports}
-        onTriggerReroute={handleTriggerReroute}
-      />
+              setSelectedClinicId(STAFFING_TRIGGER_CLINIC_ID);
+              setSelectedCommandClinicId(STAFFING_TRIGGER_CLINIC_ID);
+              setRerouteClinicId(null);
+              triggerStaffingShortage(STAFFING_TRIGGER_CLINIC_ID);
+              openClinicDetail(STAFFING_TRIGGER_CLINIC_ID);
+            }}
+            onSyncOfflineReports={handleSyncOfflineReports}
+            onTriggerReroute={handleTriggerReroute}
+          />
 
-      <IncidentReplayPanel
-        status={replayStatus}
-        activeStepId={activeReplayStepId}
-        completedStepIds={completedReplayStepIds}
-        completedAtByStepId={completedReplayAtByStepId}
-        webhookPreview={webhookPreview}
-      />
+          <IncidentReplayPanel
+            status={replayStatus}
+            activeStepId={activeReplayStepId}
+            completedStepIds={completedReplayStepIds}
+            completedAtByStepId={completedReplayAtByStepId}
+            webhookPreview={webhookPreview}
+          />
+        </>
+      ) : null}
 
       <div
         id={isDistrictWorkspace ? "field-signal-stream" : "clinic-evidence"}
         className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]"
       >
-        <AlertList alerts={activeAlerts} clinics={clinicRows} onSelectClinic={openClinicDetail} />
+        <AlertList
+          alerts={activeAlerts}
+          clinics={clinicRows}
+          compact={isDistrictWorkspace}
+          limit={isDistrictWorkspace ? 3 : undefined}
+          onSelectClinic={openClinicDetail}
+        />
         <ReportStream
           reports={reportStream}
           selectedClinicId={selectedClinicId}
@@ -715,15 +725,27 @@ export default function DistrictConsolePage({
           statusChangeByReportId={statusChangeByReportId}
           onSelectClinic={openClinicDetail}
           getReportDetailHref={(report) => getReportDetailHref(report.id)}
+          compact={isDistrictWorkspace}
+          limit={isDistrictWorkspace ? 3 : undefined}
         />
       </div>
 
-      <ClinicTable
-        clinics={visibleClinicRows}
-        selectedClinicId={selectedClinicId}
-        recommendedActionByClinicId={recommendedActionByClinicId}
-        onSelectClinic={openClinicDetail}
-      />
+      <div id={isDistrictWorkspace ? "clinic-roster" : undefined}>
+        <ClinicTable
+          clinics={visibleClinicRows}
+          selectedClinicId={selectedClinicId}
+          recommendedActionByClinicId={recommendedActionByClinicId}
+          onSelectClinic={openClinicDetail}
+          limit={isDistrictWorkspace ? 4 : undefined}
+          compact={isDistrictWorkspace}
+          title={isDistrictWorkspace ? "Clinic roster" : undefined}
+          description={
+            isDistrictWorkspace
+              ? "Preview the clinics most likely to affect routing or review. Open the clinic network for the full table."
+              : undefined
+          }
+        />
+      </div>
     </>
   );
 

@@ -238,6 +238,7 @@ export function DistrictHome({ children, viewModel }: DistrictHomeProps) {
                     href={pin.href}
                     key={pin.clinicId}
                     style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
+                    title={`${pin.clinicName}: ${pin.coverageLabel}`}
                   >
                     <span
                       className={cn(
@@ -246,21 +247,26 @@ export function DistrictHome({ children, viewModel }: DistrictHomeProps) {
                         pin.isSelected && "size-5 ring-8",
                       )}
                     />
-                    <span
-                      className={cn(
-                        "pointer-events-none absolute left-4 top-1/2 hidden min-w-32 max-w-44 -translate-y-1/2 rounded-md border px-2 py-1 text-xs shadow-sm sm:block",
-                        tone.label,
-                        pin.isSelected && "block",
-                      )}
-                    >
-                      <span className="block truncate font-semibold">
-                        {pin.clinicName}
+                    {pin.labelVisibility !== "dot" ? (
+                      <span
+                        className={cn(
+                          "pointer-events-none absolute left-4 top-1/2 min-w-32 max-w-40 -translate-y-1/2 rounded-md border px-2 py-1 text-xs shadow-sm",
+                          tone.label,
+                          pin.labelVisibility === "primary"
+                            ? "block max-w-48 font-medium"
+                            : "hidden sm:block",
+                        )}
+                        data-district-map-pin-label
+                      >
+                        <span className="block truncate font-semibold">
+                          {pin.clinicName}
+                        </span>
+                        <span className="block truncate">
+                          {pin.coverageLabel}
+                          {pin.score > 0 ? ` - ${pin.score}` : ""}
+                        </span>
                       </span>
-                      <span className="block truncate">
-                        {pin.coverageLabel}
-                        {pin.score > 0 ? ` - ${pin.score}` : ""}
-                      </span>
-                    </span>
+                    ) : null}
                   </Link>
                 );
               })}

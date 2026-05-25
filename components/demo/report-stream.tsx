@@ -17,6 +17,8 @@ type ReportStreamProps = {
   statusChangeByReportId: Record<string, string>;
   onSelectClinic: (clinicId: string) => void;
   getReportDetailHref?: (report: ReportStreamItem) => string;
+  limit?: number;
+  compact?: boolean;
 };
 
 function formatTimestamp(value: string) {
@@ -39,7 +41,11 @@ export function ReportStream({
   statusChangeByReportId,
   onSelectClinic,
   getReportDetailHref,
+  limit,
+  compact = false,
 }: ReportStreamProps) {
+  const visibleReports = reports.slice(0, limit ?? 8);
+
   return (
     <section className="min-w-0 rounded-lg border border-border-subtle bg-bg-default shadow-sm">
       <div className="px-4 pt-4">
@@ -54,7 +60,7 @@ export function ReportStream({
         {reports.length === 0 ? (
           <EmptyState surface="report-stream" className="min-h-44" />
         ) : (
-          reports.slice(0, 8).map((report) => {
+          visibleReports.map((report) => {
             const cardClassName = cn(
               "rounded-lg border border-border-subtle p-3 text-left transition-colors hover:bg-bg-subtle",
               report.clinicId === selectedClinicId ? "bg-teal-50/60" : "bg-bg-default",
@@ -92,15 +98,23 @@ export function ReportStream({
                   <StatusBadge status={report.status} />
                 </div>
 
-                <p className="mt-3 text-sm leading-6 text-content-default">
-                  <span className="font-medium text-content-default">Status change:</span>{" "}
-                  {statusChangeByReportId[report.id]}
-                </p>
-                <p className="mt-3 text-sm leading-6 text-content-default">{report.reason}</p>
-                <p className="mt-3 text-xs leading-5 text-content-subtle">
-                  <span className="font-medium text-content-default">Audit consequence:</span>{" "}
-                  {consequenceByReportId[report.id]}
-                </p>
+                {compact ? (
+                  <p className="mt-3 line-clamp-2 text-sm leading-6 text-content-default">
+                    {report.reason}
+                  </p>
+                ) : (
+                  <>
+                    <p className="mt-3 text-sm leading-6 text-content-default">
+                      <span className="font-medium text-content-default">Status change:</span>{" "}
+                      {statusChangeByReportId[report.id]}
+                    </p>
+                    <p className="mt-3 text-sm leading-6 text-content-default">{report.reason}</p>
+                    <p className="mt-3 text-xs leading-5 text-content-subtle">
+                      <span className="font-medium text-content-default">Audit consequence:</span>{" "}
+                      {consequenceByReportId[report.id]}
+                    </p>
+                  </>
+                )}
               </>
             );
             const reportDetailHref = getReportDetailHref?.(report);

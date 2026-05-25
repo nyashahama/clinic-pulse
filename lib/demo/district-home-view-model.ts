@@ -56,6 +56,7 @@ export type DistrictHomeCommandMapPin = {
   clinicName: string;
   href: string;
   label: string;
+  labelVisibility: "primary" | "secondary" | "dot";
   score: number;
   statusLabel: string;
   freshnessLabel: string;
@@ -287,7 +288,11 @@ function buildCommandMapPins({
       }
 
       return right.score - left.score || left.clinicName.localeCompare(right.clinicName);
-    });
+    })
+    .map((pin, index) => ({
+      ...pin,
+      labelVisibility: pin.isSelected ? "primary" : index < 4 ? "secondary" : "dot",
+    }));
 }
 
 function buildDecisionPacket({
@@ -588,12 +593,6 @@ export function buildDistrictHomeViewModel({
         tone: actionTone(
           (syncSummary?.staleClinics ?? 0) + (syncSummary?.needsConfirmationClinics ?? 0),
         ),
-      },
-      {
-        id: "scenario-controls",
-        title: "Scenario controls",
-        detail: "Run replay, sync offline reports, or trigger route-impacting incidents.",
-        tone: "info",
       },
       {
         id: "field-signal-stream",

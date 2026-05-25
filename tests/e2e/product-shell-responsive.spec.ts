@@ -73,6 +73,33 @@ test.describe("product shell responsive behavior", () => {
     await expect(
       page.getByText("Supporting operations", { exact: true }),
     ).toHaveCount(1);
+    await expect(page.locator("[data-district-map-pin-label]")).toHaveCount(4);
+    await expect(page.getByRole("heading", { name: "Console controls" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "District operations map" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Clinic table" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Clinic roster" })).toBeVisible();
+    await expect(
+      page
+        .locator("#field-signal-stream")
+        .getByRole("link", { name: /Open report detail/i }),
+    ).toHaveCount(3);
+    await expect(
+      page.locator("#clinic-roster").getByRole("button", { name: /^Open$/ }),
+    ).toHaveCount(4);
     await expect(page.getByRole("heading", { name: "Unified severity queue" })).toBeHidden();
+  });
+
+  test("district command home stays compact on mobile", async ({ page }, testInfo) => {
+    skipUnlessMobileProject(testInfo);
+
+    await signInAsDistrictManager(page);
+
+    const mainScrollHeight = await page
+      .locator("main.min-w-0.flex-1.overflow-y-auto")
+      .evaluate((node) => node.scrollHeight);
+
+    expect(mainScrollHeight).toBeLessThan(9000);
+    await expect(page.locator("[data-district-map-pin-label]:visible")).toHaveCount(1);
+    await expect(page.getByRole("heading", { name: "Clinic table" })).toHaveCount(0);
   });
 });
