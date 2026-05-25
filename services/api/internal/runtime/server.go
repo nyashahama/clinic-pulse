@@ -3,7 +3,7 @@ package runtime
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -29,7 +29,7 @@ func NewServer(config ServerConfig, handler http.Handler) *http.Server {
 	}
 }
 
-func Serve(ctx context.Context, server *http.Server, shutdownTimeout time.Duration, logger *log.Logger) error {
+func Serve(ctx context.Context, server *http.Server, shutdownTimeout time.Duration, logger *slog.Logger) error {
 	shutdownCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -59,7 +59,7 @@ func Serve(ctx context.Context, server *http.Server, shutdownTimeout time.Durati
 	}
 
 	if logger != nil {
-		logger.Printf("server stopped gracefully")
+		logger.Info("server_stopped", "component", "runtime")
 	}
 	return nil
 }

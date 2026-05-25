@@ -11,7 +11,7 @@ import (
 
 func TestJSONLoggerWritesStructuredLine(t *testing.T) {
 	var output bytes.Buffer
-	logger := NewJSONLogger(&output, Fields{
+	logger := NewLogger(&output, Fields{
 		"service":    "clinicpulse-api",
 		"deploy_env": "test",
 	})
@@ -28,14 +28,29 @@ func TestJSONLoggerWritesStructuredLine(t *testing.T) {
 	if err := json.Unmarshal(bytes.TrimSpace(output.Bytes()), &got); err != nil {
 		t.Fatalf("log line is not JSON: %v", err)
 	}
-	if got["level"] != "info" || got["event"] != "request_completed" {
+	if got["level"] != "INFO" || got["msg"] != "request_completed" || got["event"] != "request_completed" {
 		t.Fatalf("unexpected log payload: %#v", got)
 	}
 	if got["service"] != "clinicpulse-api" || got["deploy_env"] != "test" {
 		t.Fatalf("missing base fields: %#v", got)
 	}
-	if got["timestamp"] == "" {
-		t.Fatalf("missing timestamp: %#v", got)
+	if got["time"] == "" {
+		t.Fatalf("missing slog timestamp: %#v", got)
+	}
+}
+
+func TestLoggerExposesSlogLogger(t *testing.T) {
+	var output bytes.Buffer
+	logger := NewLogger(&output, Fields{"service": "clinicpulse-api"})
+
+	logger.Slog().Info("api_started", "addr", ":8080")
+
+	var got map[string]any
+	if err := json.Unmarshal(bytes.TrimSpace(output.Bytes()), &got); err != nil {
+		t.Fatalf("log line is not JSON: %v", err)
+	}
+	if got["msg"] != "api_started" || got["addr"] != ":8080" || got["service"] != "clinicpulse-api" {
+		t.Fatalf("expected slog logger to write structured attrs with base fields, got %#v", got)
 	}
 }
 
@@ -63,19 +78,19 @@ func TestJSONLoggerRedactsSensitiveFields(t *testing.T) {
 
 func TestJSONLoggerControlsReservedFields(t *testing.T) {
 	var output bytes.Buffer
-	logger := NewJSONLogger(&output, Fields{"level": "debug", "event": "base", "timestamp": "yesterday"})
+	logger := NewLogger(&output, Fields{"level": "debug", "event": "base", "time": "yesterday", "msg": "base"})
 
-	logger.Warn("safe_event", Fields{"level": "debug", "event": "field_event", "timestamp": "tomorrow"})
+	logger.Warn("safe_event", Fields{"level": "debug", "event": "field_event", "time": "tomorrow", "msg": "field_msg"})
 
 	var got map[string]any
 	if err := json.Unmarshal(bytes.TrimSpace(output.Bytes()), &got); err != nil {
 		t.Fatalf("log line is not JSON: %v", err)
 	}
-	if got["level"] != "warn" || got["event"] != "safe_event" {
+	if got["level"] != "WARN" || got["event"] != "safe_event" || got["msg"] != "safe_event" {
 		t.Fatalf("reserved fields were overridden: %#v", got)
 	}
-	if got["timestamp"] == "tomorrow" || got["timestamp"] == "yesterday" {
-		t.Fatalf("timestamp was not controlled by logger: %#v", got)
+	if got["time"] == "tomorrow" || got["time"] == "yesterday" {
+		t.Fatalf("time was not controlled by slog handler: %#v", got)
 	}
 }
 

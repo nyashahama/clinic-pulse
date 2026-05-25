@@ -1,79 +1,99 @@
 package observability
 
 import (
-	"encoding/json"
+	"context"
 	"io"
+	"log/slog"
 	"strings"
-	"sync"
-	"time"
 )
 
 // Fields contains structured log fields.
 type Fields map[string]any
 
-// JSONLogger writes one JSON object per log line.
-type JSONLogger struct {
-	w    io.Writer
-	base Fields
-	mu   sync.Mutex
+// Logger writes structured JSON logs through log/slog.
+type Logger struct {
+	logger *slog.Logger
 }
 
-// NewJSONLogger creates a logger that writes JSON lines to w.
-func NewJSONLogger(w io.Writer, base Fields) *JSONLogger {
-	copied := make(Fields, len(base))
-	for key, value := range base {
-		if isReservedLogField(key) {
-			continue
-		}
-		copied[key] = normalizeLogValue(key, value)
+// JSONLogger is kept as a compatibility alias for older call sites.
+type JSONLogger = Logger
+
+// NewLogger creates a slog-backed logger that writes JSON lines to w.
+func NewLogger(w io.Writer, base Fields) *Logger {
+	if w == nil {
+		w = io.Discard
 	}
-	return &JSONLogger{w: w, base: copied}
+	handler := slog.NewJSONHandler(w, &slog.HandlerOptions{ReplaceAttr: replaceLogAttr})
+	logger := slog.New(handler)
+	if args := fieldsToArgs(base); len(args) > 0 {
+		logger = logger.With(args...)
+	}
+	return &Logger{logger: logger}
+}
+
+// NewJSONLogger creates a slog-backed logger that writes JSON lines to w.
+func NewJSONLogger(w io.Writer, base Fields) *Logger {
+	return NewLogger(w, base)
+}
+
+// Slog returns the underlying slog logger for call sites that need direct slog APIs.
+func (l *Logger) Slog() *slog.Logger {
+	if l == nil || l.logger == nil {
+		return NewLogger(io.Discard, nil).Slog()
+	}
+	return l.logger
+}
+
+// With returns a child logger with additional base fields.
+func (l *Logger) With(fields Fields) *Logger {
+	return &Logger{logger: l.Slog().With(fieldsToArgs(fields)...)}
 }
 
 // Info writes an info-level event.
-func (l *JSONLogger) Info(event string, fields Fields) {
-	l.log("info", event, fields)
+func (l *Logger) Info(event string, fields Fields) {
+	l.log(context.Background(), slog.LevelInfo, event, fields)
 }
 
 // Warn writes a warn-level event.
-func (l *JSONLogger) Warn(event string, fields Fields) {
-	l.log("warn", event, fields)
+func (l *Logger) Warn(event string, fields Fields) {
+	l.log(context.Background(), slog.LevelWarn, event, fields)
 }
 
 // Error writes an error-level event.
-func (l *JSONLogger) Error(event string, fields Fields) {
-	l.log("error", event, fields)
+func (l *Logger) Error(event string, fields Fields) {
+	l.log(context.Background(), slog.LevelError, event, fields)
 }
 
-func (l *JSONLogger) log(level, event string, fields Fields) {
-	payload := make(Fields, len(l.base)+len(fields)+3)
-	for key, value := range l.base {
-		payload[key] = value
+func (l *Logger) log(ctx context.Context, level slog.Level, event string, fields Fields) {
+	args := append([]any{"event", event}, fieldsToArgs(fields)...)
+	l.Slog().Log(ctx, level, event, args...)
+}
+
+func fieldsToArgs(fields Fields) []any {
+	if len(fields) == 0 {
+		return nil
 	}
+	args := make([]any, 0, len(fields)*2)
 	for key, value := range fields {
 		if isReservedLogField(key) {
 			continue
 		}
-		payload[key] = normalizeLogValue(key, value)
+		args = append(args, key, normalizeLogValue(key, value))
 	}
-	payload["timestamp"] = time.Now().UTC().Format(time.RFC3339Nano)
-	payload["level"] = level
-	payload["event"] = event
+	return args
+}
 
-	line, err := json.Marshal(payload)
-	if err != nil {
-		line, _ = json.Marshal(Fields{
-			"timestamp": time.Now().UTC().Format(time.RFC3339Nano),
-			"level":     "error",
-			"event":     "log_encode_failed",
-			"error":     err.Error(),
-		})
+func replaceLogAttr(_ []string, attr slog.Attr) slog.Attr {
+	if attr.Key == "" {
+		return attr
 	}
-	line = append(line, '\n')
-
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	_, _ = l.w.Write(line)
+	if isSensitiveLogField(attr.Key) {
+		return slog.String(attr.Key, "[REDACTED]")
+	}
+	if attr.Value.Kind() == slog.KindAny {
+		return slog.Any(attr.Key, normalizeLogNestedValue(attr.Value.Any()))
+	}
+	return attr
 }
 
 func normalizeLogValue(key string, value any) any {
@@ -137,7 +157,7 @@ func normalizeLogFields(fields Fields) Fields {
 
 func isReservedLogField(key string) bool {
 	switch key {
-	case "timestamp", "level", "event":
+	case "time", "timestamp", "level", "msg", "event":
 		return true
 	default:
 		return false

@@ -1,6 +1,8 @@
 package runtime
 
 import (
+	"context"
+	"log/slog"
 	"net/http"
 	"testing"
 	"time"
@@ -33,4 +35,8 @@ func TestNewServerAppliesTimeouts(t *testing.T) {
 	if server.IdleTimeout != cfg.IdleTimeout {
 		t.Fatalf("IdleTimeout = %s, want %s", server.IdleTimeout, cfg.IdleTimeout)
 	}
+}
+
+func TestServeAcceptsStructuredLogger(t *testing.T) {
+	var _ func(context.Context, *http.Server, time.Duration, *slog.Logger) error = Serve
 }

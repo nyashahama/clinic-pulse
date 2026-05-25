@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"os"
 	"time"
 
@@ -15,13 +14,16 @@ import (
 )
 
 func main() {
-	logger := log.New(os.Stdout, "", log.LstdFlags)
+	bootstrapLogger := observability.NewLogger(os.Stdout, observability.Fields{
+		"service": "clinicpulse-api",
+	}).Slog()
 
 	cfg, err := config.Load()
 	if err != nil {
-		logger.Fatalf("load config: %v", err)
+		bootstrapLogger.Error("config_load_failed", "error", err)
+		os.Exit(1)
 	}
-	jsonLogger := observability.NewJSONLogger(os.Stdout, observability.Fields{
+	logger := observability.NewLogger(os.Stdout, observability.Fields{
 		"service":    cfg.ObservabilityServiceName,
 		"deploy_env": cfg.DeployEnv,
 	})
@@ -30,7 +32,8 @@ func main() {
 	ctx := context.Background()
 	pool, err := store.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
-		logger.Fatalf("open database: %v", err)
+		logger.Slog().Error("database_open_failed", "error", err)
+		os.Exit(1)
 	}
 	defer pool.Close()
 
@@ -41,7 +44,7 @@ func main() {
 		apihttp.WithTrustedOrigins(cfg.TrustedOrigins),
 		apihttp.WithLoginRateLimiter(security.NewFixedWindowLimiter(cfg.LoginRateLimit, cfg.RateLimitWindow, time.Now)),
 		apihttp.WithMutationRateLimiter(security.NewFixedWindowLimiter(cfg.MutationRateLimit, cfg.RateLimitWindow, time.Now)),
-		apihttp.WithObservability(jsonLogger, metrics),
+		apihttp.WithObservability(logger, metrics),
 		apihttp.WithMetricsEndpoint(cfg.MetricsEnabled, cfg.MetricsToken),
 	)
 	server := apiruntime.NewServer(apiruntime.ServerConfig{
@@ -52,8 +55,9 @@ func main() {
 		ShutdownTimeout: cfg.ShutdownTimeout,
 	}, router)
 
-	logger.Printf("starting api server deploy_env=%s addr=%s", cfg.DeployEnv, cfg.Addr)
-	if err := apiruntime.Serve(ctx, server, cfg.ShutdownTimeout, logger); err != nil {
-		logger.Fatalf("serve api: %v", err)
+	logger.Slog().Info("api_server_starting", "addr", cfg.Addr)
+	if err := apiruntime.Serve(ctx, server, cfg.ShutdownTimeout, logger.Slog()); err != nil {
+		logger.Slog().Error("api_server_failed", "error", err)
+		os.Exit(1)
 	}
 }
