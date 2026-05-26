@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 
 import { FieldClinicList } from "@/components/demo/field-clinic-list";
 import { FieldLocationVerificationPanel } from "@/components/demo/field-location-verification";
+import { FieldReportHandoff } from "@/components/demo/field-report-handoff";
 import { FieldTaskQueue } from "@/components/demo/field-task-queue";
 import { OfflineQueue } from "@/components/demo/offline-queue";
 import { type FieldReportFeedback } from "@/components/demo/report-feedback";
@@ -28,6 +29,7 @@ import {
   submitOnlineFieldReport,
   type OnlineFieldReportInput,
 } from "@/lib/demo/field-report";
+import { buildFieldReportHandoffItems } from "@/lib/demo/field-report-handoff";
 import { buildFieldVisitCockpitViewModel } from "@/lib/demo/field-visit-cockpit";
 import {
   addOfflineReport,
@@ -44,7 +46,7 @@ import {
   markQueuedItemSyncing,
   recoverStaleSyncingReports,
 } from "@/lib/demo/offline-sync";
-import { getClinicRows } from "@/lib/demo/selectors";
+import { getClinicRows, getRecentReportStream } from "@/lib/demo/selectors";
 import type { OfflineReportQueueItem } from "@/lib/demo/types";
 import { createFieldReport, syncQueuedFieldReports } from "./actions";
 
@@ -206,10 +208,11 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
   const clinics = useMemo(() => getClinicRows(state), [state]);
   const recentReports = useMemo(
     () =>
-      [...state.reports]
-        .sort((left, right) => Date.parse(right.receivedAt) - Date.parse(left.receivedAt))
-        .slice(0, 4),
-    [state.reports],
+      buildFieldReportHandoffItems({
+        clinics,
+        reports: getRecentReportStream(state),
+      }),
+    [clinics, state],
   );
   const [selectedClinicId, setSelectedClinicId] = useState<string | null>(
     clinics[0]?.id ?? null,
@@ -819,51 +822,11 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
         />
       </div>
 
-      <section
-        id="recent-reports"
-        className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm"
-      >
-        <SectionHeader
-          eyebrow="Latest submissions"
-          title="Recent reports"
-          description="The newest reports submitted into the operational record. Pending reports wait for district review before changing current status."
-        />
-        <div className="mt-3 grid gap-2">
-          {recentReports.length > 0 ? (
-            recentReports.map((report) => {
-              const clinicName =
-                clinics.find((clinic) => clinic.id === report.clinicId)?.name ??
-                "Unknown clinic";
-
-              return (
-                <article
-                  key={report.id}
-                  className="grid gap-2 rounded-lg border border-border-subtle bg-bg-subtle p-3 text-sm sm:grid-cols-[1fr_auto] sm:items-center"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate font-medium text-content-primary">{clinicName}</p>
-                    <p className="text-content-subtle">
-                      {report.reason} - {report.reporterName}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2 sm:justify-end">
-                    <span className="rounded-full border border-border-subtle bg-bg-default px-2 py-1 text-xs font-medium text-content-primary">
-                      {report.status.replaceAll("_", " ")}
-                    </span>
-                    <span className="rounded-full border border-border-subtle bg-bg-default px-2 py-1 text-xs text-content-subtle">
-                      {report.offlineCreated ? "Offline" : "Online"}
-                    </span>
-                  </div>
-                </article>
-              );
-            })
-          ) : (
-            <p className="rounded-lg border border-border-subtle bg-bg-subtle p-3 text-sm text-content-subtle">
-              No synced reports yet.
-            </p>
-          )}
-        </div>
-      </section>
+      <FieldReportHandoff
+        reports={recentReports}
+        selectedClinicId={selectedId}
+        onSelectClinic={handleSelectClinic}
+      />
 
       <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
         <SectionHeader

@@ -83,7 +83,7 @@ test("shows pending review feedback after an online field report submission", as
     expect(await page.getByTestId("field-report-toast").count()).toBe(0);
     await expect(
       page.getByText(
-        "The newest reports submitted into the operational record. Pending reports wait for district review before changing current status.",
+        "Use recent submissions to return to the right clinic, confirm what changed, and see which handoffs came from an offline sync.",
       ),
     ).toBeVisible();
     await expect(
@@ -183,6 +183,35 @@ test("uses the field route map to change the active stop", async ({
   ).toBeVisible();
   await expect(
     page.locator("#submit-report").getByText("Hammanskraal Unit D Clinic"),
+  ).toBeVisible();
+});
+
+test("uses recent report handoff rows to return to a clinic stop", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "desktop-chrome",
+    "Desktop handoff selection is covered by the desktop-chrome project.",
+  );
+
+  await signInAsReporter(page);
+
+  await page.getByRole("link", { name: "Recent reports", exact: true }).click();
+
+  const handoff = page.getByTestId("field-report-handoff");
+  await expect(handoff.getByText("Review handoff")).toBeVisible();
+  await expect(handoff.getByText("4 recent")).toBeVisible();
+  await expect(handoff.getByText("0 offline syncs")).toBeVisible();
+
+  await handoff
+    .getByRole("button", { name: /Open report handoff for Soshanguve Block F Clinic/i })
+    .click();
+
+  await expect(
+    page.getByTestId("field-route-map").getByText("Active: Soshanguve Block F Clinic"),
+  ).toBeVisible();
+  await expect(
+    page.locator("#submit-report").getByText("Soshanguve Block F Clinic"),
   ).toBeVisible();
 });
 
