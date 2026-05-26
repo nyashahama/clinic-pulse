@@ -62,6 +62,22 @@ test("system admin command console remains navigable on mobile", async ({ page, 
   ).toHaveAttribute("href", "/admin/tenant-health");
 });
 
+test("tenant health exposes source-backed references", async ({ page }) => {
+  await signIn(page, "system-admin@clinicpulse.local");
+  await page.goto("/admin/tenant-health");
+
+  await expect(page.getByRole("heading", { name: "Tenant health" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tenant-health source references" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Supabase Studio/i })).toHaveAttribute(
+    "href",
+    "https://github.com/supabase/supabase",
+  );
+  await expect(page.getByRole("link", { name: /OpenStatus/i })).toHaveAttribute(
+    "href",
+    "https://github.com/openstatusHQ/openstatus",
+  );
+});
+
 test("reporting coverage clinic names open operational detail", async ({ page }) => {
   await signIn(page, "org-admin@clinicpulse.local");
   await page.goto("/admin/reporting-coverage");
