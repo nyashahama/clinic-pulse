@@ -95,6 +95,7 @@ describe("field visit cockpit view model", () => {
       "clinic-a",
     ]);
     expect(model.selectedVisit.positionLabel).toBe("Stop 3 of 3");
+    expect(model.routeProgressPercent).toBe(100);
   });
 
   it("maps queue statuses to field-worker language", () => {
@@ -128,5 +129,6 @@ describe("field visit cockpit view model", () => {
     expect(model.selectedVisit.queueLabel).toBe("Saved on this device");
     expect(model.deviceStrip.savedOnDeviceCount).toBe(1);
     expect(model.deviceStrip.connectionLabel).toBe("Offline");
+    expect(model.routeProgressPercent).toBe(50);
   });
 });
