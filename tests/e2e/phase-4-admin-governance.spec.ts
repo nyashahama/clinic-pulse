@@ -31,6 +31,37 @@ test("organisation admin sees real governance modules", async ({ page }) => {
   }
 });
 
+test("system admin sees referenced platform command console", async ({ page }) => {
+  await signIn(page, "system-admin@clinicpulse.local");
+  await page.goto("/admin");
+
+  await expect(page.getByRole("heading", { name: "Platform Command Console" })).toBeVisible();
+  await expect(page.getByLabel("Platform command metrics")).toBeVisible();
+  await expect(page.getByLabel("Operational command lanes")).toBeVisible();
+  await expect(page.getByLabel("Audit and evidence console")).toBeVisible();
+  await expect(page.getByText("Source-backed UI references")).toBeVisible();
+  await expect(
+    page
+      .getByLabel("Audit and evidence console")
+      .getByRole("link", { name: "Open audit evidence", exact: true }),
+  ).toHaveAttribute("href", "/admin/audit-evidence");
+});
+
+test("system admin command console remains navigable on mobile", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "mobile-only coverage");
+
+  await signIn(page, "system-admin@clinicpulse.local");
+  await page.goto("/admin");
+
+  await expect(page.getByRole("heading", { name: "Platform Command Console" })).toBeVisible();
+  await expect(page.getByLabel("Platform command metrics")).toBeVisible();
+  await expect(
+    page
+      .getByLabel("Platform command metrics")
+      .getByRole("link", { name: "Open tenant health", exact: true }),
+  ).toHaveAttribute("href", "/admin/tenant-health");
+});
+
 test("reporting coverage clinic names open operational detail", async ({ page }) => {
   await signIn(page, "org-admin@clinicpulse.local");
   await page.goto("/admin/reporting-coverage");
