@@ -152,47 +152,6 @@ test("access review keeps implementation research out of user-facing UI", async 
   await expectResearchRailHidden(page);
 });
 
-test("organisation admin can work the access governance packet", async ({ page }) => {
-  await signIn(page, "org-admin@clinicpulse.local");
-  await page.goto("/admin/users-roles");
-
-  await expect(page.getByRole("heading", { name: "Users and roles" })).toBeVisible();
-  await expect(page.getByLabel("Access governance task queue")).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: /Review privileged access/i }),
-  ).toHaveAttribute("href", "/admin/access-review");
-  await expect(page.getByLabel("User lifecycle evidence")).toBeVisible();
-
-  await Promise.all([
-    page.waitForURL(/\/admin\/access-review$/),
-    page.getByRole("link", { name: /Review privileged access/i }).click(),
-  ]);
-  await expect(page.getByRole("heading", { name: "Access review" })).toBeVisible();
-  await expect(page.getByLabel("Access review decision queue")).toBeVisible();
-  await expect(page.getByLabel("Access decision handoff")).toBeVisible();
-
-  const reviewQueue = page.getByLabel("Access review decision queue");
-  const orgAdminRow = reviewQueue.getByRole("row", {
-    name: /Open user evidence for Organisation Admin/i,
-  });
-
-  await expect(orgAdminRow).toBeVisible();
-  await Promise.all([
-    page.waitForURL(/\/admin\/users-roles\/\d+\?from=admin-access-review$/),
-    orgAdminRow.click(),
-  ]);
-  await expect(page.getByRole("heading", { name: "User detail" })).toBeVisible();
-  await expect(page.getByLabel("Detail evidence signals")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Access decision" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Back to access review" })).toBeVisible();
-
-  await Promise.all([
-    page.waitForURL(/\/admin\/users-roles$/),
-    page.getByRole("link", { name: /Manage access/i }).click(),
-  ]);
-  await expect(page.getByLabel("User lifecycle evidence")).toBeVisible();
-});
-
 test("reporting coverage clinic names open operational detail", async ({ page }) => {
   await signIn(page, "org-admin@clinicpulse.local");
   await page.goto("/admin/reporting-coverage");

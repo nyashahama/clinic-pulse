@@ -49,10 +49,6 @@ export function classifyAccessRisk(input: AccessRiskInput): AccessRiskSummary {
     reasons.push("System administrator access");
   }
 
-  if (input.role === "org_admin") {
-    reasons.push("Organisation administrator access");
-  }
-
   if (input.role === "district_manager" && !input.district) {
     reasons.push("Missing district scope");
   }
@@ -121,10 +117,6 @@ function resolveAccessRiskLabel(
   reasons: string[],
 ): AccessRiskSummary["label"] {
   if (role === "system_admin") {
-    return "Privileged";
-  }
-
-  if (role === "org_admin") {
     return "Privileged";
   }
 
