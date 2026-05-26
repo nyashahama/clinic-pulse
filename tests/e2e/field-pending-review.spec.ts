@@ -290,6 +290,10 @@ test("resumes a saved device report from the offline queue", async ({ page }) =>
 
   await expect(page.getByText("Saved to device")).toBeVisible();
   await expect(page.getByText(originalNotes)).toBeVisible();
+  const auditTrail = page.getByLabel(`Device audit trail for ${defaultRouteClinicName}`);
+  await expect(auditTrail.getByText("Field report captured")).toBeVisible();
+  await expect(auditTrail.getByText("Saved on this device")).toBeVisible();
+  await expect(auditTrail.getByText("Waiting to sync")).toBeVisible();
 
   await page.getByRole("button", { name: "Edit saved report" }).click();
   await expect(notesField).toHaveValue(originalNotes);
