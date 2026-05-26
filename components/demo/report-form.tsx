@@ -2,6 +2,7 @@
 
 import type { FormEvent, ReactNode } from "react";
 import { useRef, useState } from "react";
+import { AlertCircle, CheckCircle2, MapPin } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +16,7 @@ import {
   saveFieldReportDraft,
   type FieldReportDraftInput,
 } from "@/lib/demo/field-report-draft";
+import type { FieldLocationVerification } from "@/lib/demo/field-location-verification";
 import type {
   ClinicStatus,
   OfflineReportQueueItem,
@@ -23,6 +25,7 @@ import type {
   StockPressure,
 } from "@/lib/demo/types";
 import type { OnlineFieldReportInput } from "@/lib/demo/field-report";
+import { cn } from "@/lib/utils";
 
 type FieldReportFormProps = {
   clinicId: string;
@@ -31,6 +34,7 @@ type FieldReportFormProps = {
   onSubmit: (input: OnlineFieldReportInput) => boolean | Promise<boolean> | void;
   feedback?: FieldReportFeedback | null;
   editingReport?: OfflineReportQueueItem | null;
+  visitVerification?: FieldLocationVerification | null;
 };
 
 const STATUS_OPTIONS: Array<{ value: ClinicStatus; label: string }> = [
@@ -63,6 +67,15 @@ const QUEUE_OPTIONS: Array<{ value: QueuePressure; label: string }> = [
 
 const FIELD_SEGMENT_CLASS =
   "inline-flex flex-1 items-center justify-center rounded-lg border border-border-subtle px-2 py-2 text-sm font-medium transition-colors has-[input:checked]:border-neutral-900 has-[input:checked]:bg-neutral-900 has-[input:checked]:text-white";
+
+const VISIT_PROOF_TONE_CLASS = {
+  clear:
+    "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/35 dark:text-emerald-100",
+  attention:
+    "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-100",
+  blocked:
+    "border-red-200 bg-red-50 text-red-900 dark:border-red-900/60 dark:bg-red-950/35 dark:text-red-100",
+} satisfies Record<FieldLocationVerification["tone"], string>;
 
 const DEFAULT_DRAFT_INPUT = {
   status: "operational",
@@ -148,6 +161,64 @@ function VisitStep({
   );
 }
 
+function VisitProofCard({
+  clinicName,
+  verification,
+}: {
+  clinicName: string;
+  verification?: FieldLocationVerification | null;
+}) {
+  if (!verification) {
+    return (
+      <div
+        data-testid="field-visit-proof"
+        className="mt-3 rounded-lg border border-dashed border-border-subtle bg-bg-default p-3 text-sm text-content-subtle"
+      >
+        <p className="text-xs font-semibold uppercase tracking-normal text-content-subtle">
+          Visit proof
+        </p>
+        <p className="mt-1 font-medium text-content-emphasis">Not captured</p>
+        <p className="mt-1 text-xs leading-5">
+          Verify active stop when GPS is available. Reports can still be saved if
+          permission is unavailable.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      data-testid="field-visit-proof"
+      className={cn(
+        "mt-3 grid gap-3 rounded-lg border p-3 text-sm sm:grid-cols-[1fr_auto]",
+        VISIT_PROOF_TONE_CLASS[verification.tone],
+      )}
+    >
+      <div className="min-w-0">
+        <p className="text-xs font-semibold uppercase tracking-normal">Visit proof</p>
+        <p className="mt-1 inline-flex items-center gap-1 font-semibold">
+          {verification.tone === "blocked" ? (
+            <AlertCircle className="size-4" />
+          ) : (
+            <CheckCircle2 className="size-4" />
+          )}
+          {verification.statusLabel}
+        </p>
+        <p className="mt-1 text-xs leading-5">
+          {verification.distanceLabel} from {clinicName}
+        </p>
+      </div>
+      <div className="grid gap-1 text-xs sm:text-right">
+        <span>{verification.accuracyLabel}</span>
+        <span className="inline-flex items-center gap-1 sm:justify-end">
+          <MapPin className="size-3.5" />
+          {verification.coordinateLabel}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function ReportForm({
   clinicId,
   clinicName,
@@ -155,6 +226,7 @@ export function ReportForm({
   onSubmit,
   submitting,
   feedback = null,
+  visitVerification = null,
 }: FieldReportFormProps) {
   const submitInFlight = useRef(false);
   const restoredDraft = getFieldReportDraft(clinicId);
@@ -300,6 +372,7 @@ export function ReportForm({
           <p className="rounded-md border border-border-subtle bg-bg-default px-3 py-2 text-sm font-medium text-content-emphasis">
             {clinicName}
           </p>
+          <VisitProofCard clinicName={clinicName} verification={visitVerification} />
         </VisitStep>
 
         <VisitStep

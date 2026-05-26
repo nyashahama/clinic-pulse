@@ -29,6 +29,7 @@ import {
   submitOnlineFieldReport,
   type OnlineFieldReportInput,
 } from "@/lib/demo/field-report";
+import type { FieldLocationVerification } from "@/lib/demo/field-location-verification";
 import { buildFieldReportHandoffItems } from "@/lib/demo/field-report-handoff";
 import { buildFieldVisitCockpitViewModel } from "@/lib/demo/field-visit-cockpit";
 import {
@@ -229,6 +230,10 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
   const submitInFlight = useRef(false);
   const syncInFlight = useRef(false);
   const [submitFeedback, setSubmitFeedback] = useState<FieldReportFeedback | null>(null);
+  const [visitVerification, setVisitVerification] = useState<{
+    clinicId: string;
+    verification: FieldLocationVerification;
+  } | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [editingOfflineReportId, setEditingOfflineReportId] = useState<string | null>(
     null,
@@ -247,6 +252,8 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
 
   const selectedName = selectedClinic?.name ?? "Select a clinic";
   const selectedId = selectedClinic?.id ?? "";
+  const selectedVisitVerification =
+    visitVerification?.clinicId === selectedId ? visitVerification.verification : null;
   const editingOfflineReport = useMemo(
     () =>
       offlineReports.find((item) => item.clientReportId === editingOfflineReportId) ??
@@ -635,6 +642,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
   const handleEditReport = (item: OfflineReportQueueItem) => {
     setSelectedClinicId(item.clinicId);
     setEditingOfflineReportId(item.clientReportId);
+    setVisitVerification(null);
     setSubmitFeedback(null);
 
     requestAnimationFrame(() => {
@@ -646,6 +654,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
   const handleSelectClinic = (clinicId: string) => {
     setSelectedClinicId(clinicId);
     setEditingOfflineReportId(null);
+    setVisitVerification(null);
   };
 
   return (
@@ -724,6 +733,16 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
               longitude: selectedClinic.longitude,
               name: selectedClinic.name,
             }}
+            onVerificationChange={(verification) =>
+              setVisitVerification(
+                verification
+                  ? {
+                      clinicId: selectedClinic.id,
+                      verification,
+                    }
+                  : null,
+              )
+            }
           />
         ) : null}
 
@@ -791,6 +810,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
             submitting={submitting}
             feedback={submitFeedback}
             editingReport={editingOfflineReport}
+            visitVerification={selectedVisitVerification}
           />
         </div>
       </div>

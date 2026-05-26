@@ -294,12 +294,55 @@ test("verifies the active stop with browser location", async ({ page }) => {
 
   await signInAsReporter(page);
 
+  const gpsCheckIn = page.locator("section").filter({ hasText: "GPS check-in" });
+
   await expect(page.getByRole("heading", { name: "Visit verification" })).toBeVisible();
   await page.getByRole("button", { name: "Verify active stop" }).click();
 
-  await expect(page.getByText("Location verified")).toBeVisible();
-  await expect(page.getByText("Good GPS accuracy")).toBeVisible();
-  await expect(page.getByText("0 m from Mamelodi East Community Clinic")).toBeVisible();
+  await expect(gpsCheckIn.getByText("Location verified")).toBeVisible();
+  await expect(gpsCheckIn.getByText("Good GPS accuracy")).toBeVisible();
+  await expect(
+    gpsCheckIn.getByText("0 m from Mamelodi East Community Clinic"),
+  ).toBeVisible();
+});
+
+test("shows active visit proof inside the report form", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: {
+        getCurrentPosition: (success: PositionCallback) =>
+          success({
+            coords: {
+              accuracy: 4,
+              altitude: null,
+              altitudeAccuracy: null,
+              heading: null,
+              latitude: -25.7096,
+              longitude: 28.3676,
+              speed: null,
+            },
+            timestamp: Date.now(),
+          } as GeolocationPosition),
+      },
+    });
+  });
+
+  await signInAsReporter(page);
+
+  const reportForm = page.locator("#submit-report");
+  const visitProof = reportForm.getByTestId("field-visit-proof");
+
+  await expect(visitProof.getByText("Visit proof")).toBeVisible();
+  await expect(visitProof.getByText("Not captured")).toBeVisible();
+
+  await page.getByRole("button", { name: "Verify active stop" }).click();
+
+  await expect(visitProof.getByText("Location verified")).toBeVisible();
+  await expect(
+    visitProof.getByText("0 m from Mamelodi East Community Clinic"),
+  ).toBeVisible();
+  await expect(visitProof.getByText("Good GPS accuracy")).toBeVisible();
 });
 
 test("clears visit verification when the active stop changes", async ({ page }) => {
@@ -326,8 +369,15 @@ test("clears visit verification when the active stop changes", async ({ page }) 
 
   await signInAsReporter(page);
 
+  const reportForm = page.locator("#submit-report");
+  const visitProof = reportForm.getByTestId("field-visit-proof");
+  const gpsCheckIn = page.locator("section").filter({ hasText: "GPS check-in" });
+
   await page.getByRole("button", { name: "Verify active stop" }).click();
-  await expect(page.getByText("0 m from Mamelodi East Community Clinic")).toBeVisible();
+  await expect(
+    gpsCheckIn.getByText("0 m from Mamelodi East Community Clinic"),
+  ).toBeVisible();
+  await expect(visitProof.getByText("Location verified")).toBeVisible();
 
   await page
     .getByTestId("field-route-map")
@@ -338,4 +388,8 @@ test("clears visit verification when the active stop changes", async ({ page }) 
     page.getByText("No visit location captured for Hammanskraal Unit D Clinic yet."),
   ).toBeVisible();
   await expect(page.getByText("0 m from Hammanskraal Unit D Clinic")).toHaveCount(0);
+  await expect(visitProof.getByText("Not captured")).toBeVisible();
+  await expect(
+    visitProof.getByText("0 m from Mamelodi East Community Clinic"),
+  ).toHaveCount(0);
 });

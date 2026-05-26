@@ -16,6 +16,7 @@ type FieldLocationVerificationPanelProps = {
     longitude: number;
     name: string;
   };
+  onVerificationChange?: (verification: FieldLocationVerification | null) => void;
 };
 
 const toneStyles = {
@@ -37,6 +38,7 @@ function getErrorMessage(error: GeolocationPositionError | Error | null) {
 
 export function FieldLocationVerificationPanel({
   clinic,
+  onVerificationChange,
 }: FieldLocationVerificationPanelProps) {
   const clinicVerificationKey = `${clinic.name}:${clinic.latitude}:${clinic.longitude}`;
   const activeClinicKeyRef = useRef(clinicVerificationKey);
@@ -61,6 +63,8 @@ export function FieldLocationVerificationPanel({
     setError(null);
 
     if (!navigator.geolocation) {
+      setVerification(null);
+      onVerificationChange?.(null);
       setError(new Error("Geolocation is not supported by this browser."));
       return;
     }
@@ -75,17 +79,18 @@ export function FieldLocationVerificationPanel({
           return;
         }
 
-        setVerification(
-          buildFieldLocationVerification({
-            accuracyMeters: position.coords.accuracy,
-            capturedAt: new Date(position.timestamp).toISOString(),
-            clinic: requestedClinic,
-            position: {
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-            },
-          }),
-        );
+        const nextVerification = buildFieldLocationVerification({
+          accuracyMeters: position.coords.accuracy,
+          capturedAt: new Date(position.timestamp).toISOString(),
+          clinic: requestedClinic,
+          position: {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          },
+        });
+
+        setVerification(nextVerification);
+        onVerificationChange?.(nextVerification);
         setCapturing(false);
       },
       (captureError) => {
@@ -93,6 +98,8 @@ export function FieldLocationVerificationPanel({
           return;
         }
 
+        setVerification(null);
+        onVerificationChange?.(null);
         setError(captureError);
         setCapturing(false);
       },
