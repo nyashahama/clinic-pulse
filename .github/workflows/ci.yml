@@ -106,7 +106,7 @@ jobs:
         run: npx playwright install --with-deps chrome
 
       - name: Run browser smoke tests
-        run: make test-e2e
+        run: make E2E_POSTGRES_PORT=55432 test-e2e
 
       - name: Stop E2E database
         if: always()
@@ -131,4 +131,4 @@ jobs:
           sudo apt-get install --yes postgresql-client
 
       - name: Build and smoke-test API container
-        run: make test-api-container
+        run: make E2E_POSTGRES_PORT=55433 test-api-container
