@@ -47,7 +47,8 @@ export type FieldVisitCockpitViewModel = {
   };
   itineraryRows: FieldVisitItineraryRow[];
   taskQueue: FieldVisitTaskQueueItem[];
-  routeProgressPercent: number;
+  routePositionPercent: number;
+  routePositionLabel: string;
   deviceStrip: {
     connectionLabel: "Online" | "Offline";
     savedOnDeviceCount: number;
@@ -369,7 +370,7 @@ export function buildFieldVisitCockpitViewModel({
   const selectedVisitIndex = itineraryRows.findIndex(
     (row) => row.clinicId === selectedVisit.clinicId,
   );
-  const routeProgressPercent =
+  const routePositionPercent =
     clinics.length === 0 || selectedVisitIndex < 0
       ? 0
       : Math.round(((selectedVisitIndex + 1) / clinics.length) * 100);
@@ -401,7 +402,8 @@ export function buildFieldVisitCockpitViewModel({
       isOnline,
       selectedVisitVerification,
     }),
-    routeProgressPercent,
+    routePositionPercent,
+    routePositionLabel: selectedVisit.positionLabel,
     deviceStrip: {
       connectionLabel: isOnline ? "Online" : "Offline",
       savedOnDeviceCount,

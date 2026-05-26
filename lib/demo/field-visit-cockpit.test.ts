@@ -95,7 +95,8 @@ describe("field visit cockpit view model", () => {
       "clinic-a",
     ]);
     expect(model.selectedVisit.positionLabel).toBe("Stop 3 of 3");
-    expect(model.routeProgressPercent).toBe(100);
+    expect(model.routePositionPercent).toBe(100);
+    expect(model.routePositionLabel).toBe("Stop 3 of 3");
   });
 
   it("defaults the selected visit to the first risk-prioritized stop", () => {
@@ -155,7 +156,8 @@ describe("field visit cockpit view model", () => {
     expect(model.selectedVisit.queueLabel).toBe("Saved on this device");
     expect(model.deviceStrip.savedOnDeviceCount).toBe(1);
     expect(model.deviceStrip.connectionLabel).toBe("Offline");
-    expect(model.routeProgressPercent).toBe(50);
+    expect(model.routePositionPercent).toBe(50);
+    expect(model.routePositionLabel).toBe("Stop 1 of 2");
   });
 
   it("builds a field task queue from the active stop and device state", () => {
