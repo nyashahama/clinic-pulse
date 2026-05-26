@@ -4,6 +4,18 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const adminClient = path.join(process.cwd(), "app", "(demo)", "admin", "page-client.tsx");
+const orgAdminWorkbench = path.join(
+  process.cwd(),
+  "components",
+  "product",
+  "org-admin-governance-workbench.tsx",
+);
+const orgAdminWorkbenchModel = path.join(
+  process.cwd(),
+  "lib",
+  "product",
+  "org-admin-governance-workbench.ts",
+);
 const partnerReadinessPage = path.join(
   process.cwd(),
   "app",
@@ -104,10 +116,12 @@ describe("admin partner readiness workflow", () => {
 
   it("keeps the admin overview compact and links to the dedicated partner readiness route", () => {
     const adminClientSource = readSource(adminClient);
+    const modelSource = readSource(orgAdminWorkbenchModel);
+    const workbenchSource = readSource(orgAdminWorkbench);
 
-    expect(adminClientSource).toContain('id="partner-readiness"');
-    expect(adminClientSource).toContain('href="/admin/partner-readiness"');
-    expect(adminClientSource).not.toContain("<PartnerReadinessPanel");
+    expect(modelSource).toContain('href: "/admin/partner-readiness"');
+    expect(workbenchSource).toContain("return `Open ${label.toLowerCase()}`");
+    expect(workbenchSource).not.toContain("<PartnerReadinessPanel");
     expect(adminClientSource).not.toContain("createPartnerApiKeyAction");
     expect(adminClientSource).not.toContain("createPartnerExportAction");
     expect(adminClientSource).not.toContain("createPartnerWebhookAction");
@@ -128,13 +142,16 @@ describe("admin partner readiness workflow", () => {
   it("keeps wall-clock timestamps out of the admin render path", () => {
     const adminClientSource = readSource(adminClient);
 
-    expect(adminClientSource).toContain("buildExportPayload(state, exportGeneratedAt)");
+    expect(adminClientSource).toContain("getLatestAdminInteractionAt(state)");
     expect(adminClientSource).not.toContain("generatedAt: new Date().toISOString()");
     expect(adminClientSource).not.toContain("Last admin interaction: {formatDate(new Date().toISOString())}");
   });
 
   it("keeps scaffold wording out of the admin proof copy", () => {
     const adminClientSource = readSource(adminClient);
+    const workbenchSource = readSource(orgAdminWorkbench);
+    const modelSource = readSource(orgAdminWorkbenchModel);
+    const proofSource = `${adminClientSource}\n${workbenchSource}\n${modelSource}`;
     const scaffoldPhrases = [
       ["mock", "first"].join("-"),
       ["solo", "founder", "pacing"].join(" "),
@@ -142,8 +159,8 @@ describe("admin partner readiness workflow", () => {
     ];
 
     for (const phrase of scaffoldPhrases) {
-      expect(adminClientSource).not.toContain(phrase);
+      expect(proofSource).not.toContain(phrase);
     }
-    expect(adminClientSource).toContain("operating evidence");
+    expect(proofSource).toContain("operating evidence");
   });
 });

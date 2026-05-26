@@ -356,11 +356,12 @@ it("defines canonical detail routes for entity-backed admin evidence rows", () =
 
 it("links stakeholder activity rows to lead detail", () => {
   const adminPage = readFileSync("app/(demo)/admin/page-client.tsx", "utf8");
+  const workbench = readFileSync("components/product/org-admin-governance-workbench.tsx", "utf8");
   const routes = readFileSync("lib/product/admin-detail-routes.ts", "utf8");
 
   expect(routes).toContain("buildAdminLeadDetailHref");
   expect(adminPage).toContain("buildAdminLeadDetailHref(lead.id, returnSource)");
-  expect(adminPage).toContain("Open lead detail");
+  expect(workbench).toContain("Open lead detail");
   expect(existsSync("app/(demo)/admin/leads/[leadId]/page.tsx")).toBe(true);
 });
 
@@ -543,14 +544,17 @@ it("links report review cards to report detail", () => {
 });
 
 it("routes admin overview preview controls to detail pages", () => {
-  const adminPage = readFileSync("app/(demo)/admin/page-client.tsx", "utf8");
+  const modelSource = readFileSync("lib/product/org-admin-governance-workbench.ts", "utf8");
+  const workbench = readFileSync("components/product/org-admin-governance-workbench.tsx", "utf8");
   const exportPreview = readFileSync("components/demo/export-preview.tsx", "utf8");
   const apiPreview = readFileSync("components/demo/api-preview.tsx", "utf8");
 
   expect(existsSync("app/(demo)/admin/export-schema/page.tsx")).toBe(true);
   expect(existsSync("app/(demo)/admin/api-contract/page.tsx")).toBe(true);
-  expect(adminPage).toContain('exportSchemaHref="/admin/export-schema?from=admin"');
-  expect(adminPage).toContain('apiContractHref="/admin/api-contract?from=admin"');
+  expect(modelSource).toContain('href: "/admin/export-schema?from=admin"');
+  expect(modelSource).toContain('href: "/admin/api-contract?from=admin"');
+  expect(workbench).toContain("Open export schema");
+  expect(workbench).toContain("Open API contract");
   expect(exportPreview).toContain("exportSchemaHref");
   expect(exportPreview).toContain("Open export schema");
   expect(apiPreview).toContain("apiContractHref");
