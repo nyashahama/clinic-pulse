@@ -159,6 +159,33 @@ test("keeps field hash navigation inside the page scroller", async ({
   await expect(getWorkspaceShellScrollTop(page)).resolves.toBe(0);
 });
 
+test("uses the field route map to change the active stop", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "desktop-chrome",
+    "Desktop route map selection is covered by the desktop-chrome project.",
+  );
+
+  await signInAsReporter(page);
+
+  const routeMap = page.getByTestId("field-route-map");
+  await expect(routeMap.getByRole("heading", { name: "Route map" })).toBeVisible();
+  await expect(routeMap.getByText(/8 stops/)).toBeVisible();
+  await expect(routeMap.getByText(/risk-prioritized/i)).toBeVisible();
+
+  await routeMap
+    .getByRole("button", { name: /Open stop .*Hammanskraal Unit D Clinic/i })
+    .click();
+
+  await expect(
+    routeMap.getByText("Active: Hammanskraal Unit D Clinic"),
+  ).toBeVisible();
+  await expect(
+    page.locator("#submit-report").getByText("Hammanskraal Unit D Clinic"),
+  ).toBeVisible();
+});
+
 test("restores an in-progress field report draft when returning to a clinic", async ({
   page,
 }) => {
@@ -166,16 +193,17 @@ test("restores an in-progress field report draft when returning to a clinic", as
 
   const notes = `Autosaved field draft ${Date.now()}`;
   const notesField = page.getByPlaceholder("Add context, barriers, and what changed today.");
+  const itineraryList = page.getByTestId("field-itinerary-list");
 
   await page.locator("label").filter({ hasText: "Degraded" }).click();
   await page.locator("label").filter({ hasText: "High" }).click();
   await notesField.fill(notes);
   await expect(page.getByText("Draft saved on this device")).toBeVisible();
 
-  await page.getByRole("button", { name: /Hammanskraal Unit D Clinic/ }).click();
+  await itineraryList.getByRole("button", { name: /Hammanskraal Unit D Clinic/ }).click();
   await expect(notesField).toHaveValue("");
 
-  await page
+  await itineraryList
     .getByRole("button", { name: /Mamelodi East Community Clinic/ })
     .click();
 
