@@ -102,7 +102,12 @@ test("shows the field visit cockpit in the mobile first viewport", async ({
 
   const cockpit = page.locator("[data-field-visit-cockpit]");
   await expect(cockpit).toBeVisible();
-  await expect(cockpit.getByText(/Stop \d+ of \d+/)).toBeVisible();
+  await expect(
+    cockpit.locator("p").filter({ hasText: /Stop \d+ of \d+ -/ }).first(),
+  ).toBeVisible();
+  await expect(cockpit.getByRole("heading", { name: "Field task queue" })).toBeVisible();
+  await expect(cockpit.getByRole("link", { name: /Open active stop/ })).toBeVisible();
+  await expect(cockpit.getByRole("link", { name: /Check device sync/ })).toBeVisible();
   await expect(
     cockpit.getByRole("link", { name: /Start report|Continue report/ }),
   ).toBeVisible();

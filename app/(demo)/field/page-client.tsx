@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { FieldClinicList } from "@/components/demo/field-clinic-list";
+import { FieldTaskQueue } from "@/components/demo/field-task-queue";
 import { OfflineQueue } from "@/components/demo/offline-queue";
 import { type FieldReportFeedback } from "@/components/demo/report-feedback";
 import { ReportForm } from "@/components/demo/report-form";
@@ -618,6 +619,8 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
             </Link>
           </div>
         </div>
+
+        <FieldTaskQueue tasks={fieldCockpit.taskQueue} />
 
         <dl className="grid divide-y divide-border-subtle border-b border-border-subtle sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
           <div className="p-4">

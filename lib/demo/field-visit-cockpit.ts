@@ -30,12 +30,22 @@ export type FieldVisitItineraryRow = {
   tone: FieldVisitTone;
 };
 
+export type FieldVisitTaskQueueItem = {
+  id: "active-stop" | "clinic-report" | "device-sync" | "district-review";
+  title: string;
+  description: string;
+  stateLabel: string;
+  href: "#field-itinerary" | "#submit-report" | "#drafts-sync" | "#recent-reports";
+  tone: FieldVisitTone;
+};
+
 export type FieldVisitCockpitViewModel = {
   selectedVisit: FieldVisitItineraryRow & {
     primaryActionLabel: "Start report" | "Continue report";
     secondaryActionLabel: "Change clinic";
   };
   itineraryRows: FieldVisitItineraryRow[];
+  taskQueue: FieldVisitTaskQueueItem[];
   routeProgressPercent: number;
   deviceStrip: {
     connectionLabel: "Online" | "Offline";
@@ -182,6 +192,66 @@ function formatLastSynced(value: string | null) {
   }).format(new Date(value));
 }
 
+function formatCount(value: number, singular: string, plural = `${singular}s`) {
+  return `${value} ${value === 1 ? singular : plural}`;
+}
+
+function buildTaskQueue({
+  selectedVisit,
+  savedOnDeviceCount,
+  needsRetryCount,
+  sentForReviewCount,
+  isOnline,
+}: {
+  selectedVisit: FieldVisitItineraryRow;
+  savedOnDeviceCount: number;
+  needsRetryCount: number;
+  sentForReviewCount: number;
+  isOnline: boolean;
+}): FieldVisitTaskQueueItem[] {
+  return [
+    {
+      id: "active-stop",
+      title: "Open active stop",
+      description: `${selectedVisit.clinicName} is the selected visit for this reporting round.`,
+      stateLabel: selectedVisit.positionLabel,
+      href: "#field-itinerary",
+      tone: selectedVisit.tone,
+    },
+    {
+      id: "clinic-report",
+      title: selectedVisit.queueLabel ? "Continue clinic report" : "Start clinic report",
+      description: selectedVisit.queueLabel
+        ? "Resolve the saved status report before moving to the next stop."
+        : "Capture status, staffing, stock, queue pressure, and notes.",
+      stateLabel: selectedVisit.queueLabel ?? "Ready",
+      href: "#submit-report",
+      tone: selectedVisit.queueLabel ? selectedVisit.tone : "info",
+    },
+    {
+      id: "device-sync",
+      title: needsRetryCount > 0 ? "Retry device sync" : "Check device sync",
+      description: isOnline
+        ? "Send saved reports when ClinicPulse is reachable."
+        : "Saved reports remain available on this browser while offline.",
+      stateLabel:
+        needsRetryCount > 0
+          ? `${needsRetryCount} needs retry`
+          : formatCount(savedOnDeviceCount, "saved", "saved"),
+      href: "#drafts-sync",
+      tone: needsRetryCount > 0 ? "blocked" : savedOnDeviceCount > 0 ? "attention" : "clear",
+    },
+    {
+      id: "district-review",
+      title: "District review handoff",
+      description: "Confirm which submitted reports are already waiting for review.",
+      stateLabel: formatCount(sentForReviewCount, "sent", "sent"),
+      href: "#recent-reports",
+      tone: sentForReviewCount > 0 ? "clear" : "info",
+    },
+  ];
+}
+
 export function buildFieldVisitCockpitViewModel({
   clinics,
   selectedClinicId,
@@ -283,6 +353,13 @@ export function buildFieldVisitCockpitViewModel({
       secondaryActionLabel: "Change clinic",
     },
     itineraryRows,
+    taskQueue: buildTaskQueue({
+      selectedVisit,
+      savedOnDeviceCount,
+      needsRetryCount,
+      sentForReviewCount,
+      isOnline,
+    }),
     routeProgressPercent,
     deviceStrip: {
       connectionLabel: isOnline ? "Online" : "Offline",

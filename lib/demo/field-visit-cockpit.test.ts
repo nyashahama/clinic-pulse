@@ -131,4 +131,65 @@ describe("field visit cockpit view model", () => {
     expect(model.deviceStrip.connectionLabel).toBe("Offline");
     expect(model.routeProgressPercent).toBe(50);
   });
+
+  it("builds a field task queue from the active stop and device state", () => {
+    const model = buildFieldVisitCockpitViewModel({
+      clinics: [
+        clinic({
+          id: "clinic-a",
+          clinicId: "clinic-a",
+          name: "Fresh Clinic",
+        }),
+        clinic({
+          id: "clinic-b",
+          clinicId: "clinic-b",
+          name: "Queued Clinic",
+          status: "degraded",
+        }),
+      ],
+      isOnline: false,
+      lastSyncedAt: "2026-05-01T08:00:00.000Z",
+      offlineReports: [
+        queueItem({ clinicId: "clinic-b", syncStatus: "retry_wait" }),
+        queueItem({
+          clientReportId: "queue-2",
+          clinicId: "clinic-a",
+          syncStatus: "synced",
+        }),
+      ],
+      selectedClinicId: "clinic-b",
+    });
+
+    expect(model.taskQueue.map((task) => task.title)).toEqual([
+      "Open active stop",
+      "Continue clinic report",
+      "Retry device sync",
+      "District review handoff",
+    ]);
+    expect(model.taskQueue.map((task) => task.stateLabel)).toEqual([
+      "Stop 1 of 2",
+      "Needs retry",
+      "1 needs retry",
+      "1 sent",
+    ]);
+    expect(model.taskQueue.map((task) => task.href)).toEqual([
+      "#field-itinerary",
+      "#submit-report",
+      "#drafts-sync",
+      "#recent-reports",
+    ]);
+  });
+
+  it("keeps zero-count field task queue labels readable", () => {
+    const model = buildFieldVisitCockpitViewModel({
+      clinics: [clinic({ id: "clinic-a", clinicId: "clinic-a" })],
+      isOnline: true,
+      lastSyncedAt: null,
+      offlineReports: [],
+      selectedClinicId: "clinic-a",
+    });
+
+    expect(model.taskQueue.map((task) => task.stateLabel)).toContain("0 saved");
+    expect(model.taskQueue.map((task) => task.stateLabel)).toContain("0 sent");
+  });
 });
