@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useReducer, useState } from "react";
-import { Check, FileText, X } from "lucide-react";
+import { Check, FileText, MapPin, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { ProductPanel } from "@/components/product/panel";
@@ -29,6 +29,15 @@ type ReportReviewQueueProps = {
 
 const defaultTitle = "Report review queue";
 const defaultDescription = "Review pending field reports before they update clinic status.";
+
+const VISIT_PROOF_TONE_CLASS = {
+  clear:
+    "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100",
+  attention:
+    "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100",
+  blocked:
+    "border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-100",
+} as const;
 
 type ReportReviewQueueActionResult =
   | { ok: true }
@@ -335,6 +344,24 @@ export function ReportReviewQueueView({
                           : "Created from an online source."}{" "}
                         Received {item.receivedAt}.
                       </p>
+
+                      {item.visitVerification ? (
+                        <div
+                          className={`rounded-lg border px-3 py-2 text-xs leading-5 ${
+                            VISIT_PROOF_TONE_CLASS[item.visitVerification.tone]
+                          }`}
+                        >
+                          <div className="flex flex-wrap items-center gap-1.5 font-medium">
+                            <MapPin aria-hidden="true" className="size-3.5" />
+                            <span>Visit proof</span>
+                            <span>{item.visitVerification.statusLabel}</span>
+                          </div>
+                          <p className="mt-1">
+                            {item.visitVerification.distanceLabel} from selected clinic ·{" "}
+                            {item.visitVerification.accuracyLabel}
+                          </p>
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="flex shrink-0 flex-wrap gap-2">

@@ -1,4 +1,5 @@
 import type { ClinicOperatingStatus } from "@/lib/product/clinic-status";
+import type { FieldLocationVerification } from "@/lib/demo/field-location-verification";
 
 export type ClinicStatus = ClinicOperatingStatus;
 
@@ -62,6 +63,7 @@ export type ReportEvent = {
   stockPressure: StockPressure;
   queuePressure: QueuePressure;
   notes: string;
+  visitVerification?: FieldLocationVerification | null;
 };
 
 export type OfflineReportQueueItem = {
@@ -85,6 +87,7 @@ export type OfflineReportQueueItem = {
   lastServerReportId: number | null;
   lastServerReviewState: string | null;
   conflictReason: string | null;
+  visitVerification?: FieldLocationVerification | null;
 };
 
 export type Alert = {

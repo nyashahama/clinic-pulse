@@ -17,6 +17,17 @@ const SYNC_STATUSES = [
   "conflict",
   "failed",
 ];
+const VISIT_PROOF_ACCURACY_LABELS = [
+  "Good GPS accuracy",
+  "Acceptable GPS accuracy",
+  "Poor GPS accuracy",
+];
+const VISIT_PROOF_STATUS_LABELS = [
+  "Location verified",
+  "Near selected clinic",
+  "Away from selected clinic",
+];
+const VISIT_PROOF_TONES = ["clear", "attention", "blocked"];
 
 type OfflineReportQueueAdapter = {
   put(item: OfflineReportQueueItem): Promise<void>;
@@ -65,7 +76,8 @@ function isOfflineReportQueueItem(value: unknown): value is OfflineReportQueueIt
     isNullableString(record.lastError) &&
     isNullableNumber(record.lastServerReportId) &&
     isNullableString(record.lastServerReviewState) &&
-    isNullableString(record.conflictReason)
+    isNullableString(record.conflictReason) &&
+    isNullableVisitVerification(record.visitVerification)
   );
 }
 
@@ -91,6 +103,30 @@ function isNullableDateString(value: unknown) {
 
 function isOneOf(value: unknown, allowedValues: string[]) {
   return typeof value === "string" && allowedValues.includes(value);
+}
+
+function isNullableVisitVerification(value: unknown) {
+  if (typeof value === "undefined" || value === null) {
+    return true;
+  }
+
+  if (typeof value !== "object") {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  return (
+    isOneOf(record.accuracyLabel, VISIT_PROOF_ACCURACY_LABELS) &&
+    isDateString(record.capturedAt) &&
+    isNonEmptyString(record.coordinateLabel) &&
+    isNonEmptyString(record.distanceLabel) &&
+    typeof record.distanceMeters === "number" &&
+    Number.isFinite(record.distanceMeters) &&
+    record.distanceMeters >= 0 &&
+    isOneOf(record.statusLabel, VISIT_PROOF_STATUS_LABELS) &&
+    isOneOf(record.tone, VISIT_PROOF_TONES)
+  );
 }
 
 function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {

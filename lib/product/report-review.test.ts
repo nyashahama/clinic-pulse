@@ -51,6 +51,15 @@ const report = {
   reviewState: "pending",
   reporterName: "Reporter One",
   notes: "Please verify pharmacy stock.",
+  visitVerification: {
+    accuracyLabel: "Good GPS accuracy",
+    capturedAt: "2026-05-11T08:59:00.000Z",
+    coordinateLabel: "25.70694°S 28.22944°E",
+    distanceLabel: "18 m",
+    distanceMeters: 18,
+    statusLabel: "Location verified",
+    tone: "clear",
+  },
 } satisfies ReportApiResponse;
 
 describe("buildPendingReportReviews", () => {
@@ -74,6 +83,15 @@ describe("buildPendingReportReviews", () => {
         queuePressure: "moderate",
         notes: "Please verify pharmacy stock.",
         reviewState: "pending",
+        visitVerification: {
+          accuracyLabel: "Good GPS accuracy",
+          capturedAt: "2026-05-11T08:59:00.000Z",
+          coordinateLabel: "25.70694°S 28.22944°E",
+          distanceLabel: "18 m",
+          distanceMeters: 18,
+          statusLabel: "Location verified",
+          tone: "clear",
+        },
       },
     ]);
   });

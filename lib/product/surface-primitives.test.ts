@@ -548,6 +548,32 @@ describe("product surface primitives", () => {
     expect(html).toContain("Reject");
   });
 
+  it("renders field visit proof on report review queue items", () => {
+    const review = createPendingReportReview({
+      visitVerification: {
+        accuracyLabel: "Good GPS accuracy",
+        capturedAt: "2026-05-10T08:12:00.000Z",
+        coordinateLabel: "25.70694°S 28.22944°E",
+        distanceLabel: "18 m",
+        distanceMeters: 18,
+        statusLabel: "Location verified",
+        tone: "clear",
+      },
+    });
+
+    const html = renderToStaticMarkup(
+      createElement(ReportReviewQueueView, {
+        items: [review],
+        onReview: async () => undefined,
+      }),
+    );
+
+    expect(html).toContain("Visit proof");
+    expect(html).toContain("Location verified");
+    expect(html).toContain("18 m from selected clinic");
+    expect(html).toContain("Good GPS accuracy");
+  });
+
   it("renders report stream items as report detail links", () => {
     const html = renderToStaticMarkup(
       createElement(ReportStream, {

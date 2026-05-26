@@ -2364,35 +2364,37 @@ func derivedReporterName(principal Principal) *string {
 }
 
 type createReportRequest struct {
-	ExternalID      *string    `json:"externalId,omitempty"`
-	ClinicID        string     `json:"clinicId"`
-	Status          string     `json:"status"`
-	StaffPressure   string     `json:"staffPressure"`
-	StockPressure   string     `json:"stockPressure"`
-	QueuePressure   string     `json:"queuePressure"`
-	Reason          string     `json:"reason"`
-	Source          string     `json:"source"`
-	ReporterName    *string    `json:"reporterName,omitempty"`
-	Confidence      *int       `json:"confidence,omitempty"`
-	ConfidenceScore *float64   `json:"confidenceScore,omitempty"`
-	OfflineCreated  bool       `json:"offlineCreated,omitempty"`
-	SubmittedAt     *time.Time `json:"submittedAt,omitempty"`
-	Notes           *string    `json:"notes,omitempty"`
+	ExternalID        *string        `json:"externalId,omitempty"`
+	ClinicID          string         `json:"clinicId"`
+	Status            string         `json:"status"`
+	StaffPressure     string         `json:"staffPressure"`
+	StockPressure     string         `json:"stockPressure"`
+	QueuePressure     string         `json:"queuePressure"`
+	Reason            string         `json:"reason"`
+	Source            string         `json:"source"`
+	ReporterName      *string        `json:"reporterName,omitempty"`
+	Confidence        *int           `json:"confidence,omitempty"`
+	ConfidenceScore   *float64       `json:"confidenceScore,omitempty"`
+	OfflineCreated    bool           `json:"offlineCreated,omitempty"`
+	SubmittedAt       *time.Time     `json:"submittedAt,omitempty"`
+	Notes             *string        `json:"notes,omitempty"`
+	VisitVerification map[string]any `json:"visitVerification,omitempty"`
 }
 
 func (p createReportRequest) toReportInput() service.ReportInput {
 	storeInput := store.CreateReportInput{
-		ExternalID:     p.ExternalID,
-		ClinicID:       p.ClinicID,
-		ReporterName:   p.ReporterName,
-		Source:         p.Source,
-		OfflineCreated: p.OfflineCreated,
-		Status:         p.Status,
-		Reason:         &p.Reason,
-		StaffPressure:  &p.StaffPressure,
-		StockPressure:  &p.StockPressure,
-		QueuePressure:  &p.QueuePressure,
-		Notes:          p.Notes,
+		ExternalID:        p.ExternalID,
+		ClinicID:          p.ClinicID,
+		ReporterName:      p.ReporterName,
+		Source:            p.Source,
+		OfflineCreated:    p.OfflineCreated,
+		Status:            p.Status,
+		Reason:            &p.Reason,
+		StaffPressure:     &p.StaffPressure,
+		StockPressure:     &p.StockPressure,
+		QueuePressure:     &p.QueuePressure,
+		Notes:             p.Notes,
+		VisitVerification: p.VisitVerification,
 	}
 	if p.SubmittedAt != nil {
 		storeInput.SubmittedAt = *p.SubmittedAt
@@ -2517,17 +2519,18 @@ type offlineSyncRequest struct {
 }
 
 type offlineSyncItemRequest struct {
-	ClientReportID string `json:"clientReportId"`
-	ClinicID       string `json:"clinicId"`
-	Status         string `json:"status"`
-	Reason         string `json:"reason"`
-	StaffPressure  string `json:"staffPressure"`
-	StockPressure  string `json:"stockPressure"`
-	QueuePressure  string `json:"queuePressure"`
-	Notes          string `json:"notes"`
-	SubmittedAt    string `json:"submittedAt"`
-	QueuedAt       string `json:"queuedAt"`
-	AttemptCount   int    `json:"attemptCount"`
+	ClientReportID    string         `json:"clientReportId"`
+	ClinicID          string         `json:"clinicId"`
+	Status            string         `json:"status"`
+	Reason            string         `json:"reason"`
+	StaffPressure     string         `json:"staffPressure"`
+	StockPressure     string         `json:"stockPressure"`
+	QueuePressure     string         `json:"queuePressure"`
+	Notes             string         `json:"notes"`
+	SubmittedAt       string         `json:"submittedAt"`
+	QueuedAt          string         `json:"queuedAt"`
+	AttemptCount      int            `json:"attemptCount"`
+	VisitVerification map[string]any `json:"visitVerification,omitempty"`
 }
 
 func (p offlineSyncItemRequest) toServiceInput() (service.OfflineSyncItemInput, []string) {
@@ -2561,6 +2564,7 @@ func (p offlineSyncItemRequest) toServiceInput() (service.OfflineSyncItemInput, 
 		SubmittedAt:        submittedAt,
 		QueuedAt:           queuedAt,
 		ClientAttemptCount: p.AttemptCount,
+		VisitVerification:  p.VisitVerification,
 	}, fields
 }
 

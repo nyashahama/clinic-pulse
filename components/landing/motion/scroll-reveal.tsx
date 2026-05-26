@@ -63,10 +63,10 @@ export function ScrollReveal({
   ...props
 }: ScrollRevealProps) {
   const shouldReduceMotion = useHydratedReducedMotion();
-  const visible = { opacity: 1, y: 0, filter: "blur(0px)" };
+  const visible = { y: 0 };
   const hidden = shouldReduceMotion
     ? visible
-    : { opacity: 0, y: 18, filter: "blur(6px)" };
+    : { y: 18 };
 
   return (
     <motion.div

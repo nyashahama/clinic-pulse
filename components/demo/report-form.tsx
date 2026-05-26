@@ -1,7 +1,8 @@
 "use client";
 
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { useRef, useState } from "react";
+import { AlertCircle, CheckCircle2, MapPin } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -9,13 +10,22 @@ import {
   type FieldReportFeedback,
 } from "@/components/demo/report-feedback";
 import { SectionHeader } from "@/components/demo/section-header";
+import {
+  clearFieldReportDraft,
+  getFieldReportDraft,
+  saveFieldReportDraft,
+  type FieldReportDraftInput,
+} from "@/lib/demo/field-report-draft";
+import type { FieldLocationVerification } from "@/lib/demo/field-location-verification";
 import type {
   ClinicStatus,
+  OfflineReportQueueItem,
   QueuePressure,
   StaffPressure,
   StockPressure,
 } from "@/lib/demo/types";
 import type { OnlineFieldReportInput } from "@/lib/demo/field-report";
+import { cn } from "@/lib/utils";
 
 type FieldReportFormProps = {
   clinicId: string;
@@ -23,6 +33,8 @@ type FieldReportFormProps = {
   submitting: boolean;
   onSubmit: (input: OnlineFieldReportInput) => boolean | Promise<boolean> | void;
   feedback?: FieldReportFeedback | null;
+  editingReport?: OfflineReportQueueItem | null;
+  visitVerification?: FieldLocationVerification | null;
 };
 
 const STATUS_OPTIONS: Array<{ value: ClinicStatus; label: string }> = [
@@ -56,6 +68,39 @@ const QUEUE_OPTIONS: Array<{ value: QueuePressure; label: string }> = [
 const FIELD_SEGMENT_CLASS =
   "inline-flex flex-1 items-center justify-center rounded-lg border border-border-subtle px-2 py-2 text-sm font-medium transition-colors has-[input:checked]:border-neutral-900 has-[input:checked]:bg-neutral-900 has-[input:checked]:text-white";
 
+const VISIT_PROOF_TONE_CLASS = {
+  clear:
+    "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/35 dark:text-emerald-100",
+  attention:
+    "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-100",
+  blocked:
+    "border-red-200 bg-red-50 text-red-900 dark:border-red-900/60 dark:bg-red-950/35 dark:text-red-100",
+} satisfies Record<FieldLocationVerification["tone"], string>;
+
+const DEFAULT_DRAFT_INPUT = {
+  status: "operational",
+  staffPressure: "normal",
+  stockPressure: "normal",
+  queuePressure: "low",
+  notes: "",
+} satisfies {
+  status: ClinicStatus;
+  staffPressure: StaffPressure;
+  stockPressure: StockPressure;
+  queuePressure: QueuePressure;
+  notes: string;
+};
+
+function isMeaningfulDraft(input: FieldReportDraftInput) {
+  return (
+    input.status !== DEFAULT_DRAFT_INPUT.status ||
+    input.staffPressure !== DEFAULT_DRAFT_INPUT.staffPressure ||
+    input.stockPressure !== DEFAULT_DRAFT_INPUT.stockPressure ||
+    input.queuePressure !== DEFAULT_DRAFT_INPUT.queuePressure ||
+    input.notes.trim().length > 0
+  );
+}
+
 type Option = {
   value: string;
   label: string;
@@ -88,22 +133,194 @@ function SegmentedOptions({ options, value, name, onChange }: SegmentedOptionPro
   );
 }
 
+function VisitStep({
+  children,
+  description,
+  number,
+  title,
+}: {
+  children: ReactNode;
+  description: string;
+  number: number;
+  title: string;
+}) {
+  return (
+    <fieldset className="rounded-lg border border-border-subtle bg-bg-subtle p-3">
+      <legend className="sr-only">{title}</legend>
+      <div className="mb-3 flex items-start gap-3">
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-xs font-semibold text-white">
+          {number}
+        </span>
+        <div>
+          <p className="text-sm font-medium text-content-emphasis">{title}</p>
+          <p className="text-xs leading-5 text-content-subtle">{description}</p>
+        </div>
+      </div>
+      {children}
+    </fieldset>
+  );
+}
+
+function VisitProofCard({
+  clinicName,
+  verification,
+}: {
+  clinicName: string;
+  verification?: FieldLocationVerification | null;
+}) {
+  if (!verification) {
+    return (
+      <div
+        data-testid="field-visit-proof"
+        className="mt-3 rounded-lg border border-dashed border-border-subtle bg-bg-default p-3 text-sm text-content-subtle"
+      >
+        <p className="text-xs font-semibold uppercase tracking-normal text-content-subtle">
+          Visit proof
+        </p>
+        <p className="mt-1 font-medium text-content-emphasis">Not captured</p>
+        <p className="mt-1 text-xs leading-5">
+          Verify active stop when GPS is available. Reports can still be saved if
+          permission is unavailable.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      data-testid="field-visit-proof"
+      className={cn(
+        "mt-3 grid gap-3 rounded-lg border p-3 text-sm sm:grid-cols-[1fr_auto]",
+        VISIT_PROOF_TONE_CLASS[verification.tone],
+      )}
+    >
+      <div className="min-w-0">
+        <p className="text-xs font-semibold uppercase tracking-normal">Visit proof</p>
+        <p className="mt-1 inline-flex items-center gap-1 font-semibold">
+          {verification.tone === "blocked" ? (
+            <AlertCircle className="size-4" />
+          ) : (
+            <CheckCircle2 className="size-4" />
+          )}
+          {verification.statusLabel}
+        </p>
+        <p className="mt-1 text-xs leading-5">
+          {verification.distanceLabel} from {clinicName}
+        </p>
+      </div>
+      <div className="grid gap-1 text-xs sm:text-right">
+        <span>{verification.accuracyLabel}</span>
+        <span className="inline-flex items-center gap-1 sm:justify-end">
+          <MapPin className="size-3.5" />
+          {verification.coordinateLabel}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function ReportForm({
   clinicId,
   clinicName,
+  editingReport = null,
   onSubmit,
   submitting,
   feedback = null,
+  visitVerification = null,
 }: FieldReportFormProps) {
   const submitInFlight = useRef(false);
-  const [status, setStatus] = useState<ClinicStatus>("operational");
-  const [staff, setStaff] = useState<StaffPressure>("normal");
-  const [stock, setStock] = useState<StockPressure>("normal");
-  const [queue, setQueue] = useState<QueuePressure>("low");
-  const [notes, setNotes] = useState("");
+  const restoredDraft = getFieldReportDraft(clinicId);
+  const restoredInput = editingReport
+    ? {
+        status: editingReport.status,
+        staffPressure: editingReport.staffPressure,
+        stockPressure: editingReport.stockPressure,
+        queuePressure: editingReport.queuePressure,
+        notes: editingReport.notes,
+      }
+    : restoredDraft?.input ?? DEFAULT_DRAFT_INPUT;
+  const [status, setStatus] = useState<ClinicStatus>(restoredInput.status);
+  const [staff, setStaff] = useState<StaffPressure>(restoredInput.staffPressure);
+  const [stock, setStock] = useState<StockPressure>(restoredInput.stockPressure);
+  const [queue, setQueue] = useState<QueuePressure>(restoredInput.queuePressure);
+  const [notes, setNotes] = useState(restoredInput.notes);
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(
+    editingReport ? null : restoredDraft?.updatedAt ?? null,
+  );
+  const isEditingSavedReport = editingReport !== null;
 
   const submitDisabled =
     !clinicId || (notes.trim().length > 250) || submitting;
+
+  const persistDraft = (input: FieldReportDraftInput) => {
+    if (isEditingSavedReport) {
+      return;
+    }
+
+    if (!clinicId || !isMeaningfulDraft(input)) {
+      clearFieldReportDraft(clinicId);
+      setDraftSavedAt(null);
+      return;
+    }
+
+    const draft = saveFieldReportDraft(clinicId, input);
+    setDraftSavedAt(draft.updatedAt);
+  };
+
+  const updateStatus = (value: ClinicStatus) => {
+    setStatus(value);
+    persistDraft({
+      status: value,
+      staffPressure: staff,
+      stockPressure: stock,
+      queuePressure: queue,
+      notes,
+    });
+  };
+
+  const updateStaff = (value: StaffPressure) => {
+    setStaff(value);
+    persistDraft({
+      status,
+      staffPressure: value,
+      stockPressure: stock,
+      queuePressure: queue,
+      notes,
+    });
+  };
+
+  const updateStock = (value: StockPressure) => {
+    setStock(value);
+    persistDraft({
+      status,
+      staffPressure: staff,
+      stockPressure: value,
+      queuePressure: queue,
+      notes,
+    });
+  };
+
+  const updateQueue = (value: QueuePressure) => {
+    setQueue(value);
+    persistDraft({
+      status,
+      staffPressure: staff,
+      stockPressure: stock,
+      queuePressure: value,
+      notes,
+    });
+  };
+
+  const updateNotes = (value: string) => {
+    setNotes(value);
+    persistDraft({
+      status,
+      staffPressure: staff,
+      stockPressure: stock,
+      queuePressure: queue,
+      notes: value,
+    });
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -125,6 +342,12 @@ export function ReportForm({
       });
 
       if (submitted !== false) {
+        clearFieldReportDraft(clinicId);
+        setDraftSavedAt(null);
+        setStatus(DEFAULT_DRAFT_INPUT.status);
+        setStaff(DEFAULT_DRAFT_INPUT.staffPressure);
+        setStock(DEFAULT_DRAFT_INPUT.stockPressure);
+        setQueue(DEFAULT_DRAFT_INPUT.queuePressure);
         setNotes("");
       }
     } finally {
@@ -135,57 +358,88 @@ export function ReportForm({
   return (
     <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
       <SectionHeader
-        eyebrow="Report form"
+        eyebrow="Visit report"
         title="Submit clinic status"
-        description="Use the five core fields to send an updated status."
+        description="Capture the field update, confirm pressure, then send it for district review or save it on this device."
       />
 
       <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
-        <fieldset className="space-y-2">
-          <p className="text-sm font-medium text-content-emphasis">Clinic status</p>
+        <VisitStep
+          number={1}
+          title="Confirm clinic"
+          description="This report will be attached to the selected facility."
+        >
+          <p className="rounded-md border border-border-subtle bg-bg-default px-3 py-2 text-sm font-medium text-content-emphasis">
+            {clinicName}
+          </p>
+          <VisitProofCard clinicName={clinicName} verification={visitVerification} />
+        </VisitStep>
+
+        <VisitStep
+          number={2}
+          title="Set service status"
+          description="Choose the operating state the district team should review."
+        >
           <SegmentedOptions
             name="clinic-status"
             value={status}
             options={STATUS_OPTIONS}
-            onChange={(value) => setStatus(value as ClinicStatus)}
+            onChange={(value) => updateStatus(value as ClinicStatus)}
           />
-        </fieldset>
+        </VisitStep>
 
-        <fieldset className="space-y-2">
-          <p className="text-sm font-medium text-content-emphasis">Staff availability</p>
-          <SegmentedOptions
-            name="staff-pressure"
-            value={staff}
-            options={STAFF_OPTIONS}
-            onChange={(value) => setStaff(value as StaffPressure)}
-          />
-        </fieldset>
+        <VisitStep
+          number={3}
+          title="Capture pressure"
+          description="Record staffing, stock, and queue pressure while you are on site."
+        >
+          <div className="grid gap-3">
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-content-emphasis">
+                Staff availability
+              </p>
+              <SegmentedOptions
+                name="staff-pressure"
+                value={staff}
+                options={STAFF_OPTIONS}
+                onChange={(value) => updateStaff(value as StaffPressure)}
+              />
+            </div>
 
-        <fieldset className="space-y-2">
-          <p className="text-sm font-medium text-content-emphasis">Medicine/stock availability</p>
-          <SegmentedOptions
-            name="stock-pressure"
-            value={stock}
-            options={STOCK_OPTIONS}
-            onChange={(value) => setStock(value as StockPressure)}
-          />
-        </fieldset>
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-content-emphasis">
+                Medicine/stock availability
+              </p>
+              <SegmentedOptions
+                name="stock-pressure"
+                value={stock}
+                options={STOCK_OPTIONS}
+                onChange={(value) => updateStock(value as StockPressure)}
+              />
+            </div>
 
-        <fieldset className="space-y-2">
-          <p className="text-sm font-medium text-content-emphasis">Queue pressure</p>
-          <SegmentedOptions
-            name="queue-pressure"
-            value={queue}
-            options={QUEUE_OPTIONS}
-            onChange={(value) => setQueue(value as QueuePressure)}
-          />
-        </fieldset>
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-content-emphasis">
+                Queue pressure
+              </p>
+              <SegmentedOptions
+                name="queue-pressure"
+                value={queue}
+                options={QUEUE_OPTIONS}
+                onChange={(value) => updateQueue(value as QueuePressure)}
+              />
+            </div>
+          </div>
+        </VisitStep>
 
-        <fieldset className="space-y-2">
-          <p className="text-sm font-medium text-content-emphasis">Notes</p>
+        <VisitStep
+          number={4}
+          title="Add visit notes"
+          description="Capture the reason, barriers, and what changed today."
+        >
           <textarea
             value={notes}
-            onChange={(event) => setNotes(event.target.value)}
+            onChange={(event) => updateNotes(event.target.value)}
             rows={5}
             maxLength={250}
             placeholder="Add context, barriers, and what changed today."
@@ -194,12 +448,39 @@ export function ReportForm({
           <p className="text-xs text-content-subtle">
             {notes.length}/250 characters
           </p>
-        </fieldset>
+          {draftSavedAt ? (
+            <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950 dark:border-sky-900/60 dark:bg-sky-950/35 dark:text-sky-100">
+              <p className="font-medium">Draft saved on this device</p>
+              <p className="mt-1 text-xs">
+                Returning to {clinicName} restores this in-progress report before
+                it is submitted or queued.
+              </p>
+            </div>
+          ) : null}
+          {isEditingSavedReport ? (
+            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-100">
+              <p className="font-medium">Editing saved device report</p>
+              <p className="mt-1 text-xs">
+                Updating this form replaces the queued copy before it syncs.
+              </p>
+            </div>
+          ) : null}
+        </VisitStep>
 
-        <Button type="submit" disabled={submitDisabled} className="w-full">
-          {submitting ? "Submitting…" : "Submit report"}
-        </Button>
-        <FieldReportReceipt feedback={feedback} />
+        <VisitStep
+          number={5}
+          title="Review and send"
+          description="Online reports go to district review. Offline reports are saved on this device."
+        >
+          <Button type="submit" disabled={submitDisabled} className="w-full">
+            {submitting
+              ? "Submitting..."
+              : isEditingSavedReport
+                ? "Update saved report"
+                : "Submit report"}
+          </Button>
+          <FieldReportReceipt feedback={feedback} />
+        </VisitStep>
       </form>
     </section>
   );

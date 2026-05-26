@@ -1,5 +1,6 @@
 import type { CreateReportApiInput } from "@/lib/demo/api-types";
 import type { SubmitFieldReportInput } from "@/lib/demo/types";
+import type { FieldLocationVerification } from "@/lib/demo/field-location-verification";
 
 export type OnlineFieldReportInput = Pick<
   SubmitFieldReportInput,
@@ -15,6 +16,7 @@ export type OnlineFieldReportInput = Pick<
 export type OnlineFieldReportActionInput = {
   clinicId: string;
   report: OnlineFieldReportInput;
+  visitVerification?: FieldLocationVerification | null;
 };
 
 export type OnlineFieldReportResult = {
@@ -32,11 +34,13 @@ type SubmitOnlineFieldReportOptions = {
   report: OnlineFieldReportInput;
   refresh: () => void;
   submitReport: SubmitOnlineFieldReportAction;
+  visitVerification?: FieldLocationVerification | null;
 };
 
 export function mapOnlineFieldReportToCreateReportInput({
   clinicId,
   report,
+  visitVerification,
 }: OnlineFieldReportActionInput): CreateReportApiInput {
   const input: CreateReportApiInput = {
     clinicId,
@@ -57,6 +61,10 @@ export function mapOnlineFieldReportToCreateReportInput({
     input.notes = report.notes;
   }
 
+  if (visitVerification) {
+    input.visitVerification = visitVerification;
+  }
+
   return input;
 }
 
@@ -65,10 +73,12 @@ export async function submitOnlineFieldReport({
   report,
   refresh,
   submitReport,
+  visitVerification,
 }: SubmitOnlineFieldReportOptions) {
   const result = await submitReport({
     clinicId,
     report,
+    visitVerification,
   });
 
   refresh();
