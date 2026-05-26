@@ -430,12 +430,38 @@ it("links admin user evidence rows to user detail", () => {
 });
 
 it("links audit evidence rows to canonical entity details", () => {
-  const auditEvidence = readFileSync("app/(demo)/admin/audit-evidence/page.tsx", "utf8");
+  const auditEvidence = readFileSync("lib/product/audit-evidence.ts", "utf8");
 
   expect(auditEvidence).toContain('const returnSource = "admin-audit-evidence";');
-  expect(auditEvidence).toContain("buildAdminAuditEventDetailHref(row.id, returnSource)");
-  expect(auditEvidence).toContain("buildAdminExportRunDetailHref(row.id, returnSource)");
-  expect(auditEvidence).toContain("buildAdminWebhookEventDetailHref(row.id, returnSource)");
+  expect(auditEvidence).toContain("buildAdminAuditEventDetailHref(event.id, returnSource)");
+  expect(auditEvidence).toContain("buildAdminExportRunDetailHref(exportRun.id, returnSource)");
+  expect(auditEvidence).toContain("buildAdminWebhookEventDetailHref(event.id, returnSource)");
+});
+
+it("uses a responsive audit evidence workspace instead of dense evidence tables", () => {
+  const source = readFileSync("app/(demo)/admin/audit-evidence/page.tsx", "utf8");
+  const componentSource = readFileSync("components/product/audit-evidence-workspace.tsx", "utf8");
+  const modelSource = readFileSync("lib/product/audit-evidence.ts", "utf8");
+
+  expect(source).toContain("AuditEvidenceWorkspace");
+  expect(source).toContain("buildAuditEvidenceViewModel");
+  expect(source).not.toContain("<AdminEvidenceTable");
+  expect(componentSource).toContain('aria-label="Audit evidence workspace"');
+  expect(componentSource).toContain('aria-label="Audit evidence summary"');
+  expect(componentSource).toContain('aria-label="Audit evidence controls"');
+  expect(componentSource).toContain('aria-label="Audit evidence lanes"');
+  expect(componentSource).toContain('aria-label="Audit evidence rows"');
+  expect(componentSource).toContain('aria-label="Selected audit evidence"');
+  expect(componentSource).toContain('aria-label="Linked evidence packets"');
+  expect(componentSource).toContain("filterAuditEvidenceRows");
+  expect(componentSource).toContain("Open source evidence");
+  expect(componentSource).toContain("onSelectRow(row.id)");
+  expect(componentSource).toContain("aria-pressed={isSelected}");
+  expect(componentSource).not.toContain("Reference map");
+  expect(componentSource).not.toContain("Evidence map");
+  expect(modelSource).toContain("buildAdminAuditEventDetailHref");
+  expect(modelSource).toContain("buildAdminExportRunDetailHref");
+  expect(modelSource).toContain("buildAdminWebhookEventDetailHref");
 });
 
 it("links integration and security entity rows to canonical details", () => {

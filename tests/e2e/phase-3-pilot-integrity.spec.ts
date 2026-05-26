@@ -61,8 +61,9 @@ test("district and admin surfaces expose data trust labels", async ({ page }) =>
   await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
 
   await page.goto("/admin/audit-evidence");
-  await expect(page.getByText(/report submission, report review, stale reconciliation/i).first()).toBeVisible();
-  await expect(page.getByText("Webhook test evidence")).toBeVisible();
+  await expect(page.getByLabel("Audit evidence workspace")).toBeVisible();
+  await expect(page.getByLabel("Linked evidence packets")).toBeVisible();
+  await expect(page.getByText("Audit trail evidence")).toBeVisible();
   await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
 });
 
