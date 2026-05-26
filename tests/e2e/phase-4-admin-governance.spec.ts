@@ -110,6 +110,22 @@ test("data ingestion exposes source-backed references", async ({ page }) => {
   );
 });
 
+test("integration operations exposes source-backed references", async ({ page }) => {
+  await signIn(page, "system-admin@clinicpulse.local");
+  await page.goto("/admin/integrations");
+
+  await expect(page.getByRole("heading", { name: "Integration operations" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Integration source references" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Infisical admin integrations/i })).toHaveAttribute(
+    "href",
+    "https://github.com/Infisical/infisical",
+  );
+  await expect(page.getByRole("link", { name: /Cal.com BTCPay setup/i })).toHaveAttribute(
+    "href",
+    "https://github.com/calcom/cal.com",
+  );
+});
+
 test("reporting coverage clinic names open operational detail", async ({ page }) => {
   await signIn(page, "org-admin@clinicpulse.local");
   await page.goto("/admin/reporting-coverage");

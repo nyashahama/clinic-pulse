@@ -93,6 +93,13 @@ export type IntegrationEvidenceRow = {
   searchText: string;
 };
 
+export type IntegrationSourceReference = {
+  source: string;
+  role: string;
+  repositoryUrl: string;
+  license: "MIT" | "AGPL reference-only";
+};
+
 export type IntegrationOperationsModel = {
   summaryMetrics: IntegrationSummaryMetric[];
   workspaceMetrics: IntegrationSummaryMetric[];
@@ -100,6 +107,7 @@ export type IntegrationOperationsModel = {
   endpointRows: IntegrationEndpointRow[];
   evidenceRows: IntegrationEvidenceRow[];
   deliveryLogRows: IntegrationDeliveryLogRow[];
+  sourceReferences: IntegrationSourceReference[];
   consoleState: {
     tone: IntegrationTone;
     summary: string;
@@ -132,6 +140,39 @@ const dateTimeFormatter = new Intl.DateTimeFormat("en-ZA", {
 const numberFormatter = new Intl.NumberFormat("en-ZA");
 
 const returnSource = "admin-integrations";
+
+const sourceReferences: IntegrationSourceReference[] = [
+  {
+    source: "Infisical admin integrations",
+    role: "Tabbed integration configuration with instance-wide workflow connectors and admin-owned setup boundaries.",
+    repositoryUrl: "https://github.com/Infisical/infisical",
+    license: "MIT",
+  },
+  {
+    source: "Cal.com BTCPay setup",
+    role: "Credential validation paired with webhook provisioning before a connector is treated as ready.",
+    repositoryUrl: "https://github.com/calcom/cal.com",
+    license: "MIT",
+  },
+  {
+    source: "Unkey request log details",
+    role: "API-key verification logs, permission chips, and empty-state guidance for credential troubleshooting.",
+    repositoryUrl: "https://github.com/unkeyed/unkey",
+    license: "AGPL reference-only",
+  },
+  {
+    source: "Dub events metadata",
+    role: "Event-row metadata previews, copy affordances, and event IDs for delivery debugging.",
+    repositoryUrl: "https://github.com/dubinc/dub",
+    license: "AGPL reference-only",
+  },
+  {
+    source: "OpenStatus health check",
+    role: "Health-check posture and endpoint diagnostic language for integration status review.",
+    repositoryUrl: "https://github.com/openstatusHQ/openstatus",
+    license: "AGPL reference-only",
+  },
+];
 
 const endpointCatalog = [
   {
@@ -349,6 +390,7 @@ export function buildIntegrationOperationsModel(
     endpointRows,
     evidenceRows,
     deliveryLogRows,
+    sourceReferences,
     consoleState: {
       tone: consoleTone,
       summary:
