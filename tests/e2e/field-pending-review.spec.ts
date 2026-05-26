@@ -150,3 +150,32 @@ test("restores an in-progress field report draft when returning to a clinic", as
   await expect(page.getByLabel("Degraded")).toBeChecked();
   await expect(page.getByLabel("High")).toBeChecked();
 });
+
+test("resumes a saved device report from the offline queue", async ({ page }) => {
+  await signInAsReporter(page);
+
+  const originalNotes = `Queued report edit ${Date.now()}`;
+  const revisedNotes = `Revised queued report ${Date.now()}`;
+  const notesField = page.getByPlaceholder("Add context, barriers, and what changed today.");
+
+  await page.getByRole("button", { name: "Set offline mode" }).click();
+  await page.locator("label").filter({ hasText: "Degraded" }).click();
+  await page.locator("label").filter({ hasText: "High" }).click();
+  await notesField.fill(originalNotes);
+  await page.getByRole("button", { name: "Submit report" }).click();
+
+  await expect(page.getByText("Saved to device")).toBeVisible();
+  await expect(page.getByText(originalNotes)).toBeVisible();
+
+  await page.getByRole("button", { name: "Edit saved report" }).click();
+  await expect(notesField).toHaveValue(originalNotes);
+  await expect(page.getByLabel("Degraded")).toBeChecked();
+  await expect(page.getByLabel("High")).toBeChecked();
+  await expect(page.getByText("Editing saved device report")).toBeVisible();
+
+  await notesField.fill(revisedNotes);
+  await page.getByRole("button", { name: "Update saved report" }).click();
+
+  await expect(page.getByText(revisedNotes)).toBeVisible();
+  await expect(page.getByText(originalNotes)).toHaveCount(0);
+});

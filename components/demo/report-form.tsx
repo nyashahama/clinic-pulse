@@ -17,6 +17,7 @@ import {
 } from "@/lib/demo/field-report-draft";
 import type {
   ClinicStatus,
+  OfflineReportQueueItem,
   QueuePressure,
   StaffPressure,
   StockPressure,
@@ -29,6 +30,7 @@ type FieldReportFormProps = {
   submitting: boolean;
   onSubmit: (input: OnlineFieldReportInput) => boolean | Promise<boolean> | void;
   feedback?: FieldReportFeedback | null;
+  editingReport?: OfflineReportQueueItem | null;
 };
 
 const STATUS_OPTIONS: Array<{ value: ClinicStatus; label: string }> = [
@@ -149,26 +151,40 @@ function VisitStep({
 export function ReportForm({
   clinicId,
   clinicName,
+  editingReport = null,
   onSubmit,
   submitting,
   feedback = null,
 }: FieldReportFormProps) {
   const submitInFlight = useRef(false);
   const restoredDraft = getFieldReportDraft(clinicId);
-  const restoredInput = restoredDraft?.input ?? DEFAULT_DRAFT_INPUT;
+  const restoredInput = editingReport
+    ? {
+        status: editingReport.status,
+        staffPressure: editingReport.staffPressure,
+        stockPressure: editingReport.stockPressure,
+        queuePressure: editingReport.queuePressure,
+        notes: editingReport.notes,
+      }
+    : restoredDraft?.input ?? DEFAULT_DRAFT_INPUT;
   const [status, setStatus] = useState<ClinicStatus>(restoredInput.status);
   const [staff, setStaff] = useState<StaffPressure>(restoredInput.staffPressure);
   const [stock, setStock] = useState<StockPressure>(restoredInput.stockPressure);
   const [queue, setQueue] = useState<QueuePressure>(restoredInput.queuePressure);
   const [notes, setNotes] = useState(restoredInput.notes);
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(
-    restoredDraft?.updatedAt ?? null,
+    editingReport ? null : restoredDraft?.updatedAt ?? null,
   );
+  const isEditingSavedReport = editingReport !== null;
 
   const submitDisabled =
     !clinicId || (notes.trim().length > 250) || submitting;
 
   const persistDraft = (input: FieldReportDraftInput) => {
+    if (isEditingSavedReport) {
+      return;
+    }
+
     if (!clinicId || !isMeaningfulDraft(input)) {
       clearFieldReportDraft(clinicId);
       setDraftSavedAt(null);
@@ -368,6 +384,14 @@ export function ReportForm({
               </p>
             </div>
           ) : null}
+          {isEditingSavedReport ? (
+            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-100">
+              <p className="font-medium">Editing saved device report</p>
+              <p className="mt-1 text-xs">
+                Updating this form replaces the queued copy before it syncs.
+              </p>
+            </div>
+          ) : null}
         </VisitStep>
 
         <VisitStep
@@ -376,7 +400,11 @@ export function ReportForm({
           description="Online reports go to district review. Offline reports are saved on this device."
         >
           <Button type="submit" disabled={submitDisabled} className="w-full">
-            {submitting ? "Submitting..." : "Submit report"}
+            {submitting
+              ? "Submitting..."
+              : isEditingSavedReport
+                ? "Update saved report"
+                : "Submit report"}
           </Button>
           <FieldReportReceipt feedback={feedback} />
         </VisitStep>

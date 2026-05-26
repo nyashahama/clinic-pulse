@@ -226,6 +226,9 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
   const syncInFlight = useRef(false);
   const [submitFeedback, setSubmitFeedback] = useState<FieldReportFeedback | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [editingOfflineReportId, setEditingOfflineReportId] = useState<string | null>(
+    null,
+  );
 
   const loadOfflineReports = useCallback(async () => {
     const reports = await loadRecoverableOfflineReports();
@@ -240,6 +243,12 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
 
   const selectedName = selectedClinic?.name ?? "Select a clinic";
   const selectedId = selectedClinic?.id ?? "";
+  const editingOfflineReport = useMemo(
+    () =>
+      offlineReports.find((item) => item.clientReportId === editingOfflineReportId) ??
+      null,
+    [editingOfflineReportId, offlineReports],
+  );
 
   const showSubmitFeedback = useCallback((feedback: FieldReportFeedback) => {
     setSubmitFeedback(feedback);
@@ -259,6 +268,36 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
       return { item, duplicate: false };
     },
     [loadOfflineReports, selectedId],
+  );
+
+  const updateSavedOfflineReport = useCallback(
+    async (item: OfflineReportQueueItem, report: OnlineFieldReportInput) => {
+      const timestamp = new Date().toISOString();
+      const updatedItem: OfflineReportQueueItem = {
+        ...item,
+        status: report.status,
+        reason: report.reason,
+        staffPressure: report.staffPressure,
+        stockPressure: report.stockPressure,
+        queuePressure: report.queuePressure,
+        notes: report.notes,
+        submittedAt: timestamp,
+        updatedAt: timestamp,
+        syncStatus: "queued",
+        attemptCount: 0,
+        nextRetryAt: null,
+        lastAttemptAt: null,
+        lastError: null,
+        lastServerReportId: null,
+        lastServerReviewState: null,
+        conflictReason: null,
+      };
+
+      await updateOfflineReport(updatedItem);
+      await loadOfflineReports();
+      return updatedItem;
+    },
+    [loadOfflineReports],
   );
 
   const syncQueuedReports = useCallback(
@@ -475,6 +514,18 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
     }
 
     try {
+      if (editingOfflineReport && !isOnline) {
+        await updateSavedOfflineReport(editingOfflineReport, report);
+        setEditingOfflineReportId(null);
+        showSubmitFeedback({
+          tone: "info",
+          title: "Saved report updated",
+          message: OFFLINE_SAVED_MESSAGE,
+          detail: selectedName,
+        });
+        return true;
+      }
+
       if (isOnline) {
         try {
           const result = await submitOnlineFieldReport({
@@ -484,6 +535,11 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
             submitReport: createFieldReport,
           });
           if (result.created) {
+            if (editingOfflineReport) {
+              await removeOfflineReport(editingOfflineReport.clientReportId);
+              await loadOfflineReports();
+              setEditingOfflineReportId(null);
+            }
             showSubmitFeedback({
               tone: "success",
               title: "Report sent to review",
@@ -497,10 +553,25 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
               message: ONLINE_DUPLICATE_MESSAGE,
               detail: selectedName,
             });
+            if (editingOfflineReport) {
+              return false;
+            }
           }
         } catch (error) {
           if (!isReachabilityFailure(error)) {
             throw error;
+          }
+
+          if (editingOfflineReport) {
+            await updateSavedOfflineReport(editingOfflineReport, report);
+            setEditingOfflineReportId(null);
+            showSubmitFeedback({
+              tone: "info",
+              title: "Saved report updated",
+              message: OFFLINE_SAVED_MESSAGE,
+              detail: selectedName,
+            });
+            return true;
           }
 
           const saved = await saveOfflineReport(report);
@@ -552,6 +623,25 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
   const handleRemoveReport = async (clientReportId: string) => {
     await removeOfflineReport(clientReportId);
     await loadOfflineReports();
+    if (editingOfflineReportId === clientReportId) {
+      setEditingOfflineReportId(null);
+    }
+  };
+
+  const handleEditReport = (item: OfflineReportQueueItem) => {
+    setSelectedClinicId(item.clinicId);
+    setEditingOfflineReportId(item.clientReportId);
+    setSubmitFeedback(null);
+
+    requestAnimationFrame(() => {
+      document.getElementById("submit-report")?.scrollIntoView({ block: "start" });
+      window.history.replaceState(null, "", "#submit-report");
+    });
+  };
+
+  const handleSelectClinic = (clinicId: string) => {
+    setSelectedClinicId(clinicId);
+    setEditingOfflineReportId(null);
   };
 
   return (
@@ -675,16 +765,17 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
       <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
         <FieldClinicList
           rows={fieldCockpit.itineraryRows}
-          onSelectClinic={setSelectedClinicId}
+          onSelectClinic={handleSelectClinic}
         />
         <div id="submit-report" className="scroll-mt-28">
           <ReportForm
-            key={selectedId}
+            key={`${selectedId}:${editingOfflineReport?.clientReportId ?? "new"}`}
             clinicId={selectedId}
             clinicName={selectedName}
             onSubmit={handleSubmit}
             submitting={submitting}
             feedback={submitFeedback}
+            editingReport={editingOfflineReport}
           />
         </div>
       </div>
@@ -695,6 +786,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
           clinics={clinics}
           canSync={isOnline}
           syncing={syncing}
+          onEditItem={handleEditReport}
           onSync={() => void syncQueuedReports()}
           onRetryItem={(clientReportId) =>
             void syncQueuedReports({ clientReportId, manual: true })

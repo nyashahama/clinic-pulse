@@ -1,6 +1,14 @@
 "use client";
 
-import { AlertCircle, RefreshCw, RotateCcw, Trash2, Wifi, WifiOff } from "lucide-react";
+import {
+  AlertCircle,
+  Pencil,
+  RefreshCw,
+  RotateCcw,
+  Trash2,
+  Wifi,
+  WifiOff,
+} from "lucide-react";
 
 import { EmptyState } from "@/components/demo/empty-state";
 import { SectionHeader } from "@/components/demo/section-header";
@@ -19,10 +27,18 @@ type OfflineQueueProps = {
   clinics: ClinicRow[];
   canSync: boolean;
   syncing: boolean;
+  onEditItem: (item: OfflineReportQueueItem) => void;
   onSync: () => void;
   onRetryItem: (clientReportId: string) => void;
   onRemoveItem: (clientReportId: string) => void;
 };
+
+const EDITABLE_STATUSES = new Set<OfflineReportQueueStatus>([
+  "queued",
+  "retry_wait",
+  "failed",
+  "conflict",
+]);
 
 const RETRYABLE_STATUSES = new Set<OfflineReportQueueStatus>([
   "queued",
@@ -55,6 +71,7 @@ export function OfflineQueue({
   clinics,
   canSync,
   syncing,
+  onEditItem,
   onSync,
   onRetryItem,
   onRemoveItem,
@@ -144,6 +161,17 @@ export function OfflineQueue({
                 </div>
 
                 <div className="flex items-start gap-2 sm:justify-end">
+                  {EDITABLE_STATUSES.has(item.syncStatus) ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onEditItem(item)}
+                      disabled={syncing}
+                      aria-label="Edit saved report"
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                  ) : null}
                   {RETRYABLE_STATUSES.has(item.syncStatus) ? (
                     <Button
                       variant="outline"
