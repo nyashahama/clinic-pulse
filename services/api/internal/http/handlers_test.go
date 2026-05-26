@@ -3309,6 +3309,42 @@ func TestCreateReportWritesSubmissionAuditWithAuthenticatedActor(t *testing.T) {
 	}
 }
 
+func TestCreateReportMapsVisitVerificationEvidence(t *testing.T) {
+	var createInput store.CreateReportInput
+	router := newAuthenticatedTestRouter(t, fakeStore{
+		createReport: store.Report{ID: 100, ClinicID: "clinic-1", ReviewState: "pending"},
+		createInput:  &createInput,
+	})
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports", strings.NewReader(`{
+		"clinicId":"clinic-1",
+		"status":"operational",
+		"staffPressure":"normal",
+		"stockPressure":"normal",
+		"queuePressure":"low",
+		"reason":"Daily facility check",
+		"source":"field_worker",
+		"visitVerification":{
+			"statusLabel":"Location verified",
+			"distanceLabel":"18 m",
+			"distanceMeters":18,
+			"accuracyLabel":"Good GPS accuracy",
+			"capturedAt":"2026-05-03T08:29:00Z",
+			"coordinateLabel":"25.70694°S 28.22944°E",
+			"tone":"clear"
+		}
+	}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusCreated, rec.Code, rec.Body.String())
+	}
+	if createInput.VisitVerification["statusLabel"] != "Location verified" || createInput.VisitVerification["distanceLabel"] != "18 m" {
+		t.Fatalf("expected visit verification evidence to map into store input, got %#v", createInput.VisitVerification)
+	}
+}
+
 func TestCreateReportReturnsBadRequestForInvalidJSON(t *testing.T) {
 	router := newAuthenticatedTestRouter(t, fakeStore{})
 	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports", strings.NewReader(`{"clinicId":`))
@@ -3667,6 +3703,55 @@ func TestOfflineSyncReturnsPerItemResults(t *testing.T) {
 	}
 	if syncAttemptInput.ClientAttemptCount != 2 || syncAttemptInput.ExternalID != "offline-report-1" || syncAttemptInput.QueuedAt == nil {
 		t.Fatalf("expected attemptCount to map to sync attempt input, got %#v", syncAttemptInput)
+	}
+}
+
+func TestOfflineSyncMapsVisitVerificationEvidence(t *testing.T) {
+	var createInput store.CreateReportInput
+	router := apihttp.NewRouter(authenticatedStore(t, "reporter", fakeStore{
+		createReport: store.Report{
+			ID:             100,
+			ClinicID:       "clinic-1",
+			Status:         "degraded",
+			ReviewState:    "pending",
+			OfflineCreated: true,
+		},
+		createInput:       &createInput,
+		externalReportErr: pgx.ErrNoRows,
+	}))
+	req := newAuthenticatedRequest(t, http.MethodPost, "/v1/reports/offline-sync", strings.NewReader(`{
+		"items": [{
+			"clientReportId": "offline-report-1",
+			"clinicId": "clinic-1",
+			"status": "degraded",
+			"reason": "Queued while offline.",
+			"staffPressure": "strained",
+			"stockPressure": "low",
+			"queuePressure": "high",
+			"notes": "Pharmacy queue overflow.",
+			"submittedAt": "2026-05-03T08:30:00Z",
+			"queuedAt": "2026-05-03T08:30:03Z",
+			"attemptCount": 2,
+			"visitVerification": {
+				"statusLabel": "Location verified",
+				"distanceLabel": "18 m",
+				"distanceMeters": 18,
+				"accuracyLabel": "Good GPS accuracy",
+				"capturedAt": "2026-05-03T08:29:00Z",
+				"coordinateLabel": "25.70694°S 28.22944°E",
+				"tone": "clear"
+			}
+		}]
+	}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if createInput.VisitVerification["statusLabel"] != "Location verified" || createInput.VisitVerification["distanceLabel"] != "18 m" {
+		t.Fatalf("expected visit verification evidence to map into offline report input, got %#v", createInput.VisitVerification)
 	}
 }
 

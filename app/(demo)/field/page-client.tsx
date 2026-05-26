@@ -566,6 +566,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
             refresh: () => router.refresh(),
             report,
             submitReport: createFieldReport,
+            visitVerification: selectedVisitVerification,
           });
           if (result.created) {
             if (editingOfflineReport) {

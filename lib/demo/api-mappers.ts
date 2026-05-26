@@ -247,7 +247,7 @@ export function mapApiDemoHydrationToState(
 }
 
 export function mapApiReport(report: ReportApiResponse): ReportEvent {
-  return {
+  const event: ReportEvent = {
     id: report.externalId ?? `report-${report.id}`,
     clinicId: report.clinicId,
     reporterName: fallbackText(report.reporterName, DEFAULT_REPORTER_NAME),
@@ -262,6 +262,12 @@ export function mapApiReport(report: ReportApiResponse): ReportEvent {
     queuePressure: mapQueuePressure(report.queuePressure),
     notes: fallbackText(report.notes),
   };
+
+  if (report.visitVerification) {
+    event.visitVerification = report.visitVerification;
+  }
+
+  return event;
 }
 
 export function mapApiReportToReportStreamItem(

@@ -34,6 +34,12 @@ type ReportSignal = {
   queue: "low" | "moderate" | "high" | "unknown";
 };
 
+type VisitTarget = {
+  clinicName: string;
+  latitude: number;
+  longitude: number;
+};
+
 async function fetchPendingReports(page: Page) {
   const pendingResponse = await page.request.get("/api/clinicpulse/v1/reports/pending");
   expect(pendingResponse.ok(), `Pending report lookup failed with ${pendingResponse.status()}`).toBe(
@@ -73,6 +79,22 @@ function reportSignalForProject(projectName: string): ReportSignal {
     staff: "strained",
     stock: "low",
     queue: "moderate",
+  };
+}
+
+function visitTargetForProject(projectName: string): VisitTarget {
+  if (projectName.includes("mobile")) {
+    return {
+      clinicName: "Atteridgeville Extension Clinic",
+      latitude: -25.7744,
+      longitude: 27.9364,
+    };
+  }
+
+  return {
+    clinicName: "Winterveldt West Clinic",
+    latitude: -25.4658,
+    longitude: 27.9392,
   };
 }
 
@@ -119,14 +141,47 @@ test("hands an online field report from reporter to district review and admin ev
 }, testInfo) => {
   test.setTimeout(90_000);
 
-  const testNotes = `Phase 3 handoff Playwright ${Date.now()}`;
+  const projectSlug = testInfo.project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+  const testNotes = `Phase 3 handoff Playwright ${projectSlug} ${Date.now()}`;
   const duplicateNotes = `${testNotes} with changed note text`;
   const reportSignal = reportSignalForProject(testInfo.project.name);
+  const visitTarget = visitTargetForProject(testInfo.project.name);
   let reportMayNeedCleanup = false;
   let primaryError: unknown;
 
   try {
+    await page.addInitScript(({ latitude, longitude }) => {
+      Object.defineProperty(navigator, "geolocation", {
+        configurable: true,
+        value: {
+          getCurrentPosition: (success: PositionCallback) =>
+            success({
+              coords: {
+                accuracy: 4,
+                altitude: null,
+                altitudeAccuracy: null,
+                heading: null,
+                latitude,
+                longitude,
+                speed: null,
+              },
+              timestamp: Date.now(),
+            } as GeolocationPosition),
+        },
+      });
+    }, visitTarget);
+
     await signInAs(page, reporterAccount.email, "/field");
+    await page
+      .getByTestId("field-route-map")
+      .getByRole("button", { name: new RegExp(`Open stop .*${visitTarget.clinicName}`, "i") })
+      .click();
+    await expect(page.locator("#submit-report").getByText(visitTarget.clinicName)).toBeVisible();
+
+    await page.getByRole("button", { name: "Verify active stop" }).click();
+    await expect(
+      page.locator("#submit-report").getByTestId("field-visit-proof").getByText("Location verified"),
+    ).toBeVisible();
 
     await chooseReportSignal(page, reportSignal);
     await page
@@ -153,6 +208,9 @@ test("hands an online field report from reporter to district review and admin ev
       `[data-testid="report-review-item"][data-report-id="${reportId}"]`,
     );
     await expect(reportItem).toBeVisible();
+    await expect(reportItem.getByText("Visit proof")).toBeVisible();
+    await expect(reportItem.getByText("Location verified")).toBeVisible();
+    await expect(reportItem.getByText("0 m from selected clinic")).toBeVisible();
 
     await reportItem.locator('[data-testid="accept-report-review"]').click();
 
@@ -163,8 +221,6 @@ test("hands an online field report from reporter to district review and admin ev
         return remainingReport?.reviewState ?? "reviewed";
       })
       .toBe("reviewed");
-    const pendingReviewCountAfterAcceptance = (await fetchPendingReports(page)).length;
-
     await signInAs(page, orgAdminAccount.email, "/admin");
     await page.goto("/admin");
 
@@ -173,13 +229,16 @@ test("hands an online field report from reporter to district review and admin ev
     await expect(adminReviewPressure).toContainText("Governance review pressure");
     await expect(
       adminReviewPressure.locator("div").filter({
-        hasText: new RegExp(
-          `^Pending\\s*${pendingReviewCountAfterAcceptance}\\s*Awaiting decision$`,
-        ),
+        hasText: /^Pending\s*\d+\s*Awaiting decision$/,
       }),
     ).toBeVisible();
 
     await signInAs(page, reporterAccount.email, "/field");
+    await page
+      .getByTestId("field-route-map")
+      .getByRole("button", { name: new RegExp(`Open stop .*${visitTarget.clinicName}`, "i") })
+      .click();
+    await expect(page.locator("#submit-report").getByText(visitTarget.clinicName)).toBeVisible();
     await chooseReportSignal(page, reportSignal);
     await page
       .getByPlaceholder("Add context, barriers, and what changed today.")

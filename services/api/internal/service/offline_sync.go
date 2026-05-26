@@ -32,17 +32,18 @@ type OfflineSyncActor struct {
 }
 
 type OfflineSyncItemInput struct {
-	ClientReportID     string     `json:"clientReportId"`
-	ClinicID           string     `json:"clinicId"`
-	Status             string     `json:"status"`
-	Reason             string     `json:"reason"`
-	StaffPressure      string     `json:"staffPressure"`
-	StockPressure      string     `json:"stockPressure"`
-	QueuePressure      string     `json:"queuePressure"`
-	Notes              string     `json:"notes,omitempty"`
-	SubmittedAt        time.Time  `json:"submittedAt"`
-	QueuedAt           *time.Time `json:"queuedAt,omitempty"`
-	ClientAttemptCount int        `json:"clientAttemptCount"`
+	ClientReportID     string         `json:"clientReportId"`
+	ClinicID           string         `json:"clinicId"`
+	Status             string         `json:"status"`
+	Reason             string         `json:"reason"`
+	StaffPressure      string         `json:"staffPressure"`
+	StockPressure      string         `json:"stockPressure"`
+	QueuePressure      string         `json:"queuePressure"`
+	Notes              string         `json:"notes,omitempty"`
+	SubmittedAt        time.Time      `json:"submittedAt"`
+	QueuedAt           *time.Time     `json:"queuedAt,omitempty"`
+	ClientAttemptCount int            `json:"clientAttemptCount"`
+	VisitVerification  map[string]any `json:"visitVerification,omitempty"`
 }
 
 type OfflineSyncResult struct {
@@ -247,6 +248,7 @@ func offlineItemStoreInput(item OfflineSyncItemInput, actor OfflineSyncActor, no
 		QueuePressure:     &queuePressure,
 		ReviewState:       "pending",
 		SubmittedByUserID: offlineActorUserID(actor),
+		VisitVerification: item.VisitVerification,
 	}
 	if item.Notes != "" {
 		notes := item.Notes

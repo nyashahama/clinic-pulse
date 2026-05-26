@@ -42,26 +42,27 @@ type CurrentStatus struct {
 }
 
 type Report struct {
-	ID                int64      `json:"id"`
-	ExternalID        *string    `json:"externalId,omitempty"`
-	ClinicID          string     `json:"clinicId"`
-	ReporterName      *string    `json:"reporterName,omitempty"`
-	Source            string     `json:"source"`
-	OfflineCreated    bool       `json:"offlineCreated"`
-	SubmittedAt       time.Time  `json:"submittedAt"`
-	ReceivedAt        time.Time  `json:"receivedAt"`
-	Status            string     `json:"status"`
-	Reason            *string    `json:"reason,omitempty"`
-	StaffPressure     *string    `json:"staffPressure,omitempty"`
-	StockPressure     *string    `json:"stockPressure,omitempty"`
-	QueuePressure     *string    `json:"queuePressure,omitempty"`
-	Notes             *string    `json:"notes,omitempty"`
-	ReviewState       string     `json:"reviewState"`
-	ConfidenceScore   *float64   `json:"confidenceScore,omitempty"`
-	SubmittedByUserID *int64     `json:"submittedByUserId,omitempty"`
-	ReviewedByUserID  *int64     `json:"reviewedByUserId,omitempty"`
-	ReviewedAt        *time.Time `json:"reviewedAt,omitempty"`
-	ReviewNotes       *string    `json:"reviewNotes,omitempty"`
+	ID                int64          `json:"id"`
+	ExternalID        *string        `json:"externalId,omitempty"`
+	ClinicID          string         `json:"clinicId"`
+	ReporterName      *string        `json:"reporterName,omitempty"`
+	Source            string         `json:"source"`
+	OfflineCreated    bool           `json:"offlineCreated"`
+	SubmittedAt       time.Time      `json:"submittedAt"`
+	ReceivedAt        time.Time      `json:"receivedAt"`
+	Status            string         `json:"status"`
+	Reason            *string        `json:"reason,omitempty"`
+	StaffPressure     *string        `json:"staffPressure,omitempty"`
+	StockPressure     *string        `json:"stockPressure,omitempty"`
+	QueuePressure     *string        `json:"queuePressure,omitempty"`
+	Notes             *string        `json:"notes,omitempty"`
+	ReviewState       string         `json:"reviewState"`
+	ConfidenceScore   *float64       `json:"confidenceScore,omitempty"`
+	VisitVerification map[string]any `json:"visitVerification,omitempty"`
+	SubmittedByUserID *int64         `json:"submittedByUserId,omitempty"`
+	ReviewedByUserID  *int64         `json:"reviewedByUserId,omitempty"`
+	ReviewedAt        *time.Time     `json:"reviewedAt,omitempty"`
+	ReviewNotes       *string        `json:"reviewNotes,omitempty"`
 }
 
 type ReportSyncAttempt struct {
@@ -379,26 +380,27 @@ type ClinicDetail struct {
 }
 
 type CreateReportInput struct {
-	ExternalID        *string   `json:"externalId,omitempty"`
-	ClinicID          string    `json:"clinicId"`
-	ReporterName      *string   `json:"reporterName,omitempty"`
-	Source            string    `json:"source,omitempty"`
-	OfflineCreated    bool      `json:"offlineCreated"`
-	SubmittedAt       time.Time `json:"submittedAt,omitempty"`
-	ReceivedAt        time.Time `json:"receivedAt,omitempty"`
-	Status            string    `json:"status,omitempty"`
-	Reason            *string   `json:"reason,omitempty"`
-	StaffPressure     *string   `json:"staffPressure,omitempty"`
-	StockPressure     *string   `json:"stockPressure,omitempty"`
-	QueuePressure     *string   `json:"queuePressure,omitempty"`
-	Notes             *string   `json:"notes,omitempty"`
-	ReviewState       string    `json:"reviewState,omitempty"`
-	ConfidenceScore   *float64  `json:"confidenceScore,omitempty"`
-	Freshness         string    `json:"freshness,omitempty"`
-	AuditExternalID   *string   `json:"auditExternalId,omitempty"`
-	AuditEventType    string    `json:"auditEventType,omitempty"`
-	AuditSummary      string    `json:"auditSummary,omitempty"`
-	SubmittedByUserID *int64    `json:"submittedByUserId,omitempty"`
+	ExternalID        *string        `json:"externalId,omitempty"`
+	ClinicID          string         `json:"clinicId"`
+	ReporterName      *string        `json:"reporterName,omitempty"`
+	Source            string         `json:"source,omitempty"`
+	OfflineCreated    bool           `json:"offlineCreated"`
+	SubmittedAt       time.Time      `json:"submittedAt,omitempty"`
+	ReceivedAt        time.Time      `json:"receivedAt,omitempty"`
+	Status            string         `json:"status,omitempty"`
+	Reason            *string        `json:"reason,omitempty"`
+	StaffPressure     *string        `json:"staffPressure,omitempty"`
+	StockPressure     *string        `json:"stockPressure,omitempty"`
+	QueuePressure     *string        `json:"queuePressure,omitempty"`
+	Notes             *string        `json:"notes,omitempty"`
+	ReviewState       string         `json:"reviewState,omitempty"`
+	ConfidenceScore   *float64       `json:"confidenceScore,omitempty"`
+	VisitVerification map[string]any `json:"visitVerification,omitempty"`
+	Freshness         string         `json:"freshness,omitempty"`
+	AuditExternalID   *string        `json:"auditExternalId,omitempty"`
+	AuditEventType    string         `json:"auditEventType,omitempty"`
+	AuditSummary      string         `json:"auditSummary,omitempty"`
+	SubmittedByUserID *int64         `json:"submittedByUserId,omitempty"`
 	AuditEvent        *CreateAuditEventInput
 }
 

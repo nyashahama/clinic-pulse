@@ -68,6 +68,7 @@ export async function syncQueuedFieldReports(
         submittedAt: item.submittedAt,
         queuedAt: item.queuedAt,
         attemptCount: item.attemptCount,
+        visitVerification: item.visitVerification ?? null,
       })),
     },
     {

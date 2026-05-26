@@ -1,4 +1,5 @@
 import type { ReportApiResponse } from "@/lib/demo/api-types";
+import type { FieldLocationVerification } from "@/lib/demo/field-location-verification";
 import type {
   ClinicRow,
   ClinicStatus,
@@ -25,6 +26,7 @@ export type PendingReportReview = {
   queuePressure: QueuePressure | string;
   notes: string;
   reviewState: string;
+  visitVerification?: FieldLocationVerification | null;
 };
 
 export type PendingReportReviewSummary = {
@@ -44,8 +46,7 @@ export function buildPendingReportReviews(
     .filter((report) => report.reviewState === "pending")
     .map((report) => {
       const clinic = clinicsById.get(report.clinicId);
-
-      return {
+      const review: PendingReportReview = {
         reportId: report.id,
         clinicId: report.clinicId,
         clinicName: clinic?.name || report.clinicId,
@@ -64,6 +65,12 @@ export function buildPendingReportReviews(
         notes: report.notes || "",
         reviewState: report.reviewState,
       };
+
+      if (report.visitVerification) {
+        review.visitVerification = report.visitVerification;
+      }
+
+      return review;
     })
     .sort((left, right) => Date.parse(right.receivedAt) - Date.parse(left.receivedAt));
 }

@@ -6,6 +6,7 @@ import type {
   StaffPressure,
   StockPressure,
 } from "@/lib/demo/types";
+import type { FieldLocationVerification } from "@/lib/demo/field-location-verification";
 import type { OfflineSyncApiResult } from "@/lib/demo/offline-sync-types";
 import type { AuthMembership, AuthRole } from "@/lib/auth/api";
 
@@ -84,6 +85,7 @@ export type ReportApiResponse = {
   notes?: ApiNullable<string>;
   reviewState: ReportReviewState | string;
   confidenceScore?: ApiNullable<number>;
+  visitVerification?: ApiNullable<FieldLocationVerification>;
 };
 
 export type AuditEventApiResponse = {
@@ -188,6 +190,7 @@ export type CreateReportApiInput = {
   offlineCreated?: boolean;
   submittedAt?: string;
   notes?: string;
+  visitVerification?: FieldLocationVerification | null;
 };
 
 export type CreateReportApiResponse = {
@@ -220,6 +223,7 @@ export type OfflineSyncApiRequest = {
     submittedAt: string;
     queuedAt: string;
     attemptCount: number;
+    visitVerification?: FieldLocationVerification | null;
   }>;
 };
 

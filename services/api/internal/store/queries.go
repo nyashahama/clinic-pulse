@@ -115,6 +115,7 @@ SELECT
     notes,
     review_state,
     confidence_score::double precision,
+    visit_verification,
     submitted_by_user_id,
     reviewed_by_user_id,
     reviewed_at,
@@ -140,6 +141,7 @@ SELECT
     notes,
     review_state,
     confidence_score::double precision,
+    visit_verification,
     submitted_by_user_id,
     reviewed_by_user_id,
     reviewed_at,
@@ -175,6 +177,7 @@ SELECT
     notes,
     review_state,
     confidence_score::double precision,
+    visit_verification,
     submitted_by_user_id,
     reviewed_by_user_id,
     reviewed_at,
@@ -210,6 +213,7 @@ SELECT
 	notes,
 	review_state,
 	confidence_score::double precision,
+	visit_verification,
 	submitted_by_user_id,
 	reviewed_by_user_id,
 	reviewed_at,
@@ -275,6 +279,7 @@ SELECT
     reports.notes,
     reports.review_state,
     reports.confidence_score::double precision,
+    reports.visit_verification,
     reports.submitted_by_user_id,
     reports.reviewed_by_user_id,
     reports.reviewed_at,
@@ -383,9 +388,10 @@ INSERT INTO reports (
 	notes,
 	review_state,
 	confidence_score,
+	visit_verification,
 	submitted_by_user_id
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 RETURNING
     id,
     external_id,
@@ -403,6 +409,7 @@ RETURNING
     notes,
     review_state,
     confidence_score::double precision,
+    visit_verification,
     submitted_by_user_id,
     reviewed_by_user_id,
     reviewed_at,
@@ -992,6 +999,7 @@ SELECT
     notes,
     review_state,
     confidence_score::double precision,
+    visit_verification,
     submitted_by_user_id,
     reviewed_by_user_id,
     reviewed_at,
@@ -1037,6 +1045,7 @@ RETURNING
     notes,
     review_state,
     confidence_score::double precision,
+    visit_verification,
     submitted_by_user_id,
     reviewed_by_user_id,
     reviewed_at,
@@ -1772,6 +1781,7 @@ func (s Store) CreateReportTx(ctx context.Context, input CreateReportInput) (Rep
 		normalized.Notes,
 		normalized.ReviewState,
 		normalized.ConfidenceScore,
+		nullableJSONMapArg(normalized.VisitVerification),
 		normalized.SubmittedByUserID,
 	))
 	if err != nil {
@@ -1849,6 +1859,7 @@ func (s Store) CreatePendingReportTx(ctx context.Context, input CreateReportInpu
 		normalized.Notes,
 		normalized.ReviewState,
 		normalized.ConfidenceScore,
+		nullableJSONMapArg(normalized.VisitVerification),
 		normalized.SubmittedByUserID,
 	))
 	if err != nil {
@@ -2113,6 +2124,7 @@ func scanReport(row pgx.Row) (Report, error) {
 	var queuePressure sql.NullString
 	var notes sql.NullString
 	var confidence sql.NullFloat64
+	var visitVerificationJSON []byte
 	var submittedByUserID sql.NullInt64
 	var reviewedByUserID sql.NullInt64
 	var reviewedAt sql.NullTime
@@ -2135,6 +2147,7 @@ func scanReport(row pgx.Row) (Report, error) {
 		&notes,
 		&report.ReviewState,
 		&confidence,
+		&visitVerificationJSON,
 		&submittedByUserID,
 		&reviewedByUserID,
 		&reviewedAt,
@@ -2151,6 +2164,9 @@ func scanReport(row pgx.Row) (Report, error) {
 	report.QueuePressure = nullStringPtr(queuePressure)
 	report.Notes = nullStringPtr(notes)
 	report.ConfidenceScore = nullFloat64Ptr(confidence)
+	if err := unmarshalMap(visitVerificationJSON, &report.VisitVerification); err != nil {
+		return Report{}, err
+	}
 	report.SubmittedByUserID = nullInt64Ptr(submittedByUserID)
 	report.ReviewedByUserID = nullInt64Ptr(reviewedByUserID)
 	report.ReviewedAt = nullTimePtr(reviewedAt)
@@ -2667,6 +2683,19 @@ func nullableTrimmedStringArg(value string) *string {
 		return nil
 	}
 	return &trimmed
+}
+
+func nullableJSONMapArg(value map[string]any) *string {
+	if value == nil {
+		return nil
+	}
+	data, err := json.Marshal(value)
+	if err != nil {
+		empty := "{}"
+		return &empty
+	}
+	encoded := string(data)
+	return &encoded
 }
 
 func nullFloat64Ptr(value sql.NullFloat64) *float64 {

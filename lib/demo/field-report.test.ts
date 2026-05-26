@@ -327,6 +327,38 @@ describe("field report submission", () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 
+  it("submits online field reports with captured visit proof", async () => {
+    const submitReport = vi.fn().mockResolvedValue({
+      created: true,
+      ok: true,
+      reporterName: "Authenticated Reporter",
+    });
+    const refresh = vi.fn();
+    const visitVerification = {
+      accuracyLabel: "Good GPS accuracy" as const,
+      capturedAt: "2026-05-03T08:29:00.000Z",
+      coordinateLabel: "25.70694°S 28.22944°E",
+      distanceLabel: "18 m",
+      distanceMeters: 18,
+      statusLabel: "Location verified" as const,
+      tone: "clear" as const,
+    };
+
+    await submitOnlineFieldReport({
+      clinicId: "clinic-mamelodi-east",
+      refresh,
+      report,
+      submitReport,
+      visitVerification,
+    });
+
+    expect(submitReport).toHaveBeenCalledWith({
+      clinicId: "clinic-mamelodi-east",
+      report,
+      visitVerification,
+    });
+  });
+
   it("rejects unauthenticated queued field report syncs before calling the API", async () => {
     getSessionCookieHeaderMock.mockResolvedValue(null);
 
@@ -353,7 +385,17 @@ describe("field report submission", () => {
   });
 
   it("maps queue items to offline sync API request items", async () => {
-    await syncQueuedFieldReports([queuedReport]);
+    const visitVerification = {
+      accuracyLabel: "Good GPS accuracy" as const,
+      capturedAt: "2026-05-03T08:29:00.000Z",
+      coordinateLabel: "25.70694°S 28.22944°E",
+      distanceLabel: "18 m",
+      distanceMeters: 18,
+      statusLabel: "Location verified" as const,
+      tone: "clear" as const,
+    };
+
+    await syncQueuedFieldReports([{ ...queuedReport, visitVerification }]);
 
     expect(syncOfflineReportsApiMock.mock.calls[0][0]).toEqual({
       items: [
@@ -369,6 +411,7 @@ describe("field report submission", () => {
           submittedAt: "2026-05-03T08:30:00.000Z",
           queuedAt: "2026-05-03T08:31:00.000Z",
           attemptCount: 2,
+          visitVerification,
         },
       ],
     });

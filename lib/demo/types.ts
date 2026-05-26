@@ -63,6 +63,7 @@ export type ReportEvent = {
   stockPressure: StockPressure;
   queuePressure: QueuePressure;
   notes: string;
+  visitVerification?: FieldLocationVerification | null;
 };
 
 export type OfflineReportQueueItem = {
