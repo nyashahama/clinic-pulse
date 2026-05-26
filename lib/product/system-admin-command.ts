@@ -372,7 +372,7 @@ export function buildSystemAdminCommandModel(
       eyebrow: "Platform operations",
       title: "Platform Command Console",
       description:
-        "A source-backed control plane for tenant health, ingestion review, security posture, partner readiness, and audit evidence.",
+        "A control plane for tenant health, ingestion review, security posture, partner readiness, and audit evidence.",
       syncLabel: formatSyncLabel(input.syncSummary.lastSyncAt),
       activeAlertLabel:
         input.activeAlertCount > 0

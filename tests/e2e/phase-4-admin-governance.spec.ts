@@ -17,6 +17,12 @@ async function clickSidebarLink(page: Page, name: string, path: string) {
   await expect(page.locator("[data-admin-module]").first()).toBeVisible();
 }
 
+async function expectResearchRailHidden(page: Page) {
+  await expect(page.getByText("Research basis", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: /source.*references/i })).toHaveCount(0);
+  await expect(page.getByText(/source-backed/i)).toHaveCount(0);
+}
+
 test("organisation admin sees real governance modules", async ({ page }) => {
   await signIn(page, "org-admin@clinicpulse.local");
   for (const path of [
@@ -31,7 +37,7 @@ test("organisation admin sees real governance modules", async ({ page }) => {
   }
 });
 
-test("system admin sees referenced platform command console", async ({ page }) => {
+test("system admin sees platform command console without implementation research rails", async ({ page }) => {
   await signIn(page, "system-admin@clinicpulse.local");
   await page.goto("/admin");
 
@@ -39,7 +45,10 @@ test("system admin sees referenced platform command console", async ({ page }) =
   await expect(page.getByLabel("Platform command metrics")).toBeVisible();
   await expect(page.getByLabel("Operational command lanes")).toBeVisible();
   await expect(page.getByLabel("Audit and evidence console")).toBeVisible();
-  await expect(page.getByText("Source-backed UI references")).toBeVisible();
+  await expectResearchRailHidden(page);
+  await expect(
+    page.getByText(/Trigger\.dev|OpenStatus|Supabase Studio|Unkey audit logs|Logto console|Infisical|Cal\.com|Dub|shadcn/i),
+  ).toHaveCount(0);
   await expect(
     page
       .getByLabel("Audit and evidence console")
@@ -62,118 +71,60 @@ test("system admin command console remains navigable on mobile", async ({ page, 
   ).toHaveAttribute("href", "/admin/tenant-health");
 });
 
-test("tenant health exposes source-backed references", async ({ page }) => {
+test("tenant health keeps implementation research out of user-facing UI", async ({ page }) => {
   await signIn(page, "system-admin@clinicpulse.local");
   await page.goto("/admin/tenant-health");
 
   await expect(page.getByRole("heading", { name: "Tenant health" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Tenant-health source references" })).toBeVisible();
-  await expect(page.getByRole("link", { name: /Supabase Studio/i })).toHaveAttribute(
-    "href",
-    "https://github.com/supabase/supabase",
-  );
-  await expect(page.getByRole("link", { name: /OpenStatus/i })).toHaveAttribute(
-    "href",
-    "https://github.com/openstatusHQ/openstatus",
-  );
+  await expectResearchRailHidden(page);
 });
 
-test("security posture exposes source-backed references", async ({ page }) => {
+test("security posture keeps implementation research out of user-facing UI", async ({ page }) => {
   await signIn(page, "system-admin@clinicpulse.local");
   await page.goto("/admin/security");
 
   await expect(page.getByRole("heading", { name: "Security posture" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Security source references" })).toBeVisible();
-  await expect(page.getByRole("link", { name: /Unkey audit logs/i })).toHaveAttribute(
-    "href",
-    "https://github.com/unkeyed/unkey",
-  );
-  await expect(page.getByRole("link", { name: /Infisical/i })).toHaveAttribute(
-    "href",
-    "https://github.com/Infisical/infisical",
-  );
+  await expectResearchRailHidden(page);
 });
 
-test("data ingestion exposes source-backed references", async ({ page }) => {
+test("data ingestion keeps implementation research out of user-facing UI", async ({ page }) => {
   await signIn(page, "system-admin@clinicpulse.local");
   await page.goto("/admin/data-ingestion");
 
   await expect(page.getByRole("heading", { name: "Ingestion pressure" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Data-ingestion source references" })).toBeVisible();
-  await expect(page.getByRole("link", { name: /Trigger.dev/i })).toHaveAttribute(
-    "href",
-    "https://github.com/triggerdotdev/trigger.dev",
-  );
-  await expect(page.getByRole("link", { name: /OpenStatus/i })).toHaveAttribute(
-    "href",
-    "https://github.com/openstatusHQ/openstatus",
-  );
+  await expectResearchRailHidden(page);
 });
 
-test("integration operations exposes source-backed references", async ({ page }) => {
+test("integration operations keeps implementation research out of user-facing UI", async ({ page }) => {
   await signIn(page, "system-admin@clinicpulse.local");
   await page.goto("/admin/integrations");
 
   await expect(page.getByRole("heading", { name: "Integration operations" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Integration source references" })).toBeVisible();
-  await expect(page.getByRole("link", { name: /Infisical admin integrations/i })).toHaveAttribute(
-    "href",
-    "https://github.com/Infisical/infisical",
-  );
-  await expect(page.getByRole("link", { name: /Cal.com BTCPay setup/i })).toHaveAttribute(
-    "href",
-    "https://github.com/calcom/cal.com",
-  );
+  await expectResearchRailHidden(page);
 });
 
-test("audit evidence exposes source-backed references", async ({ page }) => {
+test("audit evidence keeps implementation research out of user-facing UI", async ({ page }) => {
   await signIn(page, "system-admin@clinicpulse.local");
   await page.goto("/admin/audit-evidence");
 
   await expect(page.getByRole("heading", { name: "Audit evidence" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Audit-evidence source references" })).toBeVisible();
-  await expect(page.getByRole("link", { name: /Supabase Audit Logs/i })).toHaveAttribute(
-    "href",
-    "https://github.com/supabase/supabase",
-  );
-  await expect(page.getByRole("link", { name: /Infisical Permission Audit/i })).toHaveAttribute(
-    "href",
-    "https://github.com/Infisical/infisical",
-  );
+  await expectResearchRailHidden(page);
 });
 
-test("partner readiness exposes source-backed references", async ({ page }) => {
+test("partner readiness keeps implementation research out of user-facing UI", async ({ page }) => {
   await signIn(page, "system-admin@clinicpulse.local");
   await page.goto("/admin/partner-readiness");
 
   await expect(page.getByRole("heading", { name: "Partner readiness" })).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Partner-readiness source references" }),
-  ).toBeVisible();
-  await expect(page.getByRole("link", { name: /Cal.com connector setup/i })).toHaveAttribute(
-    "href",
-    "https://github.com/calcom/cal.diy",
-  );
-  await expect(page.getByRole("link", { name: /Trigger.dev run controls/i })).toHaveAttribute(
-    "href",
-    "https://github.com/triggerdotdev/trigger.dev",
-  );
+  await expectResearchRailHidden(page);
 });
 
-test("access review exposes source-backed references", async ({ page }) => {
+test("access review keeps implementation research out of user-facing UI", async ({ page }) => {
   await signIn(page, "system-admin@clinicpulse.local");
   await page.goto("/admin/access-review");
 
   await expect(page.getByRole("heading", { name: "Access review" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Access-review source references" })).toBeVisible();
-  await expect(page.getByRole("link", { name: /Infisical Permission Audit/i })).toHaveAttribute(
-    "href",
-    "https://github.com/Infisical/infisical",
-  );
-  await expect(page.getByRole("link", { name: /Supabase Team Settings/i })).toHaveAttribute(
-    "href",
-    "https://github.com/supabase/supabase",
-  );
+  await expectResearchRailHidden(page);
 });
 
 test("reporting coverage clinic names open operational detail", async ({ page }) => {
