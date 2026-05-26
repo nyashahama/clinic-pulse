@@ -57,7 +57,6 @@ function PreviewRowContent({ row }: { row: PreviewRow }) {
 function FieldReportPreview() {
   return (
     <div
-      aria-hidden="true"
       data-motion-layer="true"
       className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 dark:border-border dark:bg-muted"
     >
@@ -89,7 +88,6 @@ function FieldReportPreview() {
 function DistrictConsolePreview() {
   return (
     <div
-      aria-hidden="true"
       data-motion-layer="true"
       className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 dark:border-border dark:bg-muted"
     >
@@ -133,7 +131,6 @@ function DistrictConsolePreview() {
 function PatientReroutePreview() {
   return (
     <div
-      aria-hidden="true"
       data-motion-layer="true"
       className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 dark:border-border dark:bg-muted"
     >
@@ -181,7 +178,6 @@ function PatientReroutePreview() {
 function AuditLedgerPreview() {
   return (
     <div
-      aria-hidden="true"
       data-motion-layer="true"
       className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 dark:border-border dark:bg-muted"
     >
