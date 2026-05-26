@@ -30,7 +30,7 @@ export function WorkspaceShell({
   return (
     <SidebarProvider className="[--header-height:4rem] bg-background text-foreground">
       <WorkspaceSidebar session={session} />
-      <SidebarInset className="flex h-svh min-w-0 flex-col overflow-hidden bg-background">
+      <SidebarInset className="flex h-svh min-w-0 flex-col overflow-clip bg-background">
         <WorkspaceHeader
           authSession={session}
           headerStatusIndicator={headerStatusIndicator}

@@ -21,6 +21,12 @@ async function signInAsReporter(page: Page) {
   await expect(page).toHaveURL(/\/field$/);
 }
 
+async function getWorkspaceShellScrollTop(page: Page) {
+  return page.locator('[data-slot="sidebar-inset"]').evaluate((element) => {
+    return element.scrollTop;
+  });
+}
+
 async function rejectPendingReportByNotes(page: Page, notes: string) {
   const loginResponse = await page.request.post("/api/clinicpulse/v1/auth/login", {
     data: operationsAccount,
@@ -124,6 +130,33 @@ test("shows the field visit cockpit in the mobile first viewport", async ({
 
   const reportHeadingBox = await reportHeading.boundingBox();
   expect(reportHeadingBox?.y ?? 9999).toBeLessThan(220);
+});
+
+test("keeps field hash navigation inside the page scroller", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "desktop-chrome",
+    "Desktop sidebar hash navigation is covered by the desktop-chrome project.",
+  );
+
+  await signInAsReporter(page);
+  await expect(getWorkspaceShellScrollTop(page)).resolves.toBe(0);
+
+  await page.getByRole("link", { name: "Recent reports", exact: true }).click();
+  await expect(page).toHaveURL(/\/field#recent-reports$/);
+  await expect(page.locator("#recent-reports")).toBeInViewport();
+  await expect(getWorkspaceShellScrollTop(page)).resolves.toBe(0);
+
+  await page.getByRole("link", { name: "Drafts and sync", exact: true }).click();
+  await expect(page).toHaveURL(/\/field#drafts-sync$/);
+  await expect(page.locator("#drafts-sync")).toBeInViewport();
+  await expect(getWorkspaceShellScrollTop(page)).resolves.toBe(0);
+
+  await page.getByRole("link", { name: "Submit report" }).first().click();
+  await expect(page).toHaveURL(/\/field#submit-report$/);
+  await expect(page.locator("#submit-report")).toBeInViewport();
+  await expect(getWorkspaceShellScrollTop(page)).resolves.toBe(0);
 });
 
 test("restores an in-progress field report draft when returning to a clinic", async ({
