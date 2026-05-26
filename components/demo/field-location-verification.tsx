@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertCircle, CheckCircle2, LocateFixed, MapPin } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -38,9 +38,24 @@ function getErrorMessage(error: GeolocationPositionError | Error | null) {
 export function FieldLocationVerificationPanel({
   clinic,
 }: FieldLocationVerificationPanelProps) {
+  const clinicVerificationKey = `${clinic.name}:${clinic.latitude}:${clinic.longitude}`;
+  const activeClinicKeyRef = useRef(clinicVerificationKey);
+  const mountedRef = useRef(true);
   const [verification, setVerification] = useState<FieldLocationVerification | null>(null);
   const [error, setError] = useState<GeolocationPositionError | Error | null>(null);
   const [capturing, setCapturing] = useState(false);
+
+  useEffect(() => {
+    activeClinicKeyRef.current = clinicVerificationKey;
+  }, [clinicVerificationKey]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const handleVerify = () => {
     setError(null);
@@ -50,14 +65,21 @@ export function FieldLocationVerificationPanel({
       return;
     }
 
+    const requestedClinic = clinic;
+    const requestedClinicKey = clinicVerificationKey;
+
     setCapturing(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        if (!mountedRef.current || activeClinicKeyRef.current !== requestedClinicKey) {
+          return;
+        }
+
         setVerification(
           buildFieldLocationVerification({
             accuracyMeters: position.coords.accuracy,
             capturedAt: new Date(position.timestamp).toISOString(),
-            clinic,
+            clinic: requestedClinic,
             position: {
               latitude: position.coords.latitude,
               longitude: position.coords.longitude,
@@ -67,6 +89,10 @@ export function FieldLocationVerificationPanel({
         setCapturing(false);
       },
       (captureError) => {
+        if (!mountedRef.current || activeClinicKeyRef.current !== requestedClinicKey) {
+          return;
+        }
+
         setError(captureError);
         setCapturing(false);
       },

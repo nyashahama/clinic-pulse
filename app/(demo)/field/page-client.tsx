@@ -718,6 +718,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
 
         {selectedClinic ? (
           <FieldLocationVerificationPanel
+            key={selectedClinic.id}
             clinic={{
               latitude: selectedClinic.latitude,
               longitude: selectedClinic.longitude,

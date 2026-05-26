@@ -301,3 +301,41 @@ test("verifies the active stop with browser location", async ({ page }) => {
   await expect(page.getByText("Good GPS accuracy")).toBeVisible();
   await expect(page.getByText("0 m from Mamelodi East Community Clinic")).toBeVisible();
 });
+
+test("clears visit verification when the active stop changes", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: {
+        getCurrentPosition: (success: PositionCallback) =>
+          success({
+            coords: {
+              accuracy: 4,
+              altitude: null,
+              altitudeAccuracy: null,
+              heading: null,
+              latitude: -25.7096,
+              longitude: 28.3676,
+              speed: null,
+            },
+            timestamp: Date.now(),
+          } as GeolocationPosition),
+      },
+    });
+  });
+
+  await signInAsReporter(page);
+
+  await page.getByRole("button", { name: "Verify active stop" }).click();
+  await expect(page.getByText("0 m from Mamelodi East Community Clinic")).toBeVisible();
+
+  await page
+    .getByTestId("field-route-map")
+    .getByRole("button", { name: /Open stop .*Hammanskraal Unit D Clinic/i })
+    .click();
+
+  await expect(
+    page.getByText("No visit location captured for Hammanskraal Unit D Clinic yet."),
+  ).toBeVisible();
+  await expect(page.getByText("0 m from Hammanskraal Unit D Clinic")).toHaveCount(0);
+});
