@@ -94,6 +94,22 @@ test("security posture exposes source-backed references", async ({ page }) => {
   );
 });
 
+test("data ingestion exposes source-backed references", async ({ page }) => {
+  await signIn(page, "system-admin@clinicpulse.local");
+  await page.goto("/admin/data-ingestion");
+
+  await expect(page.getByRole("heading", { name: "Ingestion pressure" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Data-ingestion source references" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Trigger.dev/i })).toHaveAttribute(
+    "href",
+    "https://github.com/triggerdotdev/trigger.dev",
+  );
+  await expect(page.getByRole("link", { name: /OpenStatus/i })).toHaveAttribute(
+    "href",
+    "https://github.com/openstatusHQ/openstatus",
+  );
+});
+
 test("reporting coverage clinic names open operational detail", async ({ page }) => {
   await signIn(page, "org-admin@clinicpulse.local");
   await page.goto("/admin/reporting-coverage");
