@@ -1,5 +1,6 @@
 export type AdminReturnSource =
   | "admin"
+  | "admin-reporting-coverage"
   | "admin-users-roles"
   | "admin-access-review"
   | "admin-audit-evidence"
@@ -13,6 +14,10 @@ export type AdminReturnTarget = {
 
 const adminReturnTargets: Record<AdminReturnSource, AdminReturnTarget> = {
   admin: { href: "/admin", label: "Back to admin console" },
+  "admin-reporting-coverage": {
+    href: "/admin/reporting-coverage",
+    label: "Back to reporting coverage",
+  },
   "admin-users-roles": {
     href: "/admin/users-roles",
     label: "Back to users and roles",

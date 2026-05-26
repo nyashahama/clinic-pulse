@@ -177,6 +177,12 @@ test("reporting coverage rows update the evidence receipt rail", async ({ page }
   await signIn(page, "org-admin@clinicpulse.local");
   await page.goto("/admin/reporting-coverage");
 
+  await expect(
+    page.getByRole("heading", { name: "Organisation readiness review" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Readiness review task queue")).toBeVisible();
+  await expect(page.getByLabel("Selected clinic readiness packet")).toBeVisible();
+
   const coverageTable = page.getByLabel("Clinic reporting coverage");
   const clinicRow = coverageTable.getByRole("row", {
     name: /Inspect coverage receipt for Mabopane Station Clinic/i,
@@ -186,6 +192,9 @@ test("reporting coverage rows update the evidence receipt rail", async ({ page }
   await clinicRow.getByText("non functional", { exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/reporting-coverage$/);
   await expect(page.getByRole("heading", { name: "Mabopane Station Clinic" })).toBeVisible();
+  await expect(page.getByLabel("Selected clinic readiness packet")).toContainText(
+    /Readiness impact|Recommended action/i,
+  );
 });
 
 test("data ingestion clinic-backed rows open operational detail", async ({ page }) => {

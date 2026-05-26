@@ -203,10 +203,14 @@ it("links reporting coverage clinic rows to operational clinic detail", () => {
 
   expect(source).toContain("ReportingCoverageLedger");
   expect(source).not.toContain("AdminEvidenceTable");
+  expect(componentSource).toContain("Organisation readiness review");
+  expect(componentSource).toContain('aria-label="Readiness review task queue"');
+  expect(componentSource).toContain('aria-label="Selected clinic readiness packet"');
   expect(componentSource).toContain('aria-label={viewModel.ledger.title}');
   expect(componentSource).toContain("Inspect coverage receipt for");
   expect(componentSource).toContain("onSelectReceipt(row.clinicId)");
   expect(modelSource).toContain('const RETURN_SOURCE = "admin-reporting-coverage";');
+  expect(modelSource).toContain("buildAdminReportDetailHref");
   expect(modelSource).toContain(
     '`/district/clinics/${encodeURIComponent(clinicId)}?from=${RETURN_SOURCE}`',
   );
