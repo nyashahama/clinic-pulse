@@ -75,7 +75,6 @@ docs/*
 !docs/phase-5-pilot-launch-readiness-spec.md
 !docs/phase-5-pilot-launch-readiness-implementation-plan.md
 !docs/phase-5-pilot-launch-readiness-closeout.md
-!docs/field-visit-cockpit-spec.md
 !docs/phase-5-pilot-launch-checklist.md
 !docs/phase-5-stakeholder-handoff-runbook.md
 !docs/openapi/

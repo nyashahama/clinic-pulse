@@ -35,8 +35,8 @@ export function SyncStatus({
     <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
       <SectionHeader
         eyebrow="Sync status"
-        title="Device sync"
-        description="This browser keeps reports available until ClinicPulse can be reached."
+        title="Device queue"
+        description="Reports stored on this browser until the API accepts them."
       />
 
       <div className="mt-4 grid gap-3">
@@ -76,7 +76,7 @@ export function SyncStatus({
             Device queue
           </p>
           <p className="mt-1 text-content-emphasis">
-            {queuedReports} report{queuedReports === 1 ? "" : "s"} saved on this device.
+            {queuedReports} report{queuedReports === 1 ? "" : "s"} waiting to sync.
           </p>
           <p className="mt-1 text-xs text-content-subtle">
             Last synced: {lastSyncedAt ? formatTime(lastSyncedAt) : "Not synced yet"}

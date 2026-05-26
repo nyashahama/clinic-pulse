@@ -88,34 +88,3 @@ test("shows pending review feedback after an online field report submission", as
     await rejectPendingReportByNotes(page, testNotes);
   }
 });
-
-test("shows the field visit cockpit in the mobile first viewport", async ({
-  page,
-}, testInfo) => {
-  test.skip(
-    testInfo.project.name !== "mobile-chrome",
-    "Mobile first viewport is covered by the mobile-chrome project.",
-  );
-
-  await signInAsReporter(page);
-
-  const cockpit = page.locator("[data-field-visit-cockpit]");
-  await expect(cockpit).toBeVisible();
-  await expect(cockpit.getByText(/Stop \d+ of \d+/)).toBeVisible();
-  await expect(
-    cockpit.getByRole("link", { name: /Start report|Continue report/ }),
-  ).toBeVisible();
-
-  const cockpitBox = await cockpit.boundingBox();
-  expect(cockpitBox?.y ?? 9999).toBeLessThan(180);
-
-  await cockpit.getByRole("link", { name: /Start report|Continue report/ }).click();
-
-  const reportHeading = page.getByRole("heading", {
-    name: "Capture field update",
-  });
-  await expect(reportHeading).toBeVisible();
-
-  const reportHeadingBox = await reportHeading.boundingBox();
-  expect(reportHeadingBox?.y ?? 9999).toBeLessThan(220);
-});

@@ -1,6 +1,6 @@
 "use client";
 
-import type { FormEvent, ReactNode } from "react";
+import type { FormEvent } from "react";
 import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -88,34 +88,6 @@ function SegmentedOptions({ options, value, name, onChange }: SegmentedOptionPro
   );
 }
 
-function VisitStep({
-  children,
-  description,
-  number,
-  title,
-}: {
-  children: ReactNode;
-  description: string;
-  number: number;
-  title: string;
-}) {
-  return (
-    <fieldset className="rounded-lg border border-border-subtle bg-bg-subtle p-3">
-      <legend className="sr-only">{title}</legend>
-      <div className="mb-3 flex items-start gap-3">
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-xs font-semibold text-white">
-          {number}
-        </span>
-        <div>
-          <p className="text-sm font-medium text-content-emphasis">{title}</p>
-          <p className="text-xs leading-5 text-content-subtle">{description}</p>
-        </div>
-      </div>
-      {children}
-    </fieldset>
-  );
-}
-
 export function ReportForm({
   clinicId,
   clinicName,
@@ -163,84 +135,54 @@ export function ReportForm({
   return (
     <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
       <SectionHeader
-        eyebrow="Visit report"
-        title="Capture field update"
-        description="Confirm the site, capture pressure, then send it for district review or save it on this device."
+        eyebrow="Report form"
+        title="Submit clinic status"
+        description="Use the five core fields to send an updated status."
       />
 
       <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
-        <VisitStep
-          number={1}
-          title="Confirm clinic"
-          description="This report will be attached to the selected facility."
-        >
-          <p className="rounded-md border border-border-subtle bg-bg-default px-3 py-2 text-sm font-medium text-content-emphasis">
-            {clinicName}
-          </p>
-        </VisitStep>
-
-        <VisitStep
-          number={2}
-          title="Set service status"
-          description="Choose the operating state the district team should review."
-        >
+        <fieldset className="space-y-2">
+          <p className="text-sm font-medium text-content-emphasis">Clinic status</p>
           <SegmentedOptions
             name="clinic-status"
             value={status}
             options={STATUS_OPTIONS}
             onChange={(value) => setStatus(value as ClinicStatus)}
           />
-        </VisitStep>
+        </fieldset>
 
-        <VisitStep
-          number={3}
-          title="Capture pressure"
-          description="Record staffing, stock, and queue pressure while you are on site."
-        >
-          <div className="grid gap-3">
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-content-emphasis">
-                Staff availability
-              </p>
-              <SegmentedOptions
-                name="staff-pressure"
-                value={staff}
-                options={STAFF_OPTIONS}
-                onChange={(value) => setStaff(value as StaffPressure)}
-              />
-            </div>
+        <fieldset className="space-y-2">
+          <p className="text-sm font-medium text-content-emphasis">Staff availability</p>
+          <SegmentedOptions
+            name="staff-pressure"
+            value={staff}
+            options={STAFF_OPTIONS}
+            onChange={(value) => setStaff(value as StaffPressure)}
+          />
+        </fieldset>
 
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-content-emphasis">
-                Medicine/stock availability
-              </p>
-              <SegmentedOptions
-                name="stock-pressure"
-                value={stock}
-                options={STOCK_OPTIONS}
-                onChange={(value) => setStock(value as StockPressure)}
-              />
-            </div>
+        <fieldset className="space-y-2">
+          <p className="text-sm font-medium text-content-emphasis">Medicine/stock availability</p>
+          <SegmentedOptions
+            name="stock-pressure"
+            value={stock}
+            options={STOCK_OPTIONS}
+            onChange={(value) => setStock(value as StockPressure)}
+          />
+        </fieldset>
 
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-content-emphasis">
-                Queue pressure
-              </p>
-              <SegmentedOptions
-                name="queue-pressure"
-                value={queue}
-                options={QUEUE_OPTIONS}
-                onChange={(value) => setQueue(value as QueuePressure)}
-              />
-            </div>
-          </div>
-        </VisitStep>
+        <fieldset className="space-y-2">
+          <p className="text-sm font-medium text-content-emphasis">Queue pressure</p>
+          <SegmentedOptions
+            name="queue-pressure"
+            value={queue}
+            options={QUEUE_OPTIONS}
+            onChange={(value) => setQueue(value as QueuePressure)}
+          />
+        </fieldset>
 
-        <VisitStep
-          number={4}
-          title="Add visit notes"
-          description="Capture the reason, barriers, and what changed today."
-        >
+        <fieldset className="space-y-2">
+          <p className="text-sm font-medium text-content-emphasis">Notes</p>
           <textarea
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
@@ -252,18 +194,12 @@ export function ReportForm({
           <p className="text-xs text-content-subtle">
             {notes.length}/250 characters
           </p>
-        </VisitStep>
+        </fieldset>
 
-        <VisitStep
-          number={5}
-          title="Review and send"
-          description="Online reports go to district review. Offline reports are saved on this device."
-        >
-          <Button type="submit" disabled={submitDisabled} className="w-full">
-            {submitting ? "Submitting..." : "Submit report"}
-          </Button>
-          <FieldReportReceipt feedback={feedback} />
-        </VisitStep>
+        <Button type="submit" disabled={submitDisabled} className="w-full">
+          {submitting ? "Submitting…" : "Submit report"}
+        </Button>
+        <FieldReportReceipt feedback={feedback} />
       </form>
     </section>
   );

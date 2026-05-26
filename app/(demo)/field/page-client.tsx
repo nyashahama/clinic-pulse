@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  type MouseEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -14,6 +13,8 @@ import { useRouter } from "next/navigation";
 
 import { FieldClinicList } from "@/components/demo/field-clinic-list";
 import { OfflineQueue } from "@/components/demo/offline-queue";
+import { ReferencePanel } from "@/components/demo/reference-dashboard";
+import { ReferenceSectionCards } from "@/components/demo/reference-section-cards";
 import {
   FieldReportToast,
   type FieldReportFeedback,
@@ -21,7 +22,7 @@ import {
 import { ReportForm } from "@/components/demo/report-form";
 import { SyncStatus } from "@/components/demo/sync-status";
 import { SectionHeader } from "@/components/demo/section-header";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import type { ClientAuthSession } from "@/lib/auth/api";
 import { ClinicPulseApiError } from "@/lib/demo/api-client";
 import { useDemoStore } from "@/lib/demo/demo-store";
@@ -29,7 +30,6 @@ import {
   submitOnlineFieldReport,
   type OnlineFieldReportInput,
 } from "@/lib/demo/field-report";
-import { buildFieldVisitCockpitViewModel } from "@/lib/demo/field-visit-cockpit";
 import {
   addOfflineReport,
   listActiveOfflineReports,
@@ -409,42 +409,6 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
     () => countWaitingOfflineReports(offlineReports),
     [offlineReports],
   );
-  const fieldCockpit = useMemo(
-    () =>
-      buildFieldVisitCockpitViewModel({
-        clinics,
-        selectedClinicId: selectedId,
-        offlineReports,
-        isOnline,
-        lastSyncedAt,
-      }),
-    [clinics, selectedId, offlineReports, isOnline, lastSyncedAt],
-  );
-  const handleJumpToReport = useCallback((event: MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault();
-
-    const target = document.getElementById("submit-report");
-    if (!target) {
-      return;
-    }
-
-    target.scrollIntoView({ block: "start" });
-    window.history.replaceState(null, "", "#submit-report");
-  }, []);
-  const handleJumpToItinerary = useCallback(
-    (event: MouseEvent<HTMLAnchorElement>) => {
-      event.preventDefault();
-
-      const target = document.getElementById("field-itinerary");
-      if (!target) {
-        return;
-      }
-
-      target.scrollIntoView({ block: "start" });
-      window.history.replaceState(null, "", "#field-itinerary");
-    },
-    [],
-  );
 
   useEffect(() => {
     let isMounted = true;
@@ -574,104 +538,47 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
   return (
     <div className="grid gap-4 pb-4" data-role-dashboard={session.role}>
       <FieldReportToast feedback={toastFeedback} />
+      <ReferenceSectionCards
+        cards={[
+          {
+            title: "Assigned clinics",
+            value: String(clinics.length),
+            badge: "Route",
+            trend: "up",
+            footer: "Today’s field route is loaded",
+            detail: "The list, report form, and queue use the same assigned clinics.",
+          },
+          {
+            title: "Waiting sync",
+            value: String(waitingOfflineReportCount),
+            badge: waitingOfflineReportCount > 0 ? "Queued" : "Clear",
+            trend: waitingOfflineReportCount > 0 ? "down" : "neutral",
+            footer: "Reports still held on this device",
+            detail: "The field view starts with local queue pressure before review.",
+          },
+          {
+            title: "Connection",
+            value: isOnline ? "Online" : "Offline",
+            badge: isOnline ? "Live" : "Offline",
+            trend: isOnline ? "neutral" : "down",
+            footer: "Submission mode controls queue behavior",
+            detail: "Online reports enter review; offline reports wait for sync.",
+          },
+          {
+            title: "Selected clinic",
+            value: selectedClinic ? selectedClinic.status.replaceAll("_", " ") : "None",
+            badge: "Visit context",
+            trend: selectedClinic ? "up" : "down",
+            footer: selectedName,
+            detail: "The selected clinic drives the form and offline queue context.",
+          },
+        ]}
+      />
 
-      <section
-        className="overflow-hidden rounded-lg border border-border-subtle bg-bg-default shadow-sm"
-        data-field-visit-cockpit
-      >
-        <div className="grid gap-4 bg-neutral-950 p-4 text-white lg:grid-cols-[1fr_auto] lg:items-start">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-normal text-white/65">
-              Field visit cockpit
-            </p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-normal text-white sm:text-3xl">
-              {fieldCockpit.selectedVisit.clinicName}
-            </h1>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-white/70">
-              {fieldCockpit.selectedVisit.positionLabel} -{" "}
-              {fieldCockpit.selectedVisit.reason}
-            </p>
-            <div className="mt-4 flex items-center gap-3">
-              <div
-                className="h-2 flex-1 overflow-hidden rounded-full bg-white/15"
-                aria-hidden="true"
-              >
-                <div
-                  className="h-full rounded-full bg-emerald-400"
-                  style={{ width: `${fieldCockpit.routeProgressPercent}%` }}
-                />
-              </div>
-              <p className="text-xs font-semibold text-white/75">
-                {fieldCockpit.routeProgressPercent}% route
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Link
-              className={buttonVariants({
-                className:
-                  "w-full bg-emerald-500 text-neutral-950 hover:bg-emerald-400 sm:w-auto",
-                size: "lg",
-              })}
-              href="#submit-report"
-              onClick={handleJumpToReport}
-            >
-              {fieldCockpit.selectedVisit.primaryActionLabel}
-            </Link>
-            <Link
-              className={buttonVariants({
-                className:
-                  "w-full border-white/20 bg-white/10 text-white hover:bg-white/15 sm:w-auto",
-                size: "lg",
-                variant: "outline",
-              })}
-              href="#field-itinerary"
-              onClick={handleJumpToItinerary}
-            >
-              {fieldCockpit.selectedVisit.secondaryActionLabel}
-            </Link>
-          </div>
-        </div>
-
-        <dl className="grid divide-y divide-border-subtle border-b border-border-subtle sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
-          <div className="p-4">
-            <dt className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
-              Connection
-            </dt>
-            <dd className="mt-1 text-xl font-semibold text-foreground">
-              {fieldCockpit.deviceStrip.connectionLabel}
-            </dd>
-          </div>
-          <div className="p-4">
-            <dt className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
-              Saved on this device
-            </dt>
-            <dd className="mt-1 text-xl font-semibold text-foreground">
-              {fieldCockpit.deviceStrip.savedOnDeviceCount}
-            </dd>
-          </div>
-          <div className="p-4">
-            <dt className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
-              Needs retry
-            </dt>
-            <dd className="mt-1 text-xl font-semibold text-foreground">
-              {fieldCockpit.deviceStrip.needsRetryCount}
-            </dd>
-          </div>
-          <div className="p-4">
-            <dt className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
-              Last synced
-            </dt>
-            <dd className="mt-1 text-xl font-semibold text-foreground">
-              {fieldCockpit.deviceStrip.lastSyncedLabel}
-            </dd>
-          </div>
-        </dl>
-
-        <div className="flex flex-col gap-2 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-content-subtle">
-            Reports sync when the app is open and ClinicPulse can be reached.
-          </p>
+      <ReferencePanel
+        title="Field workbench"
+        description="The field flow is ordered around the actual visit sequence: assigned route, status report, device queue, and sync."
+        actions={
           <Button
             variant="outline"
             size="sm"
@@ -680,23 +587,40 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
           >
             {isOnline ? "Set offline mode" : "Set online mode"}
           </Button>
+        }
+      >
+        <SectionHeader
+          eyebrow="Device state"
+          title="Connection and submission controls"
+          description="Submit a clinic update from offline or online mode. Queued items sync and enter district review when back online."
+        />
+        <div className="mt-3 flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-content-subtle">
+            Clinic status stream is currently {isOnline ? "online" : "offline"}.
+          </p>
+          <p className="text-xs text-content-subtle">
+            Confirm stale or pending data before operational decisions.{" "}
+            <Link href="/legal/safety" className="underline">
+              Read safety notes
+            </Link>
+            .
+          </p>
         </div>
-      </section>
+      </ReferencePanel>
 
-      <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
+      <div id="submit-report" className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
         <FieldClinicList
-          rows={fieldCockpit.itineraryRows}
+          clinics={clinics}
+          selectedClinicId={selectedId}
           onSelectClinic={setSelectedClinicId}
         />
-        <div id="submit-report" className="scroll-mt-28">
-          <ReportForm
-            clinicId={selectedId}
-            clinicName={selectedName}
-            onSubmit={handleSubmit}
-            submitting={submitting}
-            feedback={submitFeedback}
-          />
-        </div>
+        <ReportForm
+          clinicId={selectedId}
+          clinicName={selectedName}
+          onSubmit={handleSubmit}
+          submitting={submitting}
+          feedback={submitFeedback}
+        />
       </div>
 
       <div id="drafts-sync" className="grid gap-4 lg:grid-cols-2">
