@@ -726,12 +726,17 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
               >
                 <div
                   className="h-full rounded-full bg-emerald-400"
-                  style={{ width: `${fieldCockpit.routeProgressPercent}%` }}
+                  style={{ width: `${fieldCockpit.routePositionPercent}%` }}
                 />
               </div>
-              <p className="text-xs font-semibold text-white/75">
-                {fieldCockpit.routeProgressPercent}% route
-              </p>
+              <div className="shrink-0 text-right">
+                <p className="text-[11px] font-semibold uppercase tracking-normal text-white/55">
+                  Route position
+                </p>
+                <p className="text-xs font-semibold text-white/75">
+                  {fieldCockpit.routePositionLabel}
+                </p>
+              </div>
             </div>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
