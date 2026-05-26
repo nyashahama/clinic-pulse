@@ -13,8 +13,6 @@ import { useRouter } from "next/navigation";
 
 import { FieldClinicList } from "@/components/demo/field-clinic-list";
 import { OfflineQueue } from "@/components/demo/offline-queue";
-import { ReferencePanel } from "@/components/demo/reference-dashboard";
-import { ReferenceSectionCards } from "@/components/demo/reference-section-cards";
 import {
   FieldReportToast,
   type FieldReportFeedback,
@@ -22,7 +20,7 @@ import {
 import { ReportForm } from "@/components/demo/report-form";
 import { SyncStatus } from "@/components/demo/sync-status";
 import { SectionHeader } from "@/components/demo/section-header";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import type { ClientAuthSession } from "@/lib/auth/api";
 import { ClinicPulseApiError } from "@/lib/demo/api-client";
 import { useDemoStore } from "@/lib/demo/demo-store";
@@ -30,6 +28,7 @@ import {
   submitOnlineFieldReport,
   type OnlineFieldReportInput,
 } from "@/lib/demo/field-report";
+import { buildFieldVisitCockpitViewModel } from "@/lib/demo/field-visit-cockpit";
 import {
   addOfflineReport,
   listActiveOfflineReports,
@@ -409,6 +408,17 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
     () => countWaitingOfflineReports(offlineReports),
     [offlineReports],
   );
+  const fieldCockpit = useMemo(
+    () =>
+      buildFieldVisitCockpitViewModel({
+        clinics,
+        selectedClinicId: selectedId,
+        offlineReports,
+        isOnline,
+        lastSyncedAt,
+      }),
+    [clinics, selectedId, offlineReports, isOnline, lastSyncedAt],
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -538,47 +548,86 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
   return (
     <div className="grid gap-4 pb-4" data-role-dashboard={session.role}>
       <FieldReportToast feedback={toastFeedback} />
-      <ReferenceSectionCards
-        cards={[
-          {
-            title: "Assigned clinics",
-            value: String(clinics.length),
-            badge: "Route",
-            trend: "up",
-            footer: "Today’s field route is loaded",
-            detail: "The list, report form, and queue use the same assigned clinics.",
-          },
-          {
-            title: "Waiting sync",
-            value: String(waitingOfflineReportCount),
-            badge: waitingOfflineReportCount > 0 ? "Queued" : "Clear",
-            trend: waitingOfflineReportCount > 0 ? "down" : "neutral",
-            footer: "Reports still held on this device",
-            detail: "The field view starts with local queue pressure before review.",
-          },
-          {
-            title: "Connection",
-            value: isOnline ? "Online" : "Offline",
-            badge: isOnline ? "Live" : "Offline",
-            trend: isOnline ? "neutral" : "down",
-            footer: "Submission mode controls queue behavior",
-            detail: "Online reports enter review; offline reports wait for sync.",
-          },
-          {
-            title: "Selected clinic",
-            value: selectedClinic ? selectedClinic.status.replaceAll("_", " ") : "None",
-            badge: "Visit context",
-            trend: selectedClinic ? "up" : "down",
-            footer: selectedName,
-            detail: "The selected clinic drives the form and offline queue context.",
-          },
-        ]}
-      />
 
-      <ReferencePanel
-        title="Field workbench"
-        description="The field flow is ordered around the actual visit sequence: assigned route, status report, device queue, and sync."
-        actions={
+      <section
+        className="grid gap-4 rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm"
+        data-field-visit-cockpit
+      >
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+              Field visit cockpit
+            </p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-normal text-foreground sm:text-3xl">
+              {fieldCockpit.selectedVisit.clinicName}
+            </h1>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+              {fieldCockpit.selectedVisit.positionLabel} -{" "}
+              {fieldCockpit.selectedVisit.reason}
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Link
+              className={buttonVariants({
+                className: "w-full sm:w-auto",
+                size: "lg",
+              })}
+              href="#submit-report"
+            >
+              {fieldCockpit.selectedVisit.primaryActionLabel}
+            </Link>
+            <Link
+              className={buttonVariants({
+                className: "w-full sm:w-auto",
+                size: "lg",
+                variant: "outline",
+              })}
+              href="#field-itinerary"
+            >
+              {fieldCockpit.selectedVisit.secondaryActionLabel}
+            </Link>
+          </div>
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-lg border border-border-subtle bg-bg-subtle p-3">
+            <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
+              Connection
+            </p>
+            <p className="mt-1 text-lg font-semibold text-foreground">
+              {fieldCockpit.deviceStrip.connectionLabel}
+            </p>
+          </div>
+          <div className="rounded-lg border border-border-subtle bg-bg-subtle p-3">
+            <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
+              Saved on this device
+            </p>
+            <p className="mt-1 text-lg font-semibold text-foreground">
+              {fieldCockpit.deviceStrip.savedOnDeviceCount}
+            </p>
+          </div>
+          <div className="rounded-lg border border-border-subtle bg-bg-subtle p-3">
+            <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
+              Needs retry
+            </p>
+            <p className="mt-1 text-lg font-semibold text-foreground">
+              {fieldCockpit.deviceStrip.needsRetryCount}
+            </p>
+          </div>
+          <div className="rounded-lg border border-border-subtle bg-bg-subtle p-3">
+            <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
+              Last synced
+            </p>
+            <p className="mt-1 text-lg font-semibold text-foreground">
+              {fieldCockpit.deviceStrip.lastSyncedLabel}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2 border-t border-border-subtle pt-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-content-subtle">
+            Reports sync when the app is open and ClinicPulse can be reached.
+          </p>
           <Button
             variant="outline"
             size="sm"
@@ -587,31 +636,12 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
           >
             {isOnline ? "Set offline mode" : "Set online mode"}
           </Button>
-        }
-      >
-        <SectionHeader
-          eyebrow="Device state"
-          title="Connection and submission controls"
-          description="Submit a clinic update from offline or online mode. Queued items sync and enter district review when back online."
-        />
-        <div className="mt-3 flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-content-subtle">
-            Clinic status stream is currently {isOnline ? "online" : "offline"}.
-          </p>
-          <p className="text-xs text-content-subtle">
-            Confirm stale or pending data before operational decisions.{" "}
-            <Link href="/legal/safety" className="underline">
-              Read safety notes
-            </Link>
-            .
-          </p>
         </div>
-      </ReferencePanel>
+      </section>
 
       <div id="submit-report" className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
         <FieldClinicList
-          clinics={clinics}
-          selectedClinicId={selectedId}
+          rows={fieldCockpit.itineraryRows}
           onSelectClinic={setSelectedClinicId}
         />
         <ReportForm
