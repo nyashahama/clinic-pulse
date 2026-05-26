@@ -54,6 +54,7 @@ describe("AdminUserLifecycle source", () => {
     expect(pageSource).toContain("setUserDisabledAction");
     expect(pageSource).toContain("updateUserAccessAction");
     expect(pageSource).toContain("revokeUserSessionsAction");
-    expect(pageSource).toContain("Pilot lifecycle management");
+    expect(pageSource).toContain("AccessGovernanceWorkspace");
+    expect(pageSource).toContain("buildAccessGovernanceViewModel");
   });
 });

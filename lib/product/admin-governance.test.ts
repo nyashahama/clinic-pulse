@@ -24,6 +24,21 @@ describe("classifyAccessRisk", () => {
     });
   });
 
+  it("flags organisation administrators as privileged access", () => {
+    expect(
+      classifyAccessRisk({
+        role: "org_admin",
+        disabled: false,
+        district: null,
+        lastSeenAt: "2026-05-26T08:00:00.000Z",
+      }),
+    ).toEqual({
+      tone: "attention",
+      label: "Privileged",
+      reasons: ["Organisation administrator access"],
+    });
+  });
+
   it("flags district managers without district scope for review", () => {
     expect(
       classifyAccessRisk({
@@ -421,13 +436,42 @@ it("links admin user evidence rows to user detail", () => {
   const usersPage = readFileSync("app/(demo)/admin/users-roles/page.tsx", "utf8");
   const lifecycle = readFileSync("components/product/admin-user-lifecycle.tsx", "utf8");
   const accessReview = readFileSync("app/(demo)/admin/access-review/page.tsx", "utf8");
+  const accessGovernance = readFileSync("lib/product/admin-access-governance.ts", "utf8");
 
   expect(usersPage).toContain('const returnSource = "admin-users-roles";');
   expect(usersPage).toContain("detailReturnSource={returnSource}");
   expect(lifecycle).toContain("buildAdminUserDetailHref(user.userId, detailReturnSource)");
   expect(lifecycle).toContain('import Link from "next/link";');
   expect(accessReview).toContain('const returnSource = "admin-access-review";');
-  expect(accessReview).toContain("buildAdminUserDetailHref(row.userId, returnSource)");
+  expect(accessReview).toContain("detailReturnSource: returnSource");
+  expect(accessGovernance).toContain("buildAdminUserDetailHref(user.userId, detailReturnSource)");
+});
+
+it("uses an access governance packet across org-admin access pages", () => {
+  const usersPage = readFileSync("app/(demo)/admin/users-roles/page.tsx", "utf8");
+  const accessReview = readFileSync("app/(demo)/admin/access-review/page.tsx", "utf8");
+  const userDetail = readFileSync("app/(demo)/admin/users-roles/[userId]/page.tsx", "utf8");
+  const workspace = readFileSync(
+    "components/product/admin-access-governance-workspace.tsx",
+    "utf8",
+  );
+  const model = readFileSync("lib/product/admin-access-governance.ts", "utf8");
+
+  expect(usersPage).toContain("buildAccessGovernanceViewModel");
+  expect(usersPage).toContain("AccessGovernanceWorkspace");
+  expect(accessReview).toContain("AccessReviewWorkspace");
+  expect(accessReview).toContain("detailReturnSource: returnSource");
+  expect(userDetail).toContain("buildAccessUserDetailModel");
+  expect(userDetail).toContain("AdminDetailSignalBar");
+  expect(userDetail).toContain("AdminDetailActionPanel");
+  expect(workspace).toContain('aria-label="Access governance task queue"');
+  expect(workspace).toContain('label="Access review decision queue"');
+  expect(workspace).toContain('aria-label="Access decision handoff"');
+  expect(workspace).toContain("Open user evidence");
+  expect(model).toContain("sourceReferences");
+  expect(workspace).not.toContain("Logto console");
+  expect(workspace).not.toContain("Infisical Permission Audit");
+  expect(workspace).not.toContain("Supabase Audit Logs");
 });
 
 it("links audit evidence rows to canonical entity details", () => {
