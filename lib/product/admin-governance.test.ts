@@ -446,7 +446,8 @@ it("uses an operations workspace for integration evidence", () => {
   expect(source).toContain('aria-label="Webhook delivery log"');
   expect(source).toContain('id="webhook-delivery-log"');
   expect(source).toContain("commandCardAccentClassName");
-  expect(source).toContain("whitespace-pre");
+  expect(source).toContain("whitespace-pre-wrap");
+  expect(source).not.toContain("overflow-x-auto rounded-md");
   expect(source).not.toContain("<AdminEvidenceTable");
   expect(source).not.toContain("<AdminMetricStrip");
   expect(source).not.toContain("getAdminToneClassName(card.tone)");
@@ -456,11 +457,13 @@ it("uses an operations workspace for integration evidence", () => {
   expect(componentSource).toContain('aria-label="Integration evidence controls"');
   expect(componentSource).toContain('aria-label="Integration evidence lanes"');
   expect(componentSource).toContain('aria-label="Integration evidence rows"');
+  expect(componentSource).toContain('aria-label="Integration check evidence"');
   expect(componentSource).toContain('aria-label="Selected integration evidence"');
   expect(componentSource).toContain("Clear filters");
   expect(componentSource).toContain("Open source evidence");
   expect(componentSource).toContain("onSelectRow(row.id)");
-  expect(componentSource).toContain("aria-pressed={isSelected}");
+  expect(componentSource).toContain("aria-selected={isSelected}");
+  expect(componentSource).toContain("navigateToSource(row)");
   expect(componentSource).toContain("filterIntegrationEvidenceRows");
   expect(componentSource).toContain("hidden sm:inline");
   expect(componentSource).toContain("md:sticky md:top-3");

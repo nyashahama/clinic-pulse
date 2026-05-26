@@ -105,13 +105,13 @@ export default async function Page() {
           <TerminalSquareIcon className="size-5 text-muted-foreground" aria-hidden="true" />
         </div>
 
-        <div className="hidden md:block">
+        <div>
           <table className="w-full table-fixed text-sm">
             <thead className="bg-bg-muted/60 text-left text-xs uppercase tracking-normal text-muted-foreground">
               <tr className="border-b border-border-subtle">
-                <th className="w-[24%] px-3 py-3 font-medium">Endpoint contract</th>
+                <th className="w-[24%] px-3 py-3 font-medium">Partner API contract</th>
                 <th className="w-[13%] px-3 py-3 font-medium">Scope</th>
-                <th className="w-[12%] px-3 py-3 font-medium">Coverage</th>
+                <th className="w-[12%] px-3 py-3 font-medium">Credential scope coverage</th>
                 <th className="w-[51%] px-3 py-3 font-medium">Smoke test</th>
               </tr>
             </thead>
@@ -141,31 +141,6 @@ export default async function Page() {
               ))}
             </tbody>
           </table>
-        </div>
-
-        <div className="grid gap-2 p-3 md:hidden">
-          {model.endpointRows.map((row) => (
-            <div
-              key={row.path}
-              className="grid min-w-0 gap-3 rounded-lg border border-border-subtle bg-bg-default p-3"
-            >
-              <div className="flex min-w-0 items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="break-words text-sm font-medium text-foreground">
-                    {row.method} {row.path}
-                  </p>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    {row.purpose}
-                  </p>
-                </div>
-                <AdminStatusBadge tone={row.tone}>
-                  {row.covered ? "Covered" : "Missing"}
-                </AdminStatusBadge>
-              </div>
-              <AdminStatusBadge tone="info">{row.scope}</AdminStatusBadge>
-              <SmokeCommand command={row.command} />
-            </div>
-          ))}
         </div>
       </section>
 
@@ -345,8 +320,8 @@ function IntegrationCommandCard({ card }: { card: IntegrationActionCard }) {
 
 function SmokeCommand({ command }: { command: string }) {
   return (
-    <div className="overflow-x-auto rounded-md border border-border-subtle bg-bg-muted/70">
-      <code className="block min-w-max whitespace-pre px-2 py-1 font-mono text-xs leading-5 text-content-default">
+    <div className="rounded-md border border-border-subtle bg-bg-muted/70">
+      <code className="block whitespace-pre-wrap break-words px-2 py-1 font-mono text-xs leading-5 text-content-default">
         {command}
       </code>
     </div>
