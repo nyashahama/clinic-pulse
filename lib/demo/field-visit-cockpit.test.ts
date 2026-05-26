@@ -98,6 +98,32 @@ describe("field visit cockpit view model", () => {
     expect(model.routeProgressPercent).toBe(100);
   });
 
+  it("defaults the selected visit to the first risk-prioritized stop", () => {
+    const model = buildFieldVisitCockpitViewModel({
+      clinics: [
+        clinic({ id: "clinic-a", clinicId: "clinic-a", name: "Fresh Clinic" }),
+        clinic({
+          id: "clinic-b",
+          clinicId: "clinic-b",
+          name: "Closed Clinic",
+          status: "non_functional",
+          lastReportedAt: "2026-04-30T08:00:00.000Z",
+        }),
+      ],
+      isOnline: true,
+      lastSyncedAt: null,
+      offlineReports: [],
+      selectedClinicId: null,
+    });
+
+    expect(model.itineraryRows.map((row) => row.clinicId)).toEqual([
+      "clinic-b",
+      "clinic-a",
+    ]);
+    expect(model.selectedVisit.clinicId).toBe("clinic-b");
+    expect(model.selectedVisit.positionLabel).toBe("Stop 1 of 2");
+  });
+
   it("maps queue statuses to field-worker language", () => {
     expect(getOfflineReportStatusLabel("queued")).toMatchObject({
       label: "Saved on this device",

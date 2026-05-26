@@ -181,6 +181,53 @@ function riskScore(clinic: ClinicRow, queuedItem: OfflineReportQueueItem | null)
   );
 }
 
+function buildOpenReportsByClinicId(offlineReports: OfflineReportQueueItem[]) {
+  const openReportsByClinicId = new Map<string, OfflineReportQueueItem>();
+
+  for (const report of offlineReports) {
+    if (report.syncStatus === "synced") {
+      continue;
+    }
+
+    if (!openReportsByClinicId.has(report.clinicId)) {
+      openReportsByClinicId.set(report.clinicId, report);
+    }
+  }
+
+  return openReportsByClinicId;
+}
+
+function sortClinicsByFieldRisk(
+  clinics: ClinicRow[],
+  offlineReports: OfflineReportQueueItem[],
+) {
+  const openReportsByClinicId = buildOpenReportsByClinicId(offlineReports);
+
+  return clinics
+    .map((clinic, index) => ({
+      clinic,
+      index,
+      queuedItem: openReportsByClinicId.get(clinic.id) ?? null,
+    }))
+    .sort((left, right) => {
+      const riskDelta =
+        riskScore(right.clinic, right.queuedItem) -
+        riskScore(left.clinic, left.queuedItem);
+
+      return riskDelta === 0 ? left.index - right.index : riskDelta;
+    });
+}
+
+export function getDefaultFieldVisitClinicId({
+  clinics,
+  offlineReports,
+}: {
+  clinics: ClinicRow[];
+  offlineReports: OfflineReportQueueItem[];
+}) {
+  return sortClinicsByFieldRisk(clinics, offlineReports)[0]?.clinic.id ?? null;
+}
+
 function formatLastSynced(value: string | null) {
   if (!value) {
     return "Not synced yet";
@@ -276,32 +323,8 @@ export function buildFieldVisitCockpitViewModel({
   lastSyncedAt,
   selectedVisitVerification = null,
 }: BuildFieldVisitCockpitViewModelInput): FieldVisitCockpitViewModel {
-  const selectedId = selectedClinicId ?? clinics[0]?.id ?? "";
-  const openReportsByClinicId = new Map<string, OfflineReportQueueItem>();
-
-  for (const report of offlineReports) {
-    if (report.syncStatus === "synced") {
-      continue;
-    }
-
-    if (!openReportsByClinicId.has(report.clinicId)) {
-      openReportsByClinicId.set(report.clinicId, report);
-    }
-  }
-
-  const sortedClinics = clinics
-    .map((clinic, index) => ({
-      clinic,
-      index,
-      queuedItem: openReportsByClinicId.get(clinic.id) ?? null,
-    }))
-    .sort((left, right) => {
-      const riskDelta =
-        riskScore(right.clinic, right.queuedItem) -
-        riskScore(left.clinic, left.queuedItem);
-
-      return riskDelta === 0 ? left.index - right.index : riskDelta;
-    });
+  const sortedClinics = sortClinicsByFieldRisk(clinics, offlineReports);
+  const selectedId = selectedClinicId ?? sortedClinics[0]?.clinic.id ?? "";
 
   const itineraryRows = sortedClinics.map(({ clinic, queuedItem }, index) => {
     const queueLabel = queuedItem

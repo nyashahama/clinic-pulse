@@ -31,7 +31,10 @@ import {
 } from "@/lib/demo/field-report";
 import type { FieldLocationVerification } from "@/lib/demo/field-location-verification";
 import { buildFieldReportHandoffItems } from "@/lib/demo/field-report-handoff";
-import { buildFieldVisitCockpitViewModel } from "@/lib/demo/field-visit-cockpit";
+import {
+  buildFieldVisitCockpitViewModel,
+  getDefaultFieldVisitClinicId,
+} from "@/lib/demo/field-visit-cockpit";
 import {
   addOfflineReport,
   listActiveOfflineReports,
@@ -217,9 +220,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
       }),
     [clinics, state],
   );
-  const [selectedClinicId, setSelectedClinicId] = useState<string | null>(
-    clinics[0]?.id ?? null,
-  );
+  const [selectedClinicId, setSelectedClinicId] = useState<string | null>(null);
   const [offlineReports, setOfflineReports] = useState<OfflineReportQueueItem[]>([]);
   const browserIsOnline = useSyncExternalStore(
     subscribeToOnlineStatus,
@@ -247,13 +248,19 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
     return reports;
   }, []);
 
+  const defaultClinicId = useMemo(
+    () => getDefaultFieldVisitClinicId({ clinics, offlineReports }),
+    [clinics, offlineReports],
+  );
+  const activeClinicId = selectedClinicId ?? defaultClinicId;
   const selectedClinic = useMemo(
-    () => clinics.find((clinic) => clinic.id === selectedClinicId) ?? clinics[0] ?? null,
-    [clinics, selectedClinicId],
+    () =>
+      clinics.find((clinic) => clinic.id === activeClinicId) ?? clinics[0] ?? null,
+    [activeClinicId, clinics],
   );
 
   const selectedName = selectedClinic?.name ?? "Select a clinic";
-  const selectedId = selectedClinic?.id ?? "";
+  const selectedId = selectedClinic?.id ?? activeClinicId ?? "";
   const selectedVisitVerification =
     visitVerification?.clinicId === selectedId ? visitVerification.verification : null;
   const editingOfflineReport = useMemo(
@@ -457,7 +464,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
     () =>
       buildFieldVisitCockpitViewModel({
         clinics,
-        selectedClinicId: selectedId,
+        selectedClinicId: activeClinicId,
         offlineReports,
         isOnline,
         lastSyncedAt,
@@ -465,7 +472,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
       }),
     [
       clinics,
-      selectedId,
+      activeClinicId,
       offlineReports,
       isOnline,
       lastSyncedAt,

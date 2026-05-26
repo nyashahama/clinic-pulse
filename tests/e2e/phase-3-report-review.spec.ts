@@ -212,7 +212,7 @@ test("hands an online field report from reporter to district review and admin ev
     await expect(reportItem.getByText("Location verified")).toBeVisible();
     await expect(reportItem.getByText("0 m from selected clinic")).toBeVisible();
 
-    await reportItem.locator('[data-testid="accept-report-review"]').click();
+    await reportItem.locator('[data-testid="reject-report-review"]').click();
 
     await expect(reportItem).toHaveCount(0);
     await expect

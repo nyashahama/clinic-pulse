@@ -12,6 +12,38 @@ const successMessage = "Waiting for district review.";
 const serverMutationHeaders = {
   "x-clinicpulse-server-mutation": "1",
 };
+const defaultRouteClinicName = "Hammanskraal Unit D Clinic";
+const alternateRouteClinicName = "Mamelodi East Community Clinic";
+const defaultRouteClinicLocation = {
+  latitude: -25.4047,
+  longitude: 28.2794,
+};
+
+async function mockCurrentLocation(
+  page: Page,
+  location: { latitude: number; longitude: number },
+) {
+  await page.addInitScript(({ latitude, longitude }) => {
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: {
+        getCurrentPosition: (success: PositionCallback) =>
+          success({
+            coords: {
+              accuracy: 4,
+              altitude: null,
+              altitudeAccuracy: null,
+              heading: null,
+              latitude,
+              longitude,
+              speed: null,
+            },
+            timestamp: Date.now(),
+          } as GeolocationPosition),
+      },
+    });
+  }, location);
+}
 
 async function signInAsReporter(page: Page) {
   await page.goto("/login");
@@ -229,11 +261,13 @@ test("restores an in-progress field report draft when returning to a clinic", as
   await notesField.fill(notes);
   await expect(page.getByText("Draft saved on this device")).toBeVisible();
 
-  await itineraryList.getByRole("button", { name: /Hammanskraal Unit D Clinic/ }).click();
+  await itineraryList
+    .getByRole("button", { name: new RegExp(alternateRouteClinicName) })
+    .click();
   await expect(notesField).toHaveValue("");
 
   await itineraryList
-    .getByRole("button", { name: /Mamelodi East Community Clinic/ })
+    .getByRole("button", { name: new RegExp(defaultRouteClinicName) })
     .click();
 
   await expect(notesField).toHaveValue(notes);
@@ -271,26 +305,7 @@ test("resumes a saved device report from the offline queue", async ({ page }) =>
 });
 
 test("preserves visit proof on saved device reports", async ({ page }) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, "geolocation", {
-      configurable: true,
-      value: {
-        getCurrentPosition: (success: PositionCallback) =>
-          success({
-            coords: {
-              accuracy: 4,
-              altitude: null,
-              altitudeAccuracy: null,
-              heading: null,
-              latitude: -25.7096,
-              longitude: 28.3676,
-              speed: null,
-            },
-            timestamp: Date.now(),
-          } as GeolocationPosition),
-      },
-    });
-  });
+  await mockCurrentLocation(page, defaultRouteClinicLocation);
 
   await signInAsReporter(page);
 
@@ -312,7 +327,7 @@ test("preserves visit proof on saved device reports", async ({ page }) => {
   await expect(draftsSync.getByText("Visit proof")).toBeVisible();
   await expect(draftsSync.getByText("Location verified")).toBeVisible();
   await expect(
-    draftsSync.getByText("0 m from Mamelodi East Community Clinic"),
+    draftsSync.getByText(`0 m from ${defaultRouteClinicName}`),
   ).toBeVisible();
 
   await page.getByRole("button", { name: "Edit saved report" }).click();
@@ -320,31 +335,12 @@ test("preserves visit proof on saved device reports", async ({ page }) => {
   await expect(notesField).toHaveValue(notes);
   await expect(visitProof.getByText("Location verified")).toBeVisible();
   await expect(
-    visitProof.getByText("0 m from Mamelodi East Community Clinic"),
+    visitProof.getByText(`0 m from ${defaultRouteClinicName}`),
   ).toBeVisible();
 });
 
 test("verifies the active stop with browser location", async ({ page }) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, "geolocation", {
-      configurable: true,
-      value: {
-        getCurrentPosition: (success: PositionCallback) =>
-          success({
-            coords: {
-              accuracy: 4,
-              altitude: null,
-              altitudeAccuracy: null,
-              heading: null,
-              latitude: -25.7096,
-              longitude: 28.3676,
-              speed: null,
-            },
-            timestamp: Date.now(),
-          } as GeolocationPosition),
-      },
-    });
-  });
+  await mockCurrentLocation(page, defaultRouteClinicLocation);
 
   await signInAsReporter(page);
 
@@ -358,31 +354,12 @@ test("verifies the active stop with browser location", async ({ page }) => {
   await expect(gpsCheckIn.getByText("Location verified")).toBeVisible();
   await expect(gpsCheckIn.getByText("Good GPS accuracy")).toBeVisible();
   await expect(
-    gpsCheckIn.getByText("0 m from Mamelodi East Community Clinic"),
+    gpsCheckIn.getByText(`0 m from ${defaultRouteClinicName}`),
   ).toBeVisible();
 });
 
 test("shows active visit proof inside the report form", async ({ page }) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, "geolocation", {
-      configurable: true,
-      value: {
-        getCurrentPosition: (success: PositionCallback) =>
-          success({
-            coords: {
-              accuracy: 4,
-              altitude: null,
-              altitudeAccuracy: null,
-              heading: null,
-              latitude: -25.7096,
-              longitude: 28.3676,
-              speed: null,
-            },
-            timestamp: Date.now(),
-          } as GeolocationPosition),
-      },
-    });
-  });
+  await mockCurrentLocation(page, defaultRouteClinicLocation);
 
   await signInAsReporter(page);
 
@@ -399,32 +376,13 @@ test("shows active visit proof inside the report form", async ({ page }) => {
     page.getByRole("link", { name: /Location verified Start clinic report/i }),
   ).toBeVisible();
   await expect(
-    visitProof.getByText("0 m from Mamelodi East Community Clinic"),
+    visitProof.getByText(`0 m from ${defaultRouteClinicName}`),
   ).toBeVisible();
   await expect(visitProof.getByText("Good GPS accuracy")).toBeVisible();
 });
 
 test("clears visit verification when the active stop changes", async ({ page }) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, "geolocation", {
-      configurable: true,
-      value: {
-        getCurrentPosition: (success: PositionCallback) =>
-          success({
-            coords: {
-              accuracy: 4,
-              altitude: null,
-              altitudeAccuracy: null,
-              heading: null,
-              latitude: -25.7096,
-              longitude: 28.3676,
-              speed: null,
-            },
-            timestamp: Date.now(),
-          } as GeolocationPosition),
-      },
-    });
-  });
+  await mockCurrentLocation(page, defaultRouteClinicLocation);
 
   await signInAsReporter(page);
 
@@ -436,21 +394,21 @@ test("clears visit verification when the active stop changes", async ({ page }) 
 
   await page.getByRole("button", { name: "Verify active stop" }).click();
   await expect(
-    gpsCheckIn.getByText("0 m from Mamelodi East Community Clinic"),
+    gpsCheckIn.getByText(`0 m from ${defaultRouteClinicName}`),
   ).toBeVisible();
   await expect(visitProof.getByText("Location verified")).toBeVisible();
 
   await page
     .getByTestId("field-route-map")
-    .getByRole("button", { name: /Open stop .*Hammanskraal Unit D Clinic/i })
+    .getByRole("button", { name: new RegExp(`Open stop .*${alternateRouteClinicName}`, "i") })
     .click();
 
   await expect(
-    page.getByText("No visit location captured for Hammanskraal Unit D Clinic yet."),
+    page.getByText(`No visit location captured for ${alternateRouteClinicName} yet.`),
   ).toBeVisible();
-  await expect(page.getByText("0 m from Hammanskraal Unit D Clinic")).toHaveCount(0);
+  await expect(page.getByText(`0 m from ${alternateRouteClinicName}`)).toHaveCount(0);
   await expect(visitProof.getByText("Not captured")).toBeVisible();
   await expect(
-    visitProof.getByText("0 m from Mamelodi East Community Clinic"),
+    visitProof.getByText(`0 m from ${defaultRouteClinicName}`),
   ).toHaveCount(0);
 });
