@@ -461,8 +461,16 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
         offlineReports,
         isOnline,
         lastSyncedAt,
+        selectedVisitVerification,
       }),
-    [clinics, selectedId, offlineReports, isOnline, lastSyncedAt],
+    [
+      clinics,
+      selectedId,
+      offlineReports,
+      isOnline,
+      lastSyncedAt,
+      selectedVisitVerification,
+    ],
   );
   const handleJumpToReport = useCallback((event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();

@@ -348,7 +348,9 @@ test("verifies the active stop with browser location", async ({ page }) => {
 
   await signInAsReporter(page);
 
-  const gpsCheckIn = page.locator("section").filter({ hasText: "GPS check-in" });
+  const gpsCheckIn = page
+    .getByRole("heading", { name: "Visit verification" })
+    .locator("xpath=ancestor::section[1]");
 
   await expect(page.getByRole("heading", { name: "Visit verification" })).toBeVisible();
   await page.getByRole("button", { name: "Verify active stop" }).click();
@@ -394,6 +396,9 @@ test("shows active visit proof inside the report form", async ({ page }) => {
 
   await expect(visitProof.getByText("Location verified")).toBeVisible();
   await expect(
+    page.getByRole("link", { name: /Location verified Start clinic report/i }),
+  ).toBeVisible();
+  await expect(
     visitProof.getByText("0 m from Mamelodi East Community Clinic"),
   ).toBeVisible();
   await expect(visitProof.getByText("Good GPS accuracy")).toBeVisible();
@@ -425,7 +430,9 @@ test("clears visit verification when the active stop changes", async ({ page }) 
 
   const reportForm = page.locator("#submit-report");
   const visitProof = reportForm.getByTestId("field-visit-proof");
-  const gpsCheckIn = page.locator("section").filter({ hasText: "GPS check-in" });
+  const gpsCheckIn = page
+    .getByRole("heading", { name: "Visit verification" })
+    .locator("xpath=ancestor::section[1]");
 
   await page.getByRole("button", { name: "Verify active stop" }).click();
   await expect(

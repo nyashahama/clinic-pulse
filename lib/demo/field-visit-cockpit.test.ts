@@ -180,6 +180,31 @@ describe("field visit cockpit view model", () => {
     ]);
   });
 
+  it("shows captured visit proof in the clinic report task", () => {
+    const model = buildFieldVisitCockpitViewModel({
+      clinics: [clinic({ id: "clinic-a", clinicId: "clinic-a" })],
+      isOnline: true,
+      lastSyncedAt: null,
+      offlineReports: [],
+      selectedClinicId: "clinic-a",
+      selectedVisitVerification: {
+        accuracyLabel: "Good GPS accuracy",
+        capturedAt: "2026-05-01T08:05:00.000Z",
+        coordinateLabel: "25.70960°S 28.36760°E",
+        distanceLabel: "0 m",
+        distanceMeters: 0,
+        statusLabel: "Location verified",
+        tone: "clear",
+      },
+    });
+
+    expect(model.taskQueue.find((task) => task.id === "clinic-report")).toMatchObject({
+      description: "Visit proof captured. Complete status, pressure, and notes.",
+      stateLabel: "Location verified",
+      tone: "clear",
+    });
+  });
+
   it("keeps zero-count field task queue labels readable", () => {
     const model = buildFieldVisitCockpitViewModel({
       clinics: [clinic({ id: "clinic-a", clinicId: "clinic-a" })],

@@ -5,6 +5,7 @@ import type {
   OfflineReportQueueItem,
   OfflineReportQueueStatus,
 } from "@/lib/demo/types";
+import type { FieldLocationVerification } from "@/lib/demo/field-location-verification";
 
 export type FieldVisitTone = "clear" | "attention" | "blocked" | "info";
 
@@ -62,6 +63,7 @@ type BuildFieldVisitCockpitViewModelInput = {
   offlineReports: OfflineReportQueueItem[];
   isOnline: boolean;
   lastSyncedAt: string | null;
+  selectedVisitVerification?: FieldLocationVerification | null;
 };
 
 const WORKER_COORDS: [number, number] = [-25.74, 28.13];
@@ -202,13 +204,29 @@ function buildTaskQueue({
   needsRetryCount,
   sentForReviewCount,
   isOnline,
+  selectedVisitVerification,
 }: {
   selectedVisit: FieldVisitItineraryRow;
   savedOnDeviceCount: number;
   needsRetryCount: number;
   sentForReviewCount: number;
   isOnline: boolean;
+  selectedVisitVerification?: FieldLocationVerification | null;
 }): FieldVisitTaskQueueItem[] {
+  const clinicReportStateLabel =
+    selectedVisit.queueLabel ??
+    selectedVisitVerification?.statusLabel ??
+    "Ready";
+  const clinicReportDescription = selectedVisit.queueLabel
+    ? "Resolve the saved status report before moving to the next stop."
+    : selectedVisitVerification
+      ? "Visit proof captured. Complete status, pressure, and notes."
+      : "Capture status, staffing, stock, queue pressure, and notes.";
+  const clinicReportTone =
+    selectedVisit.queueLabel
+      ? selectedVisit.tone
+      : selectedVisitVerification?.tone ?? "info";
+
   return [
     {
       id: "active-stop",
@@ -221,12 +239,10 @@ function buildTaskQueue({
     {
       id: "clinic-report",
       title: selectedVisit.queueLabel ? "Continue clinic report" : "Start clinic report",
-      description: selectedVisit.queueLabel
-        ? "Resolve the saved status report before moving to the next stop."
-        : "Capture status, staffing, stock, queue pressure, and notes.",
-      stateLabel: selectedVisit.queueLabel ?? "Ready",
+      description: clinicReportDescription,
+      stateLabel: clinicReportStateLabel,
       href: "#submit-report",
-      tone: selectedVisit.queueLabel ? selectedVisit.tone : "info",
+      tone: clinicReportTone,
     },
     {
       id: "device-sync",
@@ -258,6 +274,7 @@ export function buildFieldVisitCockpitViewModel({
   offlineReports,
   isOnline,
   lastSyncedAt,
+  selectedVisitVerification = null,
 }: BuildFieldVisitCockpitViewModelInput): FieldVisitCockpitViewModel {
   const selectedId = selectedClinicId ?? clinics[0]?.id ?? "";
   const openReportsByClinicId = new Map<string, OfflineReportQueueItem>();
@@ -359,6 +376,7 @@ export function buildFieldVisitCockpitViewModel({
       needsRetryCount,
       sentForReviewCount,
       isOnline,
+      selectedVisitVerification,
     }),
     routeProgressPercent,
     deviceStrip: {
