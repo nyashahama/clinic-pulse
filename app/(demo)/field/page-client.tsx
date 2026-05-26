@@ -550,26 +550,41 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
       <FieldReportToast feedback={toastFeedback} />
 
       <section
-        className="grid gap-4 rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm"
+        className="overflow-hidden rounded-lg border border-border-subtle bg-bg-default shadow-sm"
         data-field-visit-cockpit
       >
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="grid gap-4 bg-neutral-950 p-4 text-white lg:grid-cols-[1fr_auto] lg:items-start">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+            <p className="text-xs font-semibold uppercase tracking-normal text-white/65">
               Field visit cockpit
             </p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-normal text-foreground sm:text-3xl">
+            <h1 className="mt-1 text-2xl font-semibold tracking-normal text-white sm:text-3xl">
               {fieldCockpit.selectedVisit.clinicName}
             </h1>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-white/70">
               {fieldCockpit.selectedVisit.positionLabel} -{" "}
               {fieldCockpit.selectedVisit.reason}
             </p>
+            <div className="mt-4 flex items-center gap-3">
+              <div
+                className="h-2 flex-1 overflow-hidden rounded-full bg-white/15"
+                aria-hidden="true"
+              >
+                <div
+                  className="h-full rounded-full bg-emerald-400"
+                  style={{ width: `${fieldCockpit.routeProgressPercent}%` }}
+                />
+              </div>
+              <p className="text-xs font-semibold text-white/75">
+                {fieldCockpit.routeProgressPercent}% route
+              </p>
+            </div>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Link
               className={buttonVariants({
-                className: "w-full sm:w-auto",
+                className:
+                  "w-full bg-emerald-500 text-neutral-950 hover:bg-emerald-400 sm:w-auto",
                 size: "lg",
               })}
               href="#submit-report"
@@ -578,7 +593,8 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
             </Link>
             <Link
               className={buttonVariants({
-                className: "w-full sm:w-auto",
+                className:
+                  "w-full border-white/20 bg-white/10 text-white hover:bg-white/15 sm:w-auto",
                 size: "lg",
                 variant: "outline",
               })}
@@ -589,42 +605,42 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
           </div>
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-lg border border-border-subtle bg-bg-subtle p-3">
-            <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
+        <dl className="grid divide-y divide-border-subtle border-b border-border-subtle sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
+          <div className="p-4">
+            <dt className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
               Connection
-            </p>
-            <p className="mt-1 text-lg font-semibold text-foreground">
+            </dt>
+            <dd className="mt-1 text-xl font-semibold text-foreground">
               {fieldCockpit.deviceStrip.connectionLabel}
-            </p>
+            </dd>
           </div>
-          <div className="rounded-lg border border-border-subtle bg-bg-subtle p-3">
-            <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
+          <div className="p-4">
+            <dt className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
               Saved on this device
-            </p>
-            <p className="mt-1 text-lg font-semibold text-foreground">
+            </dt>
+            <dd className="mt-1 text-xl font-semibold text-foreground">
               {fieldCockpit.deviceStrip.savedOnDeviceCount}
-            </p>
+            </dd>
           </div>
-          <div className="rounded-lg border border-border-subtle bg-bg-subtle p-3">
-            <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
+          <div className="p-4">
+            <dt className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
               Needs retry
-            </p>
-            <p className="mt-1 text-lg font-semibold text-foreground">
+            </dt>
+            <dd className="mt-1 text-xl font-semibold text-foreground">
               {fieldCockpit.deviceStrip.needsRetryCount}
-            </p>
+            </dd>
           </div>
-          <div className="rounded-lg border border-border-subtle bg-bg-subtle p-3">
-            <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
+          <div className="p-4">
+            <dt className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
               Last synced
-            </p>
-            <p className="mt-1 text-lg font-semibold text-foreground">
+            </dt>
+            <dd className="mt-1 text-xl font-semibold text-foreground">
               {fieldCockpit.deviceStrip.lastSyncedLabel}
-            </p>
+            </dd>
           </div>
-        </div>
+        </dl>
 
-        <div className="flex flex-col gap-2 border-t border-border-subtle pt-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
           <p className="text-content-subtle">
             Reports sync when the app is open and ClinicPulse can be reached.
           </p>
@@ -639,18 +655,20 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
         </div>
       </section>
 
-      <div id="submit-report" className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
+      <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
         <FieldClinicList
           rows={fieldCockpit.itineraryRows}
           onSelectClinic={setSelectedClinicId}
         />
-        <ReportForm
-          clinicId={selectedId}
-          clinicName={selectedName}
-          onSubmit={handleSubmit}
-          submitting={submitting}
-          feedback={submitFeedback}
-        />
+        <div id="submit-report" className="scroll-mt-28">
+          <ReportForm
+            clinicId={selectedId}
+            clinicName={selectedName}
+            onSubmit={handleSubmit}
+            submitting={submitting}
+            feedback={submitFeedback}
+          />
+        </div>
       </div>
 
       <div id="drafts-sync" className="grid gap-4 lg:grid-cols-2">

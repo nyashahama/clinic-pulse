@@ -108,4 +108,14 @@ test("shows the field visit cockpit in the mobile first viewport", async ({
 
   const cockpitBox = await cockpit.boundingBox();
   expect(cockpitBox?.y ?? 9999).toBeLessThan(180);
+
+  await cockpit.getByRole("link", { name: /Start report|Continue report/ }).click();
+
+  const reportHeading = page.getByRole("heading", {
+    name: "Capture field update",
+  });
+  await expect(reportHeading).toBeVisible();
+
+  const reportHeadingBox = await reportHeading.boundingBox();
+  expect(reportHeadingBox?.y ?? 9999).toBeLessThan(220);
 });

@@ -36,6 +36,7 @@ export type FieldVisitCockpitViewModel = {
     secondaryActionLabel: "Change clinic";
   };
   itineraryRows: FieldVisitItineraryRow[];
+  routeProgressPercent: number;
   deviceStrip: {
     connectionLabel: "Online" | "Offline";
     savedOnDeviceCount: number;
@@ -255,6 +256,13 @@ export function buildFieldVisitCockpitViewModel({
       queueLabel: null,
       tone: "info",
     } satisfies FieldVisitItineraryRow);
+  const selectedVisitIndex = itineraryRows.findIndex(
+    (row) => row.clinicId === selectedVisit.clinicId,
+  );
+  const routeProgressPercent =
+    clinics.length === 0 || selectedVisitIndex < 0
+      ? 0
+      : Math.round(((selectedVisitIndex + 1) / clinics.length) * 100);
 
   const savedOnDeviceCount = offlineReports.filter((item) =>
     ["queued", "syncing", "retry_wait", "failed", "conflict"].includes(
@@ -275,6 +283,7 @@ export function buildFieldVisitCockpitViewModel({
       secondaryActionLabel: "Change clinic",
     },
     itineraryRows,
+    routeProgressPercent,
     deviceStrip: {
       connectionLabel: isOnline ? "Online" : "Offline",
       savedOnDeviceCount,
