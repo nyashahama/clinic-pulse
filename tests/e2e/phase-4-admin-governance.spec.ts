@@ -126,6 +126,22 @@ test("integration operations exposes source-backed references", async ({ page })
   );
 });
 
+test("audit evidence exposes source-backed references", async ({ page }) => {
+  await signIn(page, "system-admin@clinicpulse.local");
+  await page.goto("/admin/audit-evidence");
+
+  await expect(page.getByRole("heading", { name: "Audit evidence" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Audit-evidence source references" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Supabase Audit Logs/i })).toHaveAttribute(
+    "href",
+    "https://github.com/supabase/supabase",
+  );
+  await expect(page.getByRole("link", { name: /Infisical Permission Audit/i })).toHaveAttribute(
+    "href",
+    "https://github.com/Infisical/infisical",
+  );
+});
+
 test("reporting coverage clinic names open operational detail", async ({ page }) => {
   await signIn(page, "org-admin@clinicpulse.local");
   await page.goto("/admin/reporting-coverage");
