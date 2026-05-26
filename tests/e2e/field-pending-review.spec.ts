@@ -247,6 +247,8 @@ test("uses recent report handoff rows to return to a clinic stop", async ({
   await expect(
     page.locator("#submit-report").getByText("Soshanguve Block F Clinic"),
   ).toBeVisible();
+  await expect(page).toHaveURL(/\/field#submit-report$/);
+  await expect(page.locator("#submit-report")).toBeInViewport();
 });
 
 test("restores an in-progress field report draft when returning to a clinic", async ({

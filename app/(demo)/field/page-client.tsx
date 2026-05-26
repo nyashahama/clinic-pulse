@@ -673,6 +673,19 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
     }
   };
 
+  const scrollToReportSection = useCallback(() => {
+    requestAnimationFrame(() => {
+      document.getElementById("submit-report")?.scrollIntoView({ block: "start" });
+      window.history.replaceState(null, "", "#submit-report");
+    });
+  }, []);
+
+  const handleSelectClinic = useCallback((clinicId: string) => {
+    setSelectedClinicId(clinicId);
+    setEditingOfflineReportId(null);
+    setVisitVerification(null);
+  }, []);
+
   const handleEditReport = (item: OfflineReportQueueItem) => {
     setSelectedClinicId(item.clinicId);
     setEditingOfflineReportId(item.clientReportId);
@@ -683,17 +696,16 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
     );
     setSubmitFeedback(null);
 
-    requestAnimationFrame(() => {
-      document.getElementById("submit-report")?.scrollIntoView({ block: "start" });
-      window.history.replaceState(null, "", "#submit-report");
-    });
+    scrollToReportSection();
   };
 
-  const handleSelectClinic = (clinicId: string) => {
-    setSelectedClinicId(clinicId);
-    setEditingOfflineReportId(null);
-    setVisitVerification(null);
-  };
+  const handleSelectHandoffClinic = useCallback(
+    (clinicId: string) => {
+      handleSelectClinic(clinicId);
+      scrollToReportSection();
+    },
+    [handleSelectClinic, scrollToReportSection],
+  );
 
   return (
     <div className="grid gap-4 pb-4" data-role-dashboard={session.role}>
@@ -889,7 +901,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
       <FieldReportHandoff
         reports={recentReports}
         selectedClinicId={selectedId}
-        onSelectClinic={handleSelectClinic}
+        onSelectClinic={handleSelectHandoffClinic}
       />
 
       <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
