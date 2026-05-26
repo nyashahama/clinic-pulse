@@ -160,6 +160,22 @@ test("partner readiness exposes source-backed references", async ({ page }) => {
   );
 });
 
+test("access review exposes source-backed references", async ({ page }) => {
+  await signIn(page, "system-admin@clinicpulse.local");
+  await page.goto("/admin/access-review");
+
+  await expect(page.getByRole("heading", { name: "Access review" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Access-review source references" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Infisical Permission Audit/i })).toHaveAttribute(
+    "href",
+    "https://github.com/Infisical/infisical",
+  );
+  await expect(page.getByRole("link", { name: /Supabase Team Settings/i })).toHaveAttribute(
+    "href",
+    "https://github.com/supabase/supabase",
+  );
+});
+
 test("reporting coverage clinic names open operational detail", async ({ page }) => {
   await signIn(page, "org-admin@clinicpulse.local");
   await page.goto("/admin/reporting-coverage");
