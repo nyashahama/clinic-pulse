@@ -136,15 +136,26 @@ test("entity-backed admin evidence rows open detail pages", async ({ page }) => 
   ]);
 
   await page.goto("/admin/audit-evidence");
-  const auditTable = page.getByLabel("Audit event evidence");
-  const auditRow = auditTable.getByRole("row", {
+  const auditWorkspace = page.getByLabel("Audit evidence workspace");
+  const auditRow = auditWorkspace.getByRole("button", {
     name: /Open audit event \d+ detail/i,
   }).first();
 
   await expect(auditRow).toBeVisible();
+  await auditRow.click();
+  let sourceLink = page
+    .getByLabel("Selected audit evidence")
+    .getByRole("link", { name: /Open source evidence for/i });
+  if ((await sourceLink.count()) === 0) {
+    sourceLink = auditRow.locator("xpath=..").getByRole("link", { name: /Open source/i });
+  }
+  await expect(sourceLink).toHaveAttribute(
+    "href",
+    /\/admin\/audit-evidence\/events\/\d+\?from=admin-audit-evidence$/,
+  );
   await Promise.all([
     page.waitForURL(/\/admin\/audit-evidence\/events\/\d+\?from=admin-audit-evidence$/),
-    auditRow.click(),
+    sourceLink.click(),
   ]);
   await expect(page.getByRole("heading", { name: "Audit event detail" })).toBeVisible();
   await Promise.all([
