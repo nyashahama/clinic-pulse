@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/demo/empty-state";
 import { SectionHeader } from "@/components/demo/section-header";
 import { Button } from "@/components/ui/button";
 import { getOfflineReportStatusLabel } from "@/lib/demo/field-visit-cockpit";
+import { buildOfflineReportAuditTrail } from "@/lib/demo/offline-report-audit";
 import type {
   ClinicRow,
   OfflineReportQueueItem,
@@ -115,6 +116,7 @@ export function OfflineQueue({
         <div className="mt-4 divide-y divide-border-subtle rounded-md border border-border-subtle">
           {queue.map((item) => {
             const status = getOfflineReportStatusLabel(item.syncStatus);
+            const auditTrail = buildOfflineReportAuditTrail(item);
 
             return (
               <div
@@ -149,21 +151,41 @@ export function OfflineQueue({
                     {status.detail}
                   </p>
 
-                  <div className="mt-2 grid gap-1 break-words text-xs text-content-subtle">
-                    <p>
-                      Submitted {formatTime(item.submittedAt)}; saved{" "}
-                      {formatTime(item.queuedAt)}
+                  <div
+                    className="mt-3 space-y-2 border-l border-border-subtle pl-3 text-xs"
+                    aria-label={`Device audit trail for ${getClinicName(
+                      clinics,
+                      item.clinicId,
+                    )}`}
+                  >
+                    <p className="font-semibold uppercase tracking-normal text-content-subtle">
+                      Device audit trail
                     </p>
-                    {item.nextRetryAt ? (
-                      <p>Next retry: {formatTime(item.nextRetryAt)}</p>
-                    ) : null}
-                    {item.lastError ? <p>Last error: {item.lastError}</p> : null}
-                    {item.conflictReason ? (
-                      <p>Conflict: {item.conflictReason}</p>
-                    ) : null}
-                    {item.lastServerReportId ? (
-                      <p>Server report: #{item.lastServerReportId}</p>
-                    ) : null}
+                    {auditTrail.map((event) => (
+                      <div key={event.id} className="grid gap-0.5">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span
+                            className={cn(
+                              "size-2 rounded-full",
+                              event.tone === "clear" && "bg-emerald-500",
+                              event.tone === "attention" && "bg-amber-500",
+                              event.tone === "blocked" && "bg-red-500",
+                              event.tone === "info" && "bg-sky-500",
+                            )}
+                            aria-hidden="true"
+                          />
+                          <span className="font-medium text-content-emphasis">
+                            {event.label}
+                          </span>
+                          <span className="text-content-subtle">
+                            {formatTime(event.timestamp)}
+                          </span>
+                        </div>
+                        <p className="break-words pl-4 leading-5 text-content-subtle">
+                          {event.detail}
+                        </p>
+                      </div>
+                    ))}
                   </div>
 
                   {item.notes.trim() ? (
