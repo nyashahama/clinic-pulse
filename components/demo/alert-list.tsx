@@ -12,6 +12,8 @@ type AlertListProps = {
   alerts: Alert[];
   clinics: ClinicRow[];
   onSelectClinic: (clinicId: string) => void;
+  limit?: number;
+  compact?: boolean;
 };
 
 function formatAlertType(value: Alert["type"]) {
@@ -27,8 +29,15 @@ function formatTimestamp(value: string) {
   }).format(new Date(value));
 }
 
-export function AlertList({ alerts, clinics, onSelectClinic }: AlertListProps) {
+export function AlertList({
+  alerts,
+  clinics,
+  compact = false,
+  onSelectClinic,
+  limit,
+}: AlertListProps) {
   const clinicNameById = Object.fromEntries(clinics.map((clinic) => [clinic.id, clinic.name]));
+  const visibleAlerts = alerts.slice(0, limit ?? alerts.length);
 
   return (
     <section className="min-w-0 rounded-lg border border-border-subtle bg-bg-default shadow-sm">
@@ -44,7 +53,7 @@ export function AlertList({ alerts, clinics, onSelectClinic }: AlertListProps) {
         {alerts.length === 0 ? (
           <EmptyState surface="alert-list" className="min-h-44" />
         ) : (
-          alerts.map((alert) => (
+          visibleAlerts.map((alert) => (
             <button
               key={alert.id}
               type="button"
@@ -63,7 +72,12 @@ export function AlertList({ alerts, clinics, onSelectClinic }: AlertListProps) {
                 <SeverityBadge severity={alert.severity} />
               </div>
 
-              <p className="mt-3 text-sm leading-6 text-content-default">
+              <p
+                className={cn(
+                  "mt-3 text-sm leading-6 text-content-default",
+                  compact && "line-clamp-2",
+                )}
+              >
                 {alert.recommendedAction}
               </p>
 

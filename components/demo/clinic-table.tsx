@@ -14,6 +14,10 @@ type ClinicTableProps = {
   selectedClinicId: string | null;
   recommendedActionByClinicId: Record<string, string>;
   onSelectClinic: (clinicId: string) => void;
+  limit?: number;
+  title?: string;
+  description?: string;
+  compact?: boolean;
 };
 
 function formatTimestamp(value: string) {
@@ -38,24 +42,87 @@ export function ClinicTable({
   selectedClinicId,
   recommendedActionByClinicId,
   onSelectClinic,
+  limit,
+  title = "Clinic table",
+  description = "Dense district work surface with the latest routing signal, reporter source, and recommended next action for each clinic.",
+  compact = false,
 }: ClinicTableProps) {
+  const visibleClinics = clinics.slice(0, limit ?? clinics.length);
+
+  if (compact) {
+    return (
+      <section className="min-w-0 overflow-hidden rounded-lg border border-border-subtle bg-bg-default shadow-sm">
+        <div className="px-4 pt-4">
+          <SectionHeader
+            eyebrow="Clinic operations"
+            title={title}
+            description={description}
+          />
+        </div>
+
+        <div className="grid gap-3 px-4 pb-4 md:grid-cols-2 xl:grid-cols-4">
+          {visibleClinics.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border-subtle bg-bg-subtle px-4 py-6 text-center text-sm text-content-subtle md:col-span-2 xl:col-span-4">
+              No clinics match this filter.
+            </div>
+          ) : (
+            visibleClinics.map((clinic) => (
+              <article
+                key={clinic.id}
+                className={cn(
+                  "grid min-w-0 gap-3 rounded-lg border p-3 transition-colors",
+                  clinic.id === selectedClinicId
+                    ? "border-teal-300 bg-teal-50/70"
+                    : "border-border-subtle bg-bg-subtle",
+                )}
+              >
+                <div className="min-w-0">
+                  <h3 className="truncate text-sm font-medium text-content-emphasis">
+                    {clinic.name}
+                  </h3>
+                  <p className="mt-1 text-xs text-content-subtle">{clinic.facilityCode}</p>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <StatusBadge status={clinic.status} />
+                  <FreshnessBadge freshness={clinic.freshness} />
+                </div>
+                <p className="line-clamp-2 text-xs leading-5 text-content-default">
+                  {recommendedActionByClinicId[clinic.id]}
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => onSelectClinic(clinic.id)}
+                >
+                  Open
+                  <ArrowUpRight className="size-3.5" />
+                </Button>
+              </article>
+            ))
+          )}
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="min-w-0 overflow-hidden rounded-lg border border-border-subtle bg-bg-default shadow-sm">
       <div className="px-4 pt-4">
         <SectionHeader
           eyebrow="Clinic operations"
-          title="Clinic table"
-          description="Dense district work surface with the latest routing signal, reporter source, and recommended next action for each clinic."
+          title={title}
+          description={description}
         />
       </div>
 
       <div className="grid gap-3 px-4 pb-4 md:hidden" aria-label="Clinic mobile work queue">
-        {clinics.length === 0 ? (
+        {visibleClinics.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border-subtle bg-bg-subtle px-4 py-6 text-center text-sm text-content-subtle">
             No clinics match this filter.
           </div>
         ) : (
-          clinics.map((clinic) => (
+          visibleClinics.map((clinic) => (
             <article
               key={clinic.id}
               className={cn(
@@ -163,7 +230,7 @@ export function ClinicTable({
             </tr>
           </thead>
           <tbody>
-            {clinics.length === 0 ? (
+            {visibleClinics.length === 0 ? (
               <tr>
                 <td
                   colSpan={11}
@@ -173,7 +240,7 @@ export function ClinicTable({
                 </td>
               </tr>
             ) : (
-              clinics.map((clinic) => (
+              visibleClinics.map((clinic) => (
                 <tr
                   key={clinic.id}
                   className={cn(
