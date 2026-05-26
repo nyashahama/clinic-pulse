@@ -231,4 +231,26 @@ describe("buildIntegrationOperationsModel", () => {
       actionLabel: "Review delivery",
     });
   });
+
+  it("exposes source-backed references for integration operations patterns", () => {
+    const model = buildIntegrationOperationsModel(makeReadiness(), {
+      now: new Date("2026-05-24T10:00:00.000Z"),
+    });
+
+    expect(model.sourceReferences.map((reference) => reference.source)).toEqual([
+      "Infisical admin integrations",
+      "Cal.com BTCPay setup",
+      "Unkey request log details",
+      "Dub events metadata",
+      "OpenStatus health check",
+    ]);
+    expect(model.sourceReferences.every((reference) => reference.repositoryUrl)).toBe(true);
+    expect(model.sourceReferences.map((reference) => reference.license)).toEqual([
+      "MIT",
+      "MIT",
+      "AGPL reference-only",
+      "AGPL reference-only",
+      "AGPL reference-only",
+    ]);
+  });
 });

@@ -50,6 +50,13 @@ export type TenantHealthSignal = {
   actionLabel: string;
 };
 
+export type TenantHealthSourceReference = {
+  source: string;
+  role: string;
+  href: string;
+  licenseUse: "adaptable" | "reference-only";
+};
+
 export type TenantHealthViewModel = {
   header: {
     eyebrow: string;
@@ -75,6 +82,7 @@ export type TenantHealthViewModel = {
     description: string;
     items: TenantHealthSignal[];
   };
+  sourceReferences: TenantHealthSourceReference[];
 };
 
 export type TenantHealthInput = {
@@ -92,6 +100,32 @@ const adminRoles = new Set<AuthRole>([
   "system_admin",
 ]);
 const numberFormatter = new Intl.NumberFormat("en-ZA");
+const sourceReferences: TenantHealthSourceReference[] = [
+  {
+    source: "Supabase Studio",
+    role: "Tenant estate shell, concise health sections, and operator-first page hierarchy.",
+    href: "https://github.com/supabase/supabase",
+    licenseUse: "adaptable",
+  },
+  {
+    source: "OpenStatus",
+    role: "Reliability language for freshness, uptime-style health, and clear incident posture.",
+    href: "https://github.com/openstatusHQ/openstatus",
+    licenseUse: "reference-only",
+  },
+  {
+    source: "Twenty",
+    role: "Dense back-office relationship ledger for districts, accounts, and activity history.",
+    href: "https://github.com/twentyhq/twenty",
+    licenseUse: "reference-only",
+  },
+  {
+    source: "shadcn dashboard",
+    role: "Compact metric cards and accessible primitives for repeat operational review.",
+    href: "https://github.com/shadcn-ui/ui",
+    licenseUse: "adaptable",
+  },
+];
 
 function formatCount(value: number) {
   return numberFormatter.format(value);
@@ -372,5 +406,6 @@ export function buildTenantHealthViewModel({
         },
       ],
     },
+    sourceReferences,
   };
 }

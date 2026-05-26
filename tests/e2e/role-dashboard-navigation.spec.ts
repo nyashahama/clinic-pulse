@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 type SeededRole = "reporter" | "district_manager" | "org_admin" | "system_admin";
+type DashboardLandmark = string | { selector: string };
 
 const password = "ClinicPulseDemo123!";
 
@@ -10,7 +11,7 @@ const roleScenarios: Array<{
   home: string;
   heading: string;
   sidebarLabels: string[];
-  landmarks: string[];
+  landmarks: DashboardLandmark[];
 }> = [
   {
     role: "reporter",
@@ -70,7 +71,7 @@ const roleScenarios: Array<{
     role: "system_admin",
     email: "system-admin@clinicpulse.local",
     home: "/admin",
-    heading: "Platform operations deck",
+    heading: "Platform Command Console",
     sidebarLabels: [
       "Platform Overview",
       "Tenant health",
@@ -83,14 +84,9 @@ const roleScenarios: Array<{
       "Audit evidence",
     ],
     landmarks: [
-      "tenant-health",
-      "reporting-coverage",
-      "data-ingestion",
-      "admin-review-pressure",
-      "security",
-      "partner-readiness",
-      "demo-controls",
-      "audit-evidence",
+      { selector: '[aria-label="Platform command metrics"]' },
+      { selector: '[aria-label="Operational command lanes"]' },
+      { selector: '[aria-label="Audit and evidence console"]' },
     ],
   },
 ];
@@ -210,7 +206,12 @@ test.describe("phase 1 role dashboard navigation", () => {
       await signInAs(page, scenario.email, scenario.home);
 
       for (const landmark of scenario.landmarks) {
-        await expect(page.locator(`#${landmark}`)).toBeVisible();
+        const landmarkLocator =
+          typeof landmark === "string"
+            ? page.locator(`#${landmark}`)
+            : page.locator(landmark.selector);
+
+        await expect(landmarkLocator).toBeVisible();
       }
     });
   }

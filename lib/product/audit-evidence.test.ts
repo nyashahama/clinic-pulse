@@ -147,6 +147,13 @@ describe("buildAuditEvidenceViewModel", () => {
       "Partner exports",
       "Webhook delivery",
     ]);
+    expect(viewModel.sourceReferences.map((reference) => reference.source)).toEqual([
+      "Supabase Audit Logs",
+      "Infisical Permission Audit",
+      "Unkey log details",
+      "Dub activity metadata",
+      "Twenty activity timeline",
+    ]);
   });
 
   it("filters evidence rows by lane, review state, and search text", () => {

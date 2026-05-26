@@ -323,6 +323,7 @@ export function TenantHealthBoard({ viewModel }: TenantHealthBoardProps) {
           </div>
         </section>
       </div>
+
     </div>
   );
 }

@@ -17,6 +17,12 @@ async function clickSidebarLink(page: Page, name: string, path: string) {
   await expect(page.locator("[data-admin-module]").first()).toBeVisible();
 }
 
+async function expectResearchRailHidden(page: Page) {
+  await expect(page.getByText("Research basis", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: /source.*references/i })).toHaveCount(0);
+  await expect(page.getByText(/source-backed/i)).toHaveCount(0);
+}
+
 test("organisation admin sees real governance modules", async ({ page }) => {
   await signIn(page, "org-admin@clinicpulse.local");
   for (const path of [
@@ -29,6 +35,96 @@ test("organisation admin sees real governance modules", async ({ page }) => {
     await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
     await expect(page.locator("[data-admin-module]").first()).toBeVisible();
   }
+});
+
+test("system admin sees platform command console without implementation research rails", async ({ page }) => {
+  await signIn(page, "system-admin@clinicpulse.local");
+  await page.goto("/admin");
+
+  await expect(page.getByRole("heading", { name: "Platform Command Console" })).toBeVisible();
+  await expect(page.getByLabel("Platform command metrics")).toBeVisible();
+  await expect(page.getByLabel("Operational command lanes")).toBeVisible();
+  await expect(page.getByLabel("Audit and evidence console")).toBeVisible();
+  await expectResearchRailHidden(page);
+  await expect(
+    page.getByText(/Trigger\.dev|OpenStatus|Supabase Studio|Unkey audit logs|Logto console|Infisical|Cal\.com|Dub|shadcn/i),
+  ).toHaveCount(0);
+  await expect(
+    page
+      .getByLabel("Audit and evidence console")
+      .getByRole("link", { name: "Open audit evidence", exact: true }),
+  ).toHaveAttribute("href", "/admin/audit-evidence");
+});
+
+test("system admin command console remains navigable on mobile", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "mobile-only coverage");
+
+  await signIn(page, "system-admin@clinicpulse.local");
+  await page.goto("/admin");
+
+  await expect(page.getByRole("heading", { name: "Platform Command Console" })).toBeVisible();
+  await expect(page.getByLabel("Platform command metrics")).toBeVisible();
+  await expect(
+    page
+      .getByLabel("Platform command metrics")
+      .getByRole("link", { name: "Open tenant health", exact: true }),
+  ).toHaveAttribute("href", "/admin/tenant-health");
+});
+
+test("tenant health keeps implementation research out of user-facing UI", async ({ page }) => {
+  await signIn(page, "system-admin@clinicpulse.local");
+  await page.goto("/admin/tenant-health");
+
+  await expect(page.getByRole("heading", { name: "Tenant health" })).toBeVisible();
+  await expectResearchRailHidden(page);
+});
+
+test("security posture keeps implementation research out of user-facing UI", async ({ page }) => {
+  await signIn(page, "system-admin@clinicpulse.local");
+  await page.goto("/admin/security");
+
+  await expect(page.getByRole("heading", { name: "Security posture" })).toBeVisible();
+  await expectResearchRailHidden(page);
+});
+
+test("data ingestion keeps implementation research out of user-facing UI", async ({ page }) => {
+  await signIn(page, "system-admin@clinicpulse.local");
+  await page.goto("/admin/data-ingestion");
+
+  await expect(page.getByRole("heading", { name: "Ingestion pressure" })).toBeVisible();
+  await expectResearchRailHidden(page);
+});
+
+test("integration operations keeps implementation research out of user-facing UI", async ({ page }) => {
+  await signIn(page, "system-admin@clinicpulse.local");
+  await page.goto("/admin/integrations");
+
+  await expect(page.getByRole("heading", { name: "Integration operations" })).toBeVisible();
+  await expectResearchRailHidden(page);
+});
+
+test("audit evidence keeps implementation research out of user-facing UI", async ({ page }) => {
+  await signIn(page, "system-admin@clinicpulse.local");
+  await page.goto("/admin/audit-evidence");
+
+  await expect(page.getByRole("heading", { name: "Audit evidence" })).toBeVisible();
+  await expectResearchRailHidden(page);
+});
+
+test("partner readiness keeps implementation research out of user-facing UI", async ({ page }) => {
+  await signIn(page, "system-admin@clinicpulse.local");
+  await page.goto("/admin/partner-readiness");
+
+  await expect(page.getByRole("heading", { name: "Partner readiness" })).toBeVisible();
+  await expectResearchRailHidden(page);
+});
+
+test("access review keeps implementation research out of user-facing UI", async ({ page }) => {
+  await signIn(page, "system-admin@clinicpulse.local");
+  await page.goto("/admin/access-review");
+
+  await expect(page.getByRole("heading", { name: "Access review" })).toBeVisible();
+  await expectResearchRailHidden(page);
 });
 
 test("reporting coverage clinic names open operational detail", async ({ page }) => {
