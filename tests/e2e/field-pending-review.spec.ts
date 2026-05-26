@@ -179,3 +179,35 @@ test("resumes a saved device report from the offline queue", async ({ page }) =>
   await expect(page.getByText(revisedNotes)).toBeVisible();
   await expect(page.getByText(originalNotes)).toHaveCount(0);
 });
+
+test("verifies the active stop with browser location", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: {
+        getCurrentPosition: (success: PositionCallback) =>
+          success({
+            coords: {
+              accuracy: 4,
+              altitude: null,
+              altitudeAccuracy: null,
+              heading: null,
+              latitude: -25.7096,
+              longitude: 28.3676,
+              speed: null,
+            },
+            timestamp: Date.now(),
+          } as GeolocationPosition),
+      },
+    });
+  });
+
+  await signInAsReporter(page);
+
+  await expect(page.getByRole("heading", { name: "Visit verification" })).toBeVisible();
+  await page.getByRole("button", { name: "Verify active stop" }).click();
+
+  await expect(page.getByText("Location verified")).toBeVisible();
+  await expect(page.getByText("Good GPS accuracy")).toBeVisible();
+  await expect(page.getByText("0 m from Mamelodi East Community Clinic")).toBeVisible();
+});

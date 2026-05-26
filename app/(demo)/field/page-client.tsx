@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { FieldClinicList } from "@/components/demo/field-clinic-list";
+import { FieldLocationVerificationPanel } from "@/components/demo/field-location-verification";
 import { FieldTaskQueue } from "@/components/demo/field-task-queue";
 import { OfflineQueue } from "@/components/demo/offline-queue";
 import { type FieldReportFeedback } from "@/components/demo/report-feedback";
@@ -711,6 +712,16 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
         </div>
 
         <FieldTaskQueue tasks={fieldCockpit.taskQueue} />
+
+        {selectedClinic ? (
+          <FieldLocationVerificationPanel
+            clinic={{
+              latitude: selectedClinic.latitude,
+              longitude: selectedClinic.longitude,
+              name: selectedClinic.name,
+            }}
+          />
+        ) : null}
 
         <dl className="grid divide-y divide-border-subtle border-b border-border-subtle sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
           <div className="p-4">
