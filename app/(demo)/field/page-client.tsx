@@ -679,6 +679,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
         />
         <div id="submit-report" className="scroll-mt-28">
           <ReportForm
+            key={selectedId}
             clinicId={selectedId}
             clinicName={selectedName}
             onSubmit={handleSubmit}

@@ -9,6 +9,12 @@ import {
   type FieldReportFeedback,
 } from "@/components/demo/report-feedback";
 import { SectionHeader } from "@/components/demo/section-header";
+import {
+  clearFieldReportDraft,
+  getFieldReportDraft,
+  saveFieldReportDraft,
+  type FieldReportDraftInput,
+} from "@/lib/demo/field-report-draft";
 import type {
   ClinicStatus,
   QueuePressure,
@@ -55,6 +61,30 @@ const QUEUE_OPTIONS: Array<{ value: QueuePressure; label: string }> = [
 
 const FIELD_SEGMENT_CLASS =
   "inline-flex flex-1 items-center justify-center rounded-lg border border-border-subtle px-2 py-2 text-sm font-medium transition-colors has-[input:checked]:border-neutral-900 has-[input:checked]:bg-neutral-900 has-[input:checked]:text-white";
+
+const DEFAULT_DRAFT_INPUT = {
+  status: "operational",
+  staffPressure: "normal",
+  stockPressure: "normal",
+  queuePressure: "low",
+  notes: "",
+} satisfies {
+  status: ClinicStatus;
+  staffPressure: StaffPressure;
+  stockPressure: StockPressure;
+  queuePressure: QueuePressure;
+  notes: string;
+};
+
+function isMeaningfulDraft(input: FieldReportDraftInput) {
+  return (
+    input.status !== DEFAULT_DRAFT_INPUT.status ||
+    input.staffPressure !== DEFAULT_DRAFT_INPUT.staffPressure ||
+    input.stockPressure !== DEFAULT_DRAFT_INPUT.stockPressure ||
+    input.queuePressure !== DEFAULT_DRAFT_INPUT.queuePressure ||
+    input.notes.trim().length > 0
+  );
+}
 
 type Option = {
   value: string;
@@ -124,14 +154,85 @@ export function ReportForm({
   feedback = null,
 }: FieldReportFormProps) {
   const submitInFlight = useRef(false);
-  const [status, setStatus] = useState<ClinicStatus>("operational");
-  const [staff, setStaff] = useState<StaffPressure>("normal");
-  const [stock, setStock] = useState<StockPressure>("normal");
-  const [queue, setQueue] = useState<QueuePressure>("low");
-  const [notes, setNotes] = useState("");
+  const restoredDraft = getFieldReportDraft(clinicId);
+  const restoredInput = restoredDraft?.input ?? DEFAULT_DRAFT_INPUT;
+  const [status, setStatus] = useState<ClinicStatus>(restoredInput.status);
+  const [staff, setStaff] = useState<StaffPressure>(restoredInput.staffPressure);
+  const [stock, setStock] = useState<StockPressure>(restoredInput.stockPressure);
+  const [queue, setQueue] = useState<QueuePressure>(restoredInput.queuePressure);
+  const [notes, setNotes] = useState(restoredInput.notes);
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(
+    restoredDraft?.updatedAt ?? null,
+  );
 
   const submitDisabled =
     !clinicId || (notes.trim().length > 250) || submitting;
+
+  const persistDraft = (input: FieldReportDraftInput) => {
+    if (!clinicId || !isMeaningfulDraft(input)) {
+      clearFieldReportDraft(clinicId);
+      setDraftSavedAt(null);
+      return;
+    }
+
+    const draft = saveFieldReportDraft(clinicId, input);
+    setDraftSavedAt(draft.updatedAt);
+  };
+
+  const updateStatus = (value: ClinicStatus) => {
+    setStatus(value);
+    persistDraft({
+      status: value,
+      staffPressure: staff,
+      stockPressure: stock,
+      queuePressure: queue,
+      notes,
+    });
+  };
+
+  const updateStaff = (value: StaffPressure) => {
+    setStaff(value);
+    persistDraft({
+      status,
+      staffPressure: value,
+      stockPressure: stock,
+      queuePressure: queue,
+      notes,
+    });
+  };
+
+  const updateStock = (value: StockPressure) => {
+    setStock(value);
+    persistDraft({
+      status,
+      staffPressure: staff,
+      stockPressure: value,
+      queuePressure: queue,
+      notes,
+    });
+  };
+
+  const updateQueue = (value: QueuePressure) => {
+    setQueue(value);
+    persistDraft({
+      status,
+      staffPressure: staff,
+      stockPressure: stock,
+      queuePressure: value,
+      notes,
+    });
+  };
+
+  const updateNotes = (value: string) => {
+    setNotes(value);
+    persistDraft({
+      status,
+      staffPressure: staff,
+      stockPressure: stock,
+      queuePressure: queue,
+      notes: value,
+    });
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -153,6 +254,12 @@ export function ReportForm({
       });
 
       if (submitted !== false) {
+        clearFieldReportDraft(clinicId);
+        setDraftSavedAt(null);
+        setStatus(DEFAULT_DRAFT_INPUT.status);
+        setStaff(DEFAULT_DRAFT_INPUT.staffPressure);
+        setStock(DEFAULT_DRAFT_INPUT.stockPressure);
+        setQueue(DEFAULT_DRAFT_INPUT.queuePressure);
         setNotes("");
       }
     } finally {
@@ -188,7 +295,7 @@ export function ReportForm({
             name="clinic-status"
             value={status}
             options={STATUS_OPTIONS}
-            onChange={(value) => setStatus(value as ClinicStatus)}
+            onChange={(value) => updateStatus(value as ClinicStatus)}
           />
         </VisitStep>
 
@@ -206,7 +313,7 @@ export function ReportForm({
                 name="staff-pressure"
                 value={staff}
                 options={STAFF_OPTIONS}
-                onChange={(value) => setStaff(value as StaffPressure)}
+                onChange={(value) => updateStaff(value as StaffPressure)}
               />
             </div>
 
@@ -218,7 +325,7 @@ export function ReportForm({
                 name="stock-pressure"
                 value={stock}
                 options={STOCK_OPTIONS}
-                onChange={(value) => setStock(value as StockPressure)}
+                onChange={(value) => updateStock(value as StockPressure)}
               />
             </div>
 
@@ -230,7 +337,7 @@ export function ReportForm({
                 name="queue-pressure"
                 value={queue}
                 options={QUEUE_OPTIONS}
-                onChange={(value) => setQueue(value as QueuePressure)}
+                onChange={(value) => updateQueue(value as QueuePressure)}
               />
             </div>
           </div>
@@ -243,7 +350,7 @@ export function ReportForm({
         >
           <textarea
             value={notes}
-            onChange={(event) => setNotes(event.target.value)}
+            onChange={(event) => updateNotes(event.target.value)}
             rows={5}
             maxLength={250}
             placeholder="Add context, barriers, and what changed today."
@@ -252,6 +359,15 @@ export function ReportForm({
           <p className="text-xs text-content-subtle">
             {notes.length}/250 characters
           </p>
+          {draftSavedAt ? (
+            <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950 dark:border-sky-900/60 dark:bg-sky-950/35 dark:text-sky-100">
+              <p className="font-medium">Draft saved on this device</p>
+              <p className="mt-1 text-xs">
+                Returning to {clinicName} restores this in-progress report before
+                it is submitted or queued.
+              </p>
+            </div>
+          ) : null}
         </VisitStep>
 
         <VisitStep

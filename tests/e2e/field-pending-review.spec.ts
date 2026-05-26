@@ -125,3 +125,28 @@ test("shows the field visit cockpit in the mobile first viewport", async ({
   const reportHeadingBox = await reportHeading.boundingBox();
   expect(reportHeadingBox?.y ?? 9999).toBeLessThan(220);
 });
+
+test("restores an in-progress field report draft when returning to a clinic", async ({
+  page,
+}) => {
+  await signInAsReporter(page);
+
+  const notes = `Autosaved field draft ${Date.now()}`;
+  const notesField = page.getByPlaceholder("Add context, barriers, and what changed today.");
+
+  await page.locator("label").filter({ hasText: "Degraded" }).click();
+  await page.locator("label").filter({ hasText: "High" }).click();
+  await notesField.fill(notes);
+  await expect(page.getByText("Draft saved on this device")).toBeVisible();
+
+  await page.getByRole("button", { name: /Hammanskraal Unit D Clinic/ }).click();
+  await expect(notesField).toHaveValue("");
+
+  await page
+    .getByRole("button", { name: /Mamelodi East Community Clinic/ })
+    .click();
+
+  await expect(notesField).toHaveValue(notes);
+  await expect(page.getByLabel("Degraded")).toBeChecked();
+  await expect(page.getByLabel("High")).toBeChecked();
+});
