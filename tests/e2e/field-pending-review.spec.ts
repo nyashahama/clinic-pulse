@@ -270,6 +270,60 @@ test("resumes a saved device report from the offline queue", async ({ page }) =>
   await expect(page.getByText(originalNotes)).toHaveCount(0);
 });
 
+test("preserves visit proof on saved device reports", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: {
+        getCurrentPosition: (success: PositionCallback) =>
+          success({
+            coords: {
+              accuracy: 4,
+              altitude: null,
+              altitudeAccuracy: null,
+              heading: null,
+              latitude: -25.7096,
+              longitude: 28.3676,
+              speed: null,
+            },
+            timestamp: Date.now(),
+          } as GeolocationPosition),
+      },
+    });
+  });
+
+  await signInAsReporter(page);
+
+  const notes = `Queued proof report ${Date.now()}`;
+  const notesField = page.getByPlaceholder("Add context, barriers, and what changed today.");
+  const reportForm = page.locator("#submit-report");
+  const visitProof = reportForm.getByTestId("field-visit-proof");
+  const draftsSync = page.locator("#drafts-sync");
+
+  await page.getByRole("button", { name: "Verify active stop" }).click();
+  await expect(visitProof.getByText("Location verified")).toBeVisible();
+
+  await page.getByRole("button", { name: "Set offline mode" }).click();
+  await notesField.fill(notes);
+  await page.getByRole("button", { name: "Submit report" }).click();
+
+  await expect(page.getByText("Saved to device")).toBeVisible();
+  await expect(draftsSync.getByText(notes)).toBeVisible();
+  await expect(draftsSync.getByText("Visit proof")).toBeVisible();
+  await expect(draftsSync.getByText("Location verified")).toBeVisible();
+  await expect(
+    draftsSync.getByText("0 m from Mamelodi East Community Clinic"),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Edit saved report" }).click();
+
+  await expect(notesField).toHaveValue(notes);
+  await expect(visitProof.getByText("Location verified")).toBeVisible();
+  await expect(
+    visitProof.getByText("0 m from Mamelodi East Community Clinic"),
+  ).toBeVisible();
+});
+
 test("verifies the active stop with browser location", async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(navigator, "geolocation", {

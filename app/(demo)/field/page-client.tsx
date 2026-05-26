@@ -170,6 +170,7 @@ async function loadRecoverableOfflineReports(now = new Date()) {
 function createOfflineReportQueueItem(
   clinicId: string,
   report: OnlineFieldReportInput,
+  visitVerification: FieldLocationVerification | null,
   now = new Date(),
 ): OfflineReportQueueItem {
   const timestamp = now.toISOString();
@@ -195,6 +196,7 @@ function createOfflineReportQueueItem(
     lastServerReportId: null,
     lastServerReviewState: null,
     conflictReason: null,
+    visitVerification,
   };
 }
 
@@ -266,8 +268,11 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
   }, []);
 
   const saveOfflineReport = useCallback(
-    async (report: OnlineFieldReportInput) => {
-      const item = createOfflineReportQueueItem(selectedId, report);
+    async (
+      report: OnlineFieldReportInput,
+      verification: FieldLocationVerification | null,
+    ) => {
+      const item = createOfflineReportQueueItem(selectedId, report, verification);
       const reports = await loadOfflineReports();
       const existing = findMatchingOpenOfflineReport(reports, item);
       if (existing) {
@@ -282,7 +287,11 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
   );
 
   const updateSavedOfflineReport = useCallback(
-    async (item: OfflineReportQueueItem, report: OnlineFieldReportInput) => {
+    async (
+      item: OfflineReportQueueItem,
+      report: OnlineFieldReportInput,
+      verification: FieldLocationVerification | null,
+    ) => {
       const timestamp = new Date().toISOString();
       const updatedItem: OfflineReportQueueItem = {
         ...item,
@@ -302,6 +311,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
         lastServerReportId: null,
         lastServerReviewState: null,
         conflictReason: null,
+        visitVerification: verification,
       };
 
       await updateOfflineReport(updatedItem);
@@ -526,7 +536,11 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
 
     try {
       if (editingOfflineReport && !isOnline) {
-        await updateSavedOfflineReport(editingOfflineReport, report);
+        await updateSavedOfflineReport(
+          editingOfflineReport,
+          report,
+          selectedVisitVerification,
+        );
         setEditingOfflineReportId(null);
         showSubmitFeedback({
           tone: "info",
@@ -574,7 +588,11 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
           }
 
           if (editingOfflineReport) {
-            await updateSavedOfflineReport(editingOfflineReport, report);
+            await updateSavedOfflineReport(
+              editingOfflineReport,
+              report,
+              selectedVisitVerification,
+            );
             setEditingOfflineReportId(null);
             showSubmitFeedback({
               tone: "info",
@@ -585,7 +603,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
             return true;
           }
 
-          const saved = await saveOfflineReport(report);
+          const saved = await saveOfflineReport(report, selectedVisitVerification);
           showSubmitFeedback({
             tone: saved.duplicate ? "warning" : "info",
             title: saved.duplicate ? "Already queued" : "Saved to device",
@@ -597,7 +615,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
         return true;
       }
 
-      const saved = await saveOfflineReport(report);
+      const saved = await saveOfflineReport(report, selectedVisitVerification);
       if (saved.duplicate) {
         showSubmitFeedback({
           tone: "warning",
@@ -642,7 +660,11 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
   const handleEditReport = (item: OfflineReportQueueItem) => {
     setSelectedClinicId(item.clinicId);
     setEditingOfflineReportId(item.clientReportId);
-    setVisitVerification(null);
+    setVisitVerification(
+      item.visitVerification
+        ? { clinicId: item.clinicId, verification: item.visitVerification }
+        : null,
+    );
     setSubmitFeedback(null);
 
     requestAnimationFrame(() => {

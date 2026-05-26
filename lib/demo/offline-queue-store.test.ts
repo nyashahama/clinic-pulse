@@ -140,6 +140,24 @@ describe("offline report queue store", () => {
     expect(await listOfflineReports()).toEqual([supported]);
   });
 
+  it("rejects queued reports with malformed visit proof", async () => {
+    const malformed = queueItem({
+      clientReportId: "malformed-proof-report",
+      visitVerification: {
+        accuracyLabel: "Good GPS accuracy",
+        capturedAt: "not-a-date",
+        coordinateLabel: "25.70960°S 28.36760°E",
+        distanceLabel: "0 m",
+        distanceMeters: 0,
+        statusLabel: "Location verified",
+        tone: "clear",
+      },
+    });
+    adapter.records.set("malformed-proof-report", malformed);
+
+    expect(await listOfflineReports()).toEqual([]);
+  });
+
   it("ignores malformed schema version 1 records", async () => {
     const supported = queueItem({ clientReportId: "valid-schema-v1-report" });
     const malformedRecords = [

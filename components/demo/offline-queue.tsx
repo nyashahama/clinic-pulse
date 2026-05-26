@@ -2,6 +2,8 @@
 
 import {
   AlertCircle,
+  CheckCircle2,
+  MapPin,
   Pencil,
   RefreshCw,
   RotateCcw,
@@ -52,6 +54,15 @@ const REMOVABLE_STATUSES = new Set<OfflineReportQueueStatus>([
   "failed",
   "conflict",
 ]);
+
+const VISIT_PROOF_TONE_CLASS = {
+  clear:
+    "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/35 dark:text-emerald-100",
+  attention:
+    "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-100",
+  blocked:
+    "border-red-200 bg-red-50 text-red-900 dark:border-red-900/60 dark:bg-red-950/35 dark:text-red-100",
+} as const;
 
 function formatTime(value: string) {
   return new Intl.DateTimeFormat("en-ZA", {
@@ -157,6 +168,38 @@ export function OfflineQueue({
 
                   {item.notes.trim() ? (
                     <p className="mt-2 break-words text-sm leading-6">{item.notes}</p>
+                  ) : null}
+
+                  {item.visitVerification ? (
+                    <div
+                      className={cn(
+                        "mt-3 rounded-lg border p-3 text-xs",
+                        VISIT_PROOF_TONE_CLASS[item.visitVerification.tone],
+                      )}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="font-semibold uppercase tracking-normal">
+                          Visit proof
+                        </p>
+                        <span>{item.visitVerification.accuracyLabel}</span>
+                      </div>
+                      <p className="mt-1 inline-flex items-center gap-1 font-semibold">
+                        {item.visitVerification.tone === "blocked" ? (
+                          <AlertCircle className="size-3.5" />
+                        ) : (
+                          <CheckCircle2 className="size-3.5" />
+                        )}
+                        {item.visitVerification.statusLabel}
+                      </p>
+                      <p className="mt-1">
+                        {item.visitVerification.distanceLabel} from{" "}
+                        {getClinicName(clinics, item.clinicId)}
+                      </p>
+                      <p className="mt-1 inline-flex items-center gap-1">
+                        <MapPin className="size-3.5" />
+                        {item.visitVerification.coordinateLabel}
+                      </p>
+                    </div>
                   ) : null}
                 </div>
 
