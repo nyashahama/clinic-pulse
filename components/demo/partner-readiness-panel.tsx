@@ -2,6 +2,7 @@
 
 import {
   AlertTriangle,
+  ArrowUpRight,
   Braces,
   CheckCircle2,
   ClipboardList,
@@ -50,6 +51,7 @@ import {
   type PartnerHandoffPacketItem,
   type PartnerLaunchGate,
   type PartnerReadinessSeverity,
+  type PartnerSourceReference,
 } from "@/lib/demo/partner-readiness";
 import { cn } from "@/lib/utils";
 
@@ -792,6 +794,63 @@ function OneTimeSecretNotice({
   );
 }
 
+function PartnerSourceReferences({
+  references,
+}: {
+  references: PartnerSourceReference[];
+}) {
+  return (
+    <div className="mt-5 rounded-md border border-border-subtle bg-bg-muted/30 p-4">
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-normal text-content-subtle">
+            Research basis
+          </p>
+          <h2 className="mt-1 text-lg font-semibold text-content-emphasis">
+            Partner-readiness source references
+          </h2>
+          <p className="mt-1 max-w-3xl break-words text-sm text-content-subtle">
+            Open-source connector setup, run-control, credential audit, and metadata
+            patterns used to shape the launch cockpit.
+          </p>
+        </div>
+        <Badge label={`${formatCount(references.length)} references`} tone="info" />
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+        {references.map((reference) => (
+          <a
+            key={reference.source}
+            href={reference.href}
+            target="_blank"
+            rel="noreferrer"
+            className="group grid min-w-0 gap-3 rounded-md border border-border-subtle bg-bg-default p-3 text-left shadow-sm transition hover:bg-bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            <span className="flex min-w-0 items-start justify-between gap-2">
+              <span className="min-w-0 break-words text-sm font-semibold text-content-emphasis">
+                {reference.source}
+              </span>
+              <ArrowUpRight
+                aria-hidden="true"
+                className="mt-0.5 size-4 shrink-0 text-content-subtle transition group-hover:text-content-emphasis"
+              />
+            </span>
+            <span className="break-words text-xs leading-5 text-content-default">
+              {reference.role}
+            </span>
+            <code className="block break-all rounded bg-bg-muted px-2 py-1 text-[0.68rem] leading-4 text-content-subtle">
+              {reference.sourcePath}
+            </code>
+            <span className="text-xs font-medium capitalize text-content-subtle">
+              {reference.licenseUse.replace("-", " ")}
+            </span>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function PartnerReadinessPanel({
   readiness,
   onCreateDemoKey,
@@ -887,6 +946,8 @@ export function PartnerReadinessPanel({
           </div>
         ))}
       </dl>
+
+      <PartnerSourceReferences references={cockpit.sourceReferences} />
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.9fr)]">
         <div className="min-w-0 rounded-md border border-border-subtle p-4">
