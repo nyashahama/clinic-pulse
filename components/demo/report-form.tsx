@@ -164,8 +164,8 @@ export function ReportForm({
     <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
       <SectionHeader
         eyebrow="Visit report"
-        title="Capture field update"
-        description="Confirm the site, capture pressure, then send it for district review or save it on this device."
+        title="Submit clinic status"
+        description="Capture the field update, confirm pressure, then send it for district review or save it on this device."
       />
 
       <form className="mt-4 space-y-4" onSubmit={handleSubmit}>

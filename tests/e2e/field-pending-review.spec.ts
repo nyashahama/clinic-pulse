@@ -74,6 +74,7 @@ test("shows pending review feedback after an online field report submission", as
     await expect(
       page.getByTestId("field-report-receipt").filter({ hasText: successMessage }),
     ).toBeVisible();
+    expect(await page.getByTestId("field-report-toast").count()).toBe(0);
     await expect(
       page.getByText(
         "The newest reports submitted into the operational record. Pending reports wait for district review before changing current status.",
@@ -112,7 +113,7 @@ test("shows the field visit cockpit in the mobile first viewport", async ({
   await cockpit.getByRole("link", { name: /Start report|Continue report/ }).click();
 
   const reportHeading = page.getByRole("heading", {
-    name: "Capture field update",
+    name: "Submit clinic status",
   });
   await expect(reportHeading).toBeVisible();
 

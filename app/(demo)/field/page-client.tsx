@@ -14,10 +14,7 @@ import { useRouter } from "next/navigation";
 
 import { FieldClinicList } from "@/components/demo/field-clinic-list";
 import { OfflineQueue } from "@/components/demo/offline-queue";
-import {
-  FieldReportToast,
-  type FieldReportFeedback,
-} from "@/components/demo/report-feedback";
+import { type FieldReportFeedback } from "@/components/demo/report-feedback";
 import { ReportForm } from "@/components/demo/report-form";
 import { SyncStatus } from "@/components/demo/sync-status";
 import { SectionHeader } from "@/components/demo/section-header";
@@ -227,7 +224,6 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
   const submitInFlight = useRef(false);
   const syncInFlight = useRef(false);
   const [submitFeedback, setSubmitFeedback] = useState<FieldReportFeedback | null>(null);
-  const [toastFeedback, setToastFeedback] = useState<FieldReportFeedback | null>(null);
   const [syncing, setSyncing] = useState(false);
 
   const loadOfflineReports = useCallback(async () => {
@@ -246,20 +242,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
 
   const showSubmitFeedback = useCallback((feedback: FieldReportFeedback) => {
     setSubmitFeedback(feedback);
-    setToastFeedback(feedback);
   }, []);
-
-  useEffect(() => {
-    if (!toastFeedback) {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => {
-      setToastFeedback(null);
-    }, 4200);
-
-    return () => window.clearTimeout(timeout);
-  }, [toastFeedback]);
 
   const saveOfflineReport = useCallback(
     async (report: OnlineFieldReportInput) => {
@@ -483,7 +466,6 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
     submitInFlight.current = true;
     setSubmitting(true);
     setSubmitFeedback(null);
-    setToastFeedback(null);
 
     if (!selectedId) {
       submitInFlight.current = false;
@@ -573,8 +555,6 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
 
   return (
     <div className="grid gap-4 pb-4" data-role-dashboard={session.role}>
-      <FieldReportToast feedback={toastFeedback} />
-
       <section
         className="overflow-hidden rounded-lg border border-border-subtle bg-bg-default shadow-sm"
         data-field-visit-cockpit
@@ -584,9 +564,15 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
             <p className="text-xs font-semibold uppercase tracking-normal text-white/65">
               Field visit cockpit
             </p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-normal text-white sm:text-3xl">
-              {fieldCockpit.selectedVisit.clinicName}
+            <h1 className="mt-1 text-xl font-semibold tracking-normal text-white sm:text-2xl">
+              Field workbench
             </h1>
+            <p className="mt-4 text-xs font-semibold uppercase tracking-normal text-white/55">
+              Active visit
+            </p>
+            <h2 className="mt-1 text-2xl font-semibold tracking-normal text-white sm:text-3xl">
+              {fieldCockpit.selectedVisit.clinicName}
+            </h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-white/70">
               {fieldCockpit.selectedVisit.positionLabel} -{" "}
               {fieldCockpit.selectedVisit.reason}
