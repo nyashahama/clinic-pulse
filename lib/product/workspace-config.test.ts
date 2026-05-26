@@ -190,7 +190,7 @@ describe("product workspace navigation config", () => {
         "/admin/partner-readiness",
         "/admin/integrations",
         "/admin/audit-evidence",
-        "/admin#exports",
+        "/admin/export-schema?from=admin",
       ]),
     );
     expect(workspaceUrlsForRole("system_admin")).toEqual(

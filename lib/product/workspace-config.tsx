@@ -152,7 +152,7 @@ const ROLE_WORKSPACES: Record<AuthRole, DashboardWorkspace> = {
               { title: "Partner readiness", url: "/admin/partner-readiness" },
               { title: "Integrations", url: "/admin/integrations" },
               { title: "Audit evidence", url: "/admin/audit-evidence" },
-              { title: "Exports", url: "/admin#exports" },
+              { title: "Exports", url: "/admin/export-schema?from=admin" },
             ],
           },
         ],

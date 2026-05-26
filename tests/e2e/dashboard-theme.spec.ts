@@ -38,14 +38,14 @@ test.describe("authenticated dashboard theme controls", () => {
     await expectDarkTheme(page);
     await expectThemeColor(page, DARK_THEME_COLOR);
     await expect(
-      page.getByRole("heading", { name: "Operations admin deck" }),
+      page.getByRole("heading", { name: "Organisation Governance Workbench" }),
     ).toBeVisible();
 
     await page.reload();
     await expectDarkTheme(page);
     await expectThemeColor(page, DARK_THEME_COLOR);
     await expect(
-      page.getByRole("heading", { name: "Operations admin deck" }),
+      page.getByRole("heading", { name: "Organisation Governance Workbench" }),
     ).toBeVisible();
 
     await page.goto("/demo");
@@ -82,7 +82,7 @@ test.describe("authenticated dashboard theme controls", () => {
     await expectDarkTheme(page);
     await expectThemeColor(page, DARK_THEME_COLOR);
     await expect(
-      page.getByRole("heading", { name: "Operations admin deck" }),
+      page.getByRole("heading", { name: "Organisation Governance Workbench" }),
     ).toBeVisible();
   });
 });

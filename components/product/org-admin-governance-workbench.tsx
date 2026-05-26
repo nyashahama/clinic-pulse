@@ -118,7 +118,7 @@ export function OrgAdminGovernanceWorkbench({
             </p>
             <div className="mt-5 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-normal text-neutral-500">
+                <p className="text-xs font-semibold uppercase tracking-normal text-neutral-400">
                   Active blocker
                 </p>
                 <p className="mt-1 break-words text-xl font-semibold">
@@ -135,7 +135,10 @@ export function OrgAdminGovernanceWorkbench({
               {model.hero.primaryActionLabel}
             </a>
             <Link
-              className={buttonVariants({ size: "sm", variant: "outline" })}
+              className={cn(
+                buttonVariants({ size: "sm", variant: "outline" }),
+                "border-white/25 bg-white/10 text-white hover:bg-white/15 hover:text-white",
+              )}
               href={model.hero.secondaryActionHref}
             >
               {model.hero.secondaryActionLabel}
@@ -213,11 +216,13 @@ export function OrgAdminGovernanceWorkbench({
               Submitted field evidence stays here until the organisation accepts or rejects it.
             </p>
           </div>
-          <ReportReviewSummary
-            summary={pendingReportSummary}
-            title="Governance review pressure"
-            description="Pending field reports block organisation readiness until reviewed."
-          />
+          <div id="admin-review-pressure">
+            <ReportReviewSummary
+              summary={pendingReportSummary}
+              title="Governance review pressure"
+              description="Pending field reports block organisation readiness until reviewed."
+            />
+          </div>
           <ReportReviewQueue
             items={pendingReportReviews}
             getReportDetailHref={getReportDetailHref}
