@@ -76,11 +76,52 @@ export type AuditEvidenceRow = {
   searchText: string;
 };
 
+export type AuditEvidenceSourceReference = {
+  source: string;
+  role: string;
+  href: string;
+  licenseUse: "adaptable" | "reference-only";
+};
+
 export type AuditEvidenceViewModel = {
   metrics: AuditEvidenceMetric[];
   packets: AuditEvidencePacket[];
   rows: AuditEvidenceRow[];
+  sourceReferences: AuditEvidenceSourceReference[];
 };
+
+const sourceReferences: AuditEvidenceSourceReference[] = [
+  {
+    source: "Supabase Audit Logs",
+    role: "Audit-log filters, date windows, selected-row details, and read-only metadata panels.",
+    href: "https://github.com/supabase/supabase",
+    licenseUse: "adaptable",
+  },
+  {
+    source: "Infisical Permission Audit",
+    role: "Effective-access review with source pills, state filters, search, and exportable evidence.",
+    href: "https://github.com/Infisical/infisical",
+    licenseUse: "adaptable",
+  },
+  {
+    source: "Unkey log details",
+    role: "Request-log detail structure, action popovers, filter chips, and diagnostic evidence states.",
+    href: "https://github.com/unkeyed/unkey",
+    licenseUse: "reference-only",
+  },
+  {
+    source: "Dub activity metadata",
+    role: "Compact event metadata previews with detail expansion and copy-ready raw facts.",
+    href: "https://github.com/dubinc/dub",
+    licenseUse: "reference-only",
+  },
+  {
+    source: "Twenty activity timeline",
+    role: "Grouped operational activity timeline for record-linked history and audit context.",
+    href: "https://github.com/twentyhq/twenty",
+    licenseUse: "reference-only",
+  },
+];
 
 export function buildAuditEvidenceViewModel({
   auditEvents,
@@ -175,6 +216,7 @@ export function buildAuditEvidenceViewModel({
       },
     ],
     rows,
+    sourceReferences,
   };
 }
 

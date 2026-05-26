@@ -129,5 +129,11 @@ describe("buildTenantHealthViewModel", () => {
       "Partner readiness",
     ]);
     expect(viewModel.signalLedger.items[1]?.detail).toContain("1 pending review");
+    expect(viewModel.sourceReferences.map((reference) => reference.source)).toEqual([
+      "Supabase Studio",
+      "OpenStatus",
+      "Twenty",
+      "shadcn dashboard",
+    ]);
   });
 });

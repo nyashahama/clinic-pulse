@@ -70,7 +70,7 @@ export default async function Page() {
   const disabledAccounts = users.filter((user) => Boolean(user.disabledAt)).length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-admin-module="access-review">
       <AdminModuleHeader
         eyebrow="Platform operations"
         title="Access review"

@@ -110,6 +110,14 @@ export type PartnerActionQueueItem = {
   action: PartnerActionQueueId;
 };
 
+export type PartnerSourceReference = {
+  source: string;
+  href: string;
+  sourcePath: string;
+  role: string;
+  licenseUse: "adaptable" | "reference-only";
+};
+
 export type PartnerLaunchCockpitModel = {
   gates: PartnerLaunchGate[];
   handoffPacket: {
@@ -123,6 +131,7 @@ export type PartnerLaunchCockpitModel = {
   eventCatalog: PartnerEventCatalogItem[];
   evidenceRows: PartnerEvidenceRow[];
   actionQueue: PartnerActionQueueItem[];
+  sourceReferences: PartnerSourceReference[];
 };
 
 export type OneTimePartnerApiKeySecret = {
@@ -840,6 +849,50 @@ const eventCatalog: PartnerEventCatalogItem[] = [
   },
 ];
 
+const sourceReferences: PartnerSourceReference[] = [
+  {
+    source: "Cal.com connector setup",
+    href: "https://github.com/calcom/cal.diy",
+    sourcePath: "apps/web/components/apps/btcpayserver/Setup.tsx",
+    role:
+      "Validates partner credentials and provisions webhook configuration before a connector can be promoted.",
+    licenseUse: "adaptable",
+  },
+  {
+    source: "Trigger.dev run controls",
+    href: "https://github.com/triggerdotdev/trigger.dev",
+    sourcePath: "apps/webapp/app/components/runs/v3/ReplayRunDialog.tsx",
+    role:
+      "Shapes launch actions as replayable controls with payload, metadata, environment, and submit-state context.",
+    licenseUse: "adaptable",
+  },
+  {
+    source: "Unkey key verification logs",
+    href: "https://github.com/unkeyed/unkey",
+    sourcePath:
+      "web/apps/dashboard/components/api-requests-table/components/log-details/components/roles-permissions.tsx",
+    role:
+      "Uses credential permissions and copy-ready facts as a reference for partner API key troubleshooting.",
+    licenseUse: "reference-only",
+  },
+  {
+    source: "Infisical Permission Audit",
+    href: "https://github.com/Infisical/infisical",
+    sourcePath: "frontend/src/views/PermissionAuditSheet/PermissionAuditSheet.tsx",
+    role:
+      "Informs the searchable effective-access review pattern for scoped credentials and launch blockers.",
+    licenseUse: "adaptable",
+  },
+  {
+    source: "Dub activity metadata",
+    href: "https://github.com/dubinc/dub",
+    sourcePath: "apps/web/ui/analytics/events/metadata-viewer.tsx",
+    role:
+      "Provides a reference-only pattern for compact event metadata previews with copyable raw evidence.",
+    licenseUse: "reference-only",
+  },
+];
+
 export function buildPartnerLaunchCockpitModel(
   readiness: PartnerReadinessApiResponse,
 ): PartnerLaunchCockpitModel {
@@ -1060,6 +1113,7 @@ export function buildPartnerLaunchCockpitModel(
       hasRecordedWebhookTest,
       latestExport,
     }),
+    sourceReferences,
   };
 }
 

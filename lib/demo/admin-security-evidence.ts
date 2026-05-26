@@ -16,6 +16,7 @@ import {
 import { summarizeSecurityPosture } from "@/lib/product/admin-governance";
 import type {
   SecurityEvidenceRow,
+  SecurityEvidenceSourceReference,
   SecurityEvidenceTone,
   SecurityEvidenceViewModel,
   SecuritySummaryMetric,
@@ -28,6 +29,32 @@ const dateTimeFormatter = new Intl.DateTimeFormat("en-ZA", {
   dateStyle: "medium",
   timeStyle: "short",
 });
+const sourceReferences: SecurityEvidenceSourceReference[] = [
+  {
+    source: "Unkey audit logs",
+    role: "Selected-row evidence review, audit filtering, and source-record drilldown.",
+    href: "https://github.com/unkeyed/unkey",
+    licenseUse: "reference-only",
+  },
+  {
+    source: "Infisical",
+    role: "Credential posture, secret lifecycle, and audit-backed security review language.",
+    href: "https://github.com/Infisical/infisical",
+    licenseUse: "adaptable",
+  },
+  {
+    source: "Logto console",
+    role: "RBAC, tenant access, privileged-role framing, and access review hierarchy.",
+    href: "https://github.com/logto-io/logto",
+    licenseUse: "reference-only",
+  },
+  {
+    source: "Supabase security advisor",
+    role: "Advisor-style findings, posture summaries, and concise security control grouping.",
+    href: "https://github.com/supabase/supabase",
+    licenseUse: "adaptable",
+  },
+];
 
 export function buildSecurityEvidenceViewModel({
   apiKeys,
@@ -89,6 +116,7 @@ export function buildSecurityEvidenceViewModel({
     }),
     posture,
     rows,
+    sourceReferences,
   };
 }
 

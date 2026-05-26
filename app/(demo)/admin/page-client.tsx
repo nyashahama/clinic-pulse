@@ -21,6 +21,7 @@ import { ReferenceSectionCards } from "@/components/demo/reference-section-cards
 import { SectionHeader } from "@/components/demo/section-header";
 import { ReportReviewQueue } from "@/components/product/report-review-queue";
 import { ReportReviewSummary } from "@/components/product/report-review-summary";
+import { SystemAdminCommandConsole } from "@/components/product/system-admin-command-console";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Table,
@@ -50,6 +51,7 @@ import {
   buildAdminLeadDetailHref,
   buildAdminReportDetailHref,
 } from "@/lib/product/admin-detail-routes";
+import { buildSystemAdminCommandModel } from "@/lib/product/system-admin-command";
 import { reviewPendingReportAction } from "../report-review-actions";
 
 type LeadStatusCount = Record<DemoLead["status"], number>;
@@ -230,6 +232,30 @@ export default function AdminPage({
           value: `${activeAlertCount} open`,
         },
       ];
+  const systemAdminCommandModel = isSystemAdmin
+    ? buildSystemAdminCommandModel({
+        clinicCount: clinics.length,
+        staleClinicCount,
+        queuedReports,
+        pendingReviewCount,
+        activeAlertCount,
+        auditEventCount: state.auditEvents.length,
+        leadStatusCount,
+        partnerReadiness: partnerReadinessModel,
+        syncSummary: {
+          lastSyncAt: state.lastSyncAt,
+          pendingOfflineReports: syncSummary?.pendingOfflineReports ?? queuedReports,
+          validationFailures: syncSummary?.validationFailures ?? 0,
+          conflictsNeedingAttention: syncSummary?.conflictsNeedingAttention ?? 0,
+          staleClinics: syncSummary?.staleClinics ?? staleClinicCount,
+          needsConfirmationClinics: syncSummary?.needsConfirmationClinics ?? 0,
+        },
+      })
+    : null;
+
+  if (systemAdminCommandModel) {
+    return <SystemAdminCommandConsole model={systemAdminCommandModel} />;
+  }
 
   return (
     <div className="grid min-w-0 gap-4 pb-4" data-role-dashboard={roleDashboard}>

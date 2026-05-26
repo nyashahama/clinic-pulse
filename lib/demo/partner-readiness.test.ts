@@ -414,9 +414,23 @@ describe("partner readiness helpers", () => {
     );
   });
 
-  it("does not expose external source references in the partner launch cockpit model", () => {
+  it("exposes source-backed references for the partner launch cockpit", () => {
     const model = buildPartnerLaunchCockpitModel(makeReadyReadiness());
 
+    expect(model.sourceReferences.map((reference) => reference.source)).toEqual([
+      "Cal.com connector setup",
+      "Trigger.dev run controls",
+      "Unkey key verification logs",
+      "Infisical Permission Audit",
+      "Dub activity metadata",
+    ]);
+    expect(model.sourceReferences.map((reference) => reference.licenseUse)).toEqual([
+      "adaptable",
+      "adaptable",
+      "reference-only",
+      "adaptable",
+      "reference-only",
+    ]);
     expect(model).not.toHaveProperty("references");
   });
 });

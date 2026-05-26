@@ -43,6 +43,13 @@ export type SecurityEvidenceRow = {
   searchText: string;
 };
 
+export type SecurityEvidenceSourceReference = {
+  source: string;
+  role: string;
+  href: string;
+  licenseUse: "adaptable" | "reference-only";
+};
+
 export type SecurityEvidenceViewModel = {
   metrics: SecuritySummaryMetric[];
   rows: SecurityEvidenceRow[];
@@ -50,6 +57,7 @@ export type SecurityEvidenceViewModel = {
     tone: SecurityEvidenceTone;
     summary: string;
   };
+  sourceReferences: SecurityEvidenceSourceReference[];
 };
 
 export function getDefaultSecurityEvidenceRowId(rows: SecurityEvidenceRow[]) {
