@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  type MouseEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -419,6 +420,31 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
       }),
     [clinics, selectedId, offlineReports, isOnline, lastSyncedAt],
   );
+  const handleJumpToReport = useCallback((event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+
+    const target = document.getElementById("submit-report");
+    if (!target) {
+      return;
+    }
+
+    target.scrollIntoView({ block: "start" });
+    window.history.replaceState(null, "", "#submit-report");
+  }, []);
+  const handleJumpToItinerary = useCallback(
+    (event: MouseEvent<HTMLAnchorElement>) => {
+      event.preventDefault();
+
+      const target = document.getElementById("field-itinerary");
+      if (!target) {
+        return;
+      }
+
+      target.scrollIntoView({ block: "start" });
+      window.history.replaceState(null, "", "#field-itinerary");
+    },
+    [],
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -588,6 +614,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
                 size: "lg",
               })}
               href="#submit-report"
+              onClick={handleJumpToReport}
             >
               {fieldCockpit.selectedVisit.primaryActionLabel}
             </Link>
@@ -599,6 +626,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
                 variant: "outline",
               })}
               href="#field-itinerary"
+              onClick={handleJumpToItinerary}
             >
               {fieldCockpit.selectedVisit.secondaryActionLabel}
             </Link>
