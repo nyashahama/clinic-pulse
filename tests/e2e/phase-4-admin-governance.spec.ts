@@ -78,6 +78,22 @@ test("tenant health exposes source-backed references", async ({ page }) => {
   );
 });
 
+test("security posture exposes source-backed references", async ({ page }) => {
+  await signIn(page, "system-admin@clinicpulse.local");
+  await page.goto("/admin/security");
+
+  await expect(page.getByRole("heading", { name: "Security posture" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Security source references" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Unkey audit logs/i })).toHaveAttribute(
+    "href",
+    "https://github.com/unkeyed/unkey",
+  );
+  await expect(page.getByRole("link", { name: /Infisical/i })).toHaveAttribute(
+    "href",
+    "https://github.com/Infisical/infisical",
+  );
+});
+
 test("reporting coverage clinic names open operational detail", async ({ page }) => {
   await signIn(page, "org-admin@clinicpulse.local");
   await page.goto("/admin/reporting-coverage");

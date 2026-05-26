@@ -118,6 +118,12 @@ describe("buildSecurityEvidenceViewModel", () => {
       "Privileged access",
       "Access audit trail",
     ]);
+    expect(viewModel.sourceReferences.map((reference) => reference.source)).toEqual([
+      "Unkey audit logs",
+      "Infisical",
+      "Logto console",
+      "Supabase security advisor",
+    ]);
     expect(viewModel.rows.map((row) => row.kind)).toEqual([
       "webhook",
       "privileged-access",
