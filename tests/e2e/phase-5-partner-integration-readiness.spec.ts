@@ -47,8 +47,10 @@ async function clickSidebarLink(page: Page, name: string, path: string) {
 async function expectIntegrationsModule(page: Page) {
   await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
   await expect(page.locator('[data-admin-module="integrations"]')).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Integration operations" })).toBeVisible();
-  await expect(page.getByText("Integration command center", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Integration operations command centre" }),
+  ).toBeVisible();
+  await expect(page.getByText("Integration evidence queue", { exact: true })).toBeVisible();
   await expect(page.getByText("Integration evidence workspace", { exact: true })).toBeVisible();
   await expect(
     page.getByRole("searchbox", { name: "Search integration evidence" }),

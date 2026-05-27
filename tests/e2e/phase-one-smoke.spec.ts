@@ -131,7 +131,9 @@ test.describe("phase-one operations route checklist", () => {
 
     await page.goto("/admin/partner-readiness");
     await expectNoStagedProductLanguage(page);
-    await expect(page.getByRole("heading", { name: "Partner readiness", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Partner readiness command centre" }),
+    ).toBeVisible();
 
     await page.goto("/admin/demo-controls");
     await expectNoStagedProductLanguage(page);
@@ -149,7 +151,11 @@ test.describe("phase-one operations route checklist", () => {
     await replayIncident.scrollIntoViewIfNeeded();
     await expect(replayIncident).toBeVisible();
     await replayIncident.click();
-    await expect(page.getByText(/partner webhook evidence/i)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Incident replay" })).toBeVisible();
+    await expect(
+      page.getByText("Partner webhook", { exact: true }).filter({ visible: true }).first(),
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Delivered preview" })).toBeVisible();
 
     expect(clientApiWarnings).toEqual([]);
   });

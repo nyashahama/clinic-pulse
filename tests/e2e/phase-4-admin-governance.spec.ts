@@ -124,7 +124,9 @@ test("integration operations keeps implementation research out of user-facing UI
   await signIn(page, "system-admin@clinicpulse.local");
   await page.goto("/admin/integrations");
 
-  await expect(page.getByRole("heading", { name: "Integration operations" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Integration operations command centre" }),
+  ).toBeVisible();
   await expectResearchRailHidden(page);
 });
 
@@ -132,7 +134,9 @@ test("audit evidence keeps implementation research out of user-facing UI", async
   await signIn(page, "system-admin@clinicpulse.local");
   await page.goto("/admin/audit-evidence");
 
-  await expect(page.getByRole("heading", { name: "Audit evidence" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Audit evidence command centre" }),
+  ).toBeVisible();
   await expectResearchRailHidden(page);
 });
 
@@ -140,7 +144,9 @@ test("partner readiness keeps implementation research out of user-facing UI", as
   await signIn(page, "system-admin@clinicpulse.local");
   await page.goto("/admin/partner-readiness");
 
-  await expect(page.getByRole("heading", { name: "Partner readiness" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Partner readiness command centre" }),
+  ).toBeVisible();
   await expectResearchRailHidden(page);
 });
 
@@ -148,7 +154,9 @@ test("access review keeps implementation research out of user-facing UI", async 
   await signIn(page, "system-admin@clinicpulse.local");
   await page.goto("/admin/access-review");
 
-  await expect(page.getByRole("heading", { name: "Access review" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Access review command centre" }),
+  ).toBeVisible();
   await expectResearchRailHidden(page);
 });
 
@@ -345,7 +353,9 @@ test("admin overview preview controls open detail pages", async ({ page }) => {
     page.waitForURL(/\/admin\/export-schema\?from=admin$/),
     page.getByRole("link", { name: "Open export schema" }).click(),
   ]);
-  await expect(page.getByRole("heading", { name: "Export schema detail" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Export schema command centre" }),
+  ).toBeVisible();
   await Promise.all([
     page.waitForURL(/\/admin$/),
     page.getByRole("link", { name: "Back to admin console" }).click(),
