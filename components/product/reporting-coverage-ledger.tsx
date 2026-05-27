@@ -214,6 +214,147 @@ function CoverageComposition({
   );
 }
 
+function readinessTaskIcon(id: ReportingCoverageViewModel["taskQueue"][number]["id"]) {
+  const className = "size-4";
+
+  if (id === "review-field-evidence") {
+    return <FileTextIcon className={className} />;
+  }
+
+  if (id === "clear-sync-blockers") {
+    return <RadioTowerIcon className={className} />;
+  }
+
+  if (id === "preserve-evidence-trail") {
+    return <ShieldCheckIcon className={className} />;
+  }
+
+  return <TriangleAlertIcon className={className} />;
+}
+
+function ReadinessReviewHero({
+  viewModel,
+}: {
+  viewModel: ReportingCoverageViewModel;
+}) {
+  const review = viewModel.readinessReview;
+
+  return (
+    <section
+      aria-label="Organisation readiness review"
+      className="overflow-hidden rounded-lg border border-neutral-900 bg-neutral-950 text-white shadow-sm"
+    >
+      <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)] lg:items-start">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-normal text-neutral-400">
+            Readiness review
+          </p>
+          <h2 className="mt-2 break-words text-2xl font-semibold leading-tight">
+            {review.title}
+          </h2>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-neutral-300">
+            Work the active blocker, inspect the selected clinic packet, then hand off the
+            accepted evidence to audit and partner readiness.
+          </p>
+          <div className="mt-5 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-normal text-neutral-400">
+                Active blocker
+              </p>
+              <p className="mt-1 break-words text-xl font-semibold">
+                {review.activeClinicName}
+              </p>
+              <p className="mt-1 break-words text-sm text-neutral-300">
+                {review.activeBlocker}: {review.activeDetail}
+              </p>
+            </div>
+            <p className="font-mono text-3xl font-semibold leading-none">
+              {review.readinessPercent}%
+            </p>
+          </div>
+        </div>
+        <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4">
+          <p className="text-xs font-semibold uppercase tracking-normal text-neutral-400">
+            Next step
+          </p>
+          <p className="mt-2 text-sm leading-6 text-neutral-200">{review.nextStep}</p>
+          <div className="mt-4 grid gap-2">
+            <Link
+              className={cn(buttonVariants({ size: "sm" }), "justify-between")}
+              href={review.primaryAction.href}
+            >
+              <span>{review.primaryAction.label}</span>
+              <ArrowRightIcon className="size-3.5" />
+            </Link>
+            <Link
+              className={cn(
+                buttonVariants({ size: "sm", variant: "outline" }),
+                "justify-between border-white/20 bg-white/10 text-white hover:bg-white/15 hover:text-white",
+              )}
+              href={review.secondaryAction.href}
+            >
+              <span>{review.secondaryAction.label}</span>
+              <ArrowRightIcon className="size-3.5" />
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ReadinessReviewTaskQueue({
+  viewModel,
+}: {
+  viewModel: ReportingCoverageViewModel;
+}) {
+  return (
+    <section
+      aria-label="Readiness review task queue"
+      className="overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm"
+    >
+      <div className="border-b border-border-subtle px-4 py-3">
+        <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+          Next actions
+        </p>
+        <h2 className="mt-1 text-base font-semibold text-foreground">
+          Readiness review task queue
+        </h2>
+      </div>
+      <div className="grid gap-3 p-3 md:grid-cols-2 xl:grid-cols-4">
+        {viewModel.taskQueue.map((item) => (
+          <Link
+            key={item.id}
+            href={item.href}
+            className="group min-w-0 rounded-lg border border-border-subtle bg-bg-muted/35 p-3 text-content-default transition hover:border-border hover:bg-bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <div className="flex min-w-0 items-start justify-between gap-3">
+              <span
+                className={cn(
+                  "inline-flex size-8 shrink-0 items-center justify-center rounded-md border",
+                  toneBadgeClassName[item.tone],
+                )}
+                aria-hidden="true"
+              >
+                {readinessTaskIcon(item.id)}
+              </span>
+              <span className="rounded-md border border-border-subtle bg-bg-default px-2 py-0.5 font-mono text-xs text-muted-foreground">
+                {item.count}
+              </span>
+            </div>
+            <h3 className="mt-3 break-words text-sm font-semibold text-foreground">
+              {item.title}
+            </h3>
+            <p className="mt-1 break-words text-xs leading-5 text-muted-foreground">
+              {item.description}
+            </p>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function DistrictCoverageMatrix({
   viewModel,
 }: {
@@ -267,7 +408,10 @@ function DistrictCoverageMatrix({
 function EvidenceReceipt({ receipt }: { receipt: ReportingCoverageEvidenceReceipt | null }) {
   if (!receipt) {
     return (
-      <section className="rounded-lg border border-border-subtle bg-bg-default p-4 text-content-default shadow-sm">
+      <section
+        aria-label="Selected clinic readiness packet"
+        className="rounded-lg border border-border-subtle bg-bg-default p-4 text-content-default shadow-sm"
+      >
         <p className="text-sm font-medium text-foreground">No coverage receipt selected</p>
         <p className="mt-1 text-sm leading-5 text-muted-foreground">
           Coverage receipts appear when clinic status evidence exists in the ledger.
@@ -277,10 +421,13 @@ function EvidenceReceipt({ receipt }: { receipt: ReportingCoverageEvidenceReceip
   }
 
   return (
-    <section className="rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm">
+    <section
+      aria-label="Selected clinic readiness packet"
+      className="rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm"
+    >
       <div className="border-b border-border-subtle px-4 py-3">
         <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-          Evidence receipt
+          Selected clinic readiness packet
         </p>
         <h2 className="mt-1 break-words text-base font-semibold leading-tight text-foreground">
           {receipt.clinicName}
@@ -295,6 +442,12 @@ function EvidenceReceipt({ receipt }: { receipt: ReportingCoverageEvidenceReceip
             Recommended action
           </p>
           <p className="mt-2 text-sm leading-5 text-foreground">{receipt.recommendedAction}</p>
+        </div>
+        <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-100">
+          <p className="text-xs font-semibold uppercase tracking-normal">
+            Readiness impact
+          </p>
+          <p className="mt-2 text-sm leading-5">{receipt.readinessImpact}</p>
         </div>
         <div>
           <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -341,6 +494,21 @@ function EvidenceReceipt({ receipt }: { receipt: ReportingCoverageEvidenceReceip
           </span>
           <ArrowRightIcon className="size-3.5" />
         </Link>
+        {receipt.reportHref ? (
+          <Link
+            className={cn(
+              buttonVariants({ size: "sm", variant: "outline" }),
+              "w-full justify-between",
+            )}
+            href={receipt.reportHref}
+          >
+            <span className="inline-flex min-w-0 items-center gap-1.5">
+              <FileTextIcon className="size-3.5" />
+              <span className="truncate">Open report evidence</span>
+            </span>
+            <ArrowRightIcon className="size-3.5" />
+          </Link>
+        ) : null}
       </div>
     </section>
   );
@@ -424,7 +592,10 @@ function CoverageLedgerWorkspace({
   ];
 
   return (
-    <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,390px)] xl:items-start">
+    <section
+      id="clinic-coverage-ledger"
+      className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,390px)] xl:items-start"
+    >
       <div
         aria-label={viewModel.ledger.title}
         className="min-w-0 overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm"
@@ -614,8 +785,88 @@ function CoverageLedgerWorkspace({
   );
 }
 
-function trustToneToAdminTone(tone: ReportingCoverageViewModel["ledger"]["rows"][number]["trust"]["tone"]): AdminTone {
+function trustToneToAdminTone(
+  tone: ReportingCoverageViewModel["ledger"]["rows"][number]["trust"]["tone"],
+): AdminTone {
   return tone;
+}
+
+function CoverageScopeHeader({
+  viewModel,
+}: {
+  viewModel: ReportingCoverageViewModel;
+}) {
+  return (
+    <section className="overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm">
+      <div className="grid min-w-0 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
+        <div className="min-w-0 p-4 sm:p-5">
+          <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+            {viewModel.header.eyebrow}
+          </p>
+          <h2 className="mt-1 break-words text-xl font-semibold leading-tight text-foreground">
+            {viewModel.header.title}
+          </h2>
+          <p className="mt-2 max-w-4xl break-words text-sm leading-5 text-muted-foreground">
+            {viewModel.header.description}
+          </p>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <ToneBadge tone="info">{viewModel.header.scope}</ToneBadge>
+            <ToneBadge tone={viewModel.header.readiness.tone}>
+              {viewModel.header.readiness.detail}
+            </ToneBadge>
+          </div>
+        </div>
+        <div
+          className={cn(
+            "grid min-w-0 content-between gap-4 border-t p-4 lg:border-l lg:border-t-0 sm:p-5",
+            readinessPanelClassName[viewModel.header.readiness.tone],
+          )}
+        >
+          <div className="min-w-0">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                {viewModel.header.readiness.label}
+              </p>
+              <ToneBadge tone={viewModel.header.readiness.tone}>
+                {viewModel.header.readiness.tone === "clear" ? "Clear" : "Needs review"}
+              </ToneBadge>
+            </div>
+            <p className="mt-2 font-mono text-3xl font-semibold leading-none text-foreground">
+              {viewModel.header.readiness.value}
+            </p>
+            <p className="mt-3 max-w-sm break-words text-xs leading-4 text-muted-foreground">
+              {viewModel.header.syncWindow}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {viewModel.actions.map((action) => (
+              <Link
+                className={cn(
+                  buttonVariants({
+                    size: "sm",
+                    variant: action.priority === "primary" ? "default" : "outline",
+                  }),
+                  "justify-between gap-2",
+                )}
+                href={action.href}
+                key={action.href}
+              >
+                <span className="inline-flex min-w-0 items-center gap-1.5">
+                  {action.priority === "primary" ? (
+                    <RadioTowerIcon className="size-3.5" />
+                  ) : (
+                    <ShieldCheckIcon className="size-3.5" />
+                  )}
+                  <span className="truncate">{action.label}</span>
+                </span>
+                <ArrowRightIcon className="size-3.5" />
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 export function ReportingCoverageLedger({ viewModel }: ReportingCoverageLedgerProps) {
@@ -632,75 +883,9 @@ export function ReportingCoverageLedger({ viewModel }: ReportingCoverageLedgerPr
 
   return (
     <div className="grid min-w-0 gap-4 pb-6" data-admin-module="reporting-coverage">
-      <section className="overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm">
-        <div className="grid min-w-0 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
-          <div className="min-w-0 p-4 sm:p-5">
-            <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-              {viewModel.header.eyebrow}
-            </p>
-            <h1 className="mt-1 break-words text-2xl font-semibold leading-tight text-foreground">
-              {viewModel.header.title}
-            </h1>
-            <p className="mt-2 max-w-4xl break-words text-sm leading-5 text-muted-foreground">
-              {viewModel.header.description}
-            </p>
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <ToneBadge tone="info">{viewModel.header.scope}</ToneBadge>
-              <ToneBadge tone={viewModel.header.readiness.tone}>
-                {viewModel.header.readiness.detail}
-              </ToneBadge>
-            </div>
-          </div>
-          <div
-            className={cn(
-              "grid min-w-0 content-between gap-4 border-t p-4 lg:border-l lg:border-t-0 sm:p-5",
-              readinessPanelClassName[viewModel.header.readiness.tone],
-            )}
-          >
-            <div className="min-w-0">
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                  {viewModel.header.readiness.label}
-                </p>
-                <ToneBadge tone={viewModel.header.readiness.tone}>
-                  {viewModel.header.readiness.tone === "clear" ? "Clear" : "Needs review"}
-                </ToneBadge>
-              </div>
-              <p className="mt-2 font-mono text-4xl font-semibold leading-none text-foreground">
-                {viewModel.header.readiness.value}
-              </p>
-              <p className="mt-3 max-w-sm break-words text-xs leading-4 text-muted-foreground">
-                {viewModel.header.syncWindow}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {viewModel.actions.map((action) => (
-                <Link
-                  className={cn(
-                    buttonVariants({
-                      size: "sm",
-                      variant: action.priority === "primary" ? "default" : "outline",
-                    }),
-                    "justify-between gap-2",
-                  )}
-                  href={action.href}
-                  key={action.href}
-                >
-                  <span className="inline-flex min-w-0 items-center gap-1.5">
-                    {action.priority === "primary" ? (
-                      <RadioTowerIcon className="size-3.5" />
-                    ) : (
-                      <ShieldCheckIcon className="size-3.5" />
-                    )}
-                    <span className="truncate">{action.label}</span>
-                  </span>
-                  <ArrowRightIcon className="size-3.5" />
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
+      <ReadinessReviewHero viewModel={viewModel} />
+      <ReadinessReviewTaskQueue viewModel={viewModel} />
+      <CoverageScopeHeader viewModel={viewModel} />
 
       <section
         aria-label="Reporting coverage metrics"

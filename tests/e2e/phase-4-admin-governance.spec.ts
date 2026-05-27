@@ -37,6 +37,31 @@ test("organisation admin sees real governance modules", async ({ page }) => {
   }
 });
 
+test("organisation admin home is a governance workbench", async ({ page }) => {
+  await signIn(page, "org-admin@clinicpulse.local");
+  await page.goto("/admin");
+
+  await expect(
+    page.getByRole("heading", { name: "Organisation Governance Workbench" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Governance task queue")).toBeVisible();
+  await expect(page.getByLabel("Report review lane")).toBeVisible();
+  await expect(page.getByLabel("Coverage ledger")).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Open reporting coverage" }),
+  ).toHaveAttribute("href", "/admin/reporting-coverage");
+  await expect(
+    page.getByRole("link", { name: "Open users and roles" }),
+  ).toHaveAttribute("href", "/admin/users-roles");
+  await expect(
+    page.getByRole("link", { name: "Open partner readiness" }),
+  ).toHaveAttribute("href", "/admin/partner-readiness");
+  await expect(
+    page.getByRole("link", { name: "Open audit evidence" }),
+  ).toHaveAttribute("href", "/admin/audit-evidence");
+  await expect(page.getByRole("heading", { name: "Platform Command Console" })).toHaveCount(0);
+});
+
 test("system admin sees platform command console without implementation research rails", async ({ page }) => {
   await signIn(page, "system-admin@clinicpulse.local");
   await page.goto("/admin");
@@ -152,6 +177,12 @@ test("reporting coverage rows update the evidence receipt rail", async ({ page }
   await signIn(page, "org-admin@clinicpulse.local");
   await page.goto("/admin/reporting-coverage");
 
+  await expect(
+    page.getByRole("heading", { name: "Organisation readiness review" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Readiness review task queue")).toBeVisible();
+  await expect(page.getByLabel("Selected clinic readiness packet")).toBeVisible();
+
   const coverageTable = page.getByLabel("Clinic reporting coverage");
   const clinicRow = coverageTable.getByRole("row", {
     name: /Inspect coverage receipt for Mabopane Station Clinic/i,
@@ -161,6 +192,9 @@ test("reporting coverage rows update the evidence receipt rail", async ({ page }
   await clinicRow.getByText("non functional", { exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/reporting-coverage$/);
   await expect(page.getByRole("heading", { name: "Mabopane Station Clinic" })).toBeVisible();
+  await expect(page.getByLabel("Selected clinic readiness packet")).toContainText(
+    /Readiness impact|Recommended action/i,
+  );
 });
 
 test("data ingestion clinic-backed rows open operational detail", async ({ page }) => {

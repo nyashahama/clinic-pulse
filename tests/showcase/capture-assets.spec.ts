@@ -103,7 +103,9 @@ async function captureScreenshots(page: Page) {
 
   await page.setViewportSize({ width: 1440, height: 1100 });
   await gotoStable(page, "/admin");
-  await expect(page.getByRole("heading", { name: "Operations admin deck" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Organisation Governance Workbench" }),
+  ).toBeVisible();
   await expectNoStagedProductLanguage(page);
   await capture(page, "admin-readiness-desktop.png");
 }

@@ -47,7 +47,7 @@ const roleScenarios: Array<{
     role: "org_admin",
     email: "org-admin@clinicpulse.local",
     home: "/admin",
-    heading: "Operations admin deck",
+    heading: "Organisation Governance Workbench",
     sidebarLabels: [
       "Admin Overview",
       "Reporting coverage",
@@ -59,12 +59,11 @@ const roleScenarios: Array<{
       "Exports",
     ],
     landmarks: [
-      "reporting-coverage",
-      "users-roles",
+      "report-review-lane",
+      "coverage-ledger",
+      "access-hygiene",
       "admin-review-pressure",
-      "partner-readiness",
-      "audit-evidence",
-      "exports",
+      "evidence-strip",
     ],
   },
   {

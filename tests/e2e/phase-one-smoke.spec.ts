@@ -120,8 +120,10 @@ test.describe("phase-one operations route checklist", () => {
 
     await page.goto("/admin");
     await expectNoStagedProductLanguage(page);
-    await expect(page.getByRole("heading", { name: "Operations admin deck" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Stakeholder activity queue" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Organisation Governance Workbench" }),
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Stakeholder follow-up" })).toBeVisible();
 
     await page.goto("/admin/data-ingestion");
     await expectNoStagedProductLanguage(page);

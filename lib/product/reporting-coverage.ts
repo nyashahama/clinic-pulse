@@ -3,6 +3,7 @@ import type {
   ReportApiResponse,
   SyncSummaryApiResponse,
 } from "@/lib/demo/api-types";
+import { buildAdminReportDetailHref } from "@/lib/product/admin-detail-routes";
 import { summarizeReportingCoverage, type GovernanceTone } from "@/lib/product/admin-governance";
 import {
   buildDataTrustState,
@@ -74,6 +75,8 @@ export type ReportingCoverageLedgerRow = {
   };
   evidenceNote: string;
   clinicHref: string;
+  reportHref?: string;
+  readinessImpact: string;
 };
 
 export type ReportingCoverageTimelineItem = {
@@ -89,14 +92,48 @@ export type ReportingCoverageEvidenceReceipt = {
   district: string;
   posture: string;
   recommendedAction: string;
+  readinessImpact: string;
+  reportHref?: string;
   trustLabel: string;
   trustDescription: string;
   clinicHref: string;
   timeline: ReportingCoverageTimelineItem[];
 };
 
+export type ReportingCoverageReadinessReview = {
+  title: string;
+  activeClinicName: string;
+  activeBlocker: string;
+  activeDetail: string;
+  readinessPercent: number;
+  nextStep: string;
+  primaryAction: {
+    label: string;
+    href: string;
+  };
+  secondaryAction: {
+    label: string;
+    href: string;
+  };
+};
+
+export type ReportingCoverageTaskQueueItem = {
+  id:
+    | "review-field-evidence"
+    | "resolve-coverage-gaps"
+    | "clear-sync-blockers"
+    | "preserve-evidence-trail";
+  title: string;
+  description: string;
+  count: string;
+  href: string;
+  tone: ReportingCoverageTone;
+};
+
 export type ReportingCoverageViewModel = {
   header: ReportingCoverageHeader;
+  readinessReview: ReportingCoverageReadinessReview;
+  taskQueue: ReportingCoverageTaskQueueItem[];
   metrics: ReportingCoverageMetric[];
   composition: ReportingCoverageCompositionItem[];
   districtMatrix: {
@@ -197,6 +234,8 @@ export function buildReportingCoverageViewModel({
       scope: `${formatCount(clinics.length)} clinics in active coverage`,
       syncWindow: `Sync window opened ${formatDateTime(syncSummary.windowStartedAt)}`,
     },
+    readinessReview: buildReadinessReview(rows, coverage.readinessPercent),
+    taskQueue: buildTaskQueue({ pendingReports, rows, syncSummary }),
     metrics: [
       {
         label: "Clinics in ledger",
@@ -280,6 +319,10 @@ function toLedgerRow(
     lastReportedAt: formatDateTime(clinic.currentStatus?.lastReportedAt),
     reporterName: clinic.currentStatus?.reporterName ?? pendingReport?.reporterName ?? "Unavailable",
     reviewState,
+    reportHref: pendingReport
+      ? buildAdminReportDetailHref(pendingReport.id, RETURN_SOURCE)
+      : undefined,
+    readinessImpact: getReadinessImpact({ freshness, pendingReport }),
     sourceLabel: sourceLabels[source],
     status: formatLabel(clinic.currentStatus?.status),
     trust: {
@@ -289,6 +332,117 @@ function toLedgerRow(
     },
     updatedAt: formatDateTime(clinic.currentStatus?.updatedAt),
   };
+}
+
+function buildReadinessReview(
+  rows: ReportingCoverageLedgerRow[],
+  readinessPercent: number,
+): ReportingCoverageReadinessReview {
+  const activeRow = rows[0];
+
+  if (!activeRow) {
+    return {
+      title: "Organisation readiness review",
+      activeClinicName: "No clinics in coverage scope",
+      activeBlocker: "Coverage scope is empty",
+      activeDetail: "Add clinic evidence before readiness can be reviewed.",
+      readinessPercent,
+      nextStep: "Add or import clinic coverage evidence, then review the readiness queue.",
+      primaryAction: {
+        label: "Open audit evidence",
+        href: "/admin/audit-evidence",
+      },
+      secondaryAction: {
+        label: "Open data ingestion",
+        href: "/admin/data-ingestion",
+      },
+    };
+  }
+
+  return {
+    title: "Organisation readiness review",
+    activeClinicName: activeRow.clinicName,
+    activeBlocker: getActiveBlocker(activeRow),
+    activeDetail: activeRow.evidenceNote,
+    readinessPercent,
+    nextStep: getReadinessNextStep(activeRow),
+    primaryAction: activeRow.reportHref
+      ? {
+          label: "Open report evidence",
+          href: activeRow.reportHref,
+        }
+      : {
+          label: "Open clinic detail",
+          href: activeRow.clinicHref,
+        },
+    secondaryAction: {
+      label: activeRow.reportHref ? "Open clinic detail" : "Open audit evidence",
+      href: activeRow.reportHref ? activeRow.clinicHref : "/admin/audit-evidence",
+    },
+  };
+}
+
+function buildTaskQueue({
+  pendingReports,
+  rows,
+  syncSummary,
+}: {
+  pendingReports: ReportApiResponse[];
+  rows: ReportingCoverageLedgerRow[];
+  syncSummary: SyncSummaryApiResponse;
+}): ReportingCoverageTaskQueueItem[] {
+  const freshnessRiskRows = rows.filter(
+    (row) =>
+      row.freshness === "stale" ||
+      row.freshness === "needs_confirmation" ||
+      row.freshness === "unknown",
+  );
+  const syncBlockers =
+    syncSummary.pendingOfflineReports +
+    syncSummary.validationFailures +
+    syncSummary.conflictsNeedingAttention;
+  const firstPendingReport = pendingReports[0];
+
+  return [
+    {
+      id: "review-field-evidence",
+      title: "Review field evidence",
+      description:
+        "Resolve pending field reports before they can change organisation coverage readiness.",
+      count: formatCount(pendingReports.length),
+      href: firstPendingReport
+        ? buildAdminReportDetailHref(firstPendingReport.id, RETURN_SOURCE)
+        : "#clinic-coverage-ledger",
+      tone: pendingReports.length > 0 ? "attention" : "clear",
+    },
+    {
+      id: "resolve-coverage-gaps",
+      title: "Resolve coverage gaps",
+      description:
+        "Work stale, needs-confirmation, and unknown clinic evidence until coverage can be trusted.",
+      count: formatCount(freshnessRiskRows.length),
+      href: "#clinic-coverage-ledger",
+      tone: freshnessRiskRows.length > 0 ? "attention" : "clear",
+    },
+    {
+      id: "clear-sync-blockers",
+      title: "Clear sync blockers",
+      description:
+        "Check offline queue, validation failures, and sync conflicts before readiness is declared.",
+      count: formatCount(syncBlockers),
+      href: "/admin/data-ingestion",
+      tone: syncBlockers > 0 ? "attention" : "clear",
+    },
+    {
+      id: "preserve-evidence-trail",
+      title: "Preserve evidence trail",
+      description:
+        "Keep clinic, report, audit, and partner proof linked for review handoff.",
+      count: formatCount(rows.length),
+      href: "/admin/audit-evidence",
+      tone: rows.length > 0 ? "info" : "attention",
+    },
+  ];
 }
 
 function buildComposition(
@@ -377,6 +531,8 @@ function buildEvidenceReceipt(
     facilityCode: row.facilityCode,
     posture: `${row.status} / ${formatLabel(row.freshness)}`,
     recommendedAction: getRecommendedAction(row),
+    readinessImpact: row.readinessImpact,
+    reportHref: row.reportHref,
     timeline: pendingReport
       ? [
           {
@@ -482,6 +638,72 @@ function getEvidenceNote({
   }
 
   return "Coverage evidence is current";
+}
+
+function getReadinessImpact({
+  freshness,
+  pendingReport,
+}: {
+  freshness: DataFreshness;
+  pendingReport?: ReportApiResponse;
+}) {
+  if (pendingReport) {
+    return "Pending field evidence is blocking coverage readiness";
+  }
+
+  if (freshness === "stale") {
+    return "Stale clinic evidence weakens readiness confidence";
+  }
+
+  if (freshness === "needs_confirmation") {
+    return "Clinic evidence needs confirmation before readiness can be cleared";
+  }
+
+  if (freshness === "unknown") {
+    return "Missing current status evidence keeps this clinic out of readiness";
+  }
+
+  return "Current clinic evidence supports readiness";
+}
+
+function getActiveBlocker(row: ReportingCoverageLedgerRow) {
+  if (row.reviewState === "pending_review") {
+    return "Pending field report blocks readiness";
+  }
+
+  if (row.freshness === "stale") {
+    return "Stale clinic status blocks readiness";
+  }
+
+  if (row.freshness === "needs_confirmation") {
+    return "Clinic status needs confirmation";
+  }
+
+  if (row.freshness === "unknown") {
+    return "Current status evidence is missing";
+  }
+
+  return "No active clinic blocker";
+}
+
+function getReadinessNextStep(row: ReportingCoverageLedgerRow) {
+  if (row.reviewState === "pending_review") {
+    return "Open the report evidence, accept or reject it, then confirm the clinic coverage receipt.";
+  }
+
+  if (row.freshness === "stale") {
+    return "Request a fresh clinic update, then confirm the new receipt in the coverage ledger.";
+  }
+
+  if (row.freshness === "needs_confirmation") {
+    return "Confirm the clinic state with the district desk before clearing the blocker.";
+  }
+
+  if (row.freshness === "unknown") {
+    return "Find source evidence before this clinic is counted as ready.";
+  }
+
+  return "Keep this clinic in normal reporting cadence and preserve the evidence trail.";
 }
 
 function getRecommendedAction(row: ReportingCoverageLedgerRow) {
