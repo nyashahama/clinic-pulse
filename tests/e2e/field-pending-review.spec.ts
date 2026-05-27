@@ -251,6 +251,29 @@ test("uses recent report handoff rows to return to a clinic stop", async ({
   await expect(page.locator("#submit-report")).toBeInViewport();
 });
 
+test("clears stale field hashes when the cockpit device mode changes", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "desktop-chrome",
+    "Desktop sidebar hash navigation is covered by the desktop-chrome project.",
+  );
+
+  await signInAsReporter(page);
+
+  await page.getByRole("link", { name: "Recent reports", exact: true }).click();
+  await expect(page).toHaveURL(/\/field#recent-reports$/);
+  await expect(page.locator("#recent-reports")).toBeInViewport();
+
+  await page
+    .locator("[data-field-visit-cockpit]")
+    .getByRole("button", { name: "Set offline mode" })
+    .click();
+
+  await expect(page).toHaveURL(/\/field$/);
+  await expect(page.locator("[data-field-visit-cockpit]")).toBeInViewport();
+});
+
 test("restores an in-progress field report draft when returning to a clinic", async ({
   page,
 }) => {
