@@ -92,7 +92,7 @@ export function WorkspaceCommandPalette({
         ClinicPulse command palette
       </h2>
       <div
-        className="w-full max-w-2xl overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl"
+        className="flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl"
         role="document"
         onClick={(event) => event.stopPropagation()}
       >
@@ -119,7 +119,7 @@ export function WorkspaceCommandPalette({
           </Button>
         </div>
 
-        <div className="grid gap-0 border-b border-border md:grid-cols-[1.1fr,0.9fr]">
+        <div className="grid min-h-0 flex-1 gap-0 overflow-y-auto border-b border-border md:grid-cols-[1.1fr,0.9fr]">
           <section className="border-b border-border p-3 md:border-b-0 md:border-r">
             <p
               id="command-palette-help"
