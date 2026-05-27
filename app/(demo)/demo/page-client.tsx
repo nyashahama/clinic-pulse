@@ -759,6 +759,9 @@ export default function DistrictConsolePage({
           <ReportReviewSummary summary={pendingReportSummary} />
           <ReportReviewQueue
             items={pendingReportReviews}
+            listClassName={
+              isDistrictWorkspace ? "max-h-[30rem] overflow-y-auto pr-1" : undefined
+            }
             onReview={reviewPendingReportAction}
           />
         </div>
