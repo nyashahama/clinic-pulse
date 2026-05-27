@@ -8,19 +8,20 @@ import {
 } from "lucide-react";
 
 import {
-  AdminModuleHeader,
   AdminStatusBadge,
+  getAdminToneClassName,
 } from "@/components/product/admin-module";
 import { IntegrationOperationsWorkspace } from "@/components/product/integration-operations-workspace";
+import { buttonVariants } from "@/components/ui/button";
 import {
   buildIntegrationOperationsModel,
   type IntegrationActionCard,
-  type IntegrationSummaryMetric,
   type IntegrationTone,
 } from "@/lib/product/integration-operations";
 import { cn } from "@/lib/utils";
 import { requireDemoWorkflowAccess } from "../../workflow-guard";
 import { loadAdminPartnerReadiness } from "../admin-loaders";
+import { formatDateTime } from "../governance-formatters";
 
 const commandCardIcons: Record<string, typeof KeyRoundIcon> = {
   "credential-owner": KeyRoundIcon,
@@ -35,59 +36,134 @@ const commandCardAccentClassName: Record<IntegrationTone, string> = {
   info: "border-l-sky-400 text-sky-700",
 };
 
-const summaryMetricAccentClassName: Record<IntegrationTone, string> = {
-  clear: "border-l-emerald-400",
-  attention: "border-l-amber-400",
-  blocked: "border-l-rose-400",
-  info: "border-l-sky-400",
-};
+function getLatestIntegrationActivityLabel(
+  readiness: Awaited<ReturnType<typeof loadAdminPartnerReadiness>>,
+) {
+  const latest = [
+    ...readiness.apiKeys.flatMap((apiKey) => [
+      apiKey.updatedAt,
+      apiKey.lastUsedAt,
+      apiKey.revokedAt,
+      apiKey.createdAt,
+    ]),
+    ...readiness.webhookSubscriptions.flatMap((subscription) => [
+      subscription.updatedAt,
+      subscription.lastTestedAt,
+      subscription.createdAt,
+    ]),
+    ...readiness.webhookEvents.flatMap((event) => [
+      event.deliveredAt,
+      event.createdAt,
+    ]),
+    ...readiness.exportRuns.map((exportRun) => exportRun.createdAt),
+    ...readiness.integrationChecks.map((check) => check.checkedAt),
+  ]
+    .filter((value): value is string => Boolean(value))
+    .map((value) => new Date(value))
+    .filter((date) => !Number.isNaN(date.getTime()))
+    .sort((left, right) => right.getTime() - left.getTime())[0];
+
+  return latest ? formatDateTime(latest.toISOString()) : "Unavailable";
+}
 
 export default async function Page() {
   await requireDemoWorkflowAccess("admin");
 
   const partnerReadiness = await loadAdminPartnerReadiness();
   const model = buildIntegrationOperationsModel(partnerReadiness);
+  const latestActivityLabel = getLatestIntegrationActivityLabel(partnerReadiness);
 
   return (
     <div className="space-y-4" data-admin-module="integrations">
-      <AdminModuleHeader
-        eyebrow="Partner operations"
-        title="Integration operations"
-        description="Monitor partner credentials, endpoint coverage, webhook delivery, export proof, and integration checks from one operations console."
-      />
-
-      <IntegrationOperationsSummary metrics={model.summaryMetrics} />
+      <section className="overflow-hidden rounded-lg border border-neutral-900 bg-neutral-950 text-white shadow-sm">
+        <div className="grid gap-8 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-normal text-neutral-400">
+              Partner operations
+            </p>
+            <h1 className="mt-2 break-words text-2xl font-semibold leading-tight sm:text-3xl">
+              Integration operations command centre
+            </h1>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-neutral-300">
+              Monitor partner credentials, endpoint coverage, webhook delivery, export proof, and integration checks from one operations console.
+            </p>
+            <div className="mt-5 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-normal text-neutral-400">
+                  Active blocker
+                </p>
+                <p className="mt-1 break-words text-xl font-semibold">
+                  {model.consoleState.summary}
+                </p>
+              </div>
+              <p className="text-xs text-neutral-400">
+                Latest activity: {latestActivityLabel}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 lg:justify-end">
+            <a className={buttonVariants({ size: "sm" })} href="#integration-evidence-workspace">
+              Review evidence
+            </a>
+            <Link
+              className={cn(
+                buttonVariants({ size: "sm", variant: "outline" }),
+                "border-white/25 bg-white/10 text-white hover:bg-white/15 hover:text-white",
+              )}
+              href="/admin/partner-readiness"
+            >
+              Open partner readiness
+            </Link>
+          </div>
+        </div>
+        <div className="grid border-t border-white/10 bg-white/[0.03] sm:grid-cols-2 xl:grid-cols-4">
+          {model.summaryMetrics.map((metric) => (
+            <div
+              key={metric.id}
+              className="min-w-0 border-t border-white/10 px-5 py-4 first:border-t-0 sm:border-l sm:border-t-0 sm:first:border-l-0"
+            >
+              <p className="text-xs font-semibold uppercase tracking-normal text-neutral-400">
+                {metric.label}
+              </p>
+              <p className="mt-1 break-words text-2xl font-semibold">{metric.value}</p>
+              <p className="mt-1 break-words text-xs leading-5 text-neutral-400">
+                {metric.detail}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <section
         aria-label="Integration command center"
-        className="rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm"
+        className="grid gap-3"
       >
-        <div className="flex min-w-0 flex-col gap-2 border-b border-border-subtle px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
-              Integration command center
+            <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+              Next actions
             </p>
-            <p className="mt-1 max-w-3xl text-sm leading-5 text-muted-foreground">
-              Track owner readiness, receiver health, and export proof before opening source evidence.
-            </p>
+            <h2 className="text-xl font-semibold text-foreground">Integration evidence queue</h2>
           </div>
-          <AdminStatusBadge tone={model.consoleState.tone}>
-            {model.consoleState.tone === "clear" ? "Operational" : "Review"}
-          </AdminStatusBadge>
+          <p className="max-w-2xl text-sm text-muted-foreground">
+            Track owner readiness, receiver health, and export proof before opening source evidence.
+          </p>
         </div>
 
-        <div className="grid gap-3 p-3 lg:grid-cols-3">
+        <div className="grid gap-3 lg:grid-cols-3">
           {model.actionCards.map((card) => (
             <IntegrationCommandCard key={card.id} card={card} />
           ))}
         </div>
       </section>
 
-      <IntegrationOperationsWorkspace
-        metrics={model.workspaceMetrics}
-        rows={model.evidenceRows}
-        consoleState={model.consoleState}
-      />
+      <section id="integration-evidence-workspace" className="scroll-mt-24">
+        <IntegrationOperationsWorkspace
+          metrics={model.workspaceMetrics}
+          rows={model.evidenceRows}
+          consoleState={model.consoleState}
+        />
+      </section>
 
       <section
         aria-label="Developer handoff"
@@ -238,56 +314,11 @@ export default async function Page() {
   );
 }
 
-function IntegrationOperationsSummary({
-  metrics,
-}: {
-  metrics: IntegrationSummaryMetric[];
-}) {
-  return (
-    <section
-      aria-label="Integration operations summary"
-      className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
-    >
-      {metrics.map((metric) => (
-        <article
-          key={metric.id}
-          className={cn(
-            "min-w-0 rounded-lg border border-l-4 border-border-subtle bg-bg-default px-4 py-3 text-content-default shadow-sm",
-            summaryMetricAccentClassName[metric.tone],
-          )}
-        >
-          <div className="flex min-w-0 items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="break-words text-xs font-medium text-muted-foreground">
-                {metric.label}
-              </p>
-              <p className="mt-1 break-words text-2xl font-semibold leading-tight text-foreground">
-                {metric.value}
-              </p>
-            </div>
-            <AdminStatusBadge tone={metric.tone}>
-              {metric.tone === "clear" ? "Ready" : "Review"}
-            </AdminStatusBadge>
-          </div>
-          <p className="mt-2 break-words text-xs leading-4 text-muted-foreground">
-            {metric.detail}
-          </p>
-        </article>
-      ))}
-    </section>
-  );
-}
-
 function IntegrationCommandCard({ card }: { card: IntegrationActionCard }) {
   const Icon = commandCardIcons[card.id] ?? KeyRoundIcon;
 
-  return (
-    <article
-      className={cn(
-        "grid min-w-0 gap-3 rounded-lg border border-l-4 border-border-subtle bg-bg-default p-3 shadow-sm",
-        commandCardAccentClassName[card.tone],
-      )}
-    >
+  const body = (
+    <>
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
@@ -297,7 +328,15 @@ function IntegrationCommandCard({ card }: { card: IntegrationActionCard }) {
             {card.title}
           </h2>
         </div>
-        <Icon className="size-5 shrink-0" aria-hidden="true" />
+        <span
+          className={cn(
+            "inline-flex size-9 shrink-0 items-center justify-center rounded-lg border",
+            getAdminToneClassName(card.tone),
+          )}
+          aria-hidden="true"
+        >
+          <Icon className="size-4" />
+        </span>
       </div>
 
       <p className="text-sm leading-5 text-muted-foreground">{card.description}</p>
@@ -314,6 +353,17 @@ function IntegrationCommandCard({ card }: { card: IntegrationActionCard }) {
           <ArrowUpRightIcon className="size-4" aria-hidden="true" />
         </Link>
       ) : null}
+    </>
+  );
+
+  return (
+    <article
+      className={cn(
+        "grid min-w-0 gap-3 rounded-lg border border-l-4 border-border-subtle bg-bg-default p-3 shadow-sm",
+        commandCardAccentClassName[card.tone],
+      )}
+    >
+      {body}
     </article>
   );
 }

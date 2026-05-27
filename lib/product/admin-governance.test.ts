@@ -497,7 +497,8 @@ it("uses an operations workspace for integration evidence", () => {
   const modelSource = readFileSync("lib/product/integration-operations.ts", "utf8");
 
   expect(source).toContain("IntegrationOperationsWorkspace");
-  expect(source).toContain("IntegrationOperationsSummary");
+  expect(source).toContain("Integration operations command centre");
+  expect(source).toContain("Integration evidence queue");
   expect(source).toContain("buildIntegrationOperationsModel");
   expect(source).toContain('aria-label="Integration command center"');
   expect(source).toContain('aria-label="Developer handoff"');
@@ -508,7 +509,7 @@ it("uses an operations workspace for integration evidence", () => {
   expect(source).not.toContain("overflow-x-auto rounded-md");
   expect(source).not.toContain("<AdminEvidenceTable");
   expect(source).not.toContain("<AdminMetricStrip");
-  expect(source).not.toContain("getAdminToneClassName(card.tone)");
+  expect(source).toContain("getAdminToneClassName(card.tone)");
 
   expect(componentSource).toContain('aria-label="Integration evidence workspace"');
   expect(componentSource).toContain('aria-label="Integration evidence summary"');
