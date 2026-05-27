@@ -193,6 +193,29 @@ test("keeps field hash navigation inside the page scroller", async ({
   await expect(getWorkspaceShellScrollTop(page)).resolves.toBe(0);
 });
 
+test("opens field section aliases inside the workbench", async ({ page }, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "desktop-chrome",
+    "Desktop section alias routing is covered by the desktop-chrome project.",
+  );
+
+  await signInAsReporter(page);
+
+  const sectionRoutes = [
+    { route: "/field/submit-report", sectionId: "submit-report" },
+    { route: "/field/drafts-sync", sectionId: "drafts-sync" },
+    { route: "/field/recent-reports", sectionId: "recent-reports" },
+  ] as const;
+
+  for (const { route, sectionId } of sectionRoutes) {
+    await page.goto(route);
+
+    await expect(page.getByRole("heading", { name: "Field workbench" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "404" })).toHaveCount(0);
+    await expect(page.locator(`#${sectionId}`)).toBeInViewport();
+  }
+});
+
 test("uses the field route map to change the active stop", async ({
   page,
 }, testInfo) => {
