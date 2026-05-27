@@ -216,6 +216,28 @@ test("opens field section aliases inside the workbench", async ({ page }, testIn
   }
 });
 
+test("replaces field sidebar hashes after section aliases", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "desktop-chrome",
+    "Desktop sidebar hash navigation is covered by the desktop-chrome project.",
+  );
+
+  await signInAsReporter(page);
+
+  await page.goto("/field/recent-reports");
+  await expect(page.locator("#recent-reports")).toBeInViewport();
+
+  await page.getByRole("link", { name: "Submit report", exact: true }).first().click();
+  await expect(page).toHaveURL(/\/field#submit-report$/);
+  await expect(page.locator("#submit-report")).toBeInViewport();
+
+  await page.getByRole("link", { name: "Drafts and sync", exact: true }).click();
+  await expect(page).toHaveURL(/\/field#drafts-sync$/);
+  await expect(page.locator("#drafts-sync")).toBeInViewport();
+});
+
 test("uses the field route map to change the active stop", async ({
   page,
 }, testInfo) => {

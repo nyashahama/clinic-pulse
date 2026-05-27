@@ -29,6 +29,50 @@ import { isDashboardNavUrlActive } from "@/lib/product/nav-active-state"
 import { resolveNavCollapsibleOpen } from "@/lib/product/nav-collapsible-state"
 import { ChevronRightIcon } from "lucide-react"
 
+function handleDashboardNavClick(
+  url: string,
+  onNavigate: () => void,
+): React.MouseEventHandler<HTMLAnchorElement> {
+  return (event) => {
+    onNavigate()
+
+    if (!url.includes("#") || typeof window === "undefined") {
+      return
+    }
+
+    const targetUrl = new URL(url, window.location.origin)
+    if (targetUrl.origin !== window.location.origin) {
+      return
+    }
+
+    event.preventDefault()
+
+    const currentRoute = `${window.location.pathname}${window.location.search}`
+    const targetRoute = `${targetUrl.pathname}${targetUrl.search}`
+    const targetHref = `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`
+
+    if (currentRoute !== targetRoute) {
+      window.location.assign(targetHref)
+      return
+    }
+
+    const oldUrl = window.location.href
+    window.history.pushState(null, "", targetHref)
+
+    if (targetUrl.hash) {
+      document
+        .getElementById(decodeURIComponent(targetUrl.hash.slice(1)))
+        ?.scrollIntoView({ block: "start" })
+      window.dispatchEvent(
+        new HashChangeEvent("hashchange", {
+          newURL: window.location.href,
+          oldURL: oldUrl,
+        }),
+      )
+    }
+  }
+}
+
 export function NavMain({ groups }: { groups: DashboardNavGroup[] }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -108,7 +152,14 @@ function NavMainItem({
       <SidebarMenuButton
         isActive={active}
         tooltip={item.title}
-        render={<Link href={item.url} onClick={() => setOpenMobile(false)} />}
+        render={
+          <Link
+            href={item.url}
+            onClick={handleDashboardNavClick(item.url, () =>
+              setOpenMobile(false),
+            )}
+          />
+        }
       >
         {item.icon}
         <span>{item.title}</span>
@@ -140,7 +191,9 @@ function NavMainItem({
                     render={
                       <Link
                         href={subItem.url}
-                        onClick={() => setOpenMobile(false)}
+                        onClick={handleDashboardNavClick(subItem.url, () =>
+                          setOpenMobile(false),
+                        )}
                       />
                     }
                   >
