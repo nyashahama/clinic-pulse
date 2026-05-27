@@ -54,6 +54,8 @@ describe("AdminUserLifecycle source", () => {
     expect(pageSource).toContain("setUserDisabledAction");
     expect(pageSource).toContain("updateUserAccessAction");
     expect(pageSource).toContain("revokeUserSessionsAction");
-    expect(pageSource).toContain("Pilot lifecycle management");
+    expect(pageSource).toContain("Users and roles command centre");
+    expect(pageSource).toContain("Access lifecycle queue");
+    expect(pageSource).toContain('id="user-lifecycle-workspace"');
   });
 });
