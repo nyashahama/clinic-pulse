@@ -94,6 +94,28 @@ test.describe("product shell responsive behavior", () => {
     await expect(page.getByRole("heading", { name: "Unified severity queue" })).toBeHidden();
   });
 
+  test("district breadcrumb returns to the command center home", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "desktop-chrome",
+      "The workspace breadcrumb is hidden on mobile.",
+    );
+
+    await signInAsDistrictManager(page);
+
+    await page.goto("/district/clinic-network");
+    await page
+      .locator('[data-slot="breadcrumb"]')
+      .getByRole("link", { name: "Command Center" })
+      .click();
+
+    await expect(page).toHaveURL(/\/district$/);
+    await expect(
+      page.getByRole("heading", { name: "Tshwane North District operating picture" }),
+    ).toBeVisible();
+  });
+
   test("district command home stays compact on mobile", async ({ page }, testInfo) => {
     skipUnlessMobileProject(testInfo);
 

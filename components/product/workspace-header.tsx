@@ -97,7 +97,7 @@ export function WorkspaceHeader({
           <Breadcrumb className="hidden min-w-0 sm:block">
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbLink href={workspace.primaryAction.url}>
+                <BreadcrumbLink href={workspace.homeUrl}>
                   {workspace.workspaceLabel}
                 </BreadcrumbLink>
               </BreadcrumbItem>
