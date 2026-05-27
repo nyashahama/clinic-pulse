@@ -272,6 +272,36 @@ test("canonicalizes field cockpit links after section aliases", async ({
   await expect(page.locator("#submit-report")).toBeInViewport();
 });
 
+test("exposes field command palette choices as buttons", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "desktop-chrome",
+    "Desktop command palette semantics are covered by the desktop-chrome project.",
+  );
+
+  await signInAsReporter(page);
+
+  await page.getByRole("button", { name: "Open command palette" }).click();
+  const palette = page.getByRole("dialog", {
+    name: "ClinicPulse command palette",
+  });
+  await expect(palette).toBeVisible();
+
+  await page
+    .getByRole("searchbox", { name: "ClinicPulse command palette" })
+    .fill("Hammanskraal");
+
+  await expect(
+    palette.getByRole("button", { name: /Hammanskraal Unit D Clinic/i }),
+  ).toBeVisible();
+  await expect(
+    palette.getByRole("button", {
+      name: /Open finder: Public routing surface/i,
+    }),
+  ).toBeVisible();
+});
+
 test("uses the field route map to change the active stop", async ({
   page,
 }, testInfo) => {

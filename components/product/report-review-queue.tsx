@@ -9,6 +9,7 @@ import { ProductPanel } from "@/components/product/panel";
 import { SurfaceState } from "@/components/product/surface-state";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { PendingReportReview } from "@/lib/product/report-review";
+import { cn } from "@/lib/utils";
 
 export type ReportReviewDecision = "accepted" | "rejected";
 
@@ -23,6 +24,7 @@ type ReportReviewQueueProps = {
   onReview: (input: ReportReviewQueueActionInput) => Promise<unknown>;
   onReviewed?: () => void;
   getReportDetailHref?: (item: PendingReportReview) => string;
+  listClassName?: string;
   title?: string;
   description?: string;
 };
@@ -198,6 +200,7 @@ export function ReportReviewQueueView({
   onReview,
   onReviewed,
   getReportDetailHref,
+  listClassName,
   title = defaultTitle,
   description = defaultDescription,
 }: ReportReviewQueueProps) {
@@ -276,7 +279,7 @@ export function ReportReviewQueueView({
             size="compact"
           />
         ) : (
-          <div className="space-y-3">
+          <div className={cn("space-y-3", listClassName)}>
             {visibleItems.map((item) => {
               const isActionDisabled =
                 pendingReportIds.has(item.reportId) ||

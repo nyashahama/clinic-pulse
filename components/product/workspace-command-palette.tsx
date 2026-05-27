@@ -127,71 +127,71 @@ export function WorkspaceCommandPalette({
             >
               {searchLabel}
             </p>
-            <div role="list" className="space-y-1">
+            <ul className="space-y-1">
               {searchResults.map((result) => {
                 const ResultIcon = result.icon ?? Search;
 
                 return (
-                  <button
-                    key={result.id}
-                    role="listitem"
-                    type="button"
-                    onClick={() => {
-                      result.onSelect();
-                      closePalette();
-                    }}
-                    className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left hover:bg-muted"
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium text-popover-foreground">
-                        {result.title}
+                  <li key={result.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        result.onSelect();
+                        closePalette();
+                      }}
+                      className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left hover:bg-muted"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium text-popover-foreground">
+                          {result.title}
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {result.subtitle}
+                        </span>
                       </span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {result.subtitle}
-                      </span>
-                    </span>
-                    <ResultIcon className="size-4 shrink-0 text-muted-foreground" />
-                  </button>
+                      <ResultIcon className="size-4 shrink-0 text-muted-foreground" />
+                    </button>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
           </section>
 
           <section className="p-3">
             <p className="mb-2 px-2 text-xs font-medium tracking-[0.02em] text-muted-foreground uppercase">
               Actions
             </p>
-            <div role="list" className="space-y-1">
+            <ul className="space-y-1">
               {actions.map((command) => {
                 const Icon = command.icon;
 
                 return (
-                  <button
-                    key={command.label}
-                    role="listitem"
-                    aria-label={`${command.label}: ${command.hint}`}
-                    type="button"
-                    onClick={() => {
-                      command.run();
-                      closePalette();
-                    }}
-                    className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-muted"
-                  >
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                      <Icon className="size-4" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium text-popover-foreground">
-                        {command.label}
+                  <li key={command.label}>
+                    <button
+                      aria-label={`${command.label}: ${command.hint}`}
+                      type="button"
+                      onClick={() => {
+                        command.run();
+                        closePalette();
+                      }}
+                      className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-muted"
+                    >
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                        <Icon className="size-4" />
                       </span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {command.hint}
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium text-popover-foreground">
+                          {command.label}
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {command.hint}
+                        </span>
                       </span>
-                    </span>
-                  </button>
+                    </button>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
           </section>
         </div>
 
