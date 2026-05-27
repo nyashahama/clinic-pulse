@@ -63,7 +63,7 @@ test("district and admin surfaces expose data trust labels", async ({ page }) =>
   await page.goto("/admin/audit-evidence");
   await expect(page.getByLabel("Audit evidence workspace")).toBeVisible();
   await expect(page.getByLabel("Linked evidence packets")).toBeVisible();
-  await expect(page.getByText("Audit trail evidence")).toBeVisible();
+  await expect(page.getByText("Audit evidence queue")).toBeVisible();
   await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
 });
 
