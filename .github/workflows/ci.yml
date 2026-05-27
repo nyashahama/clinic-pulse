@@ -102,8 +102,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes postgresql-client
 
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps chrome
+      - name: Verify Chrome browser
+        run: google-chrome --version
 
       - name: Run browser smoke tests
         run: make E2E_POSTGRES_PORT=55432 test-e2e
