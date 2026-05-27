@@ -36,7 +36,11 @@ export type FieldVisitTaskQueueItem = {
   title: string;
   description: string;
   stateLabel: string;
-  href: "#field-itinerary" | "#submit-report" | "#drafts-sync" | "#recent-reports";
+  href:
+    | "/field#field-itinerary"
+    | "/field#submit-report"
+    | "/field#drafts-sync"
+    | "/field#recent-reports";
   tone: FieldVisitTone;
 };
 
@@ -281,7 +285,7 @@ function buildTaskQueue({
       title: "Open active stop",
       description: `${selectedVisit.clinicName} is the selected visit for this reporting round.`,
       stateLabel: selectedVisit.positionLabel,
-      href: "#field-itinerary",
+      href: "/field#field-itinerary",
       tone: selectedVisit.tone,
     },
     {
@@ -289,7 +293,7 @@ function buildTaskQueue({
       title: selectedVisit.queueLabel ? "Continue clinic report" : "Start clinic report",
       description: clinicReportDescription,
       stateLabel: clinicReportStateLabel,
-      href: "#submit-report",
+      href: "/field#submit-report",
       tone: clinicReportTone,
     },
     {
@@ -302,7 +306,7 @@ function buildTaskQueue({
         needsRetryCount > 0
           ? `${needsRetryCount} needs retry`
           : formatCount(savedOnDeviceCount, "saved", "saved"),
-      href: "#drafts-sync",
+      href: "/field#drafts-sync",
       tone: needsRetryCount > 0 ? "blocked" : savedOnDeviceCount > 0 ? "attention" : "clear",
     },
     {
@@ -310,7 +314,7 @@ function buildTaskQueue({
       title: "District review handoff",
       description: "Confirm which submitted reports are already waiting for review.",
       stateLabel: formatCount(sentForReviewCount, "sent", "sent"),
-      href: "#recent-reports",
+      href: "/field#recent-reports",
       tone: sentForReviewCount > 0 ? "clear" : "info",
     },
   ];

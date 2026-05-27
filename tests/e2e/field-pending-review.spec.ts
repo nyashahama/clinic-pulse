@@ -238,6 +238,40 @@ test("replaces field sidebar hashes after section aliases", async ({
   await expect(page.locator("#drafts-sync")).toBeInViewport();
 });
 
+test("canonicalizes field cockpit links after section aliases", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "desktop-chrome",
+    "Desktop cockpit hash navigation is covered by the desktop-chrome project.",
+  );
+
+  await signInAsReporter(page);
+
+  await page.goto("/field/recent-reports");
+  await expect(page.locator("#recent-reports")).toBeInViewport();
+
+  await page
+    .getByRole("link", { name: /Check device sync|Retry device sync/ })
+    .click();
+  await expect(page).toHaveURL(/\/field#drafts-sync$/);
+  await expect(page.locator("#drafts-sync")).toBeInViewport();
+
+  await page.goto("/field/drafts-sync");
+  await expect(page.locator("#drafts-sync")).toBeInViewport();
+
+  await page.getByRole("link", { name: "District review handoff" }).click();
+  await expect(page).toHaveURL(/\/field#recent-reports$/);
+  await expect(page.locator("#recent-reports")).toBeInViewport();
+
+  await page.goto("/field/recent-reports");
+  await expect(page.locator("#recent-reports")).toBeInViewport();
+
+  await page.getByRole("link", { name: /Start report|Continue report/ }).click();
+  await expect(page).toHaveURL(/\/field#submit-report$/);
+  await expect(page.locator("#submit-report")).toBeInViewport();
+});
+
 test("uses the field route map to change the active stop", async ({
   page,
 }, testInfo) => {

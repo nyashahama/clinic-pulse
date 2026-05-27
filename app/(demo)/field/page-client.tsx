@@ -77,6 +77,32 @@ function scrollFieldSectionIntoView(sectionId: FieldSectionId) {
   document.getElementById(sectionId)?.scrollIntoView({ block: "start" });
 }
 
+function getCanonicalFieldSectionHref(sectionId: FieldSectionId) {
+  return `/field#${sectionId}`;
+}
+
+function pushCanonicalFieldSection(sectionId: FieldSectionId) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const oldUrl = window.location.href;
+  window.history.pushState(null, "", getCanonicalFieldSectionHref(sectionId));
+  scrollFieldSectionIntoView(sectionId);
+  window.dispatchEvent(
+    new HashChangeEvent("hashchange", {
+      newURL: window.location.href,
+      oldURL: oldUrl,
+    }),
+  );
+}
+
+function getFieldSectionIdFromHref(href: string) {
+  const sectionId = href.startsWith("#") ? href.slice(1) : href.split("#", 2)[1];
+
+  return sectionId && isFieldSectionId(sectionId) ? sectionId : null;
+}
+
 function subscribeToOnlineStatus(onStoreChange: () => void) {
   if (typeof window === "undefined") {
     return () => {};
@@ -501,29 +527,23 @@ export default function FieldPageClient({
   );
   const handleJumpToReport = useCallback((event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
-
-    const target = document.getElementById("submit-report");
-    if (!target) {
-      return;
-    }
-
-    target.scrollIntoView({ block: "start" });
-    window.history.replaceState(null, "", "#submit-report");
+    pushCanonicalFieldSection("submit-report");
   }, []);
   const handleJumpToItinerary = useCallback(
     (event: MouseEvent<HTMLAnchorElement>) => {
       event.preventDefault();
-
-      const target = document.getElementById("field-itinerary");
-      if (!target) {
-        return;
-      }
-
-      target.scrollIntoView({ block: "start" });
-      window.history.replaceState(null, "", "#field-itinerary");
+      pushCanonicalFieldSection("field-itinerary");
     },
     [],
   );
+  const handleNavigateTaskQueueSection = useCallback((href: string) => {
+    const sectionId = getFieldSectionIdFromHref(href);
+    if (!sectionId) {
+      return;
+    }
+
+    pushCanonicalFieldSection(sectionId);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -816,7 +836,7 @@ export default function FieldPageClient({
                   "w-full bg-emerald-500 text-neutral-950 hover:bg-emerald-400 sm:w-auto",
                 size: "lg",
               })}
-              href="#submit-report"
+              href={getCanonicalFieldSectionHref("submit-report")}
               onClick={handleJumpToReport}
             >
               {fieldCockpit.selectedVisit.primaryActionLabel}
@@ -828,7 +848,7 @@ export default function FieldPageClient({
                 size: "lg",
                 variant: "outline",
               })}
-              href="#field-itinerary"
+              href={getCanonicalFieldSectionHref("field-itinerary")}
               onClick={handleJumpToItinerary}
             >
               {fieldCockpit.selectedVisit.secondaryActionLabel}
@@ -836,7 +856,10 @@ export default function FieldPageClient({
           </div>
         </div>
 
-        <FieldTaskQueue tasks={fieldCockpit.taskQueue} />
+        <FieldTaskQueue
+          tasks={fieldCockpit.taskQueue}
+          onNavigateToSection={handleNavigateTaskQueueSection}
+        />
 
         {selectedClinic ? (
           <FieldLocationVerificationPanel

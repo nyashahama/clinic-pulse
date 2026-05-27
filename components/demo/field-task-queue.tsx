@@ -16,6 +16,7 @@ import type {
 import { cn } from "@/lib/utils";
 
 type FieldTaskQueueProps = {
+  onNavigateToSection?: (href: FieldVisitTaskQueueItem["href"]) => void;
   tasks: FieldVisitTaskQueueItem[];
 };
 
@@ -37,7 +38,7 @@ const icons = {
   "district-review": Send,
 } satisfies Record<FieldVisitTaskQueueItem["id"], typeof CheckCircle2>;
 
-export function FieldTaskQueue({ tasks }: FieldTaskQueueProps) {
+export function FieldTaskQueue({ onNavigateToSection, tasks }: FieldTaskQueueProps) {
   return (
     <div className="border-b border-border-subtle bg-bg-subtle p-4">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
@@ -62,6 +63,14 @@ export function FieldTaskQueue({ tasks }: FieldTaskQueueProps) {
             <Link
               key={task.id}
               href={task.href}
+              onClick={(event) => {
+                if (!onNavigateToSection) {
+                  return;
+                }
+
+                event.preventDefault();
+                onNavigateToSection(task.href);
+              }}
               className="group grid min-h-36 rounded-lg border border-border-subtle bg-bg-default p-3 text-left shadow-sm transition-colors hover:border-neutral-900/40 hover:bg-bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
               <span
