@@ -116,6 +116,29 @@ test.describe("product shell responsive behavior", () => {
     ).toBeVisible();
   });
 
+  test("district command palette actions stay reachable", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "desktop-chrome",
+      "Desktop command palette action reachability is covered by the desktop-chrome project.",
+    );
+
+    await signInAsDistrictManager(page);
+
+    await page.getByRole("button", { name: "Open command palette" }).click();
+    const palette = page.getByRole("dialog", {
+      name: "ClinicPulse command palette",
+    });
+    await expect(palette).toBeVisible();
+
+    await palette
+      .getByRole("button", { name: "Open finder: Public routing surface" })
+      .click();
+
+    await expect(page).toHaveURL(/\/finder$/);
+  });
+
   test("district command home stays compact on mobile", async ({ page }, testInfo) => {
     skipUnlessMobileProject(testInfo);
 
