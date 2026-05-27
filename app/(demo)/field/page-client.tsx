@@ -534,6 +534,18 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
     }
   };
 
+  const handleToggleOnlineFromCockpit = () => {
+    handleToggleOnline();
+
+    if (typeof window !== "undefined" && window.location.hash) {
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${window.location.search}`,
+      );
+    }
+  };
+
   const handleSubmit = async (report: OnlineFieldReportInput) => {
     if (submitInFlight.current) {
       return false;
@@ -843,7 +855,7 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={handleToggleOnline}
+            onClick={handleToggleOnlineFromCockpit}
             className="w-full sm:w-auto"
           >
             {isOnline ? "Set offline mode" : "Set online mode"}
