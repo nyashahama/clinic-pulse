@@ -60,6 +60,22 @@ const OFFLINE_DUPLICATE_MESSAGE =
   "A matching report is already in the device queue.";
 const ONLINE_DUPLICATE_MESSAGE =
   "A matching report was submitted recently or is already waiting for district review.";
+const FIELD_SECTION_IDS = [
+  "field-itinerary",
+  "submit-report",
+  "drafts-sync",
+  "recent-reports",
+] as const;
+
+export type FieldSectionId = (typeof FIELD_SECTION_IDS)[number];
+
+function isFieldSectionId(value: string): value is FieldSectionId {
+  return FIELD_SECTION_IDS.includes(value as FieldSectionId);
+}
+
+function scrollFieldSectionIntoView(sectionId: FieldSectionId) {
+  document.getElementById(sectionId)?.scrollIntoView({ block: "start" });
+}
 
 function subscribeToOnlineStatus(onStoreChange: () => void) {
   if (typeof window === "undefined") {
@@ -204,10 +220,14 @@ function createOfflineReportQueueItem(
 }
 
 type FieldPageClientProps = {
+  initialSectionId?: FieldSectionId;
   session: ClientAuthSession;
 };
 
-export default function FieldPageClient({ session }: FieldPageClientProps) {
+export default function FieldPageClient({
+  initialSectionId,
+  session,
+}: FieldPageClientProps) {
   const router = useRouter();
   const { state } = useDemoStore();
 
@@ -524,6 +544,32 @@ export default function FieldPageClient({ session }: FieldPageClientProps) {
       void syncQueuedReports({ assumeOnline: true });
     }
   }, [browserIsOnline, syncQueuedReports]);
+
+  useEffect(() => {
+    const scrollToCurrentHash = () => {
+      const sectionId = window.location.hash.slice(1);
+      if (isFieldSectionId(sectionId)) {
+        scrollFieldSectionIntoView(sectionId);
+      }
+    };
+
+    scrollToCurrentHash();
+    window.addEventListener("hashchange", scrollToCurrentHash);
+
+    return () => window.removeEventListener("hashchange", scrollToCurrentHash);
+  }, []);
+
+  useEffect(() => {
+    if (!initialSectionId) {
+      return;
+    }
+
+    const animationFrame = requestAnimationFrame(() => {
+      scrollFieldSectionIntoView(initialSectionId);
+    });
+
+    return () => cancelAnimationFrame(animationFrame);
+  }, [initialSectionId]);
 
   const handleToggleOnline = () => {
     const nextOnline = !isOnline;

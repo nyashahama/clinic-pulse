@@ -7,9 +7,9 @@ export default async function Page() {
 
   return (
     <>
-      <h1 className="sr-only">Submit field report</h1>
+      <h1 className="sr-only">Recent field reports</h1>
       <FieldPageClient
-        initialSectionId="submit-report"
+        initialSectionId="recent-reports"
         session={toClientAuthSession(session)}
       />
     </>
