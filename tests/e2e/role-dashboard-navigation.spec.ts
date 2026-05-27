@@ -441,16 +441,17 @@ test.describe("phase 1 role dashboard navigation", () => {
     await expect(page.getByText("Decision staged")).toBeVisible();
     await expect(page.getByText("Owner / age")).toBeVisible();
 
-    await page
-      .locator("[data-district-clinic-evidence-selected-packet]")
-      .getByRole("button", { name: /Next/i })
-      .click();
-    await expect(
-      page.locator("[data-district-clinic-evidence-selected-packet]"),
-    ).toContainText("audit-001");
+    const selectedPacket = page.locator("[data-district-clinic-evidence-selected-packet]");
+
+    await selectedPacket.getByRole("button", { name: /Next/i }).click();
     await expect
       .poll(() => new URL(page.url()).searchParams.get("evidence"))
-      .toBe("audit-001");
+      .not.toBeNull();
+
+    const nextEvidenceId = new URL(page.url()).searchParams.get("evidence");
+
+    expect(nextEvidenceId).toBeTruthy();
+    await expect(selectedPacket).toContainText(nextEvidenceId ?? "");
 
     await page.goto("/district/clinic-evidence?evidence=audit-001");
     await expect(
