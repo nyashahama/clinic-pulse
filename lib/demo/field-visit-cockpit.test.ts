@@ -201,10 +201,10 @@ describe("field visit cockpit view model", () => {
       "1 sent",
     ]);
     expect(model.taskQueue.map((task) => task.href)).toEqual([
-      "#field-itinerary",
-      "#submit-report",
-      "#drafts-sync",
-      "#recent-reports",
+      "/field#field-itinerary",
+      "/field#submit-report",
+      "/field#drafts-sync",
+      "/field#recent-reports",
     ]);
   });
 
