@@ -9,7 +9,7 @@ import {
 
 import { AdminStatusBadge, type AdminTone } from "@/components/product/admin-module";
 import { AdminUserLifecycle } from "@/components/product/admin-user-lifecycle";
-import { UsersRolesDataTable } from "@/components/product/users-roles-data-table";
+import { UsersTableClient } from "./users-table-client";
 
 import { buttonVariants } from "@/components/ui/button";
 import type { AuthRole } from "@/lib/auth/api";
@@ -298,7 +298,7 @@ export default async function Page() {
             Search, filter, and manage user access across the organisation.
           </p>
         </div>
-        <UsersRolesDataTable users={users} detailReturnSource={returnSource} />
+        <UsersTableClient users={users} detailReturnSource={returnSource} />
       </section>
     </div>
   );

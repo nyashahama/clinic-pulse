@@ -94,3 +94,21 @@ export async function revokeUserSessionsAction(userId: number) {
   await revokeAdminUserSessions(userId, await getAdminLoaderOptions());
   revalidatePath(usersRolesPath);
 }
+
+export async function bulkDisableUsersAction(userIds: number[]) {
+  const options = await getAdminLoaderOptions();
+  await Promise.all(userIds.map((id) => updateAdminUser(id, { disabled: true }, options)));
+  revalidatePath(usersRolesPath);
+}
+
+export async function bulkEnableUsersAction(userIds: number[]) {
+  const options = await getAdminLoaderOptions();
+  await Promise.all(userIds.map((id) => updateAdminUser(id, { disabled: false }, options)));
+  revalidatePath(usersRolesPath);
+}
+
+export async function bulkRevokeSessionsAction(userIds: number[]) {
+  const options = await getAdminLoaderOptions();
+  await Promise.all(userIds.map((id) => revokeAdminUserSessions(id, options)));
+  revalidatePath(usersRolesPath);
+}
