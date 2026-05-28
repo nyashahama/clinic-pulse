@@ -1,17 +1,10 @@
 import Link from "next/link";
-import {
-  KeyRoundIcon,
-  ShieldCheckIcon,
-  UserCogIcon,
-  UserPlusIcon,
-} from "lucide-react";
 
 import {
-  AdminStatusBadge,
-  getAdminToneClassName,
   type AdminTone,
 } from "@/components/product/admin-module";
 import { AdminUserLifecycle } from "@/components/product/admin-user-lifecycle";
+import { UsersRolesDataTable } from "@/components/product/users-roles-data-table";
 import { buttonVariants } from "@/components/ui/button";
 import type { AuthRole } from "@/lib/auth/api";
 import type { AdminUserAccessApiResponse } from "@/lib/demo/api-types";
@@ -22,7 +15,6 @@ import { loadAdminUsers } from "../admin-loaders";
 import {
   formatCount,
   formatDateTime,
-  toneForAttention,
 } from "../governance-formatters";
 import {
   createPilotUserAction,
@@ -86,57 +78,11 @@ export default async function Page() {
   ).length;
   const disabledUsers = users.filter((user) => Boolean(user.disabledAt)).length;
   const usersNeedingReview = rows.filter((row) => row.risk.reasons.length > 0).length;
-  const staleSessions = users.filter((user) => !user.lastSeenAt).length;
-  const missingDistrictScope = users.filter(
-    (user) => user.role === "district_manager" && !user.district,
-  ).length;
   const activeBlocker =
     usersNeedingReview > 0
       ? `${plural(usersNeedingReview, "user")} need access review`
       : "User access evidence is ready";
   const latestActivityLabel = getLatestUserActivityLabel(users);
-  const taskCards = [
-    {
-      id: "create",
-      title: "Create pilot access",
-      description:
-        "Add users with the correct role, organisation, and district scope before rollout.",
-      href: "#user-lifecycle-workspace",
-      stateLabel: plural(activeUsers, "active user"),
-      tone: "info" as AdminTone,
-      Icon: UserPlusIcon,
-    },
-    {
-      id: "access",
-      title: "Review access hygiene",
-      description:
-        "Resolve disabled accounts, stale sessions, privileged access, and missing district scope.",
-      href: "/admin/access-review",
-      stateLabel: usersNeedingReview ? `${formatCount(usersNeedingReview)} follow-ups` : "Ready",
-      tone: toneForAttention(usersNeedingReview),
-      Icon: ShieldCheckIcon,
-    },
-    {
-      id: "sessions",
-      title: "Revoke stale sessions",
-      description:
-        "Invalidate sessions when lifecycle state changes or the access evidence is stale.",
-      href: "#user-lifecycle-workspace",
-      stateLabel: staleSessions ? `${formatCount(staleSessions)} stale` : "Current",
-      tone: toneForAttention(staleSessions),
-      Icon: KeyRoundIcon,
-    },
-    {
-      id: "scope",
-      title: "Confirm role scope",
-      description:
-        "Check district manager scope and privileged roles before handoff to audit evidence.",
-      href: "/admin/audit-evidence",
-      stateLabel: missingDistrictScope ? `${formatCount(missingDistrictScope)} gaps` : "Scoped",
-      tone: toneForAttention(missingDistrictScope),
-      Icon: UserCogIcon,
-    },
-  ];
 
   return (
     <div className="space-y-4">
@@ -187,21 +133,25 @@ export default async function Page() {
               label: "Total users",
               value: formatCount(users.length),
               detail: `${formatCount(activeUsers)} active accounts`,
+              tone: "info" as AdminTone,
             },
             {
               label: "Privileged users",
               value: formatCount(privilegedUsers),
               detail: "Organisation and system administrators",
+              tone: "info" as AdminTone,
             },
             {
               label: "Disabled accounts",
               value: formatCount(disabledUsers),
               detail: "Lifecycle state held in audit-visible admin records",
+              tone: disabledUsers > 0 ? "attention" : "clear",
             },
             {
               label: "Need review",
               value: formatCount(usersNeedingReview),
               detail: "Role, scope, account, or session evidence needs follow-up",
+              tone: usersNeedingReview > 0 ? "attention" : "clear",
             },
           ].map((metric) => (
             <div
@@ -220,48 +170,6 @@ export default async function Page() {
         </div>
       </section>
 
-      <section aria-label="Access lifecycle task queue" className="grid gap-3">
-        <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-              Next actions
-            </p>
-            <h2 className="text-xl font-semibold text-foreground">Access lifecycle queue</h2>
-          </div>
-          <p className="max-w-2xl text-sm text-muted-foreground">
-            Keep creation, role scope, session hygiene, and review evidence in one admin lane.
-          </p>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {taskCards.map(({ Icon, ...task }) => (
-            <Link
-              key={task.id}
-              href={task.href}
-              className="min-w-0 rounded-lg border border-border-subtle bg-bg-default p-4 text-content-default shadow-sm transition hover:bg-bg-muted/60"
-            >
-              <div className="flex min-w-0 items-start justify-between gap-3">
-                <span
-                  className={cn(
-                    "inline-flex size-9 shrink-0 items-center justify-center rounded-lg border",
-                    getAdminToneClassName(task.tone),
-                  )}
-                  aria-hidden="true"
-                >
-                  <Icon className="size-4" />
-                </span>
-                <AdminStatusBadge tone={task.tone}>{task.stateLabel}</AdminStatusBadge>
-              </div>
-              <h3 className="mt-4 break-words text-base font-semibold text-foreground">
-                {task.title}
-              </h3>
-              <p className="mt-2 break-words text-sm leading-5 text-muted-foreground">
-                {task.description}
-              </p>
-            </Link>
-          ))}
-        </div>
-      </section>
-
       <section id="user-lifecycle-workspace" className="scroll-mt-24">
         <AdminUserLifecycle
           users={users}
@@ -271,6 +179,21 @@ export default async function Page() {
           updateAccessAction={updateUserAccessAction}
           revokeSessionsAction={revokeUserSessionsAction}
         />
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+              User directory
+            </p>
+            <h2 className="text-xl font-semibold text-foreground">All users</h2>
+          </div>
+          <p className="max-w-2xl text-sm text-muted-foreground">
+            Search, filter, and manage user access across the organisation.
+          </p>
+        </div>
+        <UsersRolesDataTable users={users} detailReturnSource={returnSource} />
       </section>
     </div>
   );
