@@ -200,11 +200,81 @@ export default async function Page() {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-        <section id="user-lifecycle-workspace" className="scroll-mt-24">
-          <p className="sr-only">Access lifecycle queue</p>
-          <CreatePilotUserForm createUserAction={createPilotUserAction} />
-        </section>
+      <div className="grid gap-4">
+        <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+          <section id="user-lifecycle-workspace" className="scroll-mt-24" data-admin-module>
+            <p className="sr-only">Access lifecycle queue</p>
+            <CreatePilotUserForm createUserAction={createPilotUserAction} />
+          </section>
+
+          <div className="space-y-4">
+            <div className="rounded-lg border border-border-subtle bg-bg-default shadow-sm">
+              <div className="border-b border-border-subtle px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                  Role distribution
+                </p>
+              </div>
+              <div className="p-4">
+                <div className="space-y-3">
+                  {Object.entries(roleDistribution)
+                    .sort(([, a], [, b]) => b - a)
+                    .map(([role, count]) => {
+                      const percentage = Math.round((count / users.length) * 100);
+                      return (
+                        <div key={role}>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium text-foreground">
+                              {role === "system_admin"
+                                ? "System admin"
+                                : role === "org_admin"
+                                  ? "Org admin"
+                                  : role === "district_manager"
+                                    ? "District manager"
+                                    : role === "reporter"
+                                      ? "Field reporter"
+                                      : role}
+                            </span>
+                            <span className="text-muted-foreground">{formatCount(count)}</span>
+                          </div>
+                          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="h-full rounded-full bg-foreground/20"
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-border-subtle bg-bg-default shadow-sm">
+              <div className="border-b border-border-subtle px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                  Recent activity
+                </p>
+              </div>
+              <div className="divide-y divide-border-subtle">
+                {recentActivity.length === 0 ? (
+                  <div className="p-4 text-sm text-muted-foreground">No recent activity</div>
+                ) : (
+                  recentActivity.map((user) => (
+                    <div key={user.userId} className="px-4 py-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-foreground">{user.displayName}</p>
+                        <AdminStatusBadge tone="info">{formatLabel(user.role)}</AdminStatusBadge>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Last seen: {formatDateTime(user.lastSeenAt)}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
 
         <section className="space-y-3">
           <div className="flex min-w-0 flex-col gap-1">
@@ -220,74 +290,6 @@ export default async function Page() {
           </div>
           <UsersTableClient users={users} detailReturnSource={returnSource} />
         </section>
-
-        <div className="space-y-4">
-          <div className="rounded-lg border border-border-subtle bg-bg-default shadow-sm">
-            <div className="border-b border-border-subtle px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                Role distribution
-              </p>
-            </div>
-            <div className="p-4">
-              <div className="space-y-3">
-                {Object.entries(roleDistribution)
-                  .sort(([, a], [, b]) => b - a)
-                  .map(([role, count]) => {
-                    const percentage = Math.round((count / users.length) * 100);
-                    return (
-                      <div key={role}>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="font-medium text-foreground">
-                            {role === "system_admin"
-                              ? "System admin"
-                              : role === "org_admin"
-                                ? "Org admin"
-                                : role === "district_manager"
-                                  ? "District manager"
-                                  : role === "reporter"
-                                    ? "Field reporter"
-                                    : role}
-                          </span>
-                          <span className="text-muted-foreground">{formatCount(count)}</span>
-                        </div>
-                        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="h-full rounded-full bg-foreground/20"
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-border-subtle bg-bg-default shadow-sm">
-            <div className="border-b border-border-subtle px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                Recent activity
-              </p>
-            </div>
-            <div className="divide-y divide-border-subtle">
-              {recentActivity.length === 0 ? (
-                <div className="p-4 text-sm text-muted-foreground">No recent activity</div>
-              ) : (
-                recentActivity.map((user) => (
-                  <div key={user.userId} className="px-4 py-3">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-foreground">{user.displayName}</p>
-                      <AdminStatusBadge tone="info">{formatLabel(user.role)}</AdminStatusBadge>
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Last seen: {formatDateTime(user.lastSeenAt)}
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
       </div>
 
     </div>
