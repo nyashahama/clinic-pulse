@@ -44,15 +44,16 @@ describe("AdminUserLifecycle source", () => {
     expect(actionSource).toContain("Invalid organisation ID.");
   });
 
-  it("wires users and roles page action entry points", () => {
+  it("wires all lifecycle actions into the users and roles page", () => {
     const pageSource = readFileSync(
       join(process.cwd(), "app/(demo)/admin/users-roles/page.tsx"),
       "utf8",
     );
 
     expect(pageSource).toContain("createPilotUserAction");
-    expect(pageSource).toContain("Create pilot user");
-    expect(pageSource).toContain("Temporary password");
+    expect(pageSource).toContain("setUserDisabledAction");
+    expect(pageSource).toContain("updateUserAccessAction");
+    expect(pageSource).toContain("revokeUserSessionsAction");
     expect(pageSource).toContain("Users and roles command centre");
     expect(pageSource).toContain("Access lifecycle queue");
     expect(pageSource).toContain('id="user-lifecycle-workspace"');

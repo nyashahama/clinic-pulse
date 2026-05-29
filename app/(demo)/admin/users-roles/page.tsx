@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 import { AdminStatusBadge, type AdminTone } from "@/components/product/admin-module";
-import { CreatePilotUserForm } from "./create-pilot-user-form";
+import { AdminUserLifecycle } from "@/components/product/admin-user-lifecycle";
 
 import { buttonVariants } from "@/components/ui/button";
 import type { AuthRole } from "@/lib/auth/api";
@@ -18,7 +18,12 @@ import { cn } from "@/lib/utils";
 import { requireDemoWorkflowAccess } from "../../workflow-guard";
 import { loadAdminUsers } from "../admin-loaders";
 import { formatCount, formatDateTime, formatLabel } from "../governance-formatters";
-import { createPilotUserAction } from "./actions";
+import {
+  createPilotUserAction,
+  revokeUserSessionsAction,
+  setUserDisabledAction,
+  updateUserAccessAction,
+} from "./actions";
 
 const activeRoles = new Set<AuthRole>([
   "reporter",
@@ -26,6 +31,7 @@ const activeRoles = new Set<AuthRole>([
   "org_admin",
   "system_admin",
 ]);
+const returnSource = "admin-users-roles";
 function isActiveRole(role: string): role is AuthRole {
   return activeRoles.has(role as AuthRole);
 }
@@ -201,7 +207,14 @@ export default async function Page() {
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <section id="user-lifecycle-workspace" className="scroll-mt-24">
           <p className="sr-only">Access lifecycle queue</p>
-          <CreatePilotUserForm createUserAction={createPilotUserAction} />
+          <AdminUserLifecycle
+            users={rows}
+            detailReturnSource={returnSource}
+            createUserAction={createPilotUserAction}
+            updateUserAction={setUserDisabledAction}
+            updateAccessAction={updateUserAccessAction}
+            revokeSessionsAction={revokeUserSessionsAction}
+          />
         </section>
 
         <div className="space-y-4">
