@@ -9,7 +9,6 @@ import {
 
 import { AdminStatusBadge, type AdminTone } from "@/components/product/admin-module";
 import { AdminUserLifecycle } from "@/components/product/admin-user-lifecycle";
-import { UsersTableClient } from "./users-table-client";
 
 import { buttonVariants } from "@/components/ui/button";
 import type { AuthRole } from "@/lib/auth/api";
@@ -288,20 +287,6 @@ export default async function Page() {
         </div>
       </div>
 
-      <section className="space-y-3">
-        <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-              User directory
-            </p>
-            <h2 className="text-xl font-semibold text-foreground">All users</h2>
-          </div>
-          <p className="max-w-2xl text-sm text-muted-foreground">
-            Search, filter, and manage user access across the organisation.
-          </p>
-        </div>
-        <UsersTableClient users={users} detailReturnSource={returnSource} />
-      </section>
     </div>
   );
 }
