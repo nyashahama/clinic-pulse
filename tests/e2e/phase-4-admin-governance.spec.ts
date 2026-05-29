@@ -251,27 +251,20 @@ test("data ingestion clinic-backed rows open operational detail", async ({ page 
   await expect(page.getByRole("button", { name: "Back to data ingestion" })).toBeVisible();
 });
 
-test("entity-backed admin evidence rows open detail pages", async ({ page }) => {
+test("admin users and roles supports pilot user creation flow", async ({ page }) => {
   test.setTimeout(90_000);
 
   await signIn(page, "org-admin@clinicpulse.local");
 
   await page.goto("/admin/users-roles");
-  const userLifecycleTable = page.getByLabel("User lifecycle evidence");
-  const userRow = userLifecycleTable.getByRole("row", {
-    name: /Open Organisation Admin user detail/i,
-  });
-
-  await expect(userRow).toBeVisible();
-  await Promise.all([
-    page.waitForURL(/\/admin\/users-roles\/\d+\?from=admin-users-roles$/),
-    userRow.getByText("Organisation Admin", { exact: true }).click(),
-  ]);
-  await expect(page.getByRole("heading", { name: "User detail" })).toBeVisible();
-  await Promise.all([
-    page.waitForURL(/\/admin\/users-roles$/),
-    page.getByRole("link", { name: "Back to users and roles" }).click(),
-  ]);
+  await expect(page.getByRole("button", { name: "Create pilot user" })).toBeVisible();
+  await page.getByRole("button", { name: "Create pilot user" }).click();
+  await page.getByLabel("Work email").fill(`pilot-${Date.now()}@example.test`);
+  await page.getByLabel("Display name").fill("Pilot User");
+  await page.getByLabel("Role", { exact: true }).selectOption("reporter");
+  await page.getByLabel("Organisation ID", { exact: true }).fill("1");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page.getByText("Temporary password")).toBeVisible();
 
   await page.goto("/admin/audit-evidence");
   const auditWorkspace = page.getByLabel("Audit evidence workspace");

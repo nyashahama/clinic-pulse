@@ -103,7 +103,7 @@ export function CreatePilotUserForm({ createUserAction }: CreatePilotUserFormPro
             </select>
           </div>
           <div className="grid gap-1">
-            <FieldLabel htmlFor="pilot-organisation-id">Org ID</FieldLabel>
+            <FieldLabel htmlFor="pilot-organisation-id">Organisation ID</FieldLabel>
             <Input id="pilot-organisation-id" name="organisationId" type="number" min="1" inputMode="numeric" placeholder="1" />
           </div>
           <div className="grid gap-1">
