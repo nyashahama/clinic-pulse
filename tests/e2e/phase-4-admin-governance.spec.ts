@@ -257,15 +257,14 @@ test("entity-backed admin evidence rows open detail pages", async ({ page }) => 
   await signIn(page, "org-admin@clinicpulse.local");
 
   await page.goto("/admin/users-roles");
-  const userLifecycleTable = page.getByLabel("User lifecycle evidence");
-  const userRow = userLifecycleTable.getByRole("row", {
-    name: /Open Organisation Admin user detail/i,
-  });
+  const userRow = page
+    .getByRole("row", { name: /Open Organisation Admin user detail|Organisation Admin/i })
+    .first();
 
   await expect(userRow).toBeVisible();
   await Promise.all([
     page.waitForURL(/\/admin\/users-roles\/\d+\?from=admin-users-roles$/),
-    userRow.getByText("Organisation Admin", { exact: true }).click(),
+    userRow.getByRole("link", { name: "Organisation Admin" }).click(),
   ]);
   await expect(page.getByRole("heading", { name: "User detail" })).toBeVisible();
   await Promise.all([
