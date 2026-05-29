@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 import { AdminStatusBadge, type AdminTone } from "@/components/product/admin-module";
-import { CreatePilotUserForm } from "./create-pilot-user-form";
+import { AdminUserLifecycle } from "@/components/product/admin-user-lifecycle";
 import { UsersTableClient } from "./users-table-client";
 
 import { buttonVariants } from "@/components/ui/button";
@@ -21,6 +21,9 @@ import { loadAdminUsers } from "../admin-loaders";
 import { formatCount, formatDateTime, formatLabel } from "../governance-formatters";
 import {
   createPilotUserAction,
+  revokeUserSessionsAction,
+  setUserDisabledAction,
+  updateUserAccessAction,
 } from "./actions";
 
 const activeRoles = new Set<AuthRole>([
@@ -100,6 +103,7 @@ export default async function Page() {
 
   return (
     <div className="space-y-6">
+      <p className="sr-only">Users and roles command centre</p>
       <section className="overflow-hidden rounded-lg border border-neutral-900 bg-neutral-950 text-white shadow-sm">
         <div className="grid gap-8 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
           <div className="min-w-0">
@@ -204,7 +208,15 @@ export default async function Page() {
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <section id="user-lifecycle-workspace" className="scroll-mt-24">
-          <CreatePilotUserForm createUserAction={createPilotUserAction} />
+          <p className="sr-only">Access lifecycle queue</p>
+          <AdminUserLifecycle
+            users={rows}
+            detailReturnSource={returnSource}
+            createUserAction={createPilotUserAction}
+            updateUserAction={setUserDisabledAction}
+            updateAccessAction={updateUserAccessAction}
+            revokeSessionsAction={revokeUserSessionsAction}
+          />
         </section>
 
         <div className="space-y-4">
