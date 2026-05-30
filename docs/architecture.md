@@ -1,6 +1,6 @@
 # Architecture
 
-ClinicPulse is a full-stack demo product with a Next.js frontend, Go chi API, and Postgres database. The application is designed to show district clinic operations end to end: public discovery, authenticated district operations, field reporting, admin readiness, partner APIs, webhooks, exports, and audit history.
+ClinicPulse is a full-stack operations product with a Next.js frontend, Go chi API, and Postgres database. The application is designed to show district clinic operations end to end: public discovery, authenticated district operations, field reporting, admin readiness, partner APIs, webhooks, exports, and audit history.
 
 ## System Diagram
 
@@ -12,7 +12,7 @@ flowchart LR
   Proxy --> API["Go chi API"]
   ServerActions --> API
   API --> Postgres["Postgres"]
-  Next --> DemoStore["Browser demo store"]
+  Next --> DemoStore["Browser workspace store"]
   DemoStore --> LocalStorage["Local storage"]
   API --> Auth["Sessions and roles"]
   API --> Partner["Partner API keys"]
@@ -24,11 +24,11 @@ flowchart LR
 
 | Component | Location | Responsibility |
 | --- | --- | --- |
-| Next.js app | `app/`, `components/`, `lib/` | Landing, booking, public finder, district demo, field report, admin, auth UI, browser demo state |
+| Next.js app | `app/`, `components/`, `lib/` | Landing, booking, public finder, district workspace, field report, admin, auth UI, browser workspace state |
 | Browser API proxy | `next.config.ts` | Rewrites `/api/clinicpulse/*` to the Go API base URL for same-origin browser calls |
 | Go API | `services/api` | Health, public clinic data, auth, role-protected operations, reports, sync, admin readiness, account lifecycle, partner APIs |
 | Postgres | Docker Compose and `services/api/migrations` | Clinic directory, service availability, reports, status, audit history, auth, partner readiness, sync metadata |
-| Demo seed and fallback | `lib/demo`, migrations, local auth seed | Keeps the demo usable locally and in non-production fallback contexts |
+| Local seed and fallback | `lib/workspace`, migrations, local auth seed | Keeps local review usable when seeded fallback is explicitly enabled |
 
 ## Request Flow
 
@@ -37,12 +37,12 @@ flowchart LR
 3. Browser-side calls use `NEXT_PUBLIC_CLINICPULSE_API_BASE_URL`, normally `/api/clinicpulse`.
 4. Next.js rewrites `/api/clinicpulse/*` to the Go API.
 5. The Go API reads and writes Postgres.
-6. The frontend demo store keeps local interaction state and can fall back to seeded data only when configured.
+6. The frontend workspace store keeps local interaction state and can fall back to seeded data only when configured.
 
 ## Authentication And Authorization
 
-Local demo users are seeded from `services/api/seeds/local_phase3_auth_users.sql`.
-Local credential hints are shown only for local deployments that have not explicitly disabled demo fallback.
+Local seeded users are seeded from `services/api/seeds/local_phase3_auth_users.sql`.
+Local credential hints are shown only for local deployments that have not explicitly disabled seeded fallback.
 Staging and production must hide seeded credentials and keep public registration disabled.
 
 Roles:
@@ -65,8 +65,8 @@ Unsafe cookie-authenticated mutations pass through trusted-origin CSRF checks an
 | Workflow | Frontend route | Backend route group | Stored data |
 | --- | --- | --- | --- |
 | Public clinic finder | `/finder` | `/v1/public/*` | `clinics`, `clinic_services`, `current_status` |
-| District console | `/demo` | `/v1/clinics`, `/v1/reports`, `/v1/sync` | reports, current status, audit events, sync attempts |
-| Clinic detail | `/demo/clinics/[clinicId]` | `/v1/clinics/{clinicId}` and child routes | clinic profile, reports, audit events |
+| District console | `/district` | `/v1/clinics`, `/v1/reports`, `/v1/sync` | reports, current status, audit events, sync attempts |
+| Clinic detail | `/district/clinics/[clinicId]` | `/v1/clinics/{clinicId}` and child routes | clinic profile, reports, audit events |
 | Field reporting | `/field` | `/v1/reports`, `/v1/reports/offline-sync` | reports, sync attempts, audit events |
 | Admin readiness | `/admin` | `/v1/admin/*` | user lifecycle, sessions, partner keys, webhooks, exports, integration checks |
 | Partner integration | external partner client | `/v1/partner/*` | partner API keys, export runs, status data |
@@ -77,15 +77,15 @@ Stale status reconciliation is safe to rerun: it only escalates freshness state 
 
 ## Pilot Data Trust
 
-Pilot-facing operational data carries source, freshness, review, confidence, and evidence context. Browser-local demo state is not treated as pilot source of truth. Field reports become authoritative after server receipt and district review. Stale reconciliation, sync failures, exports, and webhook attempts leave audit or admin evidence so users can distinguish reviewed current data from pending, stale, failed, or demo-seeded state.
+Pilot-facing operational data carries source, freshness, review, confidence, and evidence context. Browser-local workspace state is not treated as pilot source of truth. Field reports become authoritative after server receipt and district review. Stale reconciliation, sync failures, exports, and webhook attempts leave audit or admin evidence so users can distinguish reviewed current data from pending, stale, failed, or locally seeded state.
 
-## Demo Fallback
+## seeded fallback
 
-`CLINICPULSE_ALLOW_DEMO_FALLBACK` controls whether API failures may fall back to seeded frontend demo state and whether local seeded credential hints are visible. This is useful for local demos. Production and staging must keep it disabled because operational failures and seeded access assumptions should be visible.
+`CLINICPULSE_ALLOW_SEEDED_FALLBACK` controls whether API failures may fall back to seeded frontend workspace state and whether local seeded credential hints are visible. This is useful for local review. Production and staging must keep it disabled because operational failures and seeded access assumptions should be visible.
 
 ## Testing Boundaries
 
-- Vitest covers frontend demo state, selectors, API clients, and UI helpers.
+- Vitest covers frontend workspace state, selectors, API clients, and UI helpers.
 - Go tests cover store, service, auth, and HTTP behavior.
 - ESLint covers Next.js and TypeScript quality.
 - Next build verifies the production app compiles.

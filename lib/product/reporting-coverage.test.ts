@@ -4,7 +4,7 @@ import type {
   ClinicDetailApiResponse,
   ReportApiResponse,
   SyncSummaryApiResponse,
-} from "@/lib/demo/api-types";
+} from "@/lib/workspace/api-types";
 import { buildReportingCoverageViewModel } from "@/lib/product/reporting-coverage";
 
 const now = "2026-05-22T08:00:00.000Z";

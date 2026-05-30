@@ -10,10 +10,10 @@ import { landingPhotos } from "@/components/landing/photo-assets";
 import { liveIncidentHero } from "@/lib/landing/openpanel-refactor-content";
 
 type LiveIncidentHeroProps = {
-  onBookDemo: () => void;
+  onBookWalkthrough: () => void;
 };
 
-export function LiveIncidentHero({ onBookDemo }: LiveIncidentHeroProps) {
+export function LiveIncidentHero({ onBookWalkthrough }: LiveIncidentHeroProps) {
   return (
     <section className="relative isolate overflow-hidden border-b border-neutral-950 bg-neutral-950 text-white">
       <Image
@@ -51,7 +51,7 @@ export function LiveIncidentHero({ onBookDemo }: LiveIncidentHeroProps) {
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <button
                 type="button"
-                onClick={onBookDemo}
+                onClick={onBookWalkthrough}
                 className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-white px-5 text-sm font-semibold text-neutral-950 transition hover:bg-neutral-200 sm:w-auto"
               >
                 {liveIncidentHero.primaryCta.label}

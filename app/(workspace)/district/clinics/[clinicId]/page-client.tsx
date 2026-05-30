@@ -1,0 +1,364 @@
+"use client";
+
+import { AlertTriangle, ArrowLeft } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+
+import { AuditTrail } from "@/components/workspace/audit-trail";
+import { ClinicOperationalGrid } from "@/components/workspace/clinic-operational-grid";
+import { ClinicProfileHeader } from "@/components/workspace/clinic-profile-header";
+import { PatientJourneyImpactPanel } from "@/components/workspace/patient-journey-impact";
+import { ReroutePanel, type RerouteRecommendation } from "@/components/workspace/reroute-panel";
+import { Button } from "@/components/ui/button";
+import {
+  loadAlternativeRecommendations,
+  resolveAlternativeService,
+} from "@/lib/workspace/alternatives";
+import { useWorkspaceStore } from "@/lib/workspace/workspace-store";
+import { buildPatientJourneyImpact } from "@/lib/workspace/patient-journey";
+import { buildRecommendationInputKey } from "@/lib/workspace/recommendation-input-key";
+import { getClinicAuditEvents, getClinicReports, getClinicRows } from "@/lib/workspace/selectors";
+import type { Clinic, ClinicRow } from "@/lib/workspace/types";
+
+type LocalRerouteRecommendation = RerouteRecommendation & {
+  distanceKm: number;
+  estimatedMinutes: number;
+};
+
+function toDate(value: string) {
+  return new Intl.DateTimeFormat("en-ZA", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function getDistanceKm(fromClinic: Clinic, toClinic: Clinic) {
+  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+  const radiusKm = 6371;
+
+  const lat1 = toRadians(fromClinic.latitude);
+  const lat2 = toRadians(toClinic.latitude);
+  const deltaLat = toRadians(toClinic.latitude - fromClinic.latitude);
+  const deltaLng = toRadians(toClinic.longitude - fromClinic.longitude);
+
+  const a =
+    Math.sin(deltaLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
+
+  return 2 * radiusKm * Math.asin(Math.sqrt(a));
+}
+
+function buildRerouteRecommendations(
+  sourceClinic: ClinicRow,
+  candidates: ClinicRow[],
+): LocalRerouteRecommendation[] {
+  const compatibilityRows = candidates
+    .filter((clinic) => clinic.id !== sourceClinic.id)
+    .filter(
+      (clinic) =>
+        clinic.status === "operational" || (clinic.status === "degraded" && clinic.freshness !== "stale"),
+    )
+    .map((clinic) => {
+      const compatibilityServices = clinic.services.filter((service) =>
+        sourceClinic.services.includes(service),
+      );
+
+      if (compatibilityServices.length === 0) {
+        return null;
+      }
+
+      const distanceKm = getDistanceKm(sourceClinic, clinic);
+      const estimatedMinutes = Math.max(6, Math.round((distanceKm / 35) * 60));
+      const reason =
+        clinic.status === "operational"
+          ? "Operational and can absorb overflow demand immediately."
+          : "Degraded but can support selected shared services with elevated wait times.";
+
+      return {
+        clinic,
+        compatibilityServices,
+        distanceKm,
+        estimatedMinutes,
+        reason,
+      };
+    })
+    .filter((entry): entry is LocalRerouteRecommendation => entry !== null)
+    .sort((left, right) => {
+      const statusRank = (status: ClinicRow["status"]) =>
+        status === "operational" ? 0 : 1;
+
+      const statusDelta = statusRank(left.clinic.status) - statusRank(right.clinic.status);
+      if (statusDelta !== 0) {
+        return statusDelta;
+      }
+
+      return left.distanceKm - right.distanceKm;
+    })
+    .slice(0, 4);
+
+  return compatibilityRows;
+}
+
+function isUnavailableClinic(status: ClinicRow["status"], freshness: ClinicRow["freshness"]) {
+  return (
+    status === "non_functional" ||
+    status === "unknown" ||
+    freshness === "stale" ||
+    freshness === "needs_confirmation"
+  );
+}
+
+function getClinicName(clinicId: string | string[] | undefined) {
+  if (!clinicId) {
+    return "";
+  }
+
+  return Array.isArray(clinicId) ? clinicId[0] : clinicId;
+}
+
+type RecommendationResult = {
+  key: string;
+  recommendations: RerouteRecommendation[];
+};
+
+type ClinicDetailPageProps = {
+  consoleHref?: string;
+};
+
+const adminReturnTargets = {
+  "admin-data-ingestion": {
+    href: "/admin/data-ingestion",
+    label: "Back to data ingestion",
+  },
+  "admin-reporting-coverage": {
+    href: "/admin/reporting-coverage",
+    label: "Back to reporting coverage",
+  },
+} as const;
+
+function getReturnTarget(source: string | null, consoleHref: string) {
+  if (source && source in adminReturnTargets) {
+    return adminReturnTargets[source as keyof typeof adminReturnTargets];
+  }
+
+  return {
+    href: consoleHref,
+    label: "Back to console",
+  };
+}
+
+export default function ClinicDetailPage({ consoleHref = "/district" }: ClinicDetailPageProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { state } = useWorkspaceStore();
+  const params = useParams<{ clinicId?: string | string[] }>();
+  const clinicId = getClinicName(params.clinicId);
+  const returnTarget = getReturnTarget(searchParams.get("from"), consoleHref);
+
+  const clinicRows = useMemo(() => getClinicRows(state), [state]);
+  const clinicRow = useMemo(
+    () => clinicRows.find((entry) => entry.id === clinicId) ?? null,
+    [clinicId, clinicRows],
+  );
+
+  const reports = useMemo(
+    () => (clinicId ? getClinicReports(state, clinicId) : []),
+    [clinicId, state],
+  );
+  const auditEvents = useMemo(
+    () => (clinicId ? getClinicAuditEvents(state, clinicId) : []),
+    [clinicId, state],
+  );
+
+  const recommendationKey = clinicRow
+    ? buildRecommendationInputKey({
+        sourceClinic: clinicRow,
+        localClinics: clinicRows,
+        requestedService: resolveAlternativeService(clinicRow, clinicRow.services[0]),
+      })
+    : "";
+  const [recommendationResult, setRecommendationResult] = useState<RecommendationResult>({
+    key: "",
+    recommendations: [],
+  });
+  const recommendationsReady = recommendationResult.key === recommendationKey;
+  const recommendations =
+    recommendationsReady ? recommendationResult.recommendations : [];
+
+  useEffect(() => {
+    let isCurrent = true;
+    const abortController = new AbortController();
+
+    if (!clinicRow) {
+      abortController.abort();
+      return;
+    }
+
+    void loadAlternativeRecommendations({
+      sourceClinic: clinicRow,
+      localClinics: clinicRows,
+      requestedService: clinicRow.services[0],
+      apiOptions: {
+        init: {
+          signal: abortController.signal,
+        },
+      },
+      localFallback: () => buildRerouteRecommendations(clinicRow, clinicRows),
+      onFetchError: (error) => {
+        console.warn("Unable to fetch backend reroute alternatives.", error);
+      },
+    }).then((nextRecommendations) => {
+      if (isCurrent) {
+        setRecommendationResult({
+          key: recommendationKey,
+          recommendations: nextRecommendations,
+        });
+      }
+    });
+
+    return () => {
+      isCurrent = false;
+      abortController.abort();
+    };
+  }, [clinicRow, clinicRows, recommendationKey]);
+
+  const latestReason = useMemo(
+    () => reports[0]?.reason ?? clinicRow?.reason ?? "No reason has been reported yet.",
+    [reports, clinicRow?.reason],
+  );
+  const displayClinicRow = useMemo(
+    () => (clinicRow ? { ...clinicRow, reason: latestReason } : null),
+    [clinicRow, latestReason],
+  );
+  const journeyImpact = displayClinicRow && recommendationsReady
+    ? buildPatientJourneyImpact({
+        sourceClinic: displayClinicRow,
+        requestedService: displayClinicRow.services[0],
+        recommendations,
+      })
+    : null;
+
+  const unavailableClinic = clinicRow
+    ? isUnavailableClinic(clinicRow.status, clinicRow.freshness)
+    : false;
+
+  return (
+    <div className="grid gap-4 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-lg font-semibold text-content-emphasis">Clinic detail</h1>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => router.push(returnTarget.href)}
+          className="inline-flex"
+        >
+          <ArrowLeft className="size-4" />
+          {returnTarget.label}
+        </Button>
+      </div>
+
+      {!clinicRow ? (
+        <section className="rounded-lg border border-border-subtle bg-bg-default p-4 text-sm text-content-subtle">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 size-5 text-amber-600" />
+            <div>
+              <p className="text-sm font-medium text-content-emphasis">Clinic not found</p>
+              <p className="mt-1 max-w-xl">
+                The requested clinic id {clinicId ? `"${clinicId}"` : "was not provided"} could not be
+                matched to the current district clinic roster.
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {displayClinicRow ? (
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(22rem,1.1fr)]">
+          <div className="grid gap-4">
+            <ClinicProfileHeader
+              clinic={displayClinicRow}
+              consoleHref={returnTarget.href}
+              returnLabel={returnTarget.label}
+              onFindAlternative={() =>
+                router.push(
+                  `/finder?query=${encodeURIComponent(displayClinicRow.name)}&service=${encodeURIComponent(
+                    displayClinicRow.services[0] ?? "",
+                  )}`,
+                )
+              }
+              onEscalate={() => router.push(`/admin?clinicId=${encodeURIComponent(displayClinicRow.id)}`)}
+            />
+
+            <ClinicOperationalGrid
+              clinic={displayClinicRow}
+            />
+
+            <AuditTrail clinicName={displayClinicRow.name} events={auditEvents} />
+          </div>
+
+          <div className="grid gap-4">
+            {journeyImpact ? (
+              <PatientJourneyImpactPanel impact={journeyImpact} variant="evidence" />
+            ) : null}
+
+            {!recommendationsReady && unavailableClinic ? (
+              <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-content-subtle">
+                  Routing actions
+                </p>
+                <p className="mt-1 text-sm font-semibold text-content-emphasis">
+                  Checking alternatives
+                </p>
+                <p className="mt-1 text-sm leading-6 text-content-subtle">
+                  Recommendation data is still loading. No empty reroute result is shown until
+                  the current request completes.
+                </p>
+              </section>
+            ) : null}
+
+            {recommendationsReady || !unavailableClinic ? (
+              <ReroutePanel
+                sourceClinicName={displayClinicRow.name}
+                unavailable={unavailableClinic}
+                reason={latestReason}
+                recommendations={recommendations}
+              />
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {clinicRow ? (
+        <div className="grid gap-3 rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
+          <p className="text-sm font-medium text-content-emphasis">Report history</p>
+          {reports.length === 0 ? (
+            <p className="text-sm text-content-subtle">No reports exist for this clinic yet.</p>
+          ) : (
+            <div className="grid gap-2">
+              {reports.slice(0, 5).map((report) => (
+                <div
+                  key={report.id}
+                  className="rounded-lg border border-border-subtle p-3 text-sm text-content-default"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-medium text-content-emphasis">{report.reporterName}</p>
+                    <p className="font-mono text-xs text-content-subtle">{toDate(report.receivedAt)}</p>
+                  </div>
+                  <p className="mt-1 capitalize text-content-subtle">
+                    {report.source.replaceAll("_", " ")} · {report.status.replaceAll("_", " ")}
+                  </p>
+                  <p className="mt-2 leading-6 text-content-default">
+                    {report.reason}
+                    {report.notes ? ` — ${report.notes}` : ""}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}

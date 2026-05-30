@@ -244,7 +244,7 @@ export function buildLeadDecisionCopy({
       nextStep:
         "Prepare the relevant workflow evidence and contact the stakeholder with the next concrete agenda.",
       impact:
-        "A scheduled lead needs a sharper handoff than a generic activity record so the demo maps to their operating context.",
+        "A scheduled lead needs a sharper handoff than a generic activity record so the operational maps to their operating context.",
       verification:
         `Use the ${formatEvidenceLabel(interest)} focus to choose which operations proof points to lead with.`,
       tone: "info" satisfies EvidenceCommandTone,

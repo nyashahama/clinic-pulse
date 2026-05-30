@@ -48,7 +48,7 @@ test("district and admin surfaces expose data trust labels", async ({ page }) =>
   await signInAs(page, "district-manager@clinicpulse.local", "/district");
   await page.goto("/district");
   await expect(page.getByRole("heading", { name: "Source, freshness, and review state" })).toBeVisible();
-  await expect(page.getByText(/Reviewed field data|Pending review|Demo data|Stale/i).first()).toBeVisible();
+  await expect(page.getByText(/Reviewed field data|Pending review|seeded operating data|Stale/i).first()).toBeVisible();
   await expect(page.getByText(/Last sync \\d{4}-\\d{2}-\\d{2}T/)).toHaveCount(0);
 
   await signInAs(page, "org-admin@clinicpulse.local", "/admin");

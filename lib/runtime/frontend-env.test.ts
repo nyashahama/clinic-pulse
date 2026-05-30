@@ -8,7 +8,7 @@ describe("validateFrontendRuntimeEnv", () => {
       deployEnv: "local",
       apiBaseUrl: "http://localhost:8080",
       browserApiBaseUrl: "/api/clinicpulse",
-      showDemoCredentials: true,
+      showSeedCredentials: true,
       allowPublicRegistration: false,
     });
   });
@@ -19,13 +19,13 @@ describe("validateFrontendRuntimeEnv", () => {
         CLINICPULSE_DEPLOY_ENV: "staging",
         CLINICPULSE_API_BASE_URL: "https://api.staging.clinicpulse.example",
         NEXT_PUBLIC_CLINICPULSE_API_BASE_URL: "/api/clinicpulse",
-        CLINICPULSE_ALLOW_DEMO_FALLBACK: "false",
+        CLINICPULSE_ALLOW_SEEDED_FALLBACK: "false",
       }),
     ).toEqual({
       deployEnv: "staging",
       apiBaseUrl: "https://api.staging.clinicpulse.example",
       browserApiBaseUrl: "/api/clinicpulse",
-      showDemoCredentials: false,
+      showSeedCredentials: false,
       allowPublicRegistration: false,
     });
   });
@@ -36,10 +36,10 @@ describe("validateFrontendRuntimeEnv", () => {
         CLINICPULSE_DEPLOY_ENV: "staging",
         CLINICPULSE_API_BASE_URL: "http://localhost:8080",
         NEXT_PUBLIC_CLINICPULSE_API_BASE_URL: "https://api.staging.clinicpulse.example",
-        CLINICPULSE_ALLOW_DEMO_FALLBACK: "true",
+        CLINICPULSE_ALLOW_SEEDED_FALLBACK: "true",
       }),
     ).toThrowError(
-      /CLINICPULSE_API_BASE_URL[\s\S]*NEXT_PUBLIC_CLINICPULSE_API_BASE_URL[\s\S]*CLINICPULSE_ALLOW_DEMO_FALLBACK/,
+      /CLINICPULSE_API_BASE_URL[\s\S]*NEXT_PUBLIC_CLINICPULSE_API_BASE_URL[\s\S]*CLINICPULSE_ALLOW_SEEDED_FALLBACK/,
     );
   });
 
@@ -48,19 +48,19 @@ describe("validateFrontendRuntimeEnv", () => {
       validateFrontendRuntimeEnv({
         CLINICPULSE_DEPLOY_ENV: "staging",
         CLINICPULSE_API_BASE_URL: "https://api.staging.clinicpulse.example",
-        CLINICPULSE_ALLOW_DEMO_FALLBACK: "false",
+        CLINICPULSE_ALLOW_SEEDED_FALLBACK: "false",
       }),
     ).toThrowError(/NEXT_PUBLIC_CLINICPULSE_API_BASE_URL/);
   });
 
-  it("rejects staging runtime configuration without an explicit demo fallback opt-out", () => {
+  it("rejects staging runtime configuration without an explicit seeded fallback opt-out", () => {
     expect(() =>
       validateFrontendRuntimeEnv({
         CLINICPULSE_DEPLOY_ENV: "staging",
         CLINICPULSE_API_BASE_URL: "https://api.staging.clinicpulse.example",
         NEXT_PUBLIC_CLINICPULSE_API_BASE_URL: "/api/clinicpulse",
       }),
-    ).toThrowError(/CLINICPULSE_ALLOW_DEMO_FALLBACK/);
+    ).toThrowError(/CLINICPULSE_ALLOW_SEEDED_FALLBACK/);
   });
 
   it("rejects malformed staging API base URLs", () => {
@@ -69,23 +69,23 @@ describe("validateFrontendRuntimeEnv", () => {
         CLINICPULSE_DEPLOY_ENV: "staging",
         CLINICPULSE_API_BASE_URL: "https://",
         NEXT_PUBLIC_CLINICPULSE_API_BASE_URL: "/api/clinicpulse",
-        CLINICPULSE_ALLOW_DEMO_FALLBACK: "false",
+        CLINICPULSE_ALLOW_SEEDED_FALLBACK: "false",
       }),
     ).toThrowError(/CLINICPULSE_API_BASE_URL/);
   });
 
-  it("shows demo credentials only in local deployments", () => {
+  it("shows local seed credentials only in local deployments", () => {
     expect(
       validateFrontendRuntimeEnv({
         CLINICPULSE_DEPLOY_ENV: "local",
-      }).showDemoCredentials,
+      }).showSeedCredentials,
     ).toBe(true);
 
     expect(
       validateFrontendRuntimeEnv({
         CLINICPULSE_DEPLOY_ENV: "local",
-        CLINICPULSE_ALLOW_DEMO_FALLBACK: "false",
-      }).showDemoCredentials,
+        CLINICPULSE_ALLOW_SEEDED_FALLBACK: "false",
+      }).showSeedCredentials,
     ).toBe(false);
 
     expect(
@@ -93,8 +93,8 @@ describe("validateFrontendRuntimeEnv", () => {
         CLINICPULSE_DEPLOY_ENV: "staging",
         CLINICPULSE_API_BASE_URL: "https://api.clinicpulse.test",
         NEXT_PUBLIC_CLINICPULSE_API_BASE_URL: "/api/clinicpulse",
-        CLINICPULSE_ALLOW_DEMO_FALLBACK: "false",
-      }).showDemoCredentials,
+        CLINICPULSE_ALLOW_SEEDED_FALLBACK: "false",
+      }).showSeedCredentials,
     ).toBe(false);
   });
 
@@ -109,7 +109,7 @@ describe("validateFrontendRuntimeEnv", () => {
         CLINICPULSE_DEPLOY_ENV: "production",
         CLINICPULSE_API_BASE_URL: "https://api.clinicpulse.example",
         NEXT_PUBLIC_CLINICPULSE_API_BASE_URL: "/api/clinicpulse",
-        CLINICPULSE_ALLOW_DEMO_FALLBACK: "false",
+        CLINICPULSE_ALLOW_SEEDED_FALLBACK: "false",
       }).allowPublicRegistration,
     ).toBe(false);
   });
@@ -120,7 +120,7 @@ describe("validateFrontendRuntimeEnv", () => {
         CLINICPULSE_DEPLOY_ENV: "staging",
         CLINICPULSE_API_BASE_URL: "https://api.clinicpulse.test",
         NEXT_PUBLIC_CLINICPULSE_API_BASE_URL: "/api/clinicpulse",
-        CLINICPULSE_ALLOW_DEMO_FALLBACK: "false",
+        CLINICPULSE_ALLOW_SEEDED_FALLBACK: "false",
         CLINICPULSE_ALLOW_PUBLIC_REGISTRATION: "true",
       }),
     ).toThrowError(/CLINICPULSE_ALLOW_PUBLIC_REGISTRATION/);

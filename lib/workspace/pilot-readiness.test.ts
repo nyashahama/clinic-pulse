@@ -1,0 +1,75 @@
+import { describe, expect, it } from "vitest";
+
+import { getReadinessMetricToneClassName } from "@/components/workspace/readiness-tones";
+import {
+  buildPilotReadinessModel,
+  createEmptySyncSummary,
+  getPilotReadinessSeverity,
+} from "@/lib/workspace/pilot-readiness";
+
+describe("pilot readiness helpers", () => {
+  it("shares metric tone classes across readiness panels", () => {
+    expect(getReadinessMetricToneClassName("clear")).toContain("text-emerald-700");
+    expect(getReadinessMetricToneClassName("watch")).toContain("text-amber-700");
+    expect(getReadinessMetricToneClassName("attention")).toContain("text-rose-700");
+    expect(getReadinessMetricToneClassName("info")).toBe("text-content-emphasis");
+  });
+
+  it("formats empty sync summary as zero-risk pilot state", () => {
+    const summary = createEmptySyncSummary("2026-05-03T00:00:00.000Z");
+
+    expect(summary).toEqual({
+      windowStartedAt: "2026-05-03T00:00:00.000Z",
+      offlineReportsReceived: 0,
+      duplicateSyncsHandled: 0,
+      conflictsNeedingAttention: 0,
+      validationFailures: 0,
+      pendingOfflineReports: 0,
+      needsConfirmationClinics: 0,
+      staleClinics: 0,
+      medianCurrentStatusAgeHours: null,
+    });
+    expect(getPilotReadinessSeverity(summary)).toBe("clear");
+  });
+
+  it("flags conflicts as operator attention", () => {
+    expect(
+      getPilotReadinessSeverity({
+        ...createEmptySyncSummary("2026-05-03T00:00:00.000Z"),
+        conflictsNeedingAttention: 1,
+      }),
+    ).toBe("attention");
+  });
+
+  it("flags stale clinics as operator attention", () => {
+    expect(
+      getPilotReadinessSeverity({
+        ...createEmptySyncSummary("2026-05-03T00:00:00.000Z"),
+        staleClinics: 2,
+      }),
+    ).toBe("attention");
+  });
+
+  it("keeps duplicate syncs informational", () => {
+    expect(
+      getPilotReadinessSeverity({
+        ...createEmptySyncSummary("2026-05-03T00:00:00.000Z"),
+        duplicateSyncsHandled: 5,
+      }),
+    ).toBe("clear");
+  });
+
+  it("labels pending offline reports as review backlog, not unsynced queue backlog", () => {
+    const model = buildPilotReadinessModel({
+      ...createEmptySyncSummary("2026-05-03T00:00:00.000Z"),
+      pendingOfflineReports: 4,
+    });
+
+    expect(model.metrics.map((metric) => metric.label)).toContain(
+      "Offline reports pending review",
+    );
+    expect(model.metrics.map((metric) => metric.label)).not.toContain(
+      "Pending offline reports",
+    );
+  });
+});

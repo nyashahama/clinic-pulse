@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CalendarClock, Compass, Search } from "lucide-react";
 
-import { ClinicFinder } from "@/components/demo/clinic-finder";
-import { SectionHeader } from "@/components/demo/section-header";
+import { ClinicFinder } from "@/components/workspace/clinic-finder";
+import { SectionHeader } from "@/components/workspace/section-header";
 import { buttonVariants } from "@/components/ui/button";
-import type { ClinicRow } from "@/lib/demo/types";
+import type { ClinicRow } from "@/lib/workspace/types";
 
 type FinderPageClientProps = {
   clinics: ClinicRow[];
@@ -36,12 +36,12 @@ export default function FinderPageClient({ clinics }: FinderPageClientProps) {
           />
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <Link href="/demo" className={buttonVariants({ size: "sm", variant: "outline" })}>
+            <Link href="/district" className={buttonVariants({ size: "sm", variant: "outline" })}>
               <Compass className="size-3.5" />
               Return to console
             </Link>
 
-            <Link href="/book-demo" className={buttonVariants({ size: "sm", variant: "outline" })}>
+            <Link href="/book-walkthrough" className={buttonVariants({ size: "sm", variant: "outline" })}>
               <CalendarClock className="size-3.5" />
               Request operations walkthrough
             </Link>

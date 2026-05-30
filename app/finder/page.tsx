@@ -1,14 +1,14 @@
 import { connection } from "next/server";
 
 import FinderPageClient from "./page-client";
-import { fetchClinics } from "@/lib/demo/api-client";
-import { mapApiClinicDetailToClinicRow } from "@/lib/demo/api-mappers";
-import type { DemoImageKey } from "@/lib/demo/types";
+import { fetchClinics } from "@/lib/workspace/api-client";
+import { mapApiClinicDetailToClinicRow } from "@/lib/workspace/api-mappers";
+import type { WorkspaceImageKey } from "@/lib/workspace/types";
 
 const publicFinderImageKeys = [
   "clinic-front-01",
   "clinic-front-02",
-] satisfies DemoImageKey[];
+] satisfies WorkspaceImageKey[];
 
 function getPublicFinderImageKey(index: number) {
   return publicFinderImageKeys[index % publicFinderImageKeys.length];

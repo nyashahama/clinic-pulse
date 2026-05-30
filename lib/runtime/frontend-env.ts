@@ -9,7 +9,7 @@ type FrontendRuntimeEnv = {
   CLINICPULSE_DEPLOY_ENV?: string;
   CLINICPULSE_API_BASE_URL?: string;
   NEXT_PUBLIC_CLINICPULSE_API_BASE_URL?: string;
-  CLINICPULSE_ALLOW_DEMO_FALLBACK?: string;
+  CLINICPULSE_ALLOW_SEEDED_FALLBACK?: string;
   CLINICPULSE_ALLOW_PUBLIC_REGISTRATION?: string;
   NODE_ENV?: string;
 };
@@ -18,7 +18,7 @@ type FrontendRuntimeConfig = {
   deployEnv: DeployEnv;
   apiBaseUrl: string;
   browserApiBaseUrl: string;
-  showDemoCredentials: boolean;
+  showSeedCredentials: boolean;
   allowPublicRegistration: boolean;
 };
 
@@ -82,9 +82,9 @@ export function validateFrontendRuntimeEnv(
       );
     }
 
-    if (env.CLINICPULSE_ALLOW_DEMO_FALLBACK !== "false") {
+    if (env.CLINICPULSE_ALLOW_SEEDED_FALLBACK !== "false") {
       problems.push(
-        "CLINICPULSE_ALLOW_DEMO_FALLBACK must be explicitly false outside local deployments.",
+        "CLINICPULSE_ALLOW_SEEDED_FALLBACK must be explicitly false outside local deployments.",
       );
     }
 
@@ -105,8 +105,8 @@ export function validateFrontendRuntimeEnv(
     deployEnv,
     apiBaseUrl,
     browserApiBaseUrl,
-    showDemoCredentials:
-      deployEnv === "local" && env.CLINICPULSE_ALLOW_DEMO_FALLBACK !== "false",
+    showSeedCredentials:
+      deployEnv === "local" && env.CLINICPULSE_ALLOW_SEEDED_FALLBACK !== "false",
     allowPublicRegistration: deployEnv === "local" && allowPublicRegistration,
   };
 }

@@ -1,23 +1,23 @@
 # ClinicPulse
 
-ClinicPulse is a full-stack clinic operations demo for district teams that need live facility status, offline field reporting, patient rerouting context, audit history, partner APIs, and export readiness.
+ClinicPulse is a full-stack clinic operations platform for district teams that need live facility status, offline field reporting, patient rerouting context, audit history, partner APIs, and export readiness.
 
-## Live Demo
+## Live Product
 
-- Local demo URL: `http://localhost:3000` after running the local setup below
-- Demo API URL: `http://localhost:8080` after running the Go API locally
+- Local workspace URL: `http://localhost:3000` after running the local setup below
+- sandbox API URL: `http://localhost:8080` after running the Go API locally
 - Local workflow screenshots: `public/showcase/screenshots/` after running `npm run capture:showcase`
 - Local operations walkthrough: `public/showcase/videos/clinicpulse-operations-walkthrough.webm` after running `npm run capture:showcase`
 
-### Demo Credentials
+### local seed credentials
 
-The local seed creates these demo users:
+The local seed creates these users:
 
 | Role | Email | Password | Access |
 | --- | --- | --- | --- |
-| System admin | `system-admin@clinicpulse.local` | `ClinicPulseDemo123!` | `/field`, `/demo`, `/admin` |
-| Organisation admin | `org-admin@clinicpulse.local` | `ClinicPulseDemo123!` | `/field`, `/demo`, `/admin` |
-| District manager | `district-manager@clinicpulse.local` | `ClinicPulseDemo123!` | `/field`, `/demo` |
+| System admin | `system-admin@clinicpulse.local` | `ClinicPulseDemo123!` | `/field`, `/district`, `/admin` |
+| Organisation admin | `org-admin@clinicpulse.local` | `ClinicPulseDemo123!` | `/field`, `/district`, `/admin` |
+| District manager | `district-manager@clinicpulse.local` | `ClinicPulseDemo123!` | `/field`, `/district` |
 | Reporter | `reporter@clinicpulse.local` | `ClinicPulseDemo123!` | `/field` |
 
 ## Run Locally In 5 Minutes
@@ -72,9 +72,9 @@ Open `http://localhost:3000`. The review API runs on `http://localhost:18080` an
 | Workflow | Route | What it shows |
 | --- | --- | --- |
 | Landing and booking entry | `/` | Product positioning, operating gap, workflows, and booking entry |
-| Booking flow | `/book-demo` and `/book-demo/thanks` | Operations walkthrough request flow and handoff into district routes |
-| District console | `/demo` | Clinic status map, incidents, rerouting context, offline sync, and scenario controls |
-| Clinic evidence | `/demo/clinics/clinic-mabopane-station` | Mabopane Station incident evidence, patient routing impact, reports, and escalation context |
+| Booking flow | `/book-walkthrough` and `/book-walkthrough/thanks` | Operations walkthrough request flow and handoff into district routes |
+| District console | `/district` | Clinic status map, incidents, rerouting context, offline sync, and scenario controls |
+| Clinic evidence | `/operations/clinics/clinic-mabopane-station` | Mabopane Station incident evidence, patient routing impact, reports, and escalation context |
 | Public finder | `/finder` | Public clinic availability search and alternatives |
 | Field reporting | `/field` | Offline-friendly report submission and sync path |
 | Admin workspace | `/admin` | Lead pipeline, export preview, API preview, partner readiness, and pilot readiness |
@@ -86,7 +86,7 @@ Open `http://localhost:3000`. The review API runs on `http://localhost:18080` an
 - [Database schema overview](docs/database-schema.md)
 - [Engineering decisions](docs/engineering-decisions.md)
 - [Screenshots and capture guide](docs/screenshots.md)
-- [Demo video script and local capture guide](docs/demo-video.md)
+- [Product walkthrough script and local capture guide](docs/product-walkthrough-video.md)
 - [Portfolio case study draft](docs/portfolio-case-study.md)
 - [Release checklist](docs/release.md)
 
@@ -100,7 +100,7 @@ Showcase screenshots and videos are generated local artifacts and are intentiona
 
 ## Architecture Snapshot
 
-ClinicPulse combines a Next.js app, same-origin browser proxy, Go chi API, and Postgres database. The frontend can hydrate from backend data and falls back to seeded demo state in non-production/demo contexts when configured.
+ClinicPulse combines a Next.js app, same-origin browser proxy, Go chi API, and Postgres database. The frontend can hydrate from backend data and falls back to seeded workspace state in local or explicitly configured non-production contexts.
 
 ```mermaid
 flowchart LR
@@ -108,7 +108,7 @@ flowchart LR
   Next --> Proxy["/api/clinicpulse proxy"]
   Proxy --> API["Go chi API"]
   API --> Postgres["Postgres"]
-  Next --> DemoStore["Demo store and seeded fallback"]
+  Next --> WorkspaceStore["workspace store and seeded fallback"]
   API --> Partner["Partner API keys, webhooks, exports"]
 ```
 
@@ -130,10 +130,10 @@ CLINICPULSE_API_BASE_URL=http://localhost:8080
 NEXT_PUBLIC_CLINICPULSE_API_BASE_URL=/api/clinicpulse
 CLINICPULSE_API_KEY_PEPPER=local-development-pepper
 CLINICPULSE_WEBHOOK_DELIVERY_ENABLED=false
-CLINICPULSE_ALLOW_DEMO_FALLBACK=false
+CLINICPULSE_ALLOW_SEEDED_FALLBACK=false
 ```
 
-`CLINICPULSE_ALLOW_DEMO_FALLBACK` should stay `false` in staging or production unless API failures should intentionally fall back to seeded demo state.
+`CLINICPULSE_ALLOW_SEEDED_FALLBACK` should stay `false` in staging or production unless API failures should intentionally fall back to seeded workspace state.
 
 ## Useful Commands
 
@@ -180,9 +180,9 @@ Migrations live in `services/api/migrations`. The local auth seed lives in `serv
 
 Server-side frontend calls use `CLINICPULSE_API_BASE_URL` to call the Go API directly. Browser-side frontend calls use `NEXT_PUBLIC_CLINICPULSE_API_BASE_URL`, which should normally stay on the same-origin proxy path `/api/clinicpulse`.
 
-The proxy is configured in `next.config.ts` and forwards `/api/clinicpulse/*` to `CLINICPULSE_API_BASE_URL`. This keeps client-side demo requests from depending on cross-origin browser access to the Go API.
+The proxy is configured in `next.config.ts` and forwards `/api/clinicpulse/*` to `CLINICPULSE_API_BASE_URL`. This keeps client-side walkthrough requests from depending on cross-origin browser access to the Go API.
 
-Server hydration can fall back to seeded demo state when allowed by `CLINICPULSE_ALLOW_DEMO_FALLBACK` or in non-production environments. Treat that as a demo resilience feature, not production error handling.
+Server hydration can fall back to seeded workspace state when allowed by `CLINICPULSE_ALLOW_SEEDED_FALLBACK` or in non-production environments. Treat that as a local fallback resilience feature, not production error handling.
 
 ## Release Status
 
@@ -198,7 +198,7 @@ Before handing off a branch, run:
 make verify
 ```
 
-Before tagging a release or recording a final demo, also run:
+Before tagging a release or recording a final walkthrough, also run:
 
 ```bash
 make test-e2e

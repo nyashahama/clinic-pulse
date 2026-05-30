@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createInitialDemoState } from "@/lib/demo/scenarios";
+import { createInitialWorkspaceState } from "@/lib/workspace/scenarios";
 import {
   buildScenarioControlsViewModel,
   scenarioControlCommandIds,
@@ -8,7 +8,7 @@ import {
 
 describe("buildScenarioControlsViewModel", () => {
   it("builds an operations runbook with the selected command preview", () => {
-    const state = createInitialDemoState();
+    const state = createInitialWorkspaceState();
 
     const viewModel = buildScenarioControlsViewModel({
       state,
@@ -67,7 +67,7 @@ describe("buildScenarioControlsViewModel", () => {
 
   it("summarizes state, safety notes, and recent evidence for the workspace", () => {
     const viewModel = buildScenarioControlsViewModel({
-      state: createInitialDemoState(),
+      state: createInitialWorkspaceState(),
       stockoutClinicLabel: "Mamelodi East Community Clinic",
       staffingClinicLabel: "Soshanguve Block F Clinic",
       selectedCommandId: "incident_replay",

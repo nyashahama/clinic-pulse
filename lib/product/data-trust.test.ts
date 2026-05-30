@@ -79,13 +79,13 @@ describe("data trust view models", () => {
   });
 
   it("formats compact trust labels", () => {
-    expect(formatTrustLabel("seeded_demo", "unknown", "unknown")).toBe("Scenario data / unknown freshness / unknown review");
+    expect(formatTrustLabel("scenario_seed", "unknown", "unknown")).toBe("Scenario data / unknown freshness / unknown review");
   });
 
   it("describes seeded internal data without visible demo framing", () => {
     const state = buildDataTrustState({
       ...baseInput,
-      source: "seeded_demo",
+      source: "scenario_seed",
       freshness: "fresh",
       reviewState: "reviewed",
     });

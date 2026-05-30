@@ -6,12 +6,12 @@ async function signIn(page: Page, email: string, homePath: string) {
   await signInAs(page, email, homePath);
 }
 
-test("login page hides demo credentials when demo fallback is disabled", async ({
+test("login page hides local seed credentials when seeded fallback is disabled", async ({
   page,
 }) => {
   await page.goto("/login");
 
-  await expect(page.getByText("Local demo credentials")).toBeHidden();
+  await expect(page.getByText("Local local seed credentials")).toBeHidden();
   await expect(page.getByText("ClinicPulseDemo123!")).toBeHidden();
 });
 

@@ -53,7 +53,7 @@ export const FIELD_WORKFLOW_ROLES = [
   "system_admin",
 ] as const satisfies readonly AuthRole[];
 
-export const DEMO_WORKFLOW_ROLES = [
+export const DISTRICT_WORKFLOW_ROLES = [
   "district_manager",
   "org_admin",
   "system_admin",
@@ -70,11 +70,7 @@ const WORKFLOW_ROLE_REQUIREMENTS = {
     insufficientRoleRedirectPath: "/district",
   },
   district: {
-    roles: DEMO_WORKFLOW_ROLES,
-    insufficientRoleRedirectPath: "/field",
-  },
-  demo: {
-    roles: DEMO_WORKFLOW_ROLES,
+    roles: DISTRICT_WORKFLOW_ROLES,
     insufficientRoleRedirectPath: "/field",
   },
   admin: {

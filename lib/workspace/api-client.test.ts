@@ -1,0 +1,660 @@
+import { describe, expect, it, vi } from "vitest";
+
+import {
+  ClinicPulseApiError,
+  type ClinicPulseFetch,
+  createAdminUser,
+  createReport,
+  createPartnerApiKey,
+  createPartnerExport,
+  createPartnerWebhook,
+  fetchAdminAuditEvents,
+  fetchAdminUsers,
+  fetchAlternatives,
+  fetchClinic,
+  fetchClinicAuditEvents,
+  fetchClinicReports,
+  fetchClinicStatus,
+  fetchClinics,
+  fetchOperationalClinics,
+  fetchPendingReports,
+  fetchPartnerReadiness,
+  fetchSyncSummary,
+  requestClinicPulseApi,
+  reconcileStatusStaleness,
+  reviewReport,
+  revokeAdminUserSessions,
+  revokePartnerApiKey,
+  syncOfflineReportsApi,
+  testPartnerWebhook,
+  updateAdminUser,
+  updateAdminUserAccess,
+} from "@/lib/workspace/api-client";
+import type {
+  CreateAdminUserApiInput,
+  CreatePartnerApiKeyApiInput,
+  CreatePartnerExportApiInput,
+  CreatePartnerWebhookApiInput,
+  CreateReportApiInput,
+  UpdateAdminUserAccessApiInput,
+  UpdateAdminUserApiInput,
+} from "@/lib/workspace/api-types";
+
+function jsonResponse(body: unknown, init: ResponseInit = {}) {
+  return new Response(JSON.stringify(body), {
+    headers: { "content-type": "application/json" },
+    status: 200,
+    ...init,
+  });
+}
+
+function mockFetch(body: unknown = {}) {
+  return vi.fn<ClinicPulseFetch>().mockImplementation(() => Promise.resolve(jsonResponse(body)));
+}
+
+function mockNoContentFetch() {
+  return vi.fn<ClinicPulseFetch>().mockImplementation(() =>
+    Promise.resolve(new Response(null, { status: 204 })),
+  );
+}
+
+describe("ClinicPulse API client", () => {
+  it("builds clinic read URLs with encoded path segments", async () => {
+    const fetchImpl = mockFetch([]);
+    const options = {
+      baseUrl: "https://api.example.test/root/",
+      fetch: fetchImpl,
+    };
+
+    await fetchClinics(options);
+    await fetchOperationalClinics(options);
+    await fetchClinic("clinic/a b", options);
+    await fetchClinicStatus("clinic/a b", options);
+    await fetchClinicReports("clinic/a b", options);
+    await fetchClinicAuditEvents("clinic/a b", options);
+
+    expect(fetchImpl.mock.calls.map(([url]) => url)).toEqual([
+      "https://api.example.test/root/v1/public/clinics",
+      "https://api.example.test/root/v1/clinics",
+      "https://api.example.test/root/v1/public/clinics/clinic%2Fa%20b",
+      "https://api.example.test/root/v1/clinics/clinic%2Fa%20b/status",
+      "https://api.example.test/root/v1/clinics/clinic%2Fa%20b/reports",
+      "https://api.example.test/root/v1/clinics/clinic%2Fa%20b/audit-events",
+    ]);
+  });
+
+  it("builds alternatives query URLs with encoded query values", async () => {
+    const fetchImpl = mockFetch([]);
+
+    await fetchAlternatives("clinic/a b", "Maternal health & HIV", {
+      baseUrl: "https://api.example.test",
+      fetch: fetchImpl,
+    });
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "https://api.example.test/v1/public/alternatives?clinicId=clinic%2Fa+b&service=Maternal+health+%26+HIV",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("posts create report JSON to the reports endpoint", async () => {
+    const fetchImpl = mockFetch({ report: {}, currentStatus: {}, auditEvent: {} });
+    const input: CreateReportApiInput = {
+      clinicId: "clinic-1",
+      status: "degraded",
+      staffPressure: "strained",
+      stockPressure: "low",
+      queuePressure: "high",
+      reason: "Short staffed and pharmacy queue is backing up.",
+      source: "field_worker",
+      reporterName: "Nomsa Dlamini",
+      confidence: 88,
+      offlineCreated: true,
+      submittedAt: "2026-05-01T06:30:00.000Z",
+      notes: "Sync completed from a field device.",
+    };
+
+    await createReport(input, {
+      baseUrl: "https://api.example.test",
+      fetch: fetchImpl,
+    });
+
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(url).toBe("https://api.example.test/v1/reports");
+    expect(init).toMatchObject({
+      body: JSON.stringify(input),
+      method: "POST",
+    });
+    expect(new Headers(init?.headers).get("content-type")).toBe("application/json");
+  });
+
+  it("fetches pending reports from the review queue endpoint", async () => {
+    const fetchImpl = mockFetch([{ id: 42, clinicId: "clinic-1", reviewState: "pending" }]);
+
+    const reports = await fetchPendingReports({
+      baseUrl: "https://api.example.test",
+      fetch: fetchImpl,
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://api.example.test/v1/reports/pending");
+    expect(reports[0]?.id).toBe(42);
+  });
+
+  it("posts report review decisions to the report review endpoint", async () => {
+    const fetchImpl = mockFetch({
+      report: { id: 42, clinicId: "clinic-1", reviewState: "accepted" },
+      currentStatus: {
+        clinicId: "clinic-1",
+        status: "degraded",
+        freshness: "fresh",
+        updatedAt: "2026-05-11T00:00:00.000Z",
+      },
+    });
+
+    const result = await reviewReport(
+      42,
+      { decision: "accepted", notes: "District verified" },
+      { baseUrl: "https://api.example.test", fetch: fetchImpl },
+    );
+
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://api.example.test/v1/reports/42/review");
+    expect(fetchImpl.mock.calls[0]?.[1]).toMatchObject({ method: "POST" });
+    expect(JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body))).toEqual({
+      decision: "accepted",
+      notes: "District verified",
+    });
+    expect(result.report.reviewState).toBe("accepted");
+  });
+
+  it("posts offline sync batches to the reports sync endpoint", async () => {
+    const fetchImpl = mockFetch({
+      results: [],
+      summary: { created: 0, duplicate: 0, conflict: 0, failed: 0 },
+    });
+
+    await syncOfflineReportsApi(
+      { items: [] },
+      {
+        baseUrl: "https://api.example.test",
+        fetch: fetchImpl,
+      },
+    );
+
+    expect(fetchImpl.mock.calls[0][0]).toBe(
+      "https://api.example.test/v1/reports/offline-sync",
+    );
+    expect(fetchImpl.mock.calls[0][1]).toMatchObject({ method: "POST" });
+  });
+
+  it("fetches the sync summary endpoint", async () => {
+    const fetchImpl = mockFetch({
+      windowStartedAt: "2026-05-03T00:00:00.000Z",
+      offlineReportsReceived: 0,
+      duplicateSyncsHandled: 0,
+      conflictsNeedingAttention: 0,
+      validationFailures: 0,
+      pendingOfflineReports: 0,
+      needsConfirmationClinics: 0,
+      staleClinics: 0,
+      medianCurrentStatusAgeHours: null,
+    });
+
+    await fetchSyncSummary({
+      baseUrl: "https://api.example.test",
+      fetch: fetchImpl,
+    });
+
+    expect(fetchImpl.mock.calls[0][0]).toBe("https://api.example.test/v1/sync/summary");
+    expect(fetchImpl.mock.calls[0][1]).toMatchObject({ method: "GET" });
+  });
+
+  it("forwards authenticated headers when fetching the sync summary endpoint", async () => {
+    const fetchImpl = mockFetch({
+      windowStartedAt: "2026-05-03T00:00:00.000Z",
+      offlineReportsReceived: 2,
+      duplicateSyncsHandled: 1,
+      conflictsNeedingAttention: 0,
+      validationFailures: 0,
+      pendingOfflineReports: 0,
+      needsConfirmationClinics: 0,
+      staleClinics: 0,
+      medianCurrentStatusAgeHours: 3,
+    });
+
+    const summary = await fetchSyncSummary({
+      baseUrl: "https://api.example.test",
+      fetch: fetchImpl,
+      init: {
+        headers: {
+          cookie: "clinicpulse_session=session-token",
+        },
+      },
+    });
+
+    const headers = new Headers(fetchImpl.mock.calls[0]?.[1]?.headers);
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://api.example.test/v1/sync/summary");
+    expect(headers.get("cookie")).toBe("clinicpulse_session=session-token");
+    expect(headers.get("x-request-id")).toMatch(/^[A-Za-z0-9._:-]{1,128}$/);
+    expect(headers.get("traceparent")).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/);
+    expect(summary.offlineReportsReceived).toBe(2);
+    expect(summary.duplicateSyncsHandled).toBe(1);
+  });
+
+  it("posts status staleness reconciliation", async () => {
+    const fetchImpl = mockFetch({
+      checked: 4,
+      markedNeedsConfirmation: 1,
+      markedStale: 1,
+    });
+
+    await reconcileStatusStaleness({
+      baseUrl: "https://api.example.test",
+      fetch: fetchImpl,
+    });
+
+    expect(fetchImpl.mock.calls[0][0]).toBe(
+      "https://api.example.test/v1/status/reconcile-staleness",
+    );
+    expect(fetchImpl.mock.calls[0][1]).toMatchObject({ method: "POST" });
+  });
+
+  it("posts partner API key creation to the admin API keys endpoint", async () => {
+    const fetchImpl = mockFetch({
+      apiKey: {
+        id: 1,
+        name: "Demo partner",
+        environment: "demo",
+        keyPrefix: "cp_demo_abcd1234",
+        scopes: ["clinics:read", "exports:read"],
+        allowedDistricts: ["Tshwane North Demo District"],
+        createdAt: "2026-05-04T09:00:00.000Z",
+        updatedAt: "2026-05-04T09:00:00.000Z",
+      },
+      secret: "cp_demo_secret",
+    });
+    const input: CreatePartnerApiKeyApiInput = {
+      name: "Demo partner",
+      environment: "demo",
+      scopes: ["clinics:read", "exports:read"],
+      allowedDistricts: ["Tshwane North Demo District"],
+      expiresAt: "2026-06-01T00:00:00.000Z",
+    };
+
+    await createPartnerApiKey(input, {
+      baseUrl: "https://api.example.test",
+      fetch: fetchImpl,
+    });
+
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(url).toBe("https://api.example.test/v1/admin/api-keys");
+    expect(init).toMatchObject({
+      body: JSON.stringify(input),
+      method: "POST",
+    });
+    expect(new Headers(init?.headers).get("content-type")).toBe("application/json");
+  });
+
+  it("fetches partner readiness from the admin partner readiness endpoint", async () => {
+    const fetchImpl = mockFetch({
+      apiKeys: [],
+      webhookSubscriptions: [],
+      webhookEvents: [],
+      exportRuns: [],
+      integrationChecks: [],
+    });
+
+    await fetchPartnerReadiness({
+      baseUrl: "https://api.example.test",
+      fetch: fetchImpl,
+    });
+
+    expect(fetchImpl.mock.calls[0][0]).toBe(
+      "https://api.example.test/v1/admin/partner-readiness",
+    );
+    expect(fetchImpl.mock.calls[0][1]).toMatchObject({ method: "GET" });
+  });
+
+  it("fetches admin users", async () => {
+    const fetchImpl = mockFetch([]);
+    await fetchAdminUsers({ baseUrl: "https://api.example.test", fetch: fetchImpl });
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://api.example.test/v1/admin/users");
+  });
+
+  it("posts admin lifecycle mutations to admin user endpoints", async () => {
+    const fetchImpl = mockFetch({ user: {}, access: {}, temporaryPassword: "cp_tmp_test" });
+    const createInput: CreateAdminUserApiInput = {
+      email: "pilot@example.test",
+      displayName: "Pilot User",
+      role: "reporter",
+      organisationId: 1,
+    };
+    const lifecycleInput: UpdateAdminUserApiInput = {
+      disabled: true,
+      displayName: "Pilot Lead",
+    };
+    const accessInput: UpdateAdminUserAccessApiInput = {
+      role: "district_manager",
+      organisationId: 1,
+      district: "Tshwane",
+    };
+
+    await createAdminUser(createInput, { baseUrl: "https://api.example.test", fetch: fetchImpl });
+    await updateAdminUser(42, lifecycleInput, {
+      baseUrl: "https://api.example.test",
+      fetch: fetchImpl,
+    });
+    await updateAdminUserAccess(42, accessInput, {
+      baseUrl: "https://api.example.test",
+      fetch: fetchImpl,
+    });
+    await revokeAdminUserSessions(42, {
+      baseUrl: "https://api.example.test",
+      fetch: fetchImpl,
+    });
+
+    expect(fetchImpl.mock.calls[0][0]).toBe("https://api.example.test/v1/admin/users");
+    expect(fetchImpl.mock.calls[0][1]).toMatchObject({
+      body: JSON.stringify(createInput),
+      method: "POST",
+    });
+    expect(fetchImpl.mock.calls[1][0]).toBe("https://api.example.test/v1/admin/users/42");
+    expect(fetchImpl.mock.calls[1][1]).toMatchObject({
+      body: JSON.stringify(lifecycleInput),
+      method: "PATCH",
+    });
+    expect(fetchImpl.mock.calls[2][0]).toBe("https://api.example.test/v1/admin/users/42/access");
+    expect(fetchImpl.mock.calls[2][1]).toMatchObject({
+      body: JSON.stringify(accessInput),
+      method: "PUT",
+    });
+    expect(fetchImpl.mock.calls[3][0]).toBe(
+      "https://api.example.test/v1/admin/users/42/sessions/revoke",
+    );
+    expect(fetchImpl.mock.calls[3][1]).toMatchObject({ method: "POST" });
+  });
+
+  it("fetches admin audit events", async () => {
+    const fetchImpl = mockFetch([]);
+    await fetchAdminAuditEvents({ baseUrl: "https://api.example.test", fetch: fetchImpl });
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe(
+      "https://api.example.test/v1/admin/audit-events",
+    );
+  });
+
+  it("posts webhook tests and partner export generation to admin endpoints", async () => {
+    const fetchImpl = mockFetch({
+      id: 12,
+      subscriptionId: 7,
+      eventType: "clinicpulse.webhook_test",
+      payload: { previewOnly: true },
+      metadata: { previewOnly: true },
+      status: "preview_only",
+      attemptCount: 0,
+      createdAt: "2026-05-04T09:00:00.000Z",
+    });
+    const exportInput: CreatePartnerExportApiInput = {
+      format: "json",
+      scope: { district: "Tshwane North Demo District" },
+    };
+
+    await testPartnerWebhook(7, {
+      baseUrl: "https://api.example.test/root/",
+      fetch: fetchImpl,
+    });
+    await createPartnerExport(exportInput, {
+      baseUrl: "https://api.example.test/root/",
+      fetch: fetchImpl,
+    });
+
+    expect(fetchImpl.mock.calls[0][0]).toBe(
+      "https://api.example.test/root/v1/admin/webhooks/7/test",
+    );
+    expect(fetchImpl.mock.calls[0][1]).toMatchObject({ method: "POST" });
+    expect(fetchImpl.mock.calls[1][0]).toBe("https://api.example.test/root/v1/admin/exports");
+    expect(fetchImpl.mock.calls[1][1]).toMatchObject({
+      body: JSON.stringify(exportInput),
+      method: "POST",
+    });
+  });
+
+  it("posts partner API key revocation and webhook creation to admin endpoints", async () => {
+    const revokeFetchImpl = mockNoContentFetch();
+
+    await revokePartnerApiKey(3, {
+      baseUrl: "https://api.example.test",
+      fetch: revokeFetchImpl,
+    });
+
+    expect(revokeFetchImpl.mock.calls[0][0]).toBe(
+      "https://api.example.test/v1/admin/api-keys/3/revoke",
+    );
+    expect(revokeFetchImpl.mock.calls[0][1]).toMatchObject({ method: "POST" });
+
+    const createFetchImpl = mockFetch({
+      subscription: {
+        id: 4,
+        name: "Status webhook",
+        targetUrl: "https://partner.example.test/webhooks/clinicpulse",
+        eventTypes: ["clinic.status_changed"],
+        status: "active",
+        lastTestMetadata: {},
+        createdAt: "2026-05-04T09:00:00.000Z",
+        updatedAt: "2026-05-04T09:00:00.000Z",
+      },
+      secret: "cp_whsec_secret",
+    });
+    const input: CreatePartnerWebhookApiInput = {
+      name: "Status webhook",
+      targetUrl: "https://partner.example.test/webhooks/clinicpulse",
+      eventTypes: ["clinic.status_changed"],
+    };
+
+    await createPartnerWebhook(input, {
+      baseUrl: "https://api.example.test",
+      fetch: createFetchImpl,
+    });
+
+    expect(createFetchImpl.mock.calls[0][0]).toBe("https://api.example.test/v1/admin/webhooks");
+    expect(createFetchImpl.mock.calls[0][1]).toMatchObject({
+      body: JSON.stringify(input),
+      method: "POST",
+    });
+    expect(new Headers(createFetchImpl.mock.calls[0][1]?.headers).get("content-type")).toBe(
+      "application/json",
+    );
+  });
+
+  it("preserves client-level Headers instances when posting JSON", async () => {
+    const fetchImpl = mockFetch({ report: {}, currentStatus: {}, auditEvent: {} });
+    const input: CreateReportApiInput = {
+      clinicId: "clinic-1",
+      status: "operational",
+      staffPressure: "normal",
+      stockPressure: "normal",
+      queuePressure: "low",
+      reason: "Facility is open.",
+      source: "field_worker",
+    };
+
+    await createReport(input, {
+      baseUrl: "https://api.example.test",
+      fetch: fetchImpl,
+      init: {
+        headers: new Headers([
+          ["authorization", "Bearer field-token"],
+          ["traceparent", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"],
+          ["x-request-id", "field-console-req-1"],
+          ["x-request-source", "field-console"],
+        ]),
+      },
+    });
+
+    const headers = new Headers(fetchImpl.mock.calls[0][1]?.headers);
+    expect(headers.get("authorization")).toBe("Bearer field-token");
+    expect(headers.get("traceparent")).toBe(
+      "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+    );
+    expect(headers.get("x-request-id")).toBe("field-console-req-1");
+    expect(headers.get("x-request-source")).toBe("field-console");
+    expect(headers.get("content-type")).toBe("application/json");
+  });
+
+  it("preserves plain object headers when posting JSON", async () => {
+    const fetchImpl = mockFetch({ report: {}, currentStatus: {}, auditEvent: {} });
+    const input: CreateReportApiInput = {
+      clinicId: "clinic-1",
+      status: "operational",
+      staffPressure: "normal",
+      stockPressure: "normal",
+      queuePressure: "low",
+      reason: "Facility is open.",
+      source: "field_worker",
+    };
+
+    await createReport(input, {
+      baseUrl: "https://api.example.test",
+      fetch: fetchImpl,
+      init: {
+        headers: {
+          authorization: "Bearer object-token",
+          "x-request-source": "district-console",
+        },
+      },
+    });
+
+    const headers = new Headers(fetchImpl.mock.calls[0][1]?.headers);
+    expect(headers.get("authorization")).toBe("Bearer object-token");
+    expect(headers.get("x-request-source")).toBe("district-console");
+    expect(headers.get("content-type")).toBe("application/json");
+  });
+
+  it("preserves tuple array headers and caller content type overrides", async () => {
+    const fetchImpl = mockFetch({ report: {}, currentStatus: {}, auditEvent: {} });
+    const input: CreateReportApiInput = {
+      clinicId: "clinic-1",
+      status: "operational",
+      staffPressure: "normal",
+      stockPressure: "normal",
+      queuePressure: "low",
+      reason: "Facility is open.",
+      source: "field_worker",
+    };
+
+    await createReport(input, {
+      baseUrl: "https://api.example.test",
+      fetch: fetchImpl,
+      init: {
+        headers: [
+          ["authorization", "Bearer tuple-token"],
+          ["content-type", "application/vnd.clinicpulse.report+json"],
+        ],
+      },
+    });
+
+    const headers = new Headers(fetchImpl.mock.calls[0][1]?.headers);
+    expect(headers.get("authorization")).toBe("Bearer tuple-token");
+    expect(headers.get("content-type")).toBe("application/vnd.clinicpulse.report+json");
+  });
+
+  it("uses the public API base URL environment variable by default", async () => {
+    const previousBaseUrl = process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL;
+    process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL = "https://env-api.example.test/base";
+    const fetchImpl = mockFetch([]);
+
+    try {
+      await fetchClinics({ fetch: fetchImpl });
+    } finally {
+      if (previousBaseUrl === undefined) {
+        delete process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL;
+      } else {
+        process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL = previousBaseUrl;
+      }
+    }
+
+    expect(fetchImpl.mock.calls[0][0]).toBe("https://env-api.example.test/base/v1/public/clinics");
+  });
+
+  it("uses the private API base URL for server-side calls", async () => {
+    const previousPrivateBaseUrl = process.env.CLINICPULSE_API_BASE_URL;
+    const previousPublicBaseUrl = process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL;
+    process.env.CLINICPULSE_API_BASE_URL = "https://server-api.example.test/root";
+    process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL = "/api/clinicpulse";
+    const fetchImpl = mockFetch([]);
+
+    try {
+      await fetchClinics({ fetch: fetchImpl });
+    } finally {
+      if (previousPrivateBaseUrl === undefined) {
+        delete process.env.CLINICPULSE_API_BASE_URL;
+      } else {
+        process.env.CLINICPULSE_API_BASE_URL = previousPrivateBaseUrl;
+      }
+      if (previousPublicBaseUrl === undefined) {
+        delete process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL;
+      } else {
+        process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL = previousPublicBaseUrl;
+      }
+    }
+
+    expect(fetchImpl.mock.calls[0][0]).toBe("https://server-api.example.test/root/v1/public/clinics");
+  });
+
+  it("supports relative public API base URLs for browser calls", async () => {
+    const previousBaseUrl = process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL;
+    process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL = "/api/clinicpulse";
+    vi.stubGlobal("window", {});
+    const fetchImpl = mockFetch([]);
+
+    try {
+      await fetchAlternatives("clinic-1", "Primary care", { fetch: fetchImpl });
+    } finally {
+      vi.unstubAllGlobals();
+      if (previousBaseUrl === undefined) {
+        delete process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL;
+      } else {
+        process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL = previousBaseUrl;
+      }
+    }
+
+    expect(fetchImpl.mock.calls[0][0]).toBe(
+      "/api/clinicpulse/v1/public/alternatives?clinicId=clinic-1&service=Primary+care",
+    );
+  });
+
+  it("does not add JSON content type for URLSearchParams bodies", async () => {
+    const fetchImpl = mockFetch({});
+
+    await requestClinicPulseApi(["v1", "reports"], {
+      baseUrl: "https://api.example.test",
+      fetch: fetchImpl,
+      init: {
+        body: new URLSearchParams({ clinicId: "clinic-1" }),
+        method: "POST",
+      },
+    });
+
+    const headers = new Headers(fetchImpl.mock.calls[0][1]?.headers);
+    expect(headers.has("content-type")).toBe(false);
+  });
+
+  it("throws API errors with response status, code, and message", async () => {
+    const fetchImpl = vi.fn<ClinicPulseFetch>().mockResolvedValue(
+      jsonResponse(
+        { error: { code: "not_found", message: "clinic not found" } },
+        { status: 404 },
+      ),
+    );
+
+    await expect(
+      fetchClinic("missing-clinic", {
+        baseUrl: "https://api.example.test",
+        fetch: fetchImpl,
+      }),
+    ).rejects.toMatchObject({
+      code: "not_found",
+      message: "clinic not found",
+      status: 404,
+    } satisfies Partial<ClinicPulseApiError>);
+  });
+});

@@ -5,7 +5,7 @@ import type {
   AdminUserAccessApiResponse,
   PartnerExportRunApiResponse,
   PartnerWebhookEventApiResponse,
-} from "@/lib/demo/api-types";
+} from "@/lib/workspace/api-types";
 import {
   buildAuditEvidenceViewModel,
   filterAuditEvidenceRows,

@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 import { Building2, ClipboardCheck, Globe2, Landmark, Radio, ShieldCheck } from "lucide-react";
 
 import { MaxWidthWrapper } from "@/components/ui/max-width-wrapper";
-import { demoImages } from "@/lib/demo/images";
+import { workspaceImages } from "@/lib/workspace/images";
 
 const stakeholders = [
   { label: "District health office", icon: Landmark, detail: "status visibility" },
@@ -56,8 +56,8 @@ export function ProofStrip() {
             <div className="grid grid-cols-[0.85fr_1.15fr]">
               <div className="relative min-h-52">
                 <Image
-                  src={demoImages["district-operations-room"].src}
-                  alt={demoImages["district-operations-room"].alt}
+                  src={workspaceImages["district-operations-room"].src}
+                  alt={workspaceImages["district-operations-room"].alt}
                   fill
                   sizes="(min-width: 1024px) 22rem, 100vw"
                   className="object-cover opacity-80"

@@ -10,7 +10,7 @@ import {
 } from "@/lib/auth/api";
 import {
   ADMIN_WORKFLOW_ROLES,
-  DEMO_WORKFLOW_ROLES,
+  DISTRICT_WORKFLOW_ROLES,
   FIELD_WORKFLOW_ROLES,
   type AuthSession,
   getWorkflowInsufficientRoleRedirectPath,
@@ -314,14 +314,13 @@ describe("auth workflow role guards", () => {
   it("keeps district managers in district command workflows", () => {
     const session = authSession("district_manager");
 
-    expect(DEMO_WORKFLOW_ROLES).toEqual([
+    expect(DISTRICT_WORKFLOW_ROLES).toEqual([
       "district_manager",
       "org_admin",
       "system_admin",
     ]);
     expect(() => requireWorkflowRole(session, "field")).toThrow("Insufficient role");
     expect(requireWorkflowRole(session, "district")).toBe(session);
-    expect(requireWorkflowRole(session, "demo")).toBe(session);
   });
 
   it("rejects reporter access to the admin workflow", () => {
@@ -340,7 +339,6 @@ describe("auth workflow role guards", () => {
   it("uses stable fallback destinations for insufficient workflow roles", () => {
     expect(getWorkflowInsufficientRoleRedirectPath("field")).toBe("/district");
     expect(getWorkflowInsufficientRoleRedirectPath("district")).toBe("/field");
-    expect(getWorkflowInsufficientRoleRedirectPath("demo")).toBe("/field");
     expect(getWorkflowInsufficientRoleRedirectPath("admin")).toBe("/district");
   });
 });

@@ -23,7 +23,7 @@ Create:
 - `services/api/internal/service/admin_users.go`: admin lifecycle validation and audit input helpers.
 - `services/api/internal/service/admin_users_test.go`: scope and secret-leak tests for admin lifecycle decisions.
 - `services/api/migrations/0009_auth_hardening_admin_lifecycle.sql`: schema additions for user password lifecycle metadata.
-- `app/(demo)/admin/users-roles/actions.ts`: server actions for admin user lifecycle mutations.
+- `app/(workspace)/admin/users-roles/actions.ts`: server actions for admin user lifecycle mutations.
 - `components/product/admin-user-lifecycle.tsx`: client form/actions panel for create, disable/enable, role/scope change, and session revocation.
 - `tests/e2e/security-auth-hardening.spec.ts`: E2E coverage for hidden demo credentials, disabled registration, admin lifecycle, and auth mutation safety.
 
@@ -46,10 +46,10 @@ Modify:
 - `services/api/seeds/local_phase3_auth_users.sql`: set lifecycle fields for local seeded users.
 - `services/api/internal/store/migrations_test.go`: expect migration `0009`.
 - `services/api/internal/http/auth_middleware.go`: preserve role selection while honoring disabled/session state already enforced by the store.
-- `app/(demo)/admin/users-roles/page.tsx`: replace read-only note with lifecycle panel while retaining evidence table.
-- `app/(demo)/admin/admin-loaders.ts`: add authenticated options helper reuse for mutation actions.
-- `lib/demo/api-client.ts`: add admin lifecycle client calls.
-- `lib/demo/api-types.ts`: add request/response types.
+- `app/(workspace)/admin/users-roles/page.tsx`: replace read-only note with lifecycle panel while retaining evidence table.
+- `app/(workspace)/admin/admin-loaders.ts`: add authenticated options helper reuse for mutation actions.
+- `lib/workspace/api-client.ts`: add admin lifecycle client calls.
+- `lib/workspace/api-types.ts`: add request/response types.
 - `docs/api.md`: document new auth/admin endpoints and security responses.
 - `docs/architecture.md`: document hardened auth/session/browser security model.
 - `docs/database-schema.md`: document user lifecycle metadata.
@@ -65,7 +65,7 @@ Reference:
 - Existing auth middleware: `services/api/internal/http/auth_middleware.go`
 - Existing router: `services/api/internal/http/router.go`
 - Existing store auth queries: `services/api/internal/store/auth_queries.go`
-- Existing admin users page: `app/(demo)/admin/users-roles/page.tsx`
+- Existing admin users page: `app/(workspace)/admin/users-roles/page.tsx`
 - Existing frontend runtime env validation: `lib/runtime/frontend-env.ts`
 
 ## Task 0: Baseline And Branch
@@ -75,7 +75,7 @@ Reference:
 - Read: `docs/phase-2-security-and-auth-hardening-spec.md`
 - Read: `services/api/internal/http/router.go`
 - Read: `services/api/internal/store/auth_queries.go`
-- Read: `app/(demo)/admin/users-roles/page.tsx`
+- Read: `app/(workspace)/admin/users-roles/page.tsx`
 
 - [ ] **Step 1: Confirm clean starting state**
 
@@ -127,7 +127,7 @@ it("shows demo credentials only in local deployments", () => {
   expect(
     validateFrontendRuntimeEnv({
       CLINICPULSE_DEPLOY_ENV: "local",
-    }).showDemoCredentials,
+    }).showSeedCredentials,
   ).toBe(true);
 
   expect(
@@ -135,8 +135,8 @@ it("shows demo credentials only in local deployments", () => {
       CLINICPULSE_DEPLOY_ENV: "staging",
       CLINICPULSE_API_BASE_URL: "https://api.clinicpulse.test",
       NEXT_PUBLIC_CLINICPULSE_API_BASE_URL: "/api/clinicpulse",
-      CLINICPULSE_ALLOW_DEMO_FALLBACK: "false",
-    }).showDemoCredentials,
+      CLINICPULSE_ALLOW_SEEDED_FALLBACK: "false",
+    }).showSeedCredentials,
   ).toBe(false);
 });
 
@@ -148,7 +148,7 @@ it("keeps public registration disabled outside local deployments", () => {
       CLINICPULSE_DEPLOY_ENV: "production",
       CLINICPULSE_API_BASE_URL: "https://api.clinicpulse.example",
       NEXT_PUBLIC_CLINICPULSE_API_BASE_URL: "/api/clinicpulse",
-      CLINICPULSE_ALLOW_DEMO_FALLBACK: "false",
+      CLINICPULSE_ALLOW_SEEDED_FALLBACK: "false",
     }).allowPublicRegistration,
   ).toBe(false);
 });
@@ -162,7 +162,7 @@ Run:
 npm test -- lib/runtime/frontend-env.test.ts
 ```
 
-Expected: FAIL because `showDemoCredentials` and `allowPublicRegistration` do not exist yet.
+Expected: FAIL because `showSeedCredentials` and `allowPublicRegistration` do not exist yet.
 
 - [ ] **Step 3: Add runtime flags**
 
@@ -173,7 +173,7 @@ type FrontendRuntimeConfig = {
   deployEnv: DeployEnv;
   apiBaseUrl: string;
   browserApiBaseUrl: string;
-  showDemoCredentials: boolean;
+  showSeedCredentials: boolean;
   allowPublicRegistration: boolean;
 };
 ```
@@ -193,7 +193,7 @@ return {
   deployEnv,
   apiBaseUrl,
   browserApiBaseUrl,
-  showDemoCredentials: deployEnv === "local",
+  showSeedCredentials: deployEnv === "local",
   allowPublicRegistration: deployEnv === "local" && allowPublicRegistration,
 };
 ```
@@ -215,7 +215,7 @@ const frontendEnv = validateFrontendRuntimeEnv();
 Wrap the demo credential panel with:
 
 ```tsx
-{frontendEnv.showDemoCredentials ? (
+{frontendEnv.showSeedCredentials ? (
   <div className="mt-6 rounded-2xl border border-[#0D7A6B]/15 bg-[#ecf7f4] p-4 dark:border-primary/30 dark:bg-primary/10">
     {/* keep the existing local demo credential content here */}
   </div>
@@ -1278,8 +1278,8 @@ git commit -m "feat: add auth lifecycle persistence"
 - Modify: `services/api/internal/http/handlers.go`
 - Modify: `services/api/internal/http/handlers_test.go`
 - Modify: `services/api/internal/http/router.go`
-- Modify: `lib/demo/api-types.ts`
-- Modify: `lib/demo/api-client.ts`
+- Modify: `lib/workspace/api-types.ts`
+- Modify: `lib/workspace/api-client.ts`
 
 - [ ] **Step 1: Write failing service tests**
 
@@ -1705,7 +1705,7 @@ func (h Handler) RevokeAdminUserSessions(w nethttp.ResponseWriter, r *nethttp.Re
 
 - [ ] **Step 8: Add TypeScript client types**
 
-In `lib/demo/api-types.ts`, change the auth import to `import type { AuthMembership, AuthRole } from "@/lib/auth/api";` and add:
+In `lib/workspace/api-types.ts`, change the auth import to `import type { AuthMembership, AuthRole } from "@/lib/auth/api";` and add:
 
 ```ts
 export type AdminCreateUserRequest = {
@@ -1742,7 +1742,7 @@ export type AdminUpdateUserAccessRequest = {
 export type AdminUpdateUserAccessResponse = AuthMembership;
 ```
 
-In `lib/demo/api-client.ts`, add `AdminCreateUserRequest`, `AdminCreateUserResponse`, `AdminUpdateUserAccessRequest`, `AdminUpdateUserAccessResponse`, and `AdminUpdateUserRequest` to the import list and add:
+In `lib/workspace/api-client.ts`, add `AdminCreateUserRequest`, `AdminCreateUserResponse`, `AdminUpdateUserAccessRequest`, `AdminUpdateUserAccessResponse`, and `AdminUpdateUserRequest` to the import list and add:
 
 ```ts
 export function createAdminUser(
@@ -1813,7 +1813,7 @@ Expected: PASS.
 Run:
 
 ```bash
-git add services/api/internal/service/admin_users.go services/api/internal/service/admin_users_test.go services/api/internal/http/handlers.go services/api/internal/http/handlers_test.go services/api/internal/http/router.go lib/demo/api-types.ts lib/demo/api-client.ts
+git add services/api/internal/service/admin_users.go services/api/internal/service/admin_users_test.go services/api/internal/http/handlers.go services/api/internal/http/handlers_test.go services/api/internal/http/router.go lib/workspace/api-types.ts lib/workspace/api-client.ts
 git commit -m "feat: add admin user lifecycle api"
 ```
 
@@ -1821,11 +1821,11 @@ git commit -m "feat: add admin user lifecycle api"
 
 **Files:**
 
-- Create: `app/(demo)/admin/users-roles/actions.ts`
+- Create: `app/(workspace)/admin/users-roles/actions.ts`
 - Create: `components/product/admin-user-lifecycle.tsx`
 - Create: `components/product/admin-user-lifecycle-source.test.ts`
-- Modify: `app/(demo)/admin/users-roles/page.tsx`
-- Modify: `app/(demo)/admin/admin-loaders.ts`
+- Modify: `app/(workspace)/admin/users-roles/page.tsx`
+- Modify: `app/(workspace)/admin/admin-loaders.ts`
 
 - [ ] **Step 1: Write failing component/source tests**
 
@@ -1864,7 +1864,7 @@ Expected: FAIL because `components/product/admin-user-lifecycle.tsx` does not ex
 
 - [ ] **Step 3: Add server actions**
 
-Create `app/(demo)/admin/users-roles/actions.ts`:
+Create `app/(workspace)/admin/users-roles/actions.ts`:
 
 ```ts
 "use server";
@@ -1876,7 +1876,7 @@ import {
   revokeAdminUserSessions,
   updateAdminUser,
   updateAdminUserAccess,
-} from "@/lib/demo/api-client";
+} from "@/lib/workspace/api-client";
 import { getAdminLoaderOptions } from "../admin-loaders";
 
 export async function createPilotUserAction(formData: FormData) {
@@ -1917,7 +1917,7 @@ Create `components/product/admin-user-lifecycle.tsx` as a client component with:
 
 - [ ] **Step 5: Wire users page**
 
-In `app/(demo)/admin/users-roles/page.tsx`, change the module description from read-only to pilot lifecycle management and render:
+In `app/(workspace)/admin/users-roles/page.tsx`, change the module description from read-only to pilot lifecycle management and render:
 
 ```tsx
 <AdminUserLifecycle
@@ -1945,7 +1945,7 @@ Expected: PASS.
 Run:
 
 ```bash
-git add 'app/(demo)/admin/users-roles/actions.ts' components/product/admin-user-lifecycle.tsx components/product/admin-user-lifecycle-source.test.ts 'app/(demo)/admin/users-roles/page.tsx' 'app/(demo)/admin/admin-loaders.ts'
+git add 'app/(workspace)/admin/users-roles/actions.ts' components/product/admin-user-lifecycle.tsx components/product/admin-user-lifecycle-source.test.ts 'app/(workspace)/admin/users-roles/page.tsx' 'app/(workspace)/admin/admin-loaders.ts'
 git commit -m "feat: add admin account lifecycle UI"
 ```
 
@@ -2110,7 +2110,7 @@ async function signIn(page: Page, email: string, homePath: string) {
 
 test("login page hides demo credentials when demo fallback is disabled", async ({ page }) => {
   await page.goto("/login");
-  await expect(page.getByText("Local demo credentials")).toBeHidden();
+  await expect(page.getByText("Local seeded credentials")).toBeHidden();
   await expect(page.getByText("ClinicPulseDemo123!")).toBeHidden();
 });
 
@@ -2144,7 +2144,7 @@ test("untrusted cookie mutation is rejected", async ({ page }) => {
 });
 ```
 
-The existing Playwright web server already sets `CLINICPULSE_ALLOW_DEMO_FALLBACK="false"`, so the first test verifies that the new runtime flag hides the credential panel when local demo fallback is disabled.
+The existing Playwright web server already sets `CLINICPULSE_ALLOW_SEEDED_FALLBACK="false"`, so the first test verifies that the new runtime flag hides the credential panel when local demo fallback is disabled.
 
 - [ ] **Step 2: Run tests to verify they fail before implementation is complete**
 

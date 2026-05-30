@@ -87,7 +87,7 @@ Required staging behavior:
 
 - `CLINICPULSE_API_BASE_URL` points to the deployed Docker API over HTTPS.
 - `NEXT_PUBLIC_CLINICPULSE_API_BASE_URL` remains `/api/clinicpulse`.
-- `CLINICPULSE_ALLOW_DEMO_FALLBACK` is `false` for staging unless a deploy is intentionally marked as demo-only.
+- `CLINICPULSE_ALLOW_SEEDED_FALLBACK` is `false` for staging unless a deploy is intentionally marked as demo-only.
 - Build or startup validation rejects staging/production values that silently point to localhost or leave required API configuration empty.
 
 ### Backend

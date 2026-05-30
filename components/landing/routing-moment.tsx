@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 import { MapPinOff, Navigation, Route, SearchCheck } from "lucide-react";
 
 import { MaxWidthWrapper } from "@/components/ui/max-width-wrapper";
-import { demoImages } from "@/lib/demo/images";
+import { workspaceImages } from "@/lib/workspace/images";
 
 export function RoutingMoment() {
   return (
@@ -32,8 +32,8 @@ export function RoutingMoment() {
           <div className="overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50 shadow-sm">
             <div className="relative min-h-[420px]">
               <Image
-                src={demoImages["patient-routing-context"].src}
-                alt={demoImages["patient-routing-context"].alt}
+                src={workspaceImages["patient-routing-context"].src}
+                alt={workspaceImages["patient-routing-context"].alt}
                 fill
                 sizes="(min-width: 1024px) 48rem, 100vw"
                 className="object-cover"

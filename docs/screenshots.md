@@ -7,7 +7,7 @@ Showcase screenshots are generated locally into `public/showcase/screenshots/` a
 - Desktop viewport: `1440x1100`
 - Mobile viewport: `390x844`
 - Browser: Chromium through Playwright or Chrome
-- Demo state: isolated e2e database reset with `make db-reset-e2e`
+- Workspace state: isolated e2e database reset with `make db-reset-e2e`
 - Local asset directory: `public/showcase/screenshots/`
 
 ## Core Workflow Shots
@@ -15,10 +15,10 @@ Showcase screenshots are generated locally into `public/showcase/screenshots/` a
 | Asset | Route | Viewport | State setup | What it proves |
 | --- | --- | --- | --- | --- |
 | `landing-desktop.png` | `/` | Desktop | Logged out | ClinicPulse positioning and booking entry are clear |
-| `booking-flow-desktop.png` | `/book-demo` | Desktop | Logged out | Lead capture path is credible and focused |
-| `booking-thanks-desktop.png` | `/book-demo/thanks` | Desktop | After booking flow | Handoff routes to district, admin, and finder work are visible |
-| `district-console-desktop.png` | `/demo` | Desktop | Logged in as org admin | Status summary, map, alerts, and scenario controls are visible |
-| `clinic-evidence-desktop.png` | `/demo/clinics/clinic-mabopane-station` | Desktop | Logged in as org admin | Mabopane Station incident evidence, patient routing impact, report history, and escalation context are visible |
+| `booking-flow-desktop.png` | `/book-walkthrough` | Desktop | Logged out | Lead capture path is credible and focused |
+| `booking-thanks-desktop.png` | `/book-walkthrough/thanks` | Desktop | After booking flow | Handoff routes to district, admin, and finder work are visible |
+| `district-console-desktop.png` | `/district` | Desktop | Logged in as org admin | Status summary, map, alerts, and scenario controls are visible |
+| `clinic-evidence-desktop.png` | `/district/clinics/clinic-mabopane-station` | Desktop | Logged in as org admin | Mabopane Station incident evidence, patient routing impact, report history, and escalation context are visible |
 | `finder-mobile.png` | `/finder` | Mobile | Logged out | Public availability search works on mobile |
 | `field-report-mobile.png` | `/field` | Mobile | Logged in as org admin | Offline-friendly report flow is usable on mobile |
 | `admin-readiness-desktop.png` | `/admin` | Desktop | Logged in as org admin | Lead pipeline, API preview, partner readiness, and pilot readiness are visible |

@@ -2,7 +2,7 @@
 
 ## Summary
 
-ClinicPulse is a full-stack clinic operations demo built to show how district teams can maintain live facility status, route patients around disruptions, collect field reports offline, and expose operational data through partner-ready APIs.
+ClinicPulse is a full-stack clinic operations platform built to show how district teams can maintain live facility status, route patients around disruptions, collect field reports offline, and expose operational data through partner-ready APIs.
 
 ## Problem
 
@@ -30,7 +30,7 @@ ClinicPulse covers:
 
 ## Core Workflows
 
-1. A district manager logs in and opens `/demo`.
+1. A district manager logs in and opens `/district`.
 2. The console shows status counts, alerts, clinic map, and recent reports.
 3. A disruption scenario changes operational status and highlights routing decisions.
 4. Clinic detail pages expose service, report, and audit evidence.
@@ -46,13 +46,13 @@ ClinicPulse uses:
 - Go chi for API routing and middleware.
 - Postgres for operational data, auth, audit events, sync metadata, partner keys, webhooks, exports, and integration checks.
 - Same-origin API proxying to keep browser calls simple in local demos.
-- Seeded local auth users and demo data for repeatable walkthroughs.
+- Seeded local auth users and seeded operating data for repeatable walkthroughs.
 
 ## Engineering Decisions
 
 The implementation favors:
 
-- A real backend instead of static-only demo data.
+- A real backend instead of static-only seeded operating data.
 - Explicit role boundaries for reporter, district manager, org admin, and system admin.
 - Immutable audit/review records for operational credibility.
 - Offline sync attempt tracking instead of silent retry behavior.
@@ -63,19 +63,19 @@ The implementation favors:
 
 Repository evidence:
 
-- `README.md` for local run and demo credentials.
+- `README.md` for local run and local seed credentials.
 - `docs/architecture.md` for system design.
 - `docs/api.md` for API routes.
 - `docs/database-schema.md` for persistence model.
 - `docs/engineering-decisions.md` for tradeoffs.
-- `npm run capture:showcase` for local workflow screenshots and the short demo walkthrough under `public/showcase/`.
+- `npm run capture:showcase` for local workflow screenshots and the short product walkthrough under `public/showcase/`.
 - `.github/workflows/ci.yml` for CI baseline.
 
 The case study can be reviewed directly from this repository with local setup, local showcase captures, and CI coverage.
 
 ## Publication Next Steps
 
-- Deploy a clean public demo with seeded demo credentials.
+- Deploy a clean public walkthrough with seeded local seed credentials.
 - Publish this case study on the portfolio site with locally generated screenshots and walkthrough.
 - Convert the walkthrough to MP4 if the portfolio host requires it.
 - Create `v0.1.0-alpha` after final verification.

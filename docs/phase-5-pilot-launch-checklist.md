@@ -25,7 +25,7 @@ Status: Closeout recorded; release tag pending final gate refresh and explicit a
 
 - Frontend environment variables match `docs/deployment.md`.
 - API environment variables match `docs/deployment.md`.
-- `CLINICPULSE_ALLOW_DEMO_FALLBACK=false`.
+- `CLINICPULSE_ALLOW_SEEDED_FALLBACK=false`.
 - `CLINICPULSE_ALLOW_PUBLIC_REGISTRATION=false`.
 - `CLINICPULSE_TRUSTED_ORIGINS` contains deployed frontend origins only.
 - `CLINICPULSE_METRICS_ENABLED=true` only when `CLINICPULSE_METRICS_TOKEN` is set and scraping is approved.

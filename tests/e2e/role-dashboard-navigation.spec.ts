@@ -100,8 +100,8 @@ const hiddenStandaloneHrefs = [
 
 const publicDashboardHrefs = [
   "/",
-  "/book-demo",
-  "/book-demo/thanks",
+  "/book-walkthrough",
+  "/book-walkthrough/thanks",
   "/finder",
   "/clinics",
   "/login",
@@ -749,15 +749,15 @@ test.describe("phase 1 role dashboard navigation", () => {
     await expect(page.getByRole("link", { name: "Back to severity queue" })).toBeVisible();
   });
 
-  test("demo showcase does not expose report review", async ({ page }) => {
+  test("district workspace exposes report review", async ({ page }) => {
     await signInAs(page, "district-manager@clinicpulse.local", "/district");
 
-    await page.goto("/demo");
+    await page.goto("/district");
 
     await expect(
       page.locator('[data-role-dashboard="district_manager"]').filter({ visible: true }),
     ).toBeVisible();
-    await expect(page.locator("#report-review")).toHaveCount(0);
+    await expect(page.locator("#report-review")).toBeVisible();
   });
 
   test("district users can open report stream details", async ({ page }) => {
@@ -768,11 +768,6 @@ test.describe("phase 1 role dashboard navigation", () => {
         path: "/district",
         urlPattern: /\/district\/reports\/[^?]+\?from=district$/,
         backLabel: "Back to district console",
-      },
-      {
-        path: "/demo",
-        urlPattern: /\/demo\/reports\/[^?]+\?from=demo$/,
-        backLabel: "Back to demo console",
       },
     ] as const) {
       await page.goto(scenario.path);
@@ -805,9 +800,9 @@ test.describe("phase 1 role dashboard navigation", () => {
     const sidebar = await openDashboardSidebar(page);
     const link = sidebar.getByRole("link", { name: "Scenario controls", exact: true });
 
-    await expect(link).toHaveAttribute("href", "/admin/demo-controls");
+    await expect(link).toHaveAttribute("href", "/admin/scenario-controls");
     await Promise.all([
-      page.waitForURL(/\/admin\/demo-controls$/),
+      page.waitForURL(/\/admin\/scenario-controls$/),
       link.click(),
     ]);
 

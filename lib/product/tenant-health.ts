@@ -5,8 +5,8 @@ import type {
   PartnerReadinessApiResponse,
   ReportApiResponse,
   SyncSummaryApiResponse,
-} from "@/lib/demo/api-types";
-import { buildPartnerReadinessModel } from "@/lib/demo/partner-readiness";
+} from "@/lib/workspace/api-types";
+import { buildPartnerReadinessModel } from "@/lib/workspace/partner-readiness";
 import {
   classifyAccessRisk,
   summarizeReportingCoverage,

@@ -1,0 +1,822 @@
+import {
+  getActiveAlerts,
+  getClinicRows,
+  getRecentReportStream,
+} from "@/lib/workspace/selectors";
+import type {
+  Alert,
+  AuditEvent,
+  ClinicRow,
+  ClinicStatus,
+  WorkspaceState,
+  ReportStreamItem,
+} from "@/lib/workspace/types";
+
+const RETURN_SOURCE = "district-clinic-evidence";
+
+export type DistrictClinicEvidenceKind = "all" | "report" | "audit" | "alert";
+export type DistrictClinicEvidenceQueueFilter =
+  | "all"
+  | "needs_action"
+  | "reports"
+  | "alerts"
+  | "audit";
+export type DistrictClinicEvidenceSource =
+  | "all"
+  | ReportStreamItem["source"]
+  | "audit_log"
+  | "alert";
+export type DistrictClinicEvidenceTone = "clear" | "attention" | "blocked" | "info";
+
+export type DistrictClinicEvidenceFilters = {
+  kind: DistrictClinicEvidenceKind;
+  queue: DistrictClinicEvidenceQueueFilter;
+  status: ClinicStatus | "all";
+  source: DistrictClinicEvidenceSource;
+  clinic: string;
+  query: string;
+};
+
+export type DistrictClinicEvidenceMetric = {
+  label: string;
+  value: string;
+  detail: string;
+  tone: DistrictClinicEvidenceTone;
+};
+
+export type DistrictClinicEvidenceHeader = {
+  eyebrow: string;
+  title: string;
+  description: string;
+  scope: string;
+  readiness: {
+    label: string;
+    value: string;
+    detail: string;
+    tone: DistrictClinicEvidenceTone;
+  };
+  primaryAction: {
+    label: string;
+    href: string;
+  };
+  secondaryAction: {
+    label: string;
+    href: string;
+  };
+};
+
+export type DistrictClinicEvidenceQueueChip = {
+  id: DistrictClinicEvidenceQueueFilter;
+  label: string;
+  count: number;
+  isActive: boolean;
+  tone: DistrictClinicEvidenceTone;
+};
+
+export type DistrictClinicEvidenceClinicOption = {
+  label: string;
+  value: string;
+};
+
+export type DistrictClinicEvidenceRow = {
+  id: string;
+  evidenceId: string;
+  clinicId: string;
+  clinicName: string;
+  facilityCode: string;
+  kind: Exclude<DistrictClinicEvidenceKind, "all">;
+  title: string;
+  detail: string;
+  status: ClinicStatus;
+  source: Exclude<DistrictClinicEvidenceSource, "all">;
+  actorName: string;
+  occurredAt: string;
+  actionLabel: string;
+  operatorSignal: string;
+  ownerLabel: string;
+  recordedLabel: string;
+  tone: DistrictClinicEvidenceTone;
+  reportHref: string | null;
+  clinicHref: string;
+};
+
+export type DistrictClinicEvidenceTraceStep = {
+  id: "source" | "signal" | "verification" | "district_action";
+  label: string;
+  title: string;
+  detail: string;
+  tone: DistrictClinicEvidenceTone;
+};
+
+export type DistrictClinicEvidenceDecisionSummaryItem = {
+  label: string;
+  value: string;
+  detail: string;
+  tone: DistrictClinicEvidenceTone;
+};
+
+export type DistrictClinicEvidenceDecisionAction = {
+  id: "confirm_signal" | "assign_owner" | "protect_route";
+  label: string;
+  detail: string;
+  tone: DistrictClinicEvidenceTone;
+  href: string | null;
+};
+
+export type DistrictClinicEvidencePacket = DistrictClinicEvidenceRow & {
+  actionTone: DistrictClinicEvidenceTone;
+  decisionActions: DistrictClinicEvidenceDecisionAction[];
+  decisionSummary: DistrictClinicEvidenceDecisionSummaryItem[];
+  navigation: {
+    previousEvidenceId: string | null;
+    nextEvidenceId: string | null;
+    position: number;
+    total: number;
+  };
+  provenance: Array<{ label: string; value: string }>;
+  recommendedAction: string;
+  timelineSummary: string;
+  trace: DistrictClinicEvidenceTraceStep[];
+  verificationNeed: string;
+};
+
+export type DistrictClinicEvidenceViewModel = {
+  header: DistrictClinicEvidenceHeader;
+  metrics: DistrictClinicEvidenceMetric[];
+  queue: {
+    title: string;
+    description: string;
+    chips: DistrictClinicEvidenceQueueChip[];
+  };
+  rows: DistrictClinicEvidenceRow[];
+  selectedPacket: DistrictClinicEvidencePacket | null;
+  timeline: DistrictClinicEvidenceRow[];
+  filterOptions: {
+    clinics: DistrictClinicEvidenceClinicOption[];
+    sources: Array<Exclude<DistrictClinicEvidenceSource, "all">>;
+  };
+  emptyState: {
+    title: string;
+    description: string;
+  };
+};
+
+type BuildDistrictClinicEvidenceViewModelInput = {
+  state: WorkspaceState;
+  filters: DistrictClinicEvidenceFilters;
+  selectedEvidenceId: string | null;
+};
+
+function formatCount(value: number) {
+  return new Intl.NumberFormat("en-ZA", { maximumFractionDigits: 0 }).format(value);
+}
+
+function encodeRouteId(value: string) {
+  return encodeURIComponent(value);
+}
+
+function getClinicById(clinics: ClinicRow[], clinicId: string) {
+  return clinics.find((clinic) => clinic.id === clinicId) ?? null;
+}
+
+function getClinicStatus(clinic: ClinicRow | null): ClinicStatus {
+  return clinic?.status ?? "unknown";
+}
+
+function clinicHref(clinicId: string) {
+  return `/district/clinics/${encodeRouteId(clinicId)}?from=${RETURN_SOURCE}`;
+}
+
+function reportHref(reportId: string) {
+  return `/district/reports/${encodeRouteId(reportId)}?from=${RETURN_SOURCE}`;
+}
+
+function sourceLabel(source: Exclude<DistrictClinicEvidenceSource, "all">) {
+  return source.replaceAll("_", " ");
+}
+
+function formatValueLabel(value: string) {
+  return value.replaceAll("_", " ");
+}
+
+function formatRecordedLabel(value: string) {
+  return new Intl.DateTimeFormat("en-ZA", {
+    timeZone: "Africa/Johannesburg",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function operatorSignalForTone(tone: DistrictClinicEvidenceTone) {
+  if (tone === "blocked") {
+    return "Blocked";
+  }
+
+  if (tone === "attention") {
+    return "Verify";
+  }
+
+  if (tone === "clear") {
+    return "Clear";
+  }
+
+  return "Audit";
+}
+
+function actionLabelForKind(kind: Exclude<DistrictClinicEvidenceKind, "all">) {
+  if (kind === "alert") {
+    return "Confirm alert";
+  }
+
+  if (kind === "audit") {
+    return "Validate chain";
+  }
+
+  return "Review report";
+}
+
+function evidenceTone(
+  kind: Exclude<DistrictClinicEvidenceKind, "all">,
+  status: ClinicStatus,
+  alert?: Pick<Alert, "severity" | "status">,
+): DistrictClinicEvidenceTone {
+  if (kind === "alert" && alert && alert.status !== "resolved") {
+    return alert.severity === "critical" || alert.severity === "high" ? "blocked" : "attention";
+  }
+
+  if (status === "non_functional") {
+    return "blocked";
+  }
+
+  if (status === "degraded" || status === "unknown") {
+    return "attention";
+  }
+
+  return kind === "audit" ? "info" : "clear";
+}
+
+function reportToEvidenceRow(
+  report: ReportStreamItem,
+): DistrictClinicEvidenceRow {
+  const status = report.status;
+  const tone = evidenceTone("report", status);
+
+  return {
+    id: `report-${report.id}`,
+    evidenceId: report.id,
+    clinicId: report.clinicId,
+    clinicName: report.clinicName,
+    facilityCode: report.facilityCode,
+    kind: "report",
+    title: report.reason,
+    detail: report.notes,
+    status,
+    source: report.source,
+    actorName: report.reporterName,
+    occurredAt: report.receivedAt,
+    actionLabel: actionLabelForKind("report"),
+    operatorSignal: operatorSignalForTone(tone),
+    ownerLabel: report.reporterName,
+    recordedLabel: formatRecordedLabel(report.receivedAt),
+    tone,
+    reportHref: reportHref(report.id),
+    clinicHref: clinicHref(report.clinicId),
+  };
+}
+
+function auditToEvidenceRow(
+  audit: AuditEvent,
+  clinic: ClinicRow | null,
+): DistrictClinicEvidenceRow {
+  const status = getClinicStatus(clinic);
+  const tone = evidenceTone("audit", status);
+
+  return {
+    id: `audit-${audit.id}`,
+    evidenceId: audit.id,
+    clinicId: audit.clinicId,
+    clinicName: clinic?.name ?? audit.clinicId,
+    facilityCode: clinic?.facilityCode ?? "Unavailable",
+    kind: "audit",
+    title: audit.summary,
+    detail: audit.eventType.replaceAll(".", " "),
+    status,
+    source: "audit_log",
+    actorName: audit.actorName,
+    occurredAt: audit.createdAt,
+    actionLabel: actionLabelForKind("audit"),
+    operatorSignal: operatorSignalForTone(tone),
+    ownerLabel: audit.actorName,
+    recordedLabel: formatRecordedLabel(audit.createdAt),
+    tone,
+    reportHref: null,
+    clinicHref: clinicHref(audit.clinicId),
+  };
+}
+
+function alertToEvidenceRow(
+  alert: Alert,
+  clinic: ClinicRow | null,
+): DistrictClinicEvidenceRow {
+  const status = getClinicStatus(clinic);
+  const tone = evidenceTone("alert", status, alert);
+
+  return {
+    id: `alert-${alert.id}`,
+    evidenceId: alert.id,
+    clinicId: alert.clinicId,
+    clinicName: clinic?.name ?? alert.clinicId,
+    facilityCode: clinic?.facilityCode ?? "Unavailable",
+    kind: "alert",
+    title: alert.recommendedAction,
+    detail: alert.type.replaceAll("_", " "),
+    status,
+    source: "alert",
+    actorName: "District alerting",
+    occurredAt: alert.createdAt,
+    actionLabel: actionLabelForKind("alert"),
+    operatorSignal: operatorSignalForTone(tone),
+    ownerLabel: "District alerting",
+    recordedLabel: formatRecordedLabel(alert.createdAt),
+    tone,
+    reportHref: null,
+    clinicHref: clinicHref(alert.clinicId),
+  };
+}
+
+function sortEvidenceRows(
+  left: DistrictClinicEvidenceRow,
+  right: DistrictClinicEvidenceRow,
+) {
+  const timeDelta = new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime();
+
+  if (timeDelta !== 0) {
+    return timeDelta;
+  }
+
+  return left.evidenceId.localeCompare(right.evidenceId);
+}
+
+function evidencePriority(row: DistrictClinicEvidenceRow) {
+  if (row.tone === "blocked") {
+    return 0;
+  }
+
+  if (row.tone === "attention") {
+    return 1;
+  }
+
+  if (row.kind === "alert") {
+    return 2;
+  }
+
+  if (row.kind === "report") {
+    return 3;
+  }
+
+  return 4;
+}
+
+function selectDefaultEvidenceRow(rows: DistrictClinicEvidenceRow[]) {
+  return sortReviewRows(rows)[0] ?? null;
+}
+
+function sortReviewRows(rows: DistrictClinicEvidenceRow[]) {
+  return [...rows].sort((left, right) => {
+    const priorityDelta = evidencePriority(left) - evidencePriority(right);
+
+    if (priorityDelta !== 0) {
+      return priorityDelta;
+    }
+
+    return sortEvidenceRows(left, right);
+  });
+}
+
+function rowMatchesQuery(row: DistrictClinicEvidenceRow, query: string) {
+  const normalized = query.trim().toLowerCase();
+
+  if (!normalized) {
+    return true;
+  }
+
+  return [
+    row.evidenceId,
+    row.clinicId,
+    row.clinicName,
+    row.facilityCode,
+    row.kind,
+    row.title,
+    row.detail,
+    row.status,
+    row.actorName,
+    sourceLabel(row.source),
+  ]
+    .join(" ")
+    .toLowerCase()
+    .includes(normalized);
+}
+
+function rowMatchesQueue(
+  row: DistrictClinicEvidenceRow,
+  queue: DistrictClinicEvidenceQueueFilter,
+) {
+  if (queue === "needs_action") {
+    return row.tone !== "clear";
+  }
+
+  if (queue === "reports") {
+    return row.kind === "report";
+  }
+
+  if (queue === "alerts") {
+    return row.kind === "alert";
+  }
+
+  if (queue === "audit") {
+    return row.kind === "audit";
+  }
+
+  return true;
+}
+
+function rowMatchesFilters(
+  row: DistrictClinicEvidenceRow,
+  filters: DistrictClinicEvidenceFilters,
+) {
+  return (
+    rowMatchesQueue(row, filters.queue) &&
+    (filters.kind === "all" || row.kind === filters.kind) &&
+    (filters.status === "all" || row.status === filters.status) &&
+    (filters.source === "all" || row.source === filters.source) &&
+    (filters.clinic === "all" || row.clinicId === filters.clinic) &&
+    rowMatchesQuery(row, filters.query)
+  );
+}
+
+function buildMetrics(
+  allRows: DistrictClinicEvidenceRow[],
+): DistrictClinicEvidenceMetric[] {
+  const reportCount = allRows.filter((row) => row.kind === "report").length;
+  const auditCount = allRows.filter((row) => row.kind === "audit").length;
+  const blockedCount = allRows.filter((row) => row.tone === "blocked").length;
+
+  return [
+    {
+      label: "Evidence records",
+      value: formatCount(allRows.length),
+      detail: "Reports, alerts, and audit records in the district window.",
+      tone: "info",
+    },
+    {
+      label: "Field reports",
+      value: formatCount(reportCount),
+      detail: "Submitted clinic status evidence.",
+      tone: reportCount > 0 ? "clear" : "attention",
+    },
+    {
+      label: "Audit chain",
+      value: formatCount(auditCount),
+      detail: "System and operator events linked to clinics.",
+      tone: auditCount > 0 ? "info" : "attention",
+    },
+    {
+      label: "Blocking evidence",
+      value: formatCount(blockedCount),
+      detail: "Rows that currently require district attention.",
+      tone: blockedCount > 0 ? "blocked" : "clear",
+    },
+  ];
+}
+
+function buildHeader(
+  allRows: DistrictClinicEvidenceRow[],
+): DistrictClinicEvidenceHeader {
+  const blockedCount = allRows.filter((row) => row.tone === "blocked").length;
+  const needsActionCount = allRows.filter((row) => row.tone !== "clear").length;
+  const reportCount = allRows.filter((row) => row.kind === "report").length;
+  const auditCount = allRows.filter((row) => row.kind === "audit").length;
+  const alertCount = allRows.filter((row) => row.kind === "alert").length;
+  const readinessTone: DistrictClinicEvidenceTone =
+    blockedCount > 0 ? "blocked" : needsActionCount > 0 ? "attention" : "clear";
+
+  return {
+    eyebrow: "District command",
+    title: "Clinic evidence",
+    description:
+      "Inspect linked records before clearing severity, changing routing posture, or handing work to a clinic owner.",
+    scope: `${formatCount(allRows.length)} records · ${formatCount(reportCount)} reports · ${formatCount(alertCount)} alerts · ${formatCount(auditCount)} audit events`,
+    readiness: {
+      label: "Evidence readiness",
+      value: formatCount(blockedCount),
+      detail:
+        blockedCount > 0
+          ? `${formatCount(blockedCount)} blocking records require district verification.`
+          : needsActionCount > 0
+            ? `${formatCount(needsActionCount)} records need review before the trail is clear.`
+            : "No blocking clinic evidence in the current district window.",
+      tone: readinessTone,
+    },
+    primaryAction: {
+      label: "Open severity queue",
+      href: "/district/severity-queue",
+    },
+    secondaryAction: {
+      label: "Open clinic network",
+      href: "/district/clinic-network",
+    },
+  };
+}
+
+function buildQueue(
+  allRows: DistrictClinicEvidenceRow[],
+  activeQueue: DistrictClinicEvidenceQueueFilter,
+): DistrictClinicEvidenceViewModel["queue"] {
+  const needsActionCount = allRows.filter((row) => row.tone !== "clear").length;
+  const reportCount = allRows.filter((row) => row.kind === "report").length;
+  const alertCount = allRows.filter((row) => row.kind === "alert").length;
+  const auditCount = allRows.filter((row) => row.kind === "audit").length;
+
+  return {
+    title: "Evidence review queue",
+    description:
+      "Select a record to inspect provenance, linked clinic context, and the next district action.",
+    chips: [
+      {
+        id: "all",
+        label: "All",
+        count: allRows.length,
+        isActive: activeQueue === "all",
+        tone: "info",
+      },
+      {
+        id: "needs_action",
+        label: "Needs action",
+        count: needsActionCount,
+        isActive: activeQueue === "needs_action",
+        tone: needsActionCount > 0 ? "attention" : "clear",
+      },
+      {
+        id: "reports",
+        label: "Reports",
+        count: reportCount,
+        isActive: activeQueue === "reports",
+        tone: reportCount > 0 ? "clear" : "attention",
+      },
+      {
+        id: "alerts",
+        label: "Alerts",
+        count: alertCount,
+        isActive: activeQueue === "alerts",
+        tone: alertCount > 0 ? "blocked" : "clear",
+      },
+      {
+        id: "audit",
+        label: "Audit",
+        count: auditCount,
+        isActive: activeQueue === "audit",
+        tone: auditCount > 0 ? "info" : "attention",
+      },
+    ],
+  };
+}
+
+function buildPacketTrace(
+  row: DistrictClinicEvidenceRow,
+): DistrictClinicEvidenceTraceStep[] {
+  return [
+    {
+      id: "source",
+      label: "Source",
+      title: sourceLabel(row.source),
+      detail: `${row.actorName} recorded ${formatValueLabel(row.kind)} evidence for ${row.facilityCode}.`,
+      tone: row.kind === "audit" ? "info" : row.tone,
+    },
+    {
+      id: "signal",
+      label: "Signal",
+      title: formatValueLabel(row.status),
+      detail: row.detail,
+      tone: row.tone,
+    },
+    {
+      id: "verification",
+      label: "Verification",
+      title: row.status === "operational" ? "Audit-ready" : "Clinic owner confirmation",
+      detail:
+        row.status === "operational"
+          ? "Keep this record in the audit chain and confirm reporting cadence remains normal."
+          : "Confirm the signal with the clinic owner before clearing or changing district posture.",
+      tone: row.status === "operational" ? "clear" : row.tone,
+    },
+    {
+      id: "district_action",
+      label: "District action",
+      title:
+        row.kind === "alert"
+          ? "Protect routing notes"
+          : row.kind === "report"
+            ? "Compare with linked records"
+            : "Validate the audit chain",
+      detail:
+        row.kind === "alert"
+          ? "Check the alert state before changing routing or intervention notes."
+          : row.kind === "report"
+            ? "Open the report brief, compare the packet timeline, and decide whether posture changes."
+            : "Confirm who changed the evidence chain and which clinic state was affected.",
+      tone: row.tone,
+    },
+  ];
+}
+
+function decisionValue(row: DistrictClinicEvidenceRow) {
+  if (row.kind === "alert") {
+    return "Confirm alert";
+  }
+
+  if (row.kind === "audit") {
+    return "Validate audit";
+  }
+
+  return "Review report";
+}
+
+function verificationValue(row: DistrictClinicEvidenceRow) {
+  return row.status === "operational" ? "Audit-ready" : "Owner confirmation";
+}
+
+function verificationNeed(row: DistrictClinicEvidenceRow) {
+  return row.status === "operational"
+    ? "Confirm normal reporting cadence and keep this evidence available for audit review."
+    : "Confirm the evidence with the clinic owner before clearing the district decision trail.";
+}
+
+function recommendedAction(row: DistrictClinicEvidenceRow) {
+  if (row.kind === "report") {
+    return "Read the report brief, compare it with the clinic timeline, and confirm whether district posture should change.";
+  }
+
+  if (row.kind === "alert") {
+    return "Confirm whether this alert still reflects active service pressure before changing routing or intervention notes.";
+  }
+
+  return "Use this audit event to validate who changed the evidence chain and what clinic state it affected.";
+}
+
+function buildDecisionSummary(
+  row: DistrictClinicEvidenceRow,
+  timeline: DistrictClinicEvidenceRow[],
+): DistrictClinicEvidenceDecisionSummaryItem[] {
+  return [
+    {
+      label: "Decision",
+      value: decisionValue(row),
+      detail: row.title,
+      tone: row.tone,
+    },
+    {
+      label: "Signal",
+      value: formatValueLabel(row.status),
+      detail: row.detail,
+      tone: row.tone,
+    },
+    {
+      label: "Trust chain",
+      value: `${formatCount(timeline.length)} records`,
+      detail: `${sourceLabel(row.source)} · ${row.actorName}`,
+      tone: timeline.length > 1 ? "info" : row.tone,
+    },
+    {
+      label: "Verification gap",
+      value: verificationValue(row),
+      detail: verificationNeed(row),
+      tone: row.status === "operational" ? "clear" : row.tone,
+    },
+  ];
+}
+
+function buildDecisionActions(
+  row: DistrictClinicEvidenceRow,
+): DistrictClinicEvidenceDecisionAction[] {
+  return [
+    {
+      id: "confirm_signal",
+      label: "Stage decision",
+      detail: recommendedAction(row),
+      tone: row.tone,
+      href: null,
+    },
+    {
+      id: "assign_owner",
+      label: "Assign owner",
+      detail: `Open ${row.clinicName} to confirm the current owner and handoff context.`,
+      tone: "info",
+      href: row.clinicHref,
+    },
+    {
+      id: "protect_route",
+      label: "Protect routing",
+      detail: "Open the severity queue before changing routing posture.",
+      tone: row.tone === "clear" ? "clear" : "attention",
+      href: "/district/severity-queue",
+    },
+  ];
+}
+
+function buildPacketNavigation(
+  selectedRow: DistrictClinicEvidenceRow,
+  rows: DistrictClinicEvidenceRow[],
+) {
+  const index = rows.findIndex((row) => row.evidenceId === selectedRow.evidenceId);
+
+  if (index === -1) {
+    return {
+      previousEvidenceId: null,
+      nextEvidenceId: null,
+      position: 1,
+      total: rows.length,
+    };
+  }
+
+  return {
+    previousEvidenceId: rows[index - 1]?.evidenceId ?? null,
+    nextEvidenceId: rows[index + 1]?.evidenceId ?? null,
+    position: index + 1,
+    total: rows.length,
+  };
+}
+
+function buildPacket(
+  row: DistrictClinicEvidenceRow,
+  timeline: DistrictClinicEvidenceRow[],
+  reviewRows: DistrictClinicEvidenceRow[],
+): DistrictClinicEvidencePacket {
+  return {
+    ...row,
+    actionTone: row.tone,
+    decisionActions: buildDecisionActions(row),
+    decisionSummary: buildDecisionSummary(row, timeline),
+    navigation: buildPacketNavigation(row, reviewRows),
+    provenance: [
+      { label: "Source", value: sourceLabel(row.source) },
+      { label: "Actor", value: row.actorName },
+      { label: "Facility code", value: row.facilityCode },
+      { label: "Linked records", value: formatCount(timeline.length) },
+    ],
+    recommendedAction: recommendedAction(row),
+    timelineSummary: `${formatCount(timeline.length)} linked evidence records for this clinic.`,
+    trace: buildPacketTrace(row),
+    verificationNeed: verificationNeed(row),
+  };
+}
+
+export function buildDistrictClinicEvidenceViewModel({
+  filters,
+  selectedEvidenceId,
+  state,
+}: BuildDistrictClinicEvidenceViewModelInput): DistrictClinicEvidenceViewModel {
+  const clinics = getClinicRows(state);
+  const rows = [
+    ...getRecentReportStream(state).map((report) =>
+      reportToEvidenceRow(report),
+    ),
+    ...state.auditEvents.map((audit) =>
+      auditToEvidenceRow(audit, getClinicById(clinics, audit.clinicId)),
+    ),
+    ...getActiveAlerts(state).map((alert) =>
+      alertToEvidenceRow(alert, getClinicById(clinics, alert.clinicId)),
+    ),
+  ].sort(sortEvidenceRows);
+  const filteredRows = sortReviewRows(
+    rows.filter((row) => rowMatchesFilters(row, filters)),
+  );
+  const selectedRow =
+    filteredRows.find((row) => row.evidenceId === selectedEvidenceId) ??
+    selectDefaultEvidenceRow(filteredRows);
+  const timeline = selectedRow
+    ? rows.filter((row) => row.clinicId === selectedRow.clinicId).sort(sortEvidenceRows)
+    : [];
+  const sources = Array.from(new Set(rows.map((row) => row.source))).sort();
+
+  return {
+    header: buildHeader(rows),
+    metrics: buildMetrics(rows),
+    queue: buildQueue(rows, filters.queue),
+    rows: filteredRows,
+    selectedPacket: selectedRow ? buildPacket(selectedRow, timeline, filteredRows) : null,
+    timeline,
+    filterOptions: {
+      clinics: clinics
+        .map((clinic) => ({ label: clinic.name, value: clinic.id }))
+        .sort((left, right) => left.label.localeCompare(right.label)),
+      sources,
+    },
+    emptyState: {
+      title: "No evidence matches these filters",
+      description:
+        "Clear filters or broaden the clinic, evidence type, or source to return to the full district evidence ledger.",
+    },
+  };
+}

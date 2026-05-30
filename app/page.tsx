@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { DemoBookingCTA } from "@/components/landing/demo-booking-cta";
+import { WalkthroughBookingCTA } from "@/components/landing/walkthrough-booking-cta";
 import { Footer } from "@/components/landing/footer";
 import { Nav } from "@/components/landing/nav";
 import { LandingHeroBooking } from "@/components/landing/landing-hero-booking";
@@ -10,7 +10,7 @@ import { ProductFeatureCards } from "@/components/landing/product-feature-cards"
 import { StakeholderProof } from "@/components/landing/stakeholder-proof";
 import { TrustInfrastructure } from "@/components/landing/trust-infrastructure";
 import { WorkflowTimeline } from "@/components/landing/workflow-timeline";
-import { DemoStoreProvider } from "@/lib/demo/demo-store";
+import { WorkspaceStoreProvider } from "@/lib/workspace/workspace-store";
 
 export const metadata: Metadata = {
   title: "Clinic Pulse | Clinic operations platform",
@@ -23,17 +23,17 @@ export default function Home() {
     <div className="bg-white text-neutral-950 dark:bg-background dark:text-foreground">
       <Nav />
       <main>
-        <DemoStoreProvider>
+        <WorkspaceStoreProvider>
           <Suspense fallback={null}>
             <LandingHeroBooking />
           </Suspense>
-        </DemoStoreProvider>
+        </WorkspaceStoreProvider>
         <StakeholderProof />
         <OperatingGap />
         <WorkflowTimeline />
         <ProductFeatureCards />
         <TrustInfrastructure />
-        <DemoBookingCTA />
+        <WalkthroughBookingCTA />
       </main>
       <Footer />
     </div>

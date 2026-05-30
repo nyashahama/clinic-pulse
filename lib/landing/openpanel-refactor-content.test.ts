@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  demoCta,
+  walkthroughCta,
   featureCards,
-  incidentDemoCta,
+  incidentWalkthroughCta,
   incidentFlowSteps,
   landingHero,
   liveIncidentHero,
@@ -81,7 +81,7 @@ describe("landing page 2026 content", () => {
 
   it("does not invent customer logos or testimonials", () => {
     const serialized = JSON.stringify({
-      incidentDemoCta,
+      incidentWalkthroughCta,
       stakeholderImpactItems,
       trustEvidencePanels,
     }).toLowerCase();
@@ -92,15 +92,15 @@ describe("landing page 2026 content", () => {
   });
 
   it("routes public operations workspace access through sign in", () => {
-    expect(incidentDemoCta.secondaryCta).toEqual({
+    expect(incidentWalkthroughCta.secondaryCta).toEqual({
       label: "Sign in to operations workspace",
       href: "/login",
     });
   });
 
   it("keeps the incident walkthrough CTA anchored to the Mabopane scenario", () => {
-    expect(incidentDemoCta.title).toBe("Walk through the Mabopane Station incident.");
-    expect(incidentDemoCta.incident).toEqual({
+    expect(incidentWalkthroughCta.title).toBe("Walk through the Mabopane Station incident.");
+    expect(incidentWalkthroughCta.incident).toEqual({
       sourceClinic: "Mabopane Station Clinic",
       reroute: "Akasia Hills Clinic",
       auditRecord: "AUD-OPS-MAB-001",
@@ -109,17 +109,17 @@ describe("landing page 2026 content", () => {
 
   it("keeps public landing content away from staged product wording", () => {
     const serialized = JSON.stringify({
-      incidentDemoCta,
+      incidentWalkthroughCta,
       landingHero,
       liveIncidentHero,
-      demoCta,
+      walkthroughCta,
       productSurfacePreviewRows,
       trustEvidencePanels,
       trustObjects,
     });
 
     expect(serialized).not.toMatch(
-      /demo workspace|demo environment|demo clinics|Tshwane North demo|Demo data is seeded|Pilot walkthrough/i,
+      /workspace workspace|demo environment|demo clinics|Tshwane North pilot|seeded operating data is seeded|Pilot walkthrough/i,
     );
   });
 
@@ -140,6 +140,6 @@ describe("landing page 2026 content", () => {
     expect(productSurfacePreviewRows["patient-reroute"].length).toBeGreaterThan(0);
     expect(productSurfacePreviewRows["audit-ledger"].length).toBeGreaterThan(0);
     expect(trustObjects.length).toBeGreaterThan(0);
-    expect(demoCta.cta.label).toBe("Book walkthrough");
+    expect(walkthroughCta.cta.label).toBe("Book walkthrough");
   });
 });
