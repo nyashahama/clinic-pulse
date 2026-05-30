@@ -57,7 +57,7 @@ test("district and admin surfaces expose data trust labels", async ({ page }) =>
   await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
 
   await page.goto("/admin/data-ingestion");
-  await expect(page.getByText(/sync, ingestion, stale reconciliation/i).first()).toBeVisible();
+  await expect(page.getByText(/promotion route map/i).first()).toBeVisible();
   await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
 
   await page.goto("/admin/audit-evidence");

@@ -4,15 +4,12 @@ import {
   ArrowRightIcon,
   CheckCircle2Icon,
   PlugZapIcon,
-  RadioTowerIcon,
   ShieldCheckIcon,
   SlidersHorizontalIcon,
 } from "lucide-react";
 
-import { buttonVariants } from "@/components/ui/button";
+import { EstateOperationsBriefing } from "@/components/product/estate-operations-briefing";
 import type {
-  TenantHealthAction,
-  TenantHealthMetric,
   TenantHealthSignal,
   TenantHealthTone,
   TenantHealthViewModel,
@@ -40,30 +37,6 @@ const toneBadgeClassName: Record<TenantHealthTone, string> = {
   info: "border-sky-200 bg-sky-50 text-sky-950 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-100",
 };
 
-const tonePanelClassName: Record<TenantHealthTone, string> = {
-  clear:
-    "border-t-emerald-300 bg-bg-default lg:border-l-emerald-300 dark:border-t-emerald-900/70 dark:lg:border-l-emerald-900/70",
-  attention:
-    "border-t-amber-300 bg-bg-default lg:border-l-amber-300 dark:border-t-amber-900/70 dark:lg:border-l-amber-900/70",
-  blocked:
-    "border-t-destructive/45 bg-bg-default lg:border-l-destructive/45 dark:border-t-destructive/60 dark:lg:border-l-destructive/60",
-  info: "border-t-sky-300 bg-bg-default lg:border-l-sky-300 dark:border-t-sky-900/70 dark:lg:border-l-sky-900/70",
-};
-
-function HealthActionIcon({ icon }: { icon: TenantHealthAction["icon"] }) {
-  const iconClassName = "size-3.5";
-
-  if (icon === "shield") {
-    return <ShieldCheckIcon className={iconClassName} />;
-  }
-
-  if (icon === "plug") {
-    return <PlugZapIcon className={iconClassName} />;
-  }
-
-  return <RadioTowerIcon className={iconClassName} />;
-}
-
 function SignalIcon({ signal }: { signal: TenantHealthSignal }) {
   const iconClassName = "size-4";
 
@@ -80,52 +53,6 @@ function SignalIcon({ signal }: { signal: TenantHealthSignal }) {
   }
 
   return <ActivityIcon className={iconClassName} />;
-}
-
-function TenantHealthActionLink({ action }: { action: TenantHealthAction }) {
-  return (
-    <Link
-      className={cn(
-        buttonVariants({
-          size: "sm",
-          variant: action.priority === "primary" ? "default" : "outline",
-        }),
-        "justify-between gap-2",
-      )}
-      href={action.href}
-    >
-      <span className="inline-flex min-w-0 items-center gap-1.5">
-        <HealthActionIcon icon={action.icon} />
-        <span className="truncate">{action.label}</span>
-      </span>
-      <ArrowRightIcon className="size-3.5" />
-    </Link>
-  );
-}
-
-function HealthMetric({ metric }: { metric: TenantHealthMetric }) {
-  return (
-    <div className="min-w-0 border-b border-border-subtle p-4 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
-      <div className="flex min-w-0 items-center justify-between gap-3">
-        <p className="break-words text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-          {metric.label}
-        </p>
-        <span
-          className={cn(
-            "h-1.5 w-10 shrink-0 rounded-full",
-            toneRailClassName[metric.tone],
-          )}
-          aria-hidden="true"
-        />
-      </div>
-      <p className="mt-3 break-words font-mono text-2xl font-semibold leading-none text-foreground">
-        {metric.value}
-      </p>
-      <p className="mt-2 break-words text-xs leading-4 text-muted-foreground">
-        {metric.detail}
-      </p>
-    </div>
-  );
 }
 
 function statusLabelForTone(tone: TenantHealthTone) {
@@ -152,69 +79,32 @@ function ToneBadge({
 }
 
 export function TenantHealthBoard({ viewModel }: TenantHealthBoardProps) {
-  const estateStatus =
-    viewModel.header.score.tone === "clear" ? "Clear" : "Needs review";
-
   return (
     <div className="grid min-w-0 gap-4 pb-6" data-admin-module="tenant-health">
-      <section className="overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm">
-        <div className="grid min-w-0 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
-          <div className="min-w-0 p-4 sm:p-5">
-            <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-              {viewModel.header.eyebrow}
-            </p>
-            <h1 className="mt-1 break-words text-2xl font-semibold leading-tight text-foreground">
-              {viewModel.header.title}
-            </h1>
-            <p className="mt-2 max-w-4xl break-words text-sm leading-5 text-muted-foreground">
-              {viewModel.header.description}
-            </p>
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <ToneBadge tone="info">{viewModel.header.scope}</ToneBadge>
-              <ToneBadge tone={viewModel.header.score.tone}>
-                {viewModel.header.score.detail}
-              </ToneBadge>
-            </div>
-          </div>
-          <div
-            className={cn(
-              "grid min-w-0 content-between gap-4 border-t-4 border-border-subtle p-4 lg:border-l-4 lg:border-t-0 sm:p-5",
-              tonePanelClassName[viewModel.header.score.tone],
-            )}
-          >
-            <div className="min-w-0">
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                  {viewModel.header.score.label}
-                </p>
-                <ToneBadge tone={viewModel.header.score.tone}>{estateStatus}</ToneBadge>
-              </div>
-              <p className="mt-2 font-mono text-4xl font-semibold leading-none text-foreground">
-                {viewModel.header.score.value}
-              </p>
-              <p className="mt-3 max-w-sm break-words text-xs leading-4 text-muted-foreground">
-                {viewModel.header.score.detail}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {viewModel.actions.map((action) => (
-                <TenantHealthActionLink action={action} key={action.label} />
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section
-        aria-label="Tenant health metrics"
-        className="overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm"
-      >
-        <div className="grid sm:grid-cols-2 xl:grid-cols-4">
-          {viewModel.metrics.map((metric) => (
-            <HealthMetric key={metric.label} metric={metric} />
-          ))}
-        </div>
-      </section>
+      <EstateOperationsBriefing
+        eyebrow={viewModel.header.eyebrow}
+        title="Tenant health cockpit"
+        description={viewModel.header.description}
+        statusLabel={`${viewModel.header.score.value} estate readiness`}
+        statusDetail={`${viewModel.header.score.detail}. Scope: ${viewModel.header.scope}.`}
+        statusTone={viewModel.header.score.tone}
+        railLabel="Estate scorecard rail"
+        routingLabel="Health routing"
+        metrics={viewModel.metrics}
+        routes={viewModel.signalLedger.items.map((item) => ({
+          id: item.id,
+          label: item.label,
+          value: item.value,
+          detail: item.detail,
+          href: item.href,
+          tone: item.tone,
+        }))}
+        actions={viewModel.actions.map((action) => ({
+          label: action.label,
+          href: action.href,
+          variant: action.priority === "primary" ? "primary" : "secondary",
+        }))}
+      />
 
       <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] xl:items-start">
         <section className="min-w-0 rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm">
