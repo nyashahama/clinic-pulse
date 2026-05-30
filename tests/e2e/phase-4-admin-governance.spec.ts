@@ -352,9 +352,13 @@ test("admin overview preview controls open detail pages", async ({ page }) => {
     page.waitForURL(/\/admin\/export-schema\?from=admin$/),
     page.getByRole("link", { name: "Open export schema" }).click(),
   ]);
-  await expect(
-    page.getByRole("heading", { name: "Export schema command centre" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Export contract cockpit" })).toBeVisible();
+  await expect(page.getByLabel("Handoff packet")).toBeVisible();
+  await expect(page.getByLabel("Field contract")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open API contract" })).toHaveAttribute(
+    "href",
+    "/admin/api-contract?from=admin-export-schema",
+  );
   await Promise.all([
     page.waitForURL(/\/admin$/),
     page.getByRole("link", { name: "Back to admin console" }).click(),
@@ -364,7 +368,10 @@ test("admin overview preview controls open detail pages", async ({ page }) => {
     page.waitForURL(/\/admin\/api-contract\?from=admin$/),
     page.getByRole("link", { name: "Open API contract" }).click(),
   ]);
-  await expect(page.getByRole("heading", { name: "API contract detail" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "API contract cockpit" })).toBeVisible();
+  await expect(page.getByLabel("Endpoint rail")).toBeVisible();
+  await expect(page.getByText("Request contract").first()).toBeVisible();
+  await expect(page.getByText("Response contract").first()).toBeVisible();
 });
 
 test("stakeholder activity rows open lead detail pages", async ({ page }) => {
