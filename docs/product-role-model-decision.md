@@ -18,7 +18,7 @@ Future personas remain part of the product model, but they are not separate dash
 
 ## Reason
 
-ClinicPulse is currently moving from a polished showcase into a product-backed operations system. The clearest next proof is the operational handoff loop:
+ClinicPulse is currently moving from a polished demo into a product-backed operations system. The clearest next proof is the operational handoff loop:
 
 ```text
 Reporter submits a clinic signal
@@ -38,11 +38,11 @@ The product should first make one real loop credible. More roles should be promo
 | Reporter / field worker | Authenticated role | Owns field report submission and offline/sync workflow. |
 | District manager | Authenticated role | Owns district triage, severity review, clinic network visibility, and intervention handoff. |
 | Organisation admin | Authenticated role | Owns governance, users, reporting coverage, partner readiness, exports, and audit evidence. |
-| System admin | Authenticated role | Owns platform health, tenant posture, data ingestion, security, and scenario/platform controls. |
+| System admin | Authenticated role | Owns platform health, tenant posture, data ingestion, security, and demo/platform controls. |
 | Clinic coordinator | Future role or workflow participant | The current product does not yet have a clinic-level confirmation workflow that requires a separate authenticated home. |
 | Partner / API user | Admin sub-surface for now | Partner readiness, exports, API keys, and evidence bundles belong under organisation admin until there is a real external partner portal. |
 | Public user / patient | Public route, not auth role | Public availability and rerouting belong in `/finder` and public clinic pages, not authenticated workspace navigation. |
-| Founder/admin | Split across existing admin roles and scenario controls | Founder-scenario controls are useful for the showcase route, but they should not become a production auth role. |
+| Founder/admin | Split across existing admin roles and demo controls | Founder-demo controls are useful for the showcase route, but they should not become a production auth role. |
 
 ## Role Promotion Criteria
 
@@ -66,13 +66,13 @@ Field report submission
 -> admin review
 ```
 
-The workspace route remains available as a showcase/sandbox, but the product routes stay focused:
+The demo route remains available as a showcase/sandbox, but the product routes stay focused:
 
 - `/field`: reporter workspace
 - `/district`: district manager workspace
 - `/admin`: organisation admin and system admin workspace
 - `/finder`: public availability and rerouting surface
-- `/district`: controlled showcase route
+- `/demo`: controlled showcase route
 
 ## Deferred Work
 
@@ -82,4 +82,4 @@ The following should be considered after the Phase 3 vertical slice is working:
 - Partner/API portal or external partner workspace.
 - Public user experience beyond finder and clinic availability pages.
 - More granular admin role management.
-- Route renaming or route-group cleanup beyond the current product/showcase split.
+- Route renaming or route-group cleanup beyond the current product/demo split.
