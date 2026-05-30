@@ -11,15 +11,56 @@ import {
 } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
-import type {
-  PartnerLaunchCockpitModel,
-  PartnerReadinessMetric,
-} from "@/lib/demo/partner-readiness";
 import { cn } from "@/lib/utils";
 
 type PartnerOperationsTone =
-  | PartnerReadinessMetric["tone"]
+  | "clear"
+  | "watch"
+  | "attention"
+  | "info"
   | "blocked";
+
+type PartnerOperationsGateId =
+  | "access"
+  | "contract"
+  | "delivery"
+  | "operations";
+
+type PartnerOperationsGate = {
+  id: PartnerOperationsGateId;
+  label: string;
+  status: string;
+  summary: string;
+  detail: string;
+  tone: PartnerOperationsTone;
+};
+
+type PartnerOperationsHandoffItem = {
+  label: string;
+  value: string;
+  detail: string;
+  tone: PartnerOperationsTone;
+};
+
+type PartnerOperationsDeliveryRow = {
+  id: string;
+  eventType: string;
+  state: string;
+  attempts: string;
+  target: string;
+};
+
+export type PartnerOperationsCockpit = {
+  gates: PartnerOperationsGate[];
+  handoffPacket: {
+    title: string;
+    status: string;
+    summary: string;
+    tone: PartnerOperationsTone;
+    items: PartnerOperationsHandoffItem[];
+  };
+  deliveryRows: PartnerOperationsDeliveryRow[];
+};
 
 export type PartnerOperationsMetric = {
   id?: string;
@@ -42,12 +83,12 @@ type PartnerOperationsBriefingProps = {
   statusLabel: string;
   statusDetail: string;
   latestActivityLabel: string;
-  cockpit: PartnerLaunchCockpitModel;
+  cockpit: PartnerOperationsCockpit;
   metrics: PartnerOperationsMetric[];
   actions: PartnerOperationsAction[];
 };
 
-const gateIcons: Record<PartnerLaunchCockpitModel["gates"][number]["id"], typeof KeyRoundIcon> = {
+const gateIcons: Record<PartnerOperationsGateId, typeof KeyRoundIcon> = {
   access: KeyRoundIcon,
   contract: RouteIcon,
   delivery: RadioTowerIcon,
