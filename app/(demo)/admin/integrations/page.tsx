@@ -12,7 +12,8 @@ import {
   getAdminToneClassName,
 } from "@/components/product/admin-module";
 import { IntegrationOperationsWorkspace } from "@/components/product/integration-operations-workspace";
-import { buttonVariants } from "@/components/ui/button";
+import { PartnerOperationsBriefing } from "@/components/product/partner-operations-briefing";
+import { buildPartnerLaunchCockpitModel } from "@/lib/demo/partner-readiness";
 import {
   buildIntegrationOperationsModel,
   type IntegrationActionCard,
@@ -71,79 +72,43 @@ export default async function Page() {
 
   const partnerReadiness = await loadAdminPartnerReadiness();
   const model = buildIntegrationOperationsModel(partnerReadiness);
+  const cockpit = buildPartnerLaunchCockpitModel(partnerReadiness);
   const latestActivityLabel = getLatestIntegrationActivityLabel(partnerReadiness);
 
   return (
     <div className="space-y-4" data-admin-module="integrations">
-      <section className="overflow-hidden rounded-lg border border-neutral-900 bg-neutral-950 text-white shadow-sm">
-        <div className="grid gap-8 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-normal text-neutral-400">
-              Partner operations
-            </p>
-            <h1 className="mt-2 break-words text-2xl font-semibold leading-tight sm:text-3xl">
-              Integration operations command centre
-            </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-neutral-300">
-              Monitor partner credentials, endpoint coverage, webhook delivery, export proof, and integration checks from one operations console.
-            </p>
-            <div className="mt-5 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-normal text-neutral-400">
-                  Active blocker
-                </p>
-                <p className="mt-1 break-words text-xl font-semibold">
-                  {model.consoleState.summary}
-                </p>
-              </div>
-              <p className="text-xs text-neutral-400">
-                Latest activity: {latestActivityLabel}
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2 lg:justify-end">
-            <a className={buttonVariants({ size: "sm" })} href="#integration-evidence-workspace">
-              Review evidence
-            </a>
-            <Link
-              className={cn(
-                buttonVariants({ size: "sm", variant: "outline" }),
-                "border-white/25 bg-white/10 text-white hover:bg-white/15 hover:text-white",
-              )}
-              href="/admin/partner-readiness"
-            >
-              Open partner readiness
-            </Link>
-          </div>
-        </div>
-        <div className="grid border-t border-white/10 bg-white/[0.03] sm:grid-cols-2 xl:grid-cols-4">
-          {model.summaryMetrics.map((metric) => (
-            <div
-              key={metric.id}
-              className="min-w-0 border-t border-white/10 px-5 py-4 first:border-t-0 sm:border-l sm:border-t-0 sm:first:border-l-0"
-            >
-              <p className="text-xs font-semibold uppercase tracking-normal text-neutral-400">
-                {metric.label}
-              </p>
-              <p className="mt-1 break-words text-2xl font-semibold">{metric.value}</p>
-              <p className="mt-1 break-words text-xs leading-5 text-neutral-400">
-                {metric.detail}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
+      <PartnerOperationsBriefing
+        eyebrow="Partner operations"
+        title="Integration Delivery Console"
+        description="Operate the partner credential, endpoint coverage, webhook receiver, export proof, and smoke-test evidence from one delivery surface."
+        statusLabel={model.consoleState.summary}
+        statusDetail={cockpit.handoffPacket.summary}
+        latestActivityLabel={latestActivityLabel}
+        cockpit={cockpit}
+        metrics={model.summaryMetrics}
+        actions={[
+          {
+            label: "Review integration evidence",
+            href: "#integration-evidence-workspace",
+          },
+          {
+            label: "Open launch cockpit",
+            href: "/admin/partner-readiness",
+            variant: "secondary",
+          },
+        ]}
+      />
 
       <section
-        aria-label="Integration command center"
+        aria-label="Delivery runbook"
         className="grid gap-3"
       >
         <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-              Next actions
+              Launch handoff
             </p>
-            <h2 className="text-xl font-semibold text-foreground">Integration evidence queue</h2>
+            <h2 className="text-xl font-semibold text-foreground">Delivery runbook</h2>
           </div>
           <p className="max-w-2xl text-sm text-muted-foreground">
             Track owner readiness, receiver health, and export proof before opening source evidence.
@@ -166,13 +131,13 @@ export default async function Page() {
       </section>
 
       <section
-        aria-label="Developer handoff"
+        aria-label="Endpoint smoke matrix"
         className="overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm"
       >
         <div className="flex min-w-0 flex-col gap-2 border-b border-border-subtle px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
-              Developer handoff
+              Endpoint smoke matrix
             </p>
             <p className="mt-1 max-w-3xl text-sm leading-5 text-muted-foreground">
               Endpoint coverage and smoke commands for partner engineers validating the integration surface.
@@ -230,7 +195,7 @@ export default async function Page() {
             Webhook delivery log
           </p>
           <p className="mt-1 max-w-3xl text-sm leading-5 text-muted-foreground">
-            Receiver tests and preview events stay linked to source records for delivery debugging.
+            Delivery runbook evidence stays linked to receiver tests and preview events for debugging.
           </p>
         </div>
 

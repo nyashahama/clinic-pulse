@@ -86,7 +86,7 @@ describe("admin partner readiness workflow", () => {
     const panelSource = readSource(partnerPanel);
 
     expect(panelSource).toContain("buildPartnerLaunchCockpitModel");
-    expect(panelSource).toContain("Partner Launch Cockpit");
+    expect(panelSource).toContain("Launch readiness workspace");
     expect(panelSource).toContain('aria-label="Partner launch workspace"');
     expect(panelSource).toContain("Readiness gates");
     expect(panelSource).toContain("Handoff packet");
