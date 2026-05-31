@@ -1,8 +1,4 @@
-import {
-  AdminFilterBar,
-  AdminModuleHeader,
-  type AdminTone,
-} from "@/components/product/admin-module";
+import type { AdminTone } from "@/components/product/admin-module";
 import {
   type DataIngestionBacklogItem,
   type DataIngestionDiagnostic,
@@ -10,6 +6,7 @@ import {
   type DataIngestionSummaryMetric,
   DataIngestionWorkspace,
 } from "@/components/product/data-ingestion-workspace";
+import { EstateOperationsBriefing } from "@/components/product/estate-operations-briefing";
 import {
   fetchOperationalClinics,
   fetchPendingReports,
@@ -30,7 +27,6 @@ import {
   formatDateTime,
   formatLabel,
   getReportingCoverageTone,
-  StatusBadge,
   toneForAttention,
 } from "../governance-formatters";
 
@@ -367,51 +363,105 @@ export default async function Page() {
       tone: toneForAttention(syncSummary.staleClinics + syncSummary.needsConfirmationClinics),
     },
   ];
+  const statusLabel = coverage.blockers.length
+    ? `${formatCount(coverage.readinessPercent)}% readiness needs ingestion review`
+    : "Ingestion evidence is ready for promotion";
 
   return (
     <div className="space-y-4" data-admin-module="data-ingestion">
-      <AdminModuleHeader
-        eyebrow="Platform operations"
-        title="Ingestion pressure"
-        description="Read-only review of sync freshness, pending field reports, offline queue, validation failures, and clinic confirmation pressure."
-      />
-      <AdminFilterBar>
-        <StatusBadge tone={coverage.tone}>Read only ingestion evidence</StatusBadge>
-        <span className="text-sm text-muted-foreground">
-          Sync, ingestion, stale reconciliation, source, freshness, and review state are visible here.
-          Retry and incident handoff controls are not exposed.
-        </span>
-      </AdminFilterBar>
-      <DataIngestionWorkspace
+      <EstateOperationsBriefing
+        eyebrow="Platform ingestion"
+        title="Ingestion command cockpit"
+        description="Review sync freshness, pending field reports, offline queue pressure, validation failures, and clinic confirmation risk before status promotion."
+        statusLabel={statusLabel}
+        statusDetail={
+          coverage.blockers.length
+            ? coverage.blockers.join("; ")
+            : "Every active ingestion lane is clear enough for operator review."
+        }
+        statusTone={coverage.tone}
+        railLabel="Intake queue rail"
+        routingLabel="Promotion route map"
         metrics={ingestionMetrics}
-        items={ingestionItems}
-        diagnostics={ingestionSignals.map(
-          (signal): DataIngestionDiagnostic => ({
-            id: signal.id,
-            label: signal.signal,
-            value: formatCount(signal.value),
-            evidence: signal.evidence,
-            tone: signal.tone,
-            windowLabel: formatDateTime(syncSummary.windowStartedAt),
-          }),
-        )}
-        backlogItems={clinicsNeedingReview.map((row): DataIngestionBacklogItem => {
-          const trust = dataTrustForClinic(row);
-
-          return {
-            id: row.clinic.id,
-            clinicName: row.clinic.name,
-            district: row.clinic.district,
-            freshnessLabel: formatLabel(row.currentStatus?.freshness),
-            freshnessTone: clinicNeedsIngestionReview(row) ? "attention" : "clear",
-            trustLabel: trust.label,
-            trustTone: trust.tone,
-            trustDescription: trust.description,
-            lastUpdateLabel: formatDateTime(row.currentStatus?.updatedAt),
-            clinicHref: buildClinicDetailHref(row.clinic.id),
-          };
-        })}
+        routes={[
+          {
+            id: "ledger",
+            label: "Open ingestion ledger",
+            value: `${formatCount(ingestionItems.length)} rows`,
+            detail: "Inspect receipt trails, payload checks, source state, and clinic context.",
+            href: "#data-ingestion-workspace",
+            tone: coverage.tone,
+          },
+          {
+            id: "coverage",
+            label: "Review reporting coverage",
+            value: `${formatCount(clinicsNeedingReview.length)} clinics`,
+            detail: "Compare freshness, review state, and clinic-level reporting coverage.",
+            href: "/admin/reporting-coverage",
+            tone: toneForAttention(clinicsNeedingReview.length),
+          },
+          {
+            id: "audit",
+            label: "Trace audit evidence",
+            value: `${formatCount(pendingReports.length)} reports`,
+            detail: "Follow field report decisions and source evidence into the audit trail.",
+            href: "/admin/audit-evidence",
+            tone: toneForAttention(pendingReports.length),
+          },
+          {
+            id: "tenant",
+            label: "Open tenant health",
+            value: `${formatCount(syncSummary.validationFailures)} failures`,
+            detail: "Return to the estate-wide health picture for access and partner context.",
+            href: "/admin/tenant-health",
+            tone: toneForAttention(syncSummary.validationFailures),
+          },
+        ]}
+        actions={[
+          {
+            label: "Review ingestion ledger",
+            href: "#data-ingestion-workspace",
+          },
+          {
+            label: "Open tenant health",
+            href: "/admin/tenant-health",
+            variant: "secondary",
+          },
+        ]}
       />
+
+      <section id="data-ingestion-workspace" className="scroll-mt-24">
+        <DataIngestionWorkspace
+          metrics={ingestionMetrics}
+          items={ingestionItems}
+          diagnostics={ingestionSignals.map(
+            (signal): DataIngestionDiagnostic => ({
+              id: signal.id,
+              label: signal.signal,
+              value: formatCount(signal.value),
+              evidence: signal.evidence,
+              tone: signal.tone,
+              windowLabel: formatDateTime(syncSummary.windowStartedAt),
+            }),
+          )}
+          backlogItems={clinicsNeedingReview.map((row): DataIngestionBacklogItem => {
+            const trust = dataTrustForClinic(row);
+
+            return {
+              id: row.clinic.id,
+              clinicName: row.clinic.name,
+              district: row.clinic.district,
+              freshnessLabel: formatLabel(row.currentStatus?.freshness),
+              freshnessTone: clinicNeedsIngestionReview(row) ? "attention" : "clear",
+              trustLabel: trust.label,
+              trustTone: trust.tone,
+              trustDescription: trust.description,
+              lastUpdateLabel: formatDateTime(row.currentStatus?.updatedAt),
+              clinicHref: buildClinicDetailHref(row.clinic.id),
+            };
+          })}
+        />
+      </section>
     </div>
   );
 }

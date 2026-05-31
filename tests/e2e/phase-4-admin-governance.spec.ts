@@ -100,7 +100,7 @@ test("tenant health keeps implementation research out of user-facing UI", async 
   await signIn(page, "system-admin@clinicpulse.local");
   await page.goto("/admin/tenant-health");
 
-  await expect(page.getByRole("heading", { name: "Tenant health" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tenant health cockpit" })).toBeVisible();
   await expectResearchRailHidden(page);
 });
 
@@ -116,7 +116,7 @@ test("data ingestion keeps implementation research out of user-facing UI", async
   await signIn(page, "system-admin@clinicpulse.local");
   await page.goto("/admin/data-ingestion");
 
-  await expect(page.getByRole("heading", { name: "Ingestion pressure" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ingestion command cockpit" })).toBeVisible();
   await expectResearchRailHidden(page);
 });
 
@@ -514,7 +514,7 @@ test("system admin sees productized platform governance modules", async ({ page 
       path: "/admin/tenant-health",
       marker: "tenant-health",
       content: [
-        "Tenant health",
+        "Tenant health cockpit",
         "District health stack",
         "Health signal ledger",
       ],
@@ -523,7 +523,7 @@ test("system admin sees productized platform governance modules", async ({ page 
       path: "/admin/data-ingestion",
       marker: "data-ingestion",
       content: [
-        "Ingestion pressure",
+        "Ingestion command cockpit",
         "Offline queue",
         "Pending report evidence",
       ],

@@ -101,7 +101,7 @@ describe("buildTenantHealthViewModel", () => {
       users,
     });
 
-    expect(viewModel.header.title).toBe("Tenant health");
+    expect(viewModel.header.title).toBe("Tenant health cockpit");
     expect(viewModel.header.score.label).toBe("Estate score");
     expect(viewModel.metrics.map((metric) => metric.label)).toEqual([
       "Tenant readiness",

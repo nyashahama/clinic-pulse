@@ -284,7 +284,7 @@ export function buildTenantHealthViewModel({
   return {
     header: {
       eyebrow: "Platform operations",
-      title: "Tenant health",
+      title: "Tenant health cockpit",
       description:
         "A tenant-wide health board for coverage, access, ingestion, and partner readiness across the active organisation.",
       score: {
