@@ -282,7 +282,8 @@ test("entity-backed admin evidence rows open detail pages", async ({ page }) => 
     page.waitForURL(/\/admin\/users-roles\/\d+\?from=admin-users-roles$/),
     userRow.getByRole("link", { name: "Organisation Admin" }).click(),
   ]);
-  await expect(page.getByRole("heading", { name: "User detail" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Identity access evidence brief" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Access packet" })).toBeVisible();
   await Promise.all([
     page.waitForURL(/\/admin\/users-roles$/),
     page.getByRole("link", { name: "Back to users and roles" }).click(),
@@ -310,7 +311,8 @@ test("entity-backed admin evidence rows open detail pages", async ({ page }) => 
     page.waitForURL(/\/admin\/audit-evidence\/events\/\d+\?from=admin-audit-evidence$/),
     sourceLink.click(),
   ]);
-  await expect(page.getByRole("heading", { name: "Audit event detail" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Audit event evidence brief" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Audit packet" })).toBeVisible();
   await Promise.all([
     page.waitForURL(/\/admin\/audit-evidence$/),
     page.getByRole("link", { name: "Back to audit evidence" }).click(),
@@ -516,7 +518,8 @@ test("security admin selects evidence rows before opening source detail", async 
     page.waitForURL(/\/admin\/users-roles\/\d+\?from=admin-security$/),
     sourceLink.click(),
   ]);
-  await expect(page.getByRole("heading", { name: "User detail" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Identity access evidence brief" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Access packet" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Back to security posture" })).toBeVisible();
 });
 
