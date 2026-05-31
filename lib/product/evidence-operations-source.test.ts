@@ -38,13 +38,16 @@ function readSource(filePath: string) {
 }
 
 describe("admin evidence operations surfaces", () => {
-  it("replaces the audit evidence command shell with an evidence cockpit", () => {
+  it("keeps audit evidence on the shared evidence-command briefing", () => {
     const source = readSource(auditEvidencePage);
 
-    expect(source).toContain("EvidenceOperationsBriefing");
+    expect(source).toContain("EvidenceCommandHeader");
+    expect(source).toContain("EvidenceCommandMetricStrip");
+    expect(source).toContain("EvidenceCaseBriefPanel");
     expect(source).toContain("Audit evidence cockpit");
-    expect(source).toContain("Evidence packet rail");
-    expect(source).toContain("Review routing");
+    expect(source).toContain("Evidence review lane");
+    expect(source).toContain("Operational decision");
+    expect(source).not.toContain("EvidenceOperationsBriefing");
     expect(source).not.toContain("Audit evidence command centre");
     expect(source).not.toContain("Audit evidence queue");
   });
