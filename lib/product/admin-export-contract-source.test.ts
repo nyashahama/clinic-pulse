@@ -5,12 +5,24 @@ import { describe, expect, it } from "vitest";
 describe("admin export and API contract pages", () => {
   it("presents the export schema as a handoff cockpit instead of a copied command shell", () => {
     const source = readFileSync("app/(demo)/admin/export-schema/page.tsx", "utf8");
+    const model = readFileSync("lib/product/export-schema.ts", "utf8");
+    const workspace = readFileSync(
+      "components/product/export-schema-workspace.tsx",
+      "utf8",
+    );
 
     expect(source).toContain("Export contract cockpit");
     expect(source).toContain("Handoff packet");
-    expect(source).toContain("Source evidence");
-    expect(source).toContain("Field contract");
-    expect(source).toContain("Value guardrails");
+    expect(source).toContain("buildExportSchemaModel");
+    expect(source).toContain("ExportSchemaWorkspace");
+    expect(workspace).toContain('aria-label="Export schema workspace"');
+    expect(workspace).toContain('aria-label="Schema section list"');
+    expect(workspace).toContain('aria-label="Selected schema section"');
+    expect(workspace).toContain('aria-label="Field contract"');
+    expect(workspace).toContain("onSelectSection(section.id)");
+    expect(model).toContain("OpenMetadata data contract schema table");
+    expect(model).toContain("OpenMetadata contract quality card");
+    expect(model).toContain("buildAdminExportRunDetailHref");
     expect(source).toContain("/admin/api-contract?from=admin-export-schema");
     expect(source).not.toContain("Export schema command centre");
   });

@@ -695,6 +695,38 @@ test("system admin inspects API contract endpoints before opening source evidenc
   );
 });
 
+test("system admin inspects export schema sections before opening source proof", async ({
+  page,
+}) => {
+  await signIn(page, "system-admin@clinicpulse.local");
+  await page.goto("/admin/export-schema");
+
+  await expect(page.getByRole("heading", { name: "Export contract cockpit" })).toBeVisible();
+  await expect(page.getByLabel("Export schema workspace")).toBeVisible();
+  await expect(page.getByLabel("Schema section list")).toBeVisible();
+  await expect(page.getByLabel("Selected schema section")).toBeVisible();
+  await expectResearchRailHidden(page);
+
+  await page
+    .getByLabel("Schema section list")
+    .getByRole("button", {
+      name: /Select Clinic operating state schema section/i,
+    })
+    .click();
+
+  await expect(page).toHaveURL(/\/admin\/export-schema$/);
+  const selectedSection = page.getByLabel("Selected schema section");
+  await expect(selectedSection).toContainText("Clinic operating state");
+  await expect(selectedSection).toContainText("status");
+  await expect(selectedSection).toContainText("freshness");
+  await expect(selectedSection).toContainText(
+    "Status and freshness enums match the reporting coverage review surface",
+  );
+  await expect(
+    selectedSection.getByRole("link", { name: /Open source proof/i }),
+  ).toHaveAttribute("href", "/admin/reporting-coverage");
+});
+
 test("stakeholder activity rows open lead detail pages", async ({ page }) => {
   await signIn(page, "org-admin@clinicpulse.local");
   await page.goto("/admin");
