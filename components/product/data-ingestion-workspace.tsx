@@ -83,10 +83,14 @@ const toneRailClassName: Record<AdminTone, string> = {
 };
 
 const tonePanelClassName: Record<AdminTone, string> = {
-  clear: "border-emerald-200 bg-emerald-50/70 text-emerald-950",
-  attention: "border-amber-200 bg-amber-50/70 text-amber-950",
-  blocked: "border-destructive/25 bg-destructive/10 text-destructive",
-  info: "border-sky-200 bg-sky-50/70 text-sky-950",
+  clear:
+    "border-emerald-200 bg-emerald-50/70 text-emerald-950 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-100",
+  attention:
+    "border-amber-200 bg-amber-50/70 text-amber-950 dark:border-amber-400/35 dark:bg-amber-400/10 dark:text-amber-100",
+  blocked:
+    "border-destructive/25 bg-destructive/10 text-destructive dark:border-red-400/35 dark:bg-red-500/10 dark:text-red-100",
+  info:
+    "border-sky-200 bg-sky-50/70 text-sky-950 dark:border-sky-400/30 dark:bg-sky-400/10 dark:text-sky-100",
 };
 
 function metricIcon(metricId: string) {
@@ -207,7 +211,8 @@ export function DataIngestionWorkspace({
                       aria-label={`Ingestion event for ${item.clinicId}`}
                       className={cn(
                         "grid gap-3 rounded-xl border border-border-subtle bg-bg-default p-3 transition md:grid-cols-[minmax(0,0.68fr)_minmax(0,1fr)_auto]",
-                        isSelected && "border-amber-300 bg-amber-50/55 shadow-sm",
+                        isSelected &&
+                          "border-amber-300 bg-amber-50/55 shadow-sm dark:border-amber-400/35 dark:bg-amber-400/10",
                       )}
                     >
                       <div className="min-w-0">
@@ -241,7 +246,7 @@ export function DataIngestionWorkspace({
                             className={cn(
                               "inline-flex w-fit items-center rounded-full px-3 py-1.5 text-xs font-semibold transition",
                               isSelected
-                                ? "bg-amber-600 text-white hover:bg-amber-700"
+                                ? "bg-amber-700 text-white hover:bg-amber-800 dark:bg-amber-400/15 dark:text-amber-100 dark:ring-1 dark:ring-amber-400/35 dark:hover:bg-amber-400/20"
                                 : "border border-border-subtle bg-bg-default text-foreground hover:bg-bg-muted",
                             )}
                             onClick={() => setSelectedId(item.id)}
@@ -362,7 +367,7 @@ export function DataIngestionWorkspace({
                 <Link
                   href={selectedItem.clinicHref}
                   aria-label={`Open clinic context for ${selectedItem.clinicId}`}
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background transition hover:opacity-90"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
                 >
                   Open clinic context
                   <ArrowRightIcon className="size-4" aria-hidden="true" />
@@ -407,7 +412,7 @@ export function DataIngestionWorkspace({
                     {diagnostic.value}
                   </span>
                 </div>
-                <p className="mt-3 rounded-lg border border-current/15 bg-white/45 px-2 py-1 text-xs font-medium">
+                <p className="mt-3 rounded-lg border border-current/15 bg-white/45 px-2 py-1 text-xs font-medium dark:bg-black/20">
                   Window started {diagnostic.windowLabel}
                 </p>
               </article>

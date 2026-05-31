@@ -22,27 +22,35 @@ const feedbackStyles: Record<
 > = {
   success: {
     icon: CheckCircle2,
-    receipt: "border-emerald-200 bg-emerald-50 text-emerald-950",
-    toast: "border-emerald-200 bg-white text-emerald-950 shadow-emerald-950/10",
-    iconClassName: "text-emerald-600",
+    receipt:
+      "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-100",
+    toast:
+      "border-emerald-200 bg-white text-emerald-950 shadow-emerald-950/10 dark:border-emerald-400/35 dark:bg-card dark:text-emerald-100 dark:shadow-black/35",
+    iconClassName: "text-emerald-600 dark:text-emerald-300",
   },
   warning: {
     icon: AlertCircle,
-    receipt: "border-amber-200 bg-amber-50 text-amber-950",
-    toast: "border-amber-200 bg-white text-amber-950 shadow-amber-950/10",
-    iconClassName: "text-amber-600",
+    receipt:
+      "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-400/35 dark:bg-amber-400/10 dark:text-amber-100",
+    toast:
+      "border-amber-200 bg-white text-amber-950 shadow-amber-950/10 dark:border-amber-400/35 dark:bg-card dark:text-amber-100 dark:shadow-black/35",
+    iconClassName: "text-amber-600 dark:text-amber-300",
   },
   error: {
     icon: AlertCircle,
-    receipt: "border-red-200 bg-red-50 text-red-950",
-    toast: "border-red-200 bg-white text-red-950 shadow-red-950/10",
-    iconClassName: "text-red-600",
+    receipt:
+      "border-red-200 bg-red-50 text-red-950 dark:border-red-400/35 dark:bg-red-500/10 dark:text-red-100",
+    toast:
+      "border-red-200 bg-white text-red-950 shadow-red-950/10 dark:border-red-400/35 dark:bg-card dark:text-red-100 dark:shadow-black/35",
+    iconClassName: "text-red-600 dark:text-red-300",
   },
   info: {
     icon: Info,
-    receipt: "border-sky-200 bg-sky-50 text-sky-950",
-    toast: "border-sky-200 bg-white text-sky-950 shadow-sky-950/10",
-    iconClassName: "text-sky-600",
+    receipt:
+      "border-sky-200 bg-sky-50 text-sky-950 dark:border-sky-400/30 dark:bg-sky-400/10 dark:text-sky-100",
+    toast:
+      "border-sky-200 bg-white text-sky-950 shadow-sky-950/10 dark:border-sky-400/30 dark:bg-card dark:text-sky-100 dark:shadow-black/35",
+    iconClassName: "text-sky-600 dark:text-sky-300",
   },
 };
 

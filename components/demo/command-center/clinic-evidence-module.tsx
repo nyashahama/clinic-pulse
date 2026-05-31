@@ -80,7 +80,7 @@ const toneClassName: Record<DistrictClinicEvidenceTone, string> = {
   attention:
     "border-amber-200/80 bg-amber-50/50 text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/25 dark:text-amber-100",
   blocked:
-    "border-destructive/25 bg-destructive/5 text-destructive dark:border-destructive/40 dark:bg-destructive/15",
+    "border-destructive/25 bg-destructive/5 text-destructive dark:border-red-400/35 dark:bg-red-500/10 dark:text-red-100",
   info: "border-sky-200/80 bg-sky-50/50 text-sky-950 dark:border-sky-900/50 dark:bg-sky-950/25 dark:text-sky-100",
 };
 

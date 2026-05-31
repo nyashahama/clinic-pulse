@@ -16,11 +16,11 @@ export function ButtonLink({
     <Link
       href={href}
       className={cn(
-        "flex h-8 w-fit items-center whitespace-nowrap rounded-lg border px-4 text-sm font-medium transition-all",
+        "flex h-8 w-fit items-center whitespace-nowrap rounded-lg border px-4 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-primary/35",
         variant === "primary" &&
-          "border-neutral-900 bg-neutral-900 text-white hover:bg-neutral-800 hover:ring-4 hover:ring-neutral-200",
+          "border-neutral-900 bg-neutral-900 text-white hover:bg-neutral-800 hover:ring-4 hover:ring-neutral-200 dark:border-primary dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90 dark:hover:ring-primary/20",
         variant === "secondary" &&
-          "border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-50 hover:border-neutral-400",
+          "border-neutral-300 bg-white text-neutral-900 hover:border-neutral-400 hover:bg-neutral-50 dark:border-border dark:bg-card dark:text-foreground dark:hover:border-primary/50 dark:hover:bg-muted",
         className,
       )}
       {...rest}

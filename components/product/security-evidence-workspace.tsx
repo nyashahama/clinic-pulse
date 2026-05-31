@@ -252,10 +252,13 @@ function SecurityEvidenceSummary({ metrics }: { metrics: SecuritySummaryMetric[]
 }
 
 const metricToneClassName: Record<AdminTone, string> = {
-  clear: "border-emerald-200 bg-emerald-50/55",
-  attention: "border-amber-200 bg-amber-50/65",
-  blocked: "border-rose-200 bg-rose-50/65",
-  info: "border-sky-200 bg-sky-50/55",
+  clear:
+    "border-emerald-200 bg-emerald-50/55 dark:border-emerald-400/30 dark:bg-emerald-400/10",
+  attention:
+    "border-amber-200 bg-amber-50/65 dark:border-amber-400/35 dark:bg-amber-400/10",
+  blocked:
+    "border-rose-200 bg-rose-50/65 dark:border-red-400/35 dark:bg-red-500/10",
+  info: "border-sky-200 bg-sky-50/55 dark:border-sky-400/30 dark:bg-sky-400/10",
 };
 
 function SecurityEvidenceRows({
@@ -333,7 +336,8 @@ function SecurityEvidenceRows({
                   data-state={isSelected ? "selected" : undefined}
                   className={cn(
                     "cursor-pointer border-border-subtle align-top focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                    isSelected && "bg-emerald-50/70 hover:bg-emerald-50/80",
+                    isSelected &&
+                      "bg-emerald-50/70 hover:bg-emerald-50/80 dark:bg-emerald-400/10 dark:hover:bg-emerald-400/15",
                   )}
                   onClick={() => onSelectRow(row.id)}
                   onKeyDown={(event) => handleRowKeyDown(event, () => onSelectRow(row.id))}
@@ -378,7 +382,8 @@ function SecurityEvidenceRows({
               aria-pressed={isSelected}
               className={cn(
                 "grid min-w-0 gap-2 rounded-lg border border-border-subtle bg-bg-default p-3 text-left transition hover:bg-bg-muted/60",
-                isSelected && "border-emerald-300 bg-emerald-50/70",
+                isSelected &&
+                  "border-emerald-300 bg-emerald-50/70 dark:border-emerald-400/35 dark:bg-emerald-400/10",
               )}
               onClick={() => onSelectRow(row.id)}
             >
@@ -458,7 +463,7 @@ function SecurityEvidenceDetails({ row }: { row: SecurityEvidenceRow | null }) {
             <Link
               href={row.sourceHref}
               aria-label={`Open source evidence for ${row.subject}`}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-3 py-2 text-sm font-medium text-background transition hover:bg-foreground/90"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
             >
               Open source evidence
               <ArrowUpRightIcon className="size-4" aria-hidden="true" />

@@ -4,6 +4,37 @@ async function gotoLanding(page: Page) {
   await page.goto("/", { waitUntil: "domcontentloaded" });
 }
 
+async function gotoLandingInDarkMode(page: Page) {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("theme", "dark");
+  });
+  await gotoLanding(page);
+  await expect(page.locator("html")).toHaveClass(/(?:^|\s)dark(?:\s|$)/);
+}
+
+async function readSurfaceColors(locator: ReturnType<Page["locator"]>) {
+  return locator.evaluate((element) => {
+    const primaryProbe = document.createElement("div");
+    primaryProbe.style.backgroundColor = "var(--primary)";
+    document.body.append(primaryProbe);
+
+    const foregroundProbe = document.createElement("div");
+    foregroundProbe.style.backgroundColor = "var(--foreground)";
+    document.body.append(foregroundProbe);
+
+    const colors = {
+      actual: getComputedStyle(element).backgroundColor,
+      foreground: getComputedStyle(foregroundProbe).backgroundColor,
+      primary: getComputedStyle(primaryProbe).backgroundColor,
+    };
+
+    primaryProbe.remove();
+    foregroundProbe.remove();
+
+    return colors;
+  });
+}
+
 test.describe("landing page 2026", () => {
   test("keeps required navigation and walkthrough actions reachable", async ({ page }) => {
     await gotoLanding(page);
@@ -16,6 +47,41 @@ test.describe("landing page 2026", () => {
     await expect(header.getByRole("link", { name: "Trust" })).toBeVisible();
     await expect(header.getByRole("link", { name: "Sign in" })).toBeVisible();
     await expect(header.getByRole("link", { name: "Book walkthrough" })).toBeVisible();
+  });
+
+  test("uses dark-native brand surfaces for public CTAs and booking selections", async ({
+    page,
+  }) => {
+    await gotoLandingInDarkMode(page);
+
+    const headerBook = page.locator("header").getByRole("link", {
+      name: "Book walkthrough",
+    }).last();
+    const heroBook = page.getByRole("button", { name: "Book walkthrough" }).first();
+
+    for (const target of [headerBook, heroBook]) {
+      const colors = await readSurfaceColors(target);
+
+      expect(colors.actual).toBe(colors.primary);
+      expect(colors.actual).not.toBe(colors.foreground);
+    }
+
+    await heroBook.click();
+
+    const dialog = page.getByRole("dialog", {
+      name: "Book a Clinic Pulse walkthrough",
+    });
+    await expect(dialog).toBeVisible();
+
+    const selectedDay = dialog.getByRole("button", { name: "4", exact: true });
+    const selectedTime = dialog.getByRole("button", { name: "10:30" });
+
+    for (const target of [selectedDay, selectedTime]) {
+      const colors = await readSurfaceColors(target);
+
+      expect(colors.actual).toBe(colors.primary);
+      expect(colors.actual).not.toBe(colors.foreground);
+    }
   });
 
   test("opens with the live operations incident narrative", async ({ page }) => {

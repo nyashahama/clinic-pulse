@@ -77,8 +77,9 @@ const laneToneClassName: Record<IntegrationEvidenceKindFilter, string> = {
 
 const metricToneClassName: Record<IntegrationTone, string> = {
   clear: "border-border-subtle bg-bg-default",
-  attention: "border-amber-200 bg-amber-50/45",
-  blocked: "border-rose-200 bg-rose-50/45",
+  attention:
+    "border-amber-200 bg-amber-50/45 dark:border-amber-400/35 dark:bg-amber-400/10",
+  blocked: "border-rose-200 bg-rose-50/45 dark:border-red-400/35 dark:bg-red-500/10",
   info: "border-border-subtle bg-bg-default",
 };
 
@@ -384,7 +385,8 @@ function IntegrationEvidenceRows({
                   data-state={isSelected ? "selected" : undefined}
                   className={cn(
                     "cursor-pointer border-border-subtle align-top focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                    isSelected && "bg-sky-50/70 hover:bg-sky-50/80",
+                    isSelected &&
+                      "bg-sky-50/70 hover:bg-sky-50/80 dark:bg-sky-400/10 dark:hover:bg-sky-400/15",
                   )}
                   onClick={() => onSelectRow(row.id)}
                   onFocus={() => onSelectRow(row.id)}
@@ -473,7 +475,7 @@ function IntegrationEvidenceDetails({ row }: { row: IntegrationEvidenceRow | nul
             <Link
               href={row.sourceHref}
               aria-label={`Open source evidence for ${row.subject}`}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-3 py-2 text-sm font-medium text-background transition hover:bg-foreground/90"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
             >
               Open source evidence
               <ArrowUpRightIcon className="size-4" aria-hidden="true" />
