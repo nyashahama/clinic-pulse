@@ -39,10 +39,13 @@ describe("admin estate and ingestion cockpit surfaces", () => {
   it("replaces the data ingestion header/filter shell with an ingestion cockpit", () => {
     const source = readSource(dataIngestionPage);
 
-    expect(source).toContain("EstateOperationsBriefing");
+    expect(source).toContain("EvidenceCommandHeader");
+    expect(source).toContain("EvidenceCommandMetricStrip");
+    expect(source).toContain("EvidenceCaseBriefPanel");
     expect(source).toContain("Ingestion command cockpit");
     expect(source).toContain("Intake queue rail");
     expect(source).toContain("Promotion route map");
+    expect(source).not.toContain("EstateOperationsBriefing");
     expect(source).not.toContain("AdminModuleHeader");
     expect(source).not.toContain("AdminFilterBar");
   });

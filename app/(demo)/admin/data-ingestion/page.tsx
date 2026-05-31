@@ -6,7 +6,14 @@ import {
   type DataIngestionSummaryMetric,
   DataIngestionWorkspace,
 } from "@/components/product/data-ingestion-workspace";
-import { EstateOperationsBriefing } from "@/components/product/estate-operations-briefing";
+import {
+  EvidenceCaseBriefPanel,
+  EvidenceCommandChip,
+  EvidenceCommandHeader,
+  EvidenceCommandMetricStrip,
+  EvidenceDecisionPanel,
+  EvidenceTimeline,
+} from "@/components/product/evidence-command";
 import {
   fetchOperationalClinics,
   fetchPendingReports,
@@ -20,6 +27,12 @@ import {
   type DataSource,
   type ReviewState,
 } from "@/lib/product/data-trust";
+import type {
+  EvidenceCommandAction,
+  EvidenceCommandChip as EvidenceCommandChipModel,
+  EvidenceCommandMetric,
+  EvidenceCommandTone,
+} from "@/lib/product/evidence-command";
 import { requireDemoWorkflowAccess } from "../../workflow-guard";
 import { getAdminLoaderOptions } from "../admin-loaders";
 import {
@@ -42,6 +55,78 @@ type IngestionIssue = {
   label: string;
   tone: AdminTone;
 };
+
+function toEvidenceTone(tone: AdminTone): EvidenceCommandTone {
+  if (tone === "blocked") {
+    return "critical";
+  }
+
+  if (tone === "attention") {
+    return "attention";
+  }
+
+  if (tone === "info") {
+    return "info";
+  }
+
+  return "stable";
+}
+
+function ingestionMetricHref(id: string) {
+  if (id === "coverage-readiness") {
+    return "/admin/reporting-coverage";
+  }
+
+  if (id === "pending-report-evidence") {
+    return "#data-ingestion-workspace";
+  }
+
+  if (id === "offline-queue" || id === "validation-failures") {
+    return "#data-ingestion-workspace";
+  }
+
+  return "/admin/data-ingestion";
+}
+
+function ingestionMetricActionLabel(id: string) {
+  if (id === "coverage-readiness") {
+    return "Review coverage";
+  }
+
+  if (id === "pending-report-evidence") {
+    return "Open ledger";
+  }
+
+  if (id === "offline-queue") {
+    return "Review queue";
+  }
+
+  if (id === "validation-failures") {
+    return "Review failures";
+  }
+
+  return "Open ingestion";
+}
+
+function ingestionMetricIcon(id: string): EvidenceCommandMetric["icon"] {
+  if (id === "coverage-readiness") {
+    return "check";
+  }
+
+  if (id === "pending-report-evidence") {
+    return "mail";
+  }
+
+  if (id === "offline-queue") {
+    return "offline";
+  }
+
+  if (id === "validation-failures") {
+    return "alert";
+  }
+
+  return "activity";
+}
 
 function clinicNeedsIngestionReview(clinic: ClinicDetailApiResponse) {
   if (!clinic.currentStatus) {
@@ -366,69 +451,251 @@ export default async function Page() {
   const statusLabel = coverage.blockers.length
     ? `${formatCount(coverage.readinessPercent)}% readiness needs ingestion review`
     : "Ingestion evidence is ready for promotion";
+  const leadSignal =
+    ingestionSignals.find((signal) => signal.tone === "blocked" || signal.tone === "attention") ??
+    ingestionSignals[0];
+  const leadTone = leadSignal ? toEvidenceTone(leadSignal.tone) : "info";
+  const commandChips: EvidenceCommandChipModel[] = [
+    { label: statusLabel, tone: toEvidenceTone(coverage.tone) },
+    {
+      label: `${formatCount(ingestionItems.length)} ingestion rows`,
+      tone: ingestionItems.length > 0 ? "info" : "neutral",
+    },
+    {
+      label:
+        coverage.blockers.length > 0
+          ? `${formatCount(coverage.blockers.length)} blockers`
+          : "No ingestion blockers",
+      tone: toEvidenceTone(coverage.tone),
+    },
+  ];
+  const commandMetrics: EvidenceCommandMetric[] = ingestionMetrics.map((metric) => ({
+    label: metric.label,
+    value: metric.value,
+    detail: metric.detail,
+    tone: toEvidenceTone(metric.tone),
+    icon: ingestionMetricIcon(metric.id),
+    href: ingestionMetricHref(metric.id),
+    actionLabel: ingestionMetricActionLabel(metric.id),
+  }));
+  const commandActions: EvidenceCommandAction[] = [
+    {
+      label: "Review ingestion ledger",
+      href: "#data-ingestion-workspace",
+      priority: "primary",
+      icon: "stream",
+    },
+    {
+      label: "Open tenant health",
+      href: "/admin/tenant-health",
+      priority: "secondary",
+      icon: "stream",
+    },
+    {
+      label: "Review coverage",
+      href: "/admin/reporting-coverage",
+      priority: "secondary",
+      icon: "report",
+    },
+  ];
+  const headerActions = commandActions.filter((action) => action.priority === "secondary");
 
   return (
     <div className="space-y-4" data-admin-module="data-ingestion">
-      <EstateOperationsBriefing
+      <EvidenceCommandHeader
+        actions={headerActions}
         eyebrow="Platform ingestion"
         title="Ingestion command cockpit"
         description="Review sync freshness, pending field reports, offline queue pressure, validation failures, and clinic confirmation risk before status promotion."
-        statusLabel={statusLabel}
-        statusDetail={
-          coverage.blockers.length
-            ? coverage.blockers.join("; ")
-            : "Every active ingestion lane is clear enough for operator review."
-        }
-        statusTone={coverage.tone}
-        railLabel="Intake queue rail"
-        routingLabel="Promotion route map"
-        metrics={ingestionMetrics}
-        routes={[
-          {
-            id: "ledger",
-            label: "Open ingestion ledger",
-            value: `${formatCount(ingestionItems.length)} rows`,
-            detail: "Inspect receipt trails, payload checks, source state, and clinic context.",
-            href: "#data-ingestion-workspace",
-            tone: coverage.tone,
-          },
-          {
-            id: "coverage",
-            label: "Review reporting coverage",
-            value: `${formatCount(clinicsNeedingReview.length)} clinics`,
-            detail: "Compare freshness, review state, and clinic-level reporting coverage.",
-            href: "/admin/reporting-coverage",
-            tone: toneForAttention(clinicsNeedingReview.length),
-          },
-          {
-            id: "audit",
-            label: "Trace audit evidence",
-            value: `${formatCount(pendingReports.length)} reports`,
-            detail: "Follow field report decisions and source evidence into the audit trail.",
-            href: "/admin/audit-evidence",
-            tone: toneForAttention(pendingReports.length),
-          },
-          {
-            id: "tenant",
-            label: "Open tenant health",
-            value: `${formatCount(syncSummary.validationFailures)} failures`,
-            detail: "Return to the estate-wide health picture for access and partner context.",
-            href: "/admin/tenant-health",
-            tone: toneForAttention(syncSummary.validationFailures),
-          },
-        ]}
-        actions={[
-          {
-            label: "Review ingestion ledger",
-            href: "#data-ingestion-workspace",
-          },
-          {
-            label: "Open tenant health",
-            href: "/admin/tenant-health",
-            variant: "secondary",
-          },
-        ]}
+      >
+        <div className="flex flex-wrap gap-1.5">
+          {commandChips.map((chip) => (
+            <EvidenceCommandChip chip={chip} key={`${chip.label}-${chip.tone ?? "neutral"}`} />
+          ))}
+        </div>
+      </EvidenceCommandHeader>
+
+      <EvidenceCommandMetricStrip
+        ariaLabel="Data ingestion command metrics"
+        metrics={commandMetrics}
       />
+
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+        <EvidenceCaseBriefPanel
+          title="Ingestion promotion packet"
+          description="Decision-ready ingestion evidence for coverage freshness, pending reports, offline queue pressure, validation failures, and clinic confirmation risk."
+          summary={{
+            label: "Promotion verdict",
+            value: statusLabel,
+            tone: toEvidenceTone(coverage.tone),
+            emphasis: true,
+          }}
+          primaryFields={[
+            {
+              label: "Ingestion evidence",
+              value: `${formatCount(ingestionItems.length)} rows`,
+              href: "#data-ingestion-workspace",
+              emphasis: true,
+            },
+            {
+              label: "Coverage readiness",
+              value: `${formatCount(coverage.readinessPercent)}%`,
+              href: "/admin/reporting-coverage",
+              tone: toEvidenceTone(coverage.tone),
+            },
+            {
+              label: "Clinic review load",
+              value: `${formatCount(clinicsNeedingReview.length)} clinics`,
+              href: "/admin/reporting-coverage",
+              tone: toEvidenceTone(toneForAttention(clinicsNeedingReview.length)),
+            },
+          ]}
+          sections={[
+            {
+              title: "Intake queue rail",
+              description:
+                "The ingestion pressure signals that explain whether source data is ready for status promotion.",
+              fields: [
+                {
+                  label: "Pending report evidence",
+                  value: formatCount(pendingReports.length),
+                  href: "#data-ingestion-workspace",
+                  tone: toEvidenceTone(toneForAttention(pendingReports.length)),
+                },
+                {
+                  label: "Offline queue",
+                  value: formatCount(syncSummary.pendingOfflineReports),
+                  href: "#data-ingestion-workspace",
+                  tone: toEvidenceTone(toneForAttention(syncSummary.pendingOfflineReports)),
+                },
+                {
+                  label: "Validation failures",
+                  value: formatCount(syncSummary.validationFailures),
+                  href: "#data-ingestion-workspace",
+                  tone: toEvidenceTone(toneForAttention(syncSummary.validationFailures)),
+                },
+                {
+                  label: "Conflict review",
+                  value: formatCount(syncSummary.conflictsNeedingAttention),
+                  href: "#data-ingestion-workspace",
+                  tone: toEvidenceTone(toneForAttention(syncSummary.conflictsNeedingAttention)),
+                },
+              ],
+            },
+            {
+              title: "Promotion route map",
+              description:
+                "The system-admin destinations that explain source records, coverage, audit evidence, and tenant health.",
+              fields: [
+                {
+                  label: "Open ingestion ledger",
+                  value: `${formatCount(ingestionItems.length)} rows`,
+                  href: "#data-ingestion-workspace",
+                  tone: toEvidenceTone(coverage.tone),
+                },
+                {
+                  label: "Review reporting coverage",
+                  value: `${formatCount(clinicsNeedingReview.length)} clinics`,
+                  href: "/admin/reporting-coverage",
+                  tone: toEvidenceTone(toneForAttention(clinicsNeedingReview.length)),
+                },
+                {
+                  label: "Trace audit evidence",
+                  value: `${formatCount(pendingReports.length)} reports`,
+                  href: "/admin/audit-evidence",
+                  tone: toEvidenceTone(toneForAttention(pendingReports.length)),
+                },
+                {
+                  label: "Open tenant health",
+                  value: `${formatCount(syncSummary.validationFailures)} failures`,
+                  href: "/admin/tenant-health",
+                  tone: toEvidenceTone(toneForAttention(syncSummary.validationFailures)),
+                },
+              ],
+            },
+          ]}
+        />
+        <div className="grid min-w-0 content-start gap-4">
+          <EvidenceDecisionPanel
+            decision={{
+              contextLabel: "Data ingestion",
+              title:
+                coverage.blockers.length > 0
+                  ? "Ingestion evidence needs review"
+                  : "Ingestion evidence is ready",
+              scoreLabel: "Lead signal",
+              scoreValue: leadSignal?.signal ?? "No active signal",
+              chips: commandChips,
+              nextStep:
+                coverage.blockers.length > 0 && leadSignal
+                  ? `Review ${leadSignal.signal.toLowerCase()} before promoting clinic status data.`
+                  : "Keep the ingestion ledger in monitoring while coverage and audit evidence stay current.",
+              nextStepTone: leadTone,
+              impactTitle: "System impact",
+              impact:
+                "System administrators need ingestion evidence to connect field reports, offline sync, validation, and coverage before they trust downstream tenant health.",
+              verificationTitle: "Verification",
+              verification:
+                "Use the detailed ingestion workspace below to inspect receipt trails, payload checks, diagnostics, and clinic-backed source rows.",
+              evidence: leadSignal
+                ? {
+                    label: leadSignal.evidence,
+                    detail: `${formatCount(leadSignal.value)} ${leadSignal.signal.toLowerCase()}`,
+                    href: "#data-ingestion-workspace",
+                    tone: leadTone,
+                  }
+                : undefined,
+              actions: commandActions,
+            }}
+          />
+          <EvidenceTimeline
+            title="Ingestion promotion timeline"
+            description="The review sequence a system administrator should follow before trusting promoted status data."
+            items={[
+              {
+                label: "Coverage",
+                title:
+                  coverage.blockers.length > 0
+                    ? `${formatCount(coverage.blockers.length)} coverage blockers`
+                    : "Coverage evidence clear",
+                description: coverage.blockers.length
+                  ? coverage.blockers.join("; ")
+                  : "Reporting coverage is not raising ingestion blockers.",
+                tone: toEvidenceTone(coverage.tone),
+              },
+              {
+                label: "Reports",
+                title:
+                  pendingReports.length > 0
+                    ? `${formatCount(pendingReports.length)} pending report events`
+                    : "No pending report evidence",
+                description:
+                  "Field report events stay in the ledger until source review and status promotion are complete.",
+                tone: toEvidenceTone(toneForAttention(pendingReports.length)),
+              },
+              {
+                label: "Sync",
+                title:
+                  syncSummary.pendingOfflineReports > 0
+                    ? `${formatCount(syncSummary.pendingOfflineReports)} offline reports queued`
+                    : "Offline queue clear",
+                description: `${formatCount(syncSummary.offlineReportsReceived)} offline reports received in the sync window.`,
+                timestamp: formatDateTime(syncSummary.windowStartedAt),
+                tone: toEvidenceTone(toneForAttention(syncSummary.pendingOfflineReports)),
+              },
+              {
+                label: "Validation",
+                title:
+                  syncSummary.validationFailures > 0
+                    ? `${formatCount(syncSummary.validationFailures)} validation failures`
+                    : "Validation checks clear",
+                description: `${formatCount(syncSummary.conflictsNeedingAttention)} conflicts need attention.`,
+                tone: toEvidenceTone(toneForAttention(syncSummary.validationFailures)),
+              },
+            ]}
+          />
+        </div>
+      </div>
 
       <section id="data-ingestion-workspace" className="scroll-mt-24">
         <DataIngestionWorkspace
