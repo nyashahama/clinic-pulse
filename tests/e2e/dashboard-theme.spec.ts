@@ -49,6 +49,59 @@ async function readDarkThemeSurfaceTokens(page: Page) {
   });
 }
 
+type VisibleActionBackground = {
+  actual: string;
+  foreground: string;
+  primary: string;
+  text: string;
+};
+
+async function readVisibleActionBackgrounds(
+  page: Page,
+  name: RegExp,
+): Promise<VisibleActionBackground[]> {
+  const actions = page.getByRole("link", { name });
+
+  await expect(actions.first()).toBeVisible();
+
+  return actions.evaluateAll((elements) => {
+    const primaryProbe = document.createElement("div");
+    primaryProbe.style.backgroundColor = "var(--primary)";
+    document.body.append(primaryProbe);
+
+    const foregroundProbe = document.createElement("div");
+    foregroundProbe.style.backgroundColor = "var(--foreground)";
+    document.body.append(foregroundProbe);
+
+    const primary = getComputedStyle(primaryProbe).backgroundColor;
+    const foreground = getComputedStyle(foregroundProbe).backgroundColor;
+
+    const colors = elements
+      .filter((element) => {
+        const rect = element.getBoundingClientRect();
+        const styles = getComputedStyle(element);
+
+        return (
+          rect.width > 0 &&
+          rect.height > 0 &&
+          styles.display !== "none" &&
+          styles.visibility !== "hidden"
+        );
+      })
+      .map((element) => ({
+        actual: getComputedStyle(element).backgroundColor,
+        foreground,
+        primary,
+        text: element.textContent?.replace(/\s+/g, " ").trim() ?? "",
+      }));
+
+    primaryProbe.remove();
+    foregroundProbe.remove();
+
+    return colors;
+  });
+}
+
 test.describe("authenticated dashboard theme controls", () => {
   test("persists selected dark theme across authenticated demo dashboard routes", async ({
     page,
@@ -129,5 +182,46 @@ test.describe("authenticated dashboard theme controls", () => {
       contentDefault: "224 224 224",
     });
     expect(tokens.bodyBackground).toBe("rgb(18, 18, 18)");
+  });
+
+  test("uses the dark primary surface on admin detail actions", async ({ page }) => {
+    await signIn(page);
+    await page.getByRole("button", { name: "Use dark theme" }).click();
+    await expectDarkTheme(page);
+
+    const actionRoutes = [
+      {
+        path: "/admin/audit-evidence",
+        name: /Open source evidence for/i,
+      },
+      {
+        path: "/admin/data-ingestion",
+        name: /Open clinic context for/i,
+      },
+      {
+        path: "/admin/integrations",
+        name: /Open source evidence for/i,
+      },
+      {
+        path: "/admin/security",
+        name: /Open source evidence for/i,
+      },
+    ];
+
+    for (const actionRoute of actionRoutes) {
+      await page.goto(actionRoute.path);
+
+      const colors = await readVisibleActionBackgrounds(page, actionRoute.name);
+
+      expect(colors.length).toBeGreaterThan(0);
+
+      for (const color of colors) {
+        expect(color.actual).not.toBe(color.foreground);
+
+        if (/Open (source evidence|clinic context)/i.test(color.text)) {
+          expect(color.actual).toBe(color.primary);
+        }
+      }
+    }
   });
 });
