@@ -1,24 +1,16 @@
 import { notFound } from "next/navigation";
 
-import {
-  AdminDetailFieldGrid,
-  AdminDetailJsonBlock,
-  AdminDetailShell,
-  formatAdminDetailRecord,
-} from "@/components/product/admin-detail";
+import { AdminDetailShell } from "@/components/product/admin-detail";
+import { IntegrationEvidenceDetailBriefing } from "@/components/product/integration-evidence-detail-briefing";
 import {
   getAdminReturnSource,
   getAdminReturnTarget,
   parseAdminNumericId,
   type AdminSearchParams,
 } from "@/lib/product/admin-detail-routes";
+import { buildIntegrationDetailModel } from "@/lib/product/integration-detail";
 import { requireDemoWorkflowAccess } from "../../../../workflow-guard";
 import { loadAdminGovernanceData } from "../../../admin-loaders";
-import {
-  formatDateTime,
-  formatLabel,
-  StatusBadge,
-} from "../../../governance-formatters";
 
 type ExportRunDetailPageProps = {
   params: Promise<{
@@ -56,55 +48,28 @@ export default async function Page({
     ? data.users.find((user) => user.userId === exportRun.requestedByUserId)
     : undefined;
   const returnTarget = getAdminReturnTarget(getAdminReturnSource(query));
+  const requesterLabel = requester
+    ? `${requester.displayName} (${requester.email})`
+    : exportRun.requestedByUserId
+      ? `User ${exportRun.requestedByUserId}`
+      : "Unavailable";
+  const model = buildIntegrationDetailModel({
+    kind: "export-run",
+    exportRun,
+    requesterLabel,
+    returnHref: returnTarget.href,
+  });
 
   return (
     <AdminDetailShell
-      eyebrow="Partner operations"
+      eyebrow={model.eyebrow}
       title="Export run detail"
-      description={exportRun.checksum}
+      description={model.description}
       returnHref={returnTarget.href}
       returnLabel={returnTarget.label}
+      hideHeader
     >
-      <AdminDetailFieldGrid
-        fields={[
-          {
-            label: "Format",
-            value: <StatusBadge tone="info">{formatLabel(exportRun.format)}</StatusBadge>,
-          },
-          {
-            label: "Checksum",
-            value: (
-              <span className="break-all font-mono text-xs">
-                {exportRun.checksum}
-              </span>
-            ),
-            className: "sm:col-span-2",
-          },
-          {
-            label: "Record counts",
-            value: formatAdminDetailRecord(exportRun.recordCounts),
-            className: "sm:col-span-2",
-          },
-          {
-            label: "Scope",
-            value: formatAdminDetailRecord(exportRun.scope),
-            className: "sm:col-span-2",
-          },
-          {
-            label: "Requested by",
-            value: requester
-              ? `${requester.displayName} (${requester.email})`
-              : exportRun.requestedByUserId
-                ? `User ${exportRun.requestedByUserId}`
-                : "Unavailable",
-          },
-          {
-            label: "Created",
-            value: formatDateTime(exportRun.createdAt),
-          },
-        ]}
-      />
-      <AdminDetailJsonBlock title="Export payload" value={exportRun.payload} />
+      <IntegrationEvidenceDetailBriefing model={model} />
     </AdminDetailShell>
   );
 }

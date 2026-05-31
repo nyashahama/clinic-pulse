@@ -10,6 +10,7 @@ import type {
 } from "@/lib/demo/api-types";
 import {
   buildIntegrationOperationsModel,
+  compactIntegrationRecord,
   filterIntegrationEvidenceRows,
   getDefaultIntegrationEvidenceRowId,
   integrationEndpointRows,
@@ -252,5 +253,15 @@ describe("buildIntegrationOperationsModel", () => {
       "AGPL reference-only",
       "AGPL reference-only",
     ]);
+  });
+
+  it("humanizes camel-case compact record labels", () => {
+    expect(
+      compactIntegrationRecord({
+        clinics: 8,
+        integrationChecks: 6,
+        districtScope: "Tshwane North",
+      }),
+    ).toBe("Clinics: 8; Integration checks: 6; District scope: Tshwane North");
   });
 });
