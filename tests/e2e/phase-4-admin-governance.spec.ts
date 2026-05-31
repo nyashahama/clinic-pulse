@@ -108,7 +108,7 @@ test("security posture keeps implementation research out of user-facing UI", asy
   await signIn(page, "system-admin@clinicpulse.local");
   await page.goto("/admin/security");
 
-  await expect(page.getByRole("heading", { name: "Security posture" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Security posture cockpit" })).toBeVisible();
   await expectResearchRailHidden(page);
 });
 
@@ -137,7 +137,7 @@ test("audit evidence keeps implementation research out of user-facing UI", async
   await page.goto("/admin/audit-evidence");
 
   await expect(
-    page.getByRole("heading", { name: "Audit evidence command centre" }),
+    page.getByRole("heading", { name: "Audit evidence cockpit" }),
   ).toBeVisible();
   await expectResearchRailHidden(page);
 });
@@ -416,7 +416,7 @@ test("security admin selects evidence rows before opening source detail", async 
   await signIn(page, "system-admin@clinicpulse.local");
 
   await page.goto("/admin/security");
-  await expect(page.getByRole("heading", { name: "Security posture" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Security posture cockpit" })).toBeVisible();
   await expect(page.getByLabel("Security evidence workspace")).toBeVisible();
   await expect(page.getByLabel("Security evidence controls")).toBeVisible();
   await expect(page.getByLabel("Security evidence lanes")).toBeVisible();
@@ -532,8 +532,10 @@ test("system admin sees productized platform governance modules", async ({ page 
       path: "/admin/security",
       marker: "security",
       content: [
-        "Security posture",
-        "Security posture evidence",
+        "Security posture cockpit",
+        "Credential lifecycle rail",
+        "Evidence verdict",
+        "Privileged access watch",
         "Security evidence workspace",
         "All evidence",
         "Credentials",
