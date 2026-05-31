@@ -68,4 +68,28 @@ describe("buildSystemAdminCommandModel", () => {
       "/admin/partner-readiness",
     ]);
   });
+
+  test("builds a platform command brief for the shared evidence-command shell", () => {
+    const model = buildSystemAdminCommandModel(baseInput);
+
+    expect(model.commandBrief.caseBrief.title).toBe("Platform readiness packet");
+    expect(model.commandBrief.metrics.map((metric) => metric.label)).toEqual([
+      "Tenant health",
+      "Ingestion pressure",
+      "Security posture",
+      "Audit readiness",
+    ]);
+    expect(model.commandBrief.decision.actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ href: "/admin/data-ingestion", priority: "primary" }),
+        expect.objectContaining({ href: "/admin/tenant-health", priority: "secondary" }),
+      ]),
+    );
+    expect(model.commandBrief.timeline.items.map((item) => item.label)).toEqual([
+      "Sync",
+      "Ingestion",
+      "Security",
+      "Partner",
+    ]);
+  });
 });

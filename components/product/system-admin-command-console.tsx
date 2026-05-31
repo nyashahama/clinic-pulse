@@ -1,17 +1,21 @@
 import Link from "next/link";
 import {
-  ActivityIcon,
   ArrowRightIcon,
-  CheckCircle2Icon,
   PlugZapIcon,
-  RadioTowerIcon,
   ShieldCheckIcon,
   SlidersHorizontalIcon,
 } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
+import {
+  EvidenceCaseBriefPanel,
+  EvidenceCommandChip,
+  EvidenceCommandHeader,
+  EvidenceCommandMetricStrip,
+  EvidenceDecisionPanel,
+  EvidenceTimeline,
+} from "@/components/product/evidence-command";
 import type {
-  SystemAdminCommandMetric,
   SystemAdminCommandModel,
   SystemAdminCommandTone,
   SystemAdminEvidenceRow,
@@ -74,24 +78,6 @@ function toneLabel(tone: SystemAdminCommandTone) {
   return "Clear";
 }
 
-function metricIcon(metric: SystemAdminCommandMetric) {
-  const className = "size-4";
-
-  if (metric.id === "ingestion-pressure") {
-    return <RadioTowerIcon className={className} />;
-  }
-
-  if (metric.id === "security-posture") {
-    return <ShieldCheckIcon className={className} />;
-  }
-
-  if (metric.id === "audit-readiness") {
-    return <SlidersHorizontalIcon className={className} />;
-  }
-
-  return <ActivityIcon className={className} />;
-}
-
 function EvidenceIcon({ row }: { row: SystemAdminEvidenceRow }) {
   const className = "size-4";
 
@@ -116,49 +102,6 @@ function ToneBadge({ tone }: { tone: SystemAdminCommandTone }) {
     >
       {toneLabel(tone)}
     </span>
-  );
-}
-
-function MetricCard({ metric }: { metric: SystemAdminCommandMetric }) {
-  return (
-    <article className="min-w-0 overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm">
-      <div className={cn("h-1", toneClasses[metric.tone].rail)} aria-hidden="true" />
-      <div className="grid gap-3 p-4">
-        <div className="flex min-w-0 items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="break-words text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-              {metric.label}
-            </p>
-            <p className="mt-2 break-words font-mono text-3xl font-semibold leading-none text-foreground">
-              {metric.value}
-            </p>
-          </div>
-          <span
-            className={cn(
-              "inline-flex size-9 shrink-0 items-center justify-center rounded-lg border",
-              toneClasses[metric.tone].surface,
-              toneClasses[metric.tone].icon,
-            )}
-            aria-hidden="true"
-          >
-            {metricIcon(metric)}
-          </span>
-        </div>
-        <p className="min-h-10 break-words text-sm leading-5 text-muted-foreground">
-          {metric.detail}
-        </p>
-        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-          <ToneBadge tone={metric.tone} />
-          <Link
-            className={cn(buttonVariants({ size: "sm", variant: "outline" }), "gap-1.5")}
-            href={metric.href}
-          >
-            {metric.actionLabel}
-            <ArrowRightIcon className="size-3.5" />
-          </Link>
-        </div>
-      </div>
-    </article>
   );
 }
 
@@ -198,47 +141,51 @@ function LaneItem({ item }: { item: SystemAdminLaneItem }) {
 }
 
 export function SystemAdminCommandConsole({ model }: SystemAdminCommandConsoleProps) {
+  const headerActions = model.commandBrief.decision.actions.filter(
+    (action) => action.priority === "secondary",
+  );
+
   return (
     <div
       className="grid min-w-0 gap-4 pb-6"
       data-admin-module="system-admin-command"
       data-role-dashboard="system_admin"
     >
-      <section className="overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm">
-        <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start sm:p-5">
-          <div className="min-w-0">
-            <p className="break-words text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-              {model.header.eyebrow}
-            </p>
-            <h1 className="mt-1 break-words text-2xl font-semibold leading-tight text-foreground">
-              {model.header.title}
-            </h1>
-            <p className="mt-2 max-w-4xl break-words text-sm leading-5 text-muted-foreground">
-              {model.header.description}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-border-subtle bg-bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-              <CheckCircle2Icon className="size-3.5 text-emerald-600" />
-              Live operations
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-border-subtle bg-bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-              <RadioTowerIcon className="size-3.5 text-sky-600" />
-              {model.header.syncLabel}
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-border-subtle bg-bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-              <ActivityIcon className="size-3.5 text-amber-600" />
-              {model.header.activeAlertLabel}
-            </span>
-          </div>
+      <EvidenceCommandHeader
+        actions={headerActions}
+        description={model.header.description}
+        eyebrow={model.header.eyebrow}
+        title={model.header.title}
+      >
+        <div className="flex flex-wrap gap-1.5">
+          {model.commandBrief.chips.map((chip) => (
+            <EvidenceCommandChip chip={chip} key={`${chip.label}-${chip.tone ?? "neutral"}`} />
+          ))}
         </div>
-      </section>
+      </EvidenceCommandHeader>
 
-      <section aria-label="Platform command metrics" className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {model.metrics.map((metric) => (
-          <MetricCard key={metric.id} metric={metric} />
-        ))}
-      </section>
+      <EvidenceCommandMetricStrip
+        ariaLabel="Platform command metrics"
+        metrics={model.commandBrief.metrics}
+      />
+
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+        <EvidenceCaseBriefPanel
+          description={model.commandBrief.caseBrief.description}
+          primaryFields={model.commandBrief.caseBrief.primaryFields}
+          sections={model.commandBrief.caseBrief.sections}
+          summary={model.commandBrief.caseBrief.summary}
+          title={model.commandBrief.caseBrief.title}
+        />
+        <div className="grid min-w-0 content-start gap-4">
+          <EvidenceDecisionPanel decision={model.commandBrief.decision} />
+          <EvidenceTimeline
+            description={model.commandBrief.timeline.description}
+            items={model.commandBrief.timeline.items}
+            title={model.commandBrief.timeline.title}
+          />
+        </div>
+      </div>
 
       <section
         aria-label="Operational command lanes"
