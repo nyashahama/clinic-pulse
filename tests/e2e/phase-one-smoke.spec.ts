@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { PRODUCT_LANGUAGE_BAN_LIST } from "../../lib/demo/operations-scenario";
-import { phaseOneDemoRouteChecklist } from "../../lib/demo/demo-runbook";
+import { PRODUCT_LANGUAGE_BAN_LIST } from "../../lib/workspace/operations-scenario";
+import { phaseOneWorkspaceRouteChecklist } from "../../lib/workspace/operations-runbook";
 
 const demoAccount = {
   email: "org-admin@clinicpulse.local",
@@ -27,12 +27,12 @@ async function expectNoStagedProductLanguage(page: Page) {
 
 test.describe("phase-one operations route checklist", () => {
   test("keeps the smoke suite aligned with the runbook route order", async () => {
-    expect(phaseOneDemoRouteChecklist.map((entry) => entry.path)).toEqual([
+    expect(phaseOneWorkspaceRouteChecklist.map((entry) => entry.path)).toEqual([
       "/",
-      "/book-demo",
-      "/book-demo/thanks",
-      "/demo",
-      "/demo/clinics/clinic-mabopane-station",
+      "/book-walkthrough",
+      "/book-walkthrough/thanks",
+      "/district",
+      "/district/clinics/clinic-mabopane-station",
       "/finder",
       "/field",
       "/admin",
@@ -49,14 +49,14 @@ test.describe("phase-one operations route checklist", () => {
     await expect(page.getByRole("button", { name: "Book walkthrough" })).toBeVisible();
     await expectNoStagedProductLanguage(page);
 
-    await page.goto("/book-demo");
+    await page.goto("/book-walkthrough");
     await expect(page).toHaveURL(/\/\?booking=1$/);
     await expect(
       page.getByRole("dialog", { name: "Book a Clinic Pulse walkthrough" }),
     ).toBeVisible();
     await expectNoStagedProductLanguage(page);
 
-    await page.goto("/book-demo/thanks?name=Smoke&organization=E2E%20District");
+    await page.goto("/book-walkthrough/thanks?name=Smoke&organization=E2E%20District");
     await expect(page.getByRole("heading", { name: "Thanks, Smoke" })).toBeVisible();
     await expect(page.getByText("Request captured successfully.")).toBeVisible();
     await expectNoStagedProductLanguage(page);
@@ -91,7 +91,7 @@ test.describe("phase-one operations route checklist", () => {
     });
 
     await signIn(page);
-    await page.goto("/demo");
+    await page.goto("/district");
     await expectNoStagedProductLanguage(page);
 
     await expect(
@@ -108,7 +108,7 @@ test.describe("phase-one operations route checklist", () => {
     await expect(page.getByRole("heading", { name: "Clinic table" })).toBeVisible();
     await expect(page.getByText("Report stream")).toBeVisible();
 
-    await page.goto("/demo/clinics/clinic-mabopane-station");
+    await page.goto("/district/clinics/clinic-mabopane-station");
     await expectNoStagedProductLanguage(page);
     await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Mabopane Station Clinic" })).toBeVisible();
@@ -135,13 +135,13 @@ test.describe("phase-one operations route checklist", () => {
       page.getByRole("heading", { name: "Partner Launch Cockpit" }).first(),
     ).toBeVisible();
 
-    await page.goto("/admin/demo-controls");
+    await page.goto("/admin/scenario-controls");
     await expectNoStagedProductLanguage(page);
     await expect(
       page.getByRole("heading", { name: "Scenario rehearsal cockpit" }),
     ).toBeVisible();
 
-    await page.goto("/demo");
+    await page.goto("/district");
     await expectNoStagedProductLanguage(page);
     const supportingOperations = page
       .getByText("Supporting operations", { exact: true })

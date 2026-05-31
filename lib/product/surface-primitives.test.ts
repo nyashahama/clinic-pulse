@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { MetricTile } from "@/components/product/metric-tile";
 import { ProductPanel } from "@/components/product/panel";
-import { ReportStream } from "@/components/demo/report-stream";
+import { ReportStream } from "@/components/workspace/report-stream";
 import {
   ReportReviewQueueView,
   ReportReviewQueueErrorAlert,
@@ -682,11 +682,11 @@ describe("product surface primitives", () => {
           "report-demo-1": "Operational to degraded",
         },
         onSelectClinic: vi.fn(),
-        getReportDetailHref: (report) => `/demo/reports/${report.id}?from=demo`,
+        getReportDetailHref: (report) => `/district/reports/${report.id}?from=district`,
       }),
     );
 
-    expect(html).toContain('href="/demo/reports/report-demo-1?from=demo"');
+    expect(html).toContain('href="/district/reports/report-demo-1?from=district"');
     expect(html).toContain("Open report detail");
     expect(html).toContain("Mamelodi East Clinic");
   });

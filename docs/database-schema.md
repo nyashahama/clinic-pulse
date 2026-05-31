@@ -112,7 +112,7 @@ Pilot provenance is assembled from existing operational tables instead of one br
 - `audit_events` provides append-only evidence for report submission, report review, stale reconciliation, access, export, webhook, and admin actions.
 - `pilot_ingestion_runs` provides controlled source-ingestion evidence when imported pilot data is available outside the field-report flow.
 
-The frontend derives user-facing trust labels from these fields. Labels such as reviewed field data, pending review, stale, needs confirmation, failed sync, and demo data are derived presentation states, not separate persisted enums.
+The frontend derives user-facing trust labels from these fields. Labels such as reviewed field data, pending review, stale, needs confirmation, failed sync, and seeded operating data are derived presentation states, not separate persisted enums.
 
 ## Partner Readiness, Webhooks, And Exports
 
@@ -128,7 +128,7 @@ Important behavior:
 
 - Partner API key hashes are unique.
 - Webhook events are tied to subscriptions.
-- Export runs retain checksums and payloads for demo/admin inspection.
+- Export runs retain checksums and payloads for sandbox/admin inspection.
 - Integration status checks are unique by organisation and check name.
 
 ## Seed Data

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getReportingCoverageTone } from "@/app/(demo)/admin/governance-formatters";
+import { getReportingCoverageTone } from "@/app/(workspace)/admin/governance-formatters";
 
 describe("getReportingCoverageTone", () => {
   it("flags unknown reporting freshness for attention", () => {

@@ -342,7 +342,7 @@ export const trustSystemPanels = [
   },
 ] as const;
 
-export const demoCta = {
+export const walkthroughCta = {
   label: "Operations walkthrough",
   title: "Book a Clinic Pulse walkthrough.",
   description:
@@ -532,7 +532,7 @@ export const trustEvidencePanels = [
   },
 ] as const;
 
-export const incidentDemoCta = {
+export const incidentWalkthroughCta = {
   eyebrow: "Operations walkthrough",
   title: "Walk through the Mabopane Station incident.",
   description:

@@ -4,8 +4,8 @@ import type {
   PartnerExportRunApiResponse,
   PartnerWebhookEventApiResponse,
   PartnerWebhookSubscriptionApiResponse,
-} from "@/lib/demo/api-types";
-import { isPartnerApiKeyActive } from "@/lib/demo/partner-readiness";
+} from "@/lib/workspace/api-types";
+import { isPartnerApiKeyActive } from "@/lib/workspace/partner-readiness";
 import type {
   EvidenceCommandChip,
   EvidenceCommandDecision,

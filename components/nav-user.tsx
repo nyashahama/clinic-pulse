@@ -4,7 +4,7 @@ import {
   Avatar,
   AvatarFallback,
 } from "@/components/ui/avatar"
-import { getDashboardScope, getDashboardWorkspace } from "@/components/demo/dashboard-nav-config"
+import { getDashboardScope, getDashboardWorkspace } from "@/components/workspace/dashboard-nav-config"
 import {
   DropdownMenu,
   DropdownMenuContent,

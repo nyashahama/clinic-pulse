@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type {
   AdminAuditEventApiResponse,
   AdminUserAccessApiResponse,
-} from "@/lib/demo/api-types";
+} from "@/lib/workspace/api-types";
 import { buildIdentityAuditDetailModel } from "@/lib/product/identity-audit-detail";
 
 const activeUser: AdminUserAccessApiResponse = {

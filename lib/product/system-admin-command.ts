@@ -1,5 +1,5 @@
-import type { PartnerReadinessMetric, PartnerReadinessSeverity } from "@/lib/demo/partner-readiness";
-import type { DemoLead } from "@/lib/demo/types";
+import type { PartnerReadinessMetric, PartnerReadinessSeverity } from "@/lib/workspace/partner-readiness";
+import type { WalkthroughLead } from "@/lib/workspace/types";
 import type {
   EvidenceCommandChip,
   EvidenceCommandDecision,
@@ -164,7 +164,7 @@ export type SystemAdminCommandInput = {
   pendingReviewCount: number;
   activeAlertCount: number;
   auditEventCount: number;
-  leadStatusCount: Record<DemoLead["status"], number>;
+  leadStatusCount: Record<WalkthroughLead["status"], number>;
   partnerReadiness: {
     severity: PartnerReadinessSeverity;
     metrics: PartnerReadinessMetric[];

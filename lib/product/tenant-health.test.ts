@@ -6,7 +6,7 @@ import type {
   PartnerReadinessApiResponse,
   ReportApiResponse,
   SyncSummaryApiResponse,
-} from "@/lib/demo/api-types";
+} from "@/lib/workspace/api-types";
 import { buildTenantHealthViewModel } from "@/lib/product/tenant-health";
 
 const now = "2026-05-22T08:00:00.000Z";

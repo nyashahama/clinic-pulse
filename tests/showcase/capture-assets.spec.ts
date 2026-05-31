@@ -2,9 +2,9 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { mkdir, rename, rm } from "node:fs/promises";
 import path from "node:path";
 
-import { PRODUCT_LANGUAGE_BAN_LIST } from "../../lib/demo/operations-scenario";
+import { PRODUCT_LANGUAGE_BAN_LIST } from "../../lib/workspace/operations-scenario";
 
-const demoAccount = {
+const localAccount = {
   email: "org-admin@clinicpulse.local",
   password: "ClinicPulseDemo123!",
 };
@@ -23,8 +23,8 @@ async function ensureCleanAssetDirs() {
 
 async function signIn(page: Page) {
   await page.goto("/login");
-  await page.getByLabel("Email").fill(demoAccount.email);
-  await page.getByLabel("Password").fill(demoAccount.password);
+  await page.getByLabel("Email").fill(localAccount.email);
+  await page.getByLabel("Password").fill(localAccount.password);
   await Promise.all([
     page.waitForURL(/\/admin$/),
     page.getByRole("button", { name: "Log in" }).click(),
@@ -66,25 +66,25 @@ async function captureScreenshots(page: Page) {
   await expectNoStagedProductLanguage(page);
   await capture(page, "landing-desktop.png");
 
-  await gotoStable(page, "/book-demo");
+  await gotoStable(page, "/book-walkthrough");
   await expect(
     page.getByRole("dialog", { name: "Book a Clinic Pulse walkthrough" }),
   ).toBeVisible();
   await expectNoStagedProductLanguage(page);
   await capture(page, "booking-flow-desktop.png");
 
-  await gotoStable(page, "/book-demo/thanks?name=Smoke&organization=E2E%20District");
+  await gotoStable(page, "/book-walkthrough/thanks?name=Smoke&organization=E2E%20District");
   await expect(page.getByRole("heading", { name: "Thanks, Smoke" })).toBeVisible();
   await expectNoStagedProductLanguage(page);
   await capture(page, "booking-thanks-desktop.png");
 
   await signIn(page);
-  await gotoStable(page, "/demo");
+  await gotoStable(page, "/district");
   await expect(page.getByRole("heading", { name: "Clinic table" })).toBeVisible();
   await expectNoStagedProductLanguage(page);
   await capture(page, "district-console-desktop.png");
 
-  await gotoStable(page, "/demo/clinics/clinic-mabopane-station");
+  await gotoStable(page, "/district/clinics/clinic-mabopane-station");
   await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Mabopane Station Clinic" })).toBeVisible();
   await expectNoStagedProductLanguage(page);
@@ -126,11 +126,11 @@ async function recordWalkthrough(browser: Browser, baseURL: string | undefined) 
   await page.waitForTimeout(900);
 
   await signIn(page);
-  await gotoStable(page, "/demo");
+  await gotoStable(page, "/district");
   await expectNoStagedProductLanguage(page);
   await page.waitForTimeout(900);
 
-  await gotoStable(page, "/demo/clinics/clinic-mabopane-station");
+  await gotoStable(page, "/district/clinics/clinic-mabopane-station");
   await expectNoStagedProductLanguage(page);
   await page.waitForTimeout(900);
 

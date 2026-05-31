@@ -10,12 +10,12 @@ import {
   Stethoscope,
 } from "lucide-react";
 
-import { FreshnessBadge } from "@/components/demo/freshness-badge";
-import { StatusBadge } from "@/components/demo/status-badge";
+import { FreshnessBadge } from "@/components/workspace/freshness-badge";
+import { StatusBadge } from "@/components/workspace/status-badge";
 import { buttonVariants } from "@/components/ui/button";
-import { ClinicPulseApiError, fetchClinic } from "@/lib/demo/api-client";
-import { mapApiClinicDetailToClinicRow } from "@/lib/demo/api-mappers";
-import type { ClinicRow } from "@/lib/demo/types";
+import { ClinicPulseApiError, fetchClinic } from "@/lib/workspace/api-client";
+import { mapApiClinicDetailToClinicRow } from "@/lib/workspace/api-mappers";
+import type { ClinicRow } from "@/lib/workspace/types";
 
 type PublicClinicDetailPageProps = {
   params: Promise<{
@@ -166,7 +166,7 @@ export default async function PublicClinicDetailPage({ params }: PublicClinicDet
                 Back to finder
               </Link>
               <Link
-                href="/book-demo"
+                href="/book-walkthrough"
                 className={buttonVariants({ size: "sm", variant: "outline" })}
               >
                 <CalendarClock className="size-3.5" />

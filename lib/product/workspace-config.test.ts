@@ -24,8 +24,8 @@ const expectedHiddenDashboardPrimaryNavRoutes = [
 
 const expectedPublicDashboardNavExclusions = [
   "/",
-  "/book-demo",
-  "/book-demo/thanks",
+  "/book-walkthrough",
+  "/book-walkthrough/thanks",
   "/finder",
   "/clinics",
   "/login",
@@ -201,7 +201,7 @@ describe("product workspace navigation config", () => {
         "/admin/security",
         "/admin/partner-readiness",
         "/admin/integrations",
-        "/admin/demo-controls",
+        "/admin/scenario-controls",
         "/admin/audit-evidence",
       ]),
     );

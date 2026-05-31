@@ -1,4 +1,4 @@
-import type { AuditEvent, DemoState } from "@/lib/demo/types";
+import type { AuditEvent, WorkspaceState } from "@/lib/workspace/types";
 
 export type ScenarioControlCommandId =
   | "reset"
@@ -78,7 +78,7 @@ export const scenarioControlCommandIds: ScenarioControlCommandId[] = [
 ];
 
 type BuildScenarioControlsViewModelInput = {
-  state: DemoState;
+  state: WorkspaceState;
   stockoutClinicLabel: string;
   staffingClinicLabel: string;
   selectedCommandId: ScenarioControlCommandId;

@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 import { MessageCircleWarning, PhoneCall, Route, Table2, WifiOff } from "lucide-react";
 
 import { MaxWidthWrapper } from "@/components/ui/max-width-wrapper";
-import { demoImages } from "@/lib/demo/images";
+import { workspaceImages } from "@/lib/workspace/images";
 
 const todayEvents = [
   { label: "Clinic calls district office", icon: PhoneCall },
@@ -44,8 +44,8 @@ export function ProblemContrast() {
             <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm">
               <div className="relative aspect-[16/10]">
                 <Image
-                  src={demoImages["mobile-field-report"].src}
-                  alt={demoImages["mobile-field-report"].alt}
+                  src={workspaceImages["mobile-field-report"].src}
+                  alt={workspaceImages["mobile-field-report"].alt}
                   fill
                   sizes="(min-width: 1024px) 28rem, 100vw"
                   className="object-cover"
@@ -78,8 +78,8 @@ export function ProblemContrast() {
             <div className="overflow-hidden rounded-lg border border-emerald-200 bg-emerald-50 shadow-sm">
               <div className="relative aspect-[16/10]">
                 <Image
-                  src={demoImages["patient-routing-context"].src}
-                  alt={demoImages["patient-routing-context"].alt}
+                  src={workspaceImages["patient-routing-context"].src}
+                  alt={workspaceImages["patient-routing-context"].alt}
                   fill
                   sizes="(min-width: 1024px) 28rem, 100vw"
                   className="object-cover"

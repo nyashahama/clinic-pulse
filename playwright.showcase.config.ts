@@ -29,7 +29,7 @@ export default defineConfig({
       reuseExistingServer,
     },
     {
-      command: `CLINICPULSE_API_BASE_URL="${apiBaseURL}" NEXT_PUBLIC_CLINICPULSE_API_BASE_URL="/api/clinicpulse" CLINICPULSE_ALLOW_DEMO_FALLBACK="false" npm run dev -- --hostname 127.0.0.1 --port ${webPort}`,
+      command: `CLINICPULSE_API_BASE_URL="${apiBaseURL}" NEXT_PUBLIC_CLINICPULSE_API_BASE_URL="/api/clinicpulse" CLINICPULSE_ALLOW_SEEDED_FALLBACK="false" npm run dev -- --hostname 127.0.0.1 --port ${webPort}`,
       url: webBaseURL,
       timeout: 90_000,
       reuseExistingServer,

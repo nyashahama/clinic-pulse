@@ -4,11 +4,11 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const detailRoutes = [
-  ["user", "app", "(demo)", "admin", "users-roles", "[userId]", "page.tsx"],
+  ["user", "app", "(workspace)", "admin", "users-roles", "[userId]", "page.tsx"],
   [
     "audit event",
     "app",
-    "(demo)",
+    "(workspace)",
     "admin",
     "audit-evidence",
     "events",

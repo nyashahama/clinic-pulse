@@ -11,7 +11,7 @@ import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-const demoAccounts = [
+const seedAccounts = [
   {
     role: "System admin",
     email: "system-admin@clinicpulse.local",
@@ -109,7 +109,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             <LoginForm loginAction={loginAction} returnTo={returnTo ?? undefined} />
           </div>
 
-          {frontendEnv.showDemoCredentials ? (
+          {frontendEnv.showSeedCredentials ? (
             <div className="mt-6 rounded-2xl border border-[#0D7A6B]/15 bg-[#ecf7f4] p-4 dark:border-primary/30 dark:bg-primary/10">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-semibold text-neutral-950 dark:text-card-foreground">
@@ -120,7 +120,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                 </span>
               </div>
               <div className="mt-3 space-y-2">
-                {demoAccounts.map((account) => (
+                {seedAccounts.map((account) => (
                   <div
                     key={account.email}
                     className="rounded-xl border border-white/80 bg-white/70 px-3 py-2 dark:border-border dark:bg-card/75"

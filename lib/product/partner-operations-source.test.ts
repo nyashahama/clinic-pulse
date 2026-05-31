@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 const partnerReadinessPage = path.join(
   process.cwd(),
   "app",
-  "(demo)",
+  "(workspace)",
   "admin",
   "partner-readiness",
   "page.tsx",
@@ -14,7 +14,7 @@ const partnerReadinessPage = path.join(
 const integrationsPage = path.join(
   process.cwd(),
   "app",
-  "(demo)",
+  "(workspace)",
   "admin",
   "integrations",
   "page.tsx",

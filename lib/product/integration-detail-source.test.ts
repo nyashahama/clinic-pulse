@@ -13,7 +13,7 @@ const integrationDetailRoutes = [
 
 function routeSource(...segments: string[]) {
   return readFileSync(
-    path.join(process.cwd(), "app", "(demo)", "admin", "integrations", ...segments, "page.tsx"),
+    path.join(process.cwd(), "app", "(workspace)", "admin", "integrations", ...segments, "page.tsx"),
     "utf8",
   );
 }

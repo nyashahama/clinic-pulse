@@ -4,8 +4,8 @@ import {
   buildPendingReportReviews,
   summarizePendingReportReviews,
 } from "@/lib/product/report-review";
-import type { ReportApiResponse } from "@/lib/demo/api-types";
-import type { ClinicRow } from "@/lib/demo/types";
+import type { ReportApiResponse } from "@/lib/workspace/api-types";
+import type { ClinicRow } from "@/lib/workspace/types";
 
 const clinic = {
   id: "clinic-1",

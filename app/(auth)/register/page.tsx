@@ -100,7 +100,7 @@ export default function RegisterPage() {
 
           <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-200">
             New accounts are currently provisioned by administrators.
-            {frontendEnv.showDemoCredentials
+            {frontendEnv.showSeedCredentials
               ? " The local scenario includes seeded users you can use from the sign in page."
               : null}
           </div>

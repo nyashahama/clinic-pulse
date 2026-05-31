@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-const demoAccount = {
+const localAccount = {
   email: "org-admin@clinicpulse.local",
   password: "ClinicPulseDemo123!",
 };
@@ -22,8 +22,8 @@ function collectConsoleErrors(page: Page) {
 
 async function signIn(page: Page) {
   await page.goto("/login");
-  await page.getByLabel("Email").fill(demoAccount.email);
-  await page.getByLabel("Password").fill(demoAccount.password);
+  await page.getByLabel("Email").fill(localAccount.email);
+  await page.getByLabel("Password").fill(localAccount.password);
   await page.getByRole("button", { name: "Log in" }).click();
   await expect(page).toHaveURL(/\/admin$/);
 }

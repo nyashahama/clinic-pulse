@@ -11,7 +11,7 @@ Configure the Vercel project with the repository root as the project root. The p
 | `CLINICPULSE_DEPLOY_ENV` | `staging` |
 | `CLINICPULSE_API_BASE_URL` | HTTPS URL for the deployed Docker API |
 | `NEXT_PUBLIC_CLINICPULSE_API_BASE_URL` | `/api/clinicpulse` |
-| `CLINICPULSE_ALLOW_DEMO_FALLBACK` | `false` |
+| `CLINICPULSE_ALLOW_SEEDED_FALLBACK` | `false` |
 | `CLINICPULSE_ALLOW_PUBLIC_REGISTRATION` | `false` |
 
 Browsers should call `/api/clinicpulse/*`. The Next.js rewrite forwards those requests to `CLINICPULSE_API_BASE_URL`, keeping the deployed API origin out of client code.

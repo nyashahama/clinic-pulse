@@ -41,7 +41,7 @@ This runbook is for alpha and pilot operations. It is intended to reduce time-to
 ## Auth / Login Degradation Procedure
 
 1. Check login route status codes, `rate_limited`, `csrf_rejected`, and `invalid_credentials` counts.
-2. Confirm `CLINICPULSE_TRUSTED_ORIGINS`, public registration setting, demo fallback setting, and frontend API base URL are correct for the environment.
+2. Confirm `CLINICPULSE_TRUSTED_ORIGINS`, public registration setting, seeded fallback setting, and frontend API base URL are correct for the environment.
 3. If throttling is expected from abuse, keep limits in place and communicate that affected users may need to wait for the window to reset.
 4. If legitimate users are blocked, confirm the rate-limit window and origin configuration before changing values.
 5. If sessions or auth tables are unavailable, treat as database degradation and follow the database-down procedure.

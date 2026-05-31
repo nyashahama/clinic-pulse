@@ -1,12 +1,12 @@
-import type { ReportApiResponse } from "@/lib/demo/api-types";
-import type { FieldLocationVerification } from "@/lib/demo/field-location-verification";
+import type { ReportApiResponse } from "@/lib/workspace/api-types";
+import type { FieldLocationVerification } from "@/lib/workspace/field-location-verification";
 import type {
   ClinicRow,
   ClinicStatus,
   QueuePressure,
   StaffPressure,
   StockPressure,
-} from "@/lib/demo/types";
+} from "@/lib/workspace/types";
 
 export type PendingReportReview = {
   reportId: number;

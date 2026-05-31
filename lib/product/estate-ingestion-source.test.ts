@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 const dataIngestionPage = path.join(
   process.cwd(),
   "app",
-  "(demo)",
+  "(workspace)",
   "admin",
   "data-ingestion",
   "page.tsx",

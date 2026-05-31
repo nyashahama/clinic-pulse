@@ -481,8 +481,8 @@ Expected examples:
 
 ```tsx
 <Image
-  src={demoImages["district-operations-room"].src}
-  alt={demoImages["district-operations-room"].alt}
+  src={workspaceImages["district-operations-room"].src}
+  alt={workspaceImages["district-operations-room"].alt}
   fill
   priority
   sizes="(min-width: 1024px) 22rem, 100vw"

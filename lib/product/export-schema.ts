@@ -2,7 +2,7 @@ import type {
   AdminAuditEventApiResponse,
   PartnerExportRunApiResponse,
   PartnerReadinessApiResponse,
-} from "@/lib/demo/api-types";
+} from "@/lib/workspace/api-types";
 import {
   buildAdminAuditEventDetailHref,
   buildAdminExportRunDetailHref,

@@ -7,7 +7,7 @@ import type {
   PartnerReadinessApiResponse,
   PartnerWebhookEventApiResponse,
   PartnerWebhookSubscriptionApiResponse,
-} from "@/lib/demo/api-types";
+} from "@/lib/workspace/api-types";
 import {
   buildApiContractModel,
   filterApiContractEndpoints,

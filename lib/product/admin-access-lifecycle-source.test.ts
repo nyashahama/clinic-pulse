@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 describe("admin access lifecycle source", () => {
   it("presents access review as an effective-access workspace", () => {
-    const pageSource = readFileSync("app/(demo)/admin/access-review/page.tsx", "utf8");
+    const pageSource = readFileSync("app/(workspace)/admin/access-review/page.tsx", "utf8");
     const workspaceSource = readFileSync(
       "components/product/access-review-workspace.tsx",
       "utf8",
@@ -23,7 +23,7 @@ describe("admin access lifecycle source", () => {
   });
 
   it("presents users and roles as the lifecycle side of the access cockpit", () => {
-    const source = readFileSync("app/(demo)/admin/users-roles/page.tsx", "utf8");
+    const source = readFileSync("app/(workspace)/admin/users-roles/page.tsx", "utf8");
 
     expect(source).toContain("Access lifecycle cockpit");
     expect(source).toContain("Role assignment map");

@@ -10,12 +10,16 @@ const e2eDatabaseURL =
 const e2eLoginRateLimit = process.env.CLINICPULSE_E2E_LOGIN_RATE_LIMIT ?? "1000";
 const e2eMutationRateLimit = process.env.CLINICPULSE_E2E_MUTATION_RATE_LIMIT ?? "1000";
 const reuseExistingServer = process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER === "true";
+const configuredWorkers = Number(process.env.PLAYWRIGHT_WORKERS ?? 2);
+const workers =
+  Number.isFinite(configuredWorkers) && configuredWorkers > 0 ? configuredWorkers : 2;
 
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
   reporter: process.env.CI ? [["github"], ["list"]] : "list",
   timeout: 45_000,
+  workers,
   expect: {
     timeout: 10_000,
   },
@@ -31,7 +35,7 @@ export default defineConfig({
       reuseExistingServer,
     },
     {
-      command: `CLINICPULSE_API_BASE_URL="${apiBaseURL}" NEXT_PUBLIC_CLINICPULSE_API_BASE_URL="/api/clinicpulse" CLINICPULSE_ALLOW_DEMO_FALLBACK="false" npm run dev -- --hostname 127.0.0.1 --port ${webPort}`,
+      command: `CLINICPULSE_API_BASE_URL="${apiBaseURL}" NEXT_PUBLIC_CLINICPULSE_API_BASE_URL="/api/clinicpulse" CLINICPULSE_ALLOW_SEEDED_FALLBACK="false" npm run dev -- --hostname 127.0.0.1 --port ${webPort}`,
       url: webBaseURL,
       timeout: 90_000,
       reuseExistingServer,

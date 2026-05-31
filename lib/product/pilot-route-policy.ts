@@ -1,4 +1,4 @@
-export type PilotRouteOutcome = "complete" | "hide" | "demo_sandbox";
+export type PilotRouteOutcome = "complete" | "hide" | "scenario_sandbox";
 
 export type PilotRoutePolicy = {
   route: string;
@@ -28,6 +28,6 @@ export function pilotRoutePolicyFor(route: string): PilotRoutePolicy {
   return {
     route,
     pilotCritical,
-    allowedOutcomes: pilotCritical ? ["complete", "hide"] : ["demo_sandbox", "hide"],
+    allowedOutcomes: pilotCritical ? ["complete", "hide"] : ["scenario_sandbox", "hide"],
   };
 }

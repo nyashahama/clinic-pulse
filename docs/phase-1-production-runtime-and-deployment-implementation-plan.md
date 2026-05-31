@@ -378,7 +378,7 @@ describe("frontend runtime env", () => {
         CLINICPULSE_DEPLOY_ENV: "staging",
         CLINICPULSE_API_BASE_URL: "https://clinicpulse-api.example.test",
         NEXT_PUBLIC_CLINICPULSE_API_BASE_URL: "/api/clinicpulse",
-        CLINICPULSE_ALLOW_DEMO_FALLBACK: "false",
+        CLINICPULSE_ALLOW_SEEDED_FALLBACK: "false",
       }),
     ).toEqual({
       deployEnv: "staging",
@@ -393,9 +393,9 @@ describe("frontend runtime env", () => {
         CLINICPULSE_DEPLOY_ENV: "staging",
         CLINICPULSE_API_BASE_URL: "http://localhost:8080",
         NEXT_PUBLIC_CLINICPULSE_API_BASE_URL: "https://api.example.test",
-        CLINICPULSE_ALLOW_DEMO_FALLBACK: "true",
+        CLINICPULSE_ALLOW_SEEDED_FALLBACK: "true",
       }),
-    ).toThrow(/CLINICPULSE_API_BASE_URL|NEXT_PUBLIC_CLINICPULSE_API_BASE_URL|CLINICPULSE_ALLOW_DEMO_FALLBACK/);
+    ).toThrow(/CLINICPULSE_API_BASE_URL|NEXT_PUBLIC_CLINICPULSE_API_BASE_URL|CLINICPULSE_ALLOW_SEEDED_FALLBACK/);
   });
 });
 ```
@@ -419,7 +419,7 @@ type FrontendEnv = {
   CLINICPULSE_DEPLOY_ENV?: string;
   CLINICPULSE_API_BASE_URL?: string;
   NEXT_PUBLIC_CLINICPULSE_API_BASE_URL?: string;
-  CLINICPULSE_ALLOW_DEMO_FALLBACK?: string;
+  CLINICPULSE_ALLOW_SEEDED_FALLBACK?: string;
   NODE_ENV?: string;
 };
 
@@ -451,8 +451,8 @@ export function validateFrontendRuntimeEnv(env: FrontendEnv = process.env) {
     if (browserApiBaseUrl !== DEFAULT_BROWSER_API_BASE_URL) {
       problems.push("NEXT_PUBLIC_CLINICPULSE_API_BASE_URL must remain /api/clinicpulse outside local development");
     }
-    if (env.CLINICPULSE_ALLOW_DEMO_FALLBACK === "true") {
-      problems.push("CLINICPULSE_ALLOW_DEMO_FALLBACK must be false outside local development");
+    if (env.CLINICPULSE_ALLOW_SEEDED_FALLBACK === "true") {
+      problems.push("CLINICPULSE_ALLOW_SEEDED_FALLBACK must be false outside local development");
     }
   }
 
@@ -1164,7 +1164,7 @@ Required environment variables:
 | `CLINICPULSE_DEPLOY_ENV` | `staging` |
 | `CLINICPULSE_API_BASE_URL` | HTTPS URL for the deployed Docker API |
 | `NEXT_PUBLIC_CLINICPULSE_API_BASE_URL` | `/api/clinicpulse` |
-| `CLINICPULSE_ALLOW_DEMO_FALLBACK` | `false` |
+| `CLINICPULSE_ALLOW_SEEDED_FALLBACK` | `false` |
 
 The browser should call `/api/clinicpulse/*`. The Next.js rewrite forwards those requests to `CLINICPULSE_API_BASE_URL`.
 

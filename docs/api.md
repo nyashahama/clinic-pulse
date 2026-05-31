@@ -102,7 +102,7 @@ Reporter routes require a session with `reporter`, `district_manager`, `org_admi
 
 ## Response And Error Shape
 
-Handlers use the shared response helpers in `services/api/internal/http/respond.go`. Validation and auth failures return JSON error responses with appropriate HTTP status codes. Route-specific response models live in `services/api/internal/store/models.go`, service files under `services/api/internal/service`, and frontend API types under `lib/demo/api-types.ts`.
+Handlers use the shared response helpers in `services/api/internal/http/respond.go`. Validation and auth failures return JSON error responses with appropriate HTTP status codes. Route-specific response models live in `services/api/internal/store/models.go`, service files under `services/api/internal/service`, and frontend API types under `lib/workspace/api-types.ts`.
 
 Common security responses:
 

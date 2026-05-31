@@ -1,0 +1,425 @@
+import type {
+  AdminAuditEventApiResponse,
+  AdminUserAccessApiResponse,
+  AlternativeApiResponse,
+  ApiErrorResponse,
+  CreateAdminUserApiInput,
+  CreateAdminUserApiResponse,
+  CreatePartnerApiKeyApiInput,
+  CreatePartnerApiKeyApiResponse,
+  CreatePartnerExportApiInput,
+  CreatePartnerWebhookApiInput,
+  CreatePartnerWebhookApiResponse,
+  CreateReportApiInput,
+  CreateReportApiResponse,
+  ClinicDetailApiResponse,
+  CurrentStatusApiResponse,
+  PartnerExportRunApiResponse,
+  PartnerReadinessApiResponse,
+  PartnerWebhookEventApiResponse,
+  OfflineSyncApiRequest,
+  OfflineSyncApiResponse,
+  PublicClinicDetailApiResponse,
+  ReportApiResponse,
+  ReviewReportApiInput,
+  ReviewReportApiResponse,
+  RevokeAdminUserSessionsApiResponse,
+  StalenessReconciliationApiResponse,
+  SyncSummaryApiResponse,
+  AuditEventApiResponse,
+  UpdateAdminUserAccessApiInput,
+  UpdateAdminUserAccessApiResponse,
+  UpdateAdminUserApiInput,
+  UpdateAdminUserApiResponse,
+} from "@/lib/workspace/api-types";
+import { withObservabilityHeaders } from "@/lib/observability/request-context";
+
+const DEFAULT_API_BASE_URL = "http://localhost:8080";
+const DEFAULT_BROWSER_API_BASE_URL = "/api/clinicpulse";
+
+export type ClinicPulseApiClientOptions = {
+  baseUrl?: string;
+  fetch?: ClinicPulseFetch;
+  init?: RequestInit;
+};
+
+export type ClinicPulseFetch = (input: string, init?: RequestInit) => Promise<Response>;
+
+export class ClinicPulseApiError extends Error {
+  readonly status: number;
+  readonly code?: string;
+  readonly fields?: string[];
+
+  constructor(status: number, message: string, code?: string, fields?: string[]) {
+    super(message);
+    this.name = "ClinicPulseApiError";
+    this.status = status;
+    this.code = code;
+    this.fields = fields;
+  }
+}
+
+function getDefaultBaseUrl() {
+  if (typeof process !== "undefined") {
+    if (typeof window === "undefined") {
+      return (
+        process.env.CLINICPULSE_API_BASE_URL ||
+        process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL ||
+        DEFAULT_API_BASE_URL
+      );
+    }
+
+    return process.env.NEXT_PUBLIC_CLINICPULSE_API_BASE_URL || DEFAULT_BROWSER_API_BASE_URL;
+  }
+
+  return DEFAULT_BROWSER_API_BASE_URL;
+}
+
+function getFetch(fetchImpl: ClinicPulseApiClientOptions["fetch"]) {
+  if (fetchImpl) {
+    return fetchImpl;
+  }
+
+  if (typeof fetch !== "undefined") {
+    return fetch as ClinicPulseFetch;
+  }
+
+  throw new Error("No fetch implementation is available.");
+}
+
+function trimSlashes(value: string) {
+  return value.replace(/^\/+|\/+$/g, "");
+}
+
+function buildApiUrl(
+  pathSegments: string[],
+  options: ClinicPulseApiClientOptions = {},
+  query?: Record<string, string>,
+) {
+  const baseUrl = options.baseUrl ?? getDefaultBaseUrl();
+  const trimmedBaseUrl = baseUrl.replace(/\/+$/g, "");
+  const encodedPath = pathSegments.map((segment) => encodeURIComponent(segment)).join("/");
+  const isRelativeBaseUrl = trimmedBaseUrl.startsWith("/");
+  const url = new URL(
+    `${trimmedBaseUrl}/${encodedPath}`,
+    isRelativeBaseUrl ? "http://clinicpulse.local" : undefined,
+  );
+
+  if (query) {
+    for (const [key, value] of Object.entries(query)) {
+      url.searchParams.set(key, value);
+    }
+  }
+
+  if (isRelativeBaseUrl) {
+    return `${url.pathname}${url.search}`;
+  }
+
+  return url.toString();
+}
+
+function copyHeaders(target: Headers, source: HeadersInit | undefined) {
+  if (!source) {
+    return;
+  }
+
+  new Headers(source).forEach((value, key) => {
+    target.set(key, value);
+  });
+}
+
+function shouldDefaultJsonContentType(body: BodyInit | null | undefined) {
+  return typeof body === "string";
+}
+
+function buildRequestInit(options: ClinicPulseApiClientOptions, requestInit: RequestInit) {
+  const headers = new Headers();
+  copyHeaders(headers, options.init?.headers);
+  copyHeaders(headers, requestInit.headers);
+  const observabilityHeaders = withObservabilityHeaders(headers);
+  const init = {
+    cache: "no-store",
+    method: "GET",
+    ...options.init,
+    ...requestInit,
+    headers: observabilityHeaders,
+  } satisfies RequestInit;
+
+  if (shouldDefaultJsonContentType(init.body) && !observabilityHeaders.has("content-type")) {
+    observabilityHeaders.set("content-type", "application/json");
+  }
+
+  return init;
+}
+
+async function readJson<T>(response: Response): Promise<T> {
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return (await response.json()) as T;
+}
+
+export async function requestClinicPulseApi<T>(
+  pathSegments: string[],
+  options: ClinicPulseApiClientOptions = {},
+  requestInit: RequestInit = {},
+  query?: Record<string, string>,
+) {
+  const fetchImpl = getFetch(options.fetch);
+  const url = buildApiUrl(pathSegments.map(trimSlashes).filter(Boolean), options, query);
+  const response = await fetchImpl(url, buildRequestInit(options, requestInit));
+
+  if (response.ok) {
+    return readJson<T>(response);
+  }
+
+  let payload: ApiErrorResponse | undefined;
+  try {
+    payload = await readJson<ApiErrorResponse>(response);
+  } catch {
+    payload = undefined;
+  }
+
+  const message = payload?.error?.message ?? `ClinicPulse API request failed with ${response.status}`;
+  throw new ClinicPulseApiError(
+    response.status,
+    message,
+    payload?.error?.code,
+    payload?.error?.fields,
+  );
+}
+
+export function fetchClinics(options?: ClinicPulseApiClientOptions) {
+  return requestClinicPulseApi<PublicClinicDetailApiResponse[]>(
+    ["v1", "public", "clinics"],
+    options,
+  );
+}
+
+export function fetchOperationalClinics(options?: ClinicPulseApiClientOptions) {
+  return requestClinicPulseApi<ClinicDetailApiResponse[]>(["v1", "clinics"], options);
+}
+
+export function fetchClinic(clinicId: string, options?: ClinicPulseApiClientOptions) {
+  return requestClinicPulseApi<PublicClinicDetailApiResponse>(
+    ["v1", "public", "clinics", clinicId],
+    options,
+  );
+}
+
+export function fetchClinicStatus(clinicId: string, options?: ClinicPulseApiClientOptions) {
+  return requestClinicPulseApi<CurrentStatusApiResponse>(
+    ["v1", "clinics", clinicId, "status"],
+    options,
+  );
+}
+
+export function fetchClinicReports(clinicId: string, options?: ClinicPulseApiClientOptions) {
+  return requestClinicPulseApi<ReportApiResponse[]>(["v1", "clinics", clinicId, "reports"], options);
+}
+
+export function fetchClinicAuditEvents(clinicId: string, options?: ClinicPulseApiClientOptions) {
+  return requestClinicPulseApi<AuditEventApiResponse[]>(
+    ["v1", "clinics", clinicId, "audit-events"],
+    options,
+  );
+}
+
+export function createReport(input: CreateReportApiInput, options?: ClinicPulseApiClientOptions) {
+  return requestClinicPulseApi<CreateReportApiResponse>(["v1", "reports"], options, {
+    body: JSON.stringify(input),
+    method: "POST",
+  });
+}
+
+export function fetchPendingReports(options?: ClinicPulseApiClientOptions) {
+  return requestClinicPulseApi<ReportApiResponse[]>(["v1", "reports", "pending"], options);
+}
+
+export function reviewReport(
+  reportId: number | string,
+  input: ReviewReportApiInput,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<ReviewReportApiResponse>(
+    ["v1", "reports", String(reportId), "review"],
+    options,
+    {
+      body: JSON.stringify(input),
+      method: "POST",
+    },
+  );
+}
+
+export function syncOfflineReportsApi(
+  input: OfflineSyncApiRequest,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<OfflineSyncApiResponse>(
+    ["v1", "reports", "offline-sync"],
+    options,
+    {
+      body: JSON.stringify(input),
+      method: "POST",
+    },
+  );
+}
+
+export function fetchSyncSummary(options?: ClinicPulseApiClientOptions) {
+  return requestClinicPulseApi<SyncSummaryApiResponse>(["v1", "sync", "summary"], options);
+}
+
+export function reconcileStatusStaleness(options?: ClinicPulseApiClientOptions) {
+  return requestClinicPulseApi<StalenessReconciliationApiResponse>(
+    ["v1", "status", "reconcile-staleness"],
+    options,
+    { method: "POST" },
+  );
+}
+
+export function fetchPartnerReadiness(options?: ClinicPulseApiClientOptions) {
+  return requestClinicPulseApi<PartnerReadinessApiResponse>(
+    ["v1", "admin", "partner-readiness"],
+    options,
+  );
+}
+
+export function fetchAdminUsers(options?: ClinicPulseApiClientOptions) {
+  return requestClinicPulseApi<AdminUserAccessApiResponse[]>(["v1", "admin", "users"], options);
+}
+
+export function createAdminUser(
+  input: CreateAdminUserApiInput,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<CreateAdminUserApiResponse>(["v1", "admin", "users"], options, {
+    body: JSON.stringify(input),
+    method: "POST",
+  });
+}
+
+export function updateAdminUser(
+  userId: number | string,
+  input: UpdateAdminUserApiInput,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<UpdateAdminUserApiResponse>(
+    ["v1", "admin", "users", String(userId)],
+    options,
+    {
+      body: JSON.stringify(input),
+      method: "PATCH",
+    },
+  );
+}
+
+export function updateAdminUserAccess(
+  userId: number | string,
+  input: UpdateAdminUserAccessApiInput,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<UpdateAdminUserAccessApiResponse>(
+    ["v1", "admin", "users", String(userId), "access"],
+    options,
+    {
+      body: JSON.stringify(input),
+      method: "PUT",
+    },
+  );
+}
+
+export function revokeAdminUserSessions(
+  userId: number | string,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<RevokeAdminUserSessionsApiResponse>(
+    ["v1", "admin", "users", String(userId), "sessions", "revoke"],
+    options,
+    { method: "POST" },
+  );
+}
+
+export function fetchAdminAuditEvents(options?: ClinicPulseApiClientOptions) {
+  return requestClinicPulseApi<AdminAuditEventApiResponse[]>(
+    ["v1", "admin", "audit-events"],
+    options,
+  );
+}
+
+export function createPartnerApiKey(
+  input: CreatePartnerApiKeyApiInput,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<CreatePartnerApiKeyApiResponse>(
+    ["v1", "admin", "api-keys"],
+    options,
+    {
+      body: JSON.stringify(input),
+      method: "POST",
+    },
+  );
+}
+
+export function revokePartnerApiKey(
+  keyId: number | string,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<void>(
+    ["v1", "admin", "api-keys", String(keyId), "revoke"],
+    options,
+    { method: "POST" },
+  );
+}
+
+export function createPartnerWebhook(
+  input: CreatePartnerWebhookApiInput,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<CreatePartnerWebhookApiResponse>(
+    ["v1", "admin", "webhooks"],
+    options,
+    {
+      body: JSON.stringify(input),
+      method: "POST",
+    },
+  );
+}
+
+export function testPartnerWebhook(
+  subscriptionId: number | string,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<PartnerWebhookEventApiResponse>(
+    ["v1", "admin", "webhooks", String(subscriptionId), "test"],
+    options,
+    { method: "POST" },
+  );
+}
+
+export function createPartnerExport(
+  input: CreatePartnerExportApiInput,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<PartnerExportRunApiResponse>(
+    ["v1", "admin", "exports"],
+    options,
+    {
+      body: JSON.stringify(input),
+      method: "POST",
+    },
+  );
+}
+
+export function fetchAlternatives(
+  clinicId: string,
+  service: string,
+  options?: ClinicPulseApiClientOptions,
+) {
+  return requestClinicPulseApi<AlternativeApiResponse[]>(
+    ["v1", "public", "alternatives"],
+    options,
+    undefined,
+    { clinicId, service },
+  );
+}

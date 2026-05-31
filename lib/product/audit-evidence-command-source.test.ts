@@ -8,7 +8,7 @@ function sourceFile(path: string) {
 
 describe("audit evidence command briefing source", () => {
   it("renders audit evidence as an event ledger rather than another command packet", () => {
-    const source = sourceFile("app/(demo)/admin/audit-evidence/page.tsx");
+    const source = sourceFile("app/(workspace)/admin/audit-evidence/page.tsx");
 
     expect(source).toContain("Audit event ledger");
     expect(source).toContain('aria-label="Audit query builder"');
@@ -23,7 +23,7 @@ describe("audit evidence command briefing source", () => {
   });
 
   it("keeps the selected-row audit evidence workspace mounted", () => {
-    const source = sourceFile("app/(demo)/admin/audit-evidence/page.tsx");
+    const source = sourceFile("app/(workspace)/admin/audit-evidence/page.tsx");
     const workspaceSource = sourceFile("components/product/audit-evidence-workspace.tsx");
 
     expect(source).toContain('data-admin-module="audit-evidence"');

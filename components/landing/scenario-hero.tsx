@@ -17,13 +17,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { FreshnessBadge } from "@/components/demo/freshness-badge";
-import { SeverityBadge } from "@/components/demo/severity-badge";
-import { StatusBadge } from "@/components/demo/status-badge";
+import { FreshnessBadge } from "@/components/workspace/freshness-badge";
+import { SeverityBadge } from "@/components/workspace/severity-badge";
+import { StatusBadge } from "@/components/workspace/status-badge";
 import { Button } from "@/components/ui/button";
-import { STOCKOUT_TRIGGER_CLINIC_ID } from "@/lib/demo/clinics";
-import { useDemoStore } from "@/lib/demo/demo-store";
-import { demoImages } from "@/lib/demo/images";
+import { STOCKOUT_TRIGGER_CLINIC_ID } from "@/lib/workspace/clinics";
+import { useWorkspaceStore } from "@/lib/workspace/workspace-store";
+import { workspaceImages } from "@/lib/workspace/images";
 import {
   getActiveAlerts,
   getAlternativeClinics,
@@ -32,8 +32,8 @@ import {
   getClinicRows,
   getRecentReportStream,
   getStatusCounts,
-} from "@/lib/demo/selectors";
-import type { ClinicRow } from "@/lib/demo/types";
+} from "@/lib/workspace/selectors";
+import type { ClinicRow } from "@/lib/workspace/types";
 
 function formatTimestamp(value: string) {
   return new Intl.DateTimeFormat("en-ZA", {
@@ -80,11 +80,11 @@ function pinClass(status: ClinicRow["status"]) {
 export function ScenarioHero() {
   const {
     state,
-    resetDemo,
+    resetWorkspace,
     triggerStockout,
     syncOfflineReports,
     queueOfflineReport,
-  } = useDemoStore();
+  } = useWorkspaceStore();
   const [selectedClinicId, setSelectedClinicId] = useState(STOCKOUT_TRIGGER_CLINIC_ID);
 
   const clinicRows = useMemo(() => getClinicRows(state), [state]);
@@ -162,9 +162,9 @@ export function ScenarioHero() {
             </p>
             <div className="mt-5 grid max-w-2xl grid-cols-3 gap-2">
               {[
-                demoImages["district-operations-room"],
-                demoImages["mobile-field-report"],
-                demoImages["patient-routing-context"],
+                workspaceImages["district-operations-room"],
+                workspaceImages["mobile-field-report"],
+                workspaceImages["patient-routing-context"],
               ].map((image) => (
                 <div
                   key={image.src}
@@ -197,12 +197,12 @@ export function ScenarioHero() {
               <WifiOff className="size-4" />
               {state.offlineQueue.length > 0 ? "Sync offline report" : "Queue offline report"}
             </Button>
-            <Button type="button" variant="outline" onClick={resetDemo}>
+            <Button type="button" variant="outline" onClick={resetWorkspace}>
               <RotateCcw className="size-4" />
               Reset
             </Button>
             <Link
-              href="/demo"
+              href="/district"
               className="inline-flex h-9 items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-900 shadow-sm transition hover:bg-neutral-50"
             >
               Open operations console
@@ -264,7 +264,7 @@ export function ScenarioHero() {
                   Product surfaces
                 </p>
                 <div className="mt-2 grid gap-2 text-sm text-neutral-700">
-                  <Link className="hover:text-neutral-950" href="/demo">District console</Link>
+                  <Link className="hover:text-neutral-950" href="/district">District console</Link>
                   <Link className="hover:text-neutral-950" href="/field">Field PWA</Link>
                   <Link className="hover:text-neutral-950" href="/finder">Clinic finder</Link>
                 </div>
@@ -473,8 +473,8 @@ export function ScenarioHero() {
               <div className="mb-3 grid grid-cols-2 gap-2">
                 <div className="relative aspect-[4/3] overflow-hidden rounded-md border border-neutral-200 bg-neutral-100">
                   <Image
-                    src={demoImages["mobile-field-report"].src}
-                    alt={demoImages["mobile-field-report"].alt}
+                    src={workspaceImages["mobile-field-report"].src}
+                    alt={workspaceImages["mobile-field-report"].alt}
                     fill
                     sizes="10rem"
                     className="object-cover"
@@ -485,8 +485,8 @@ export function ScenarioHero() {
                 </div>
                 <div className="relative aspect-[4/3] overflow-hidden rounded-md border border-neutral-200 bg-neutral-100">
                   <Image
-                    src={demoImages["patient-routing-context"].src}
-                    alt={demoImages["patient-routing-context"].alt}
+                    src={workspaceImages["patient-routing-context"].src}
+                    alt={workspaceImages["patient-routing-context"].alt}
                     fill
                     sizes="10rem"
                     className="object-cover"

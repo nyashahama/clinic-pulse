@@ -42,9 +42,9 @@ Modify:
 - `services/api/internal/config/config.go`: add metrics enabled/token and observability service-name config.
 - `services/api/internal/config/config_test.go`: validate observability config.
 - `services/api/cmd/api/main.go`: create shared logger/metrics registry and pass observability options to the router.
-- `lib/demo/api-client.ts`: propagate request ID/trace headers for server-side API calls.
+- `lib/workspace/api-client.ts`: propagate request ID/trace headers for server-side API calls.
 - `lib/auth/api.ts`: propagate request ID/trace headers for auth API calls.
-- `lib/demo/api-client.test.ts`: verify observability headers are set/preserved.
+- `lib/workspace/api-client.test.ts`: verify observability headers are set/preserved.
 - `lib/auth/session.test.ts`: verify request correlation is preserved through session/API calls if needed.
 - `Makefile`: add `smoke` and `load-smoke` targets.
 - `package.json`: add script aliases for smoke/load checks if useful.
@@ -521,9 +521,9 @@ git commit -m "feat: expose protected api metrics"
 - Create: `lib/observability/request-context.ts`
 - Create: `lib/observability/request-context.test.ts`
 - Create: `middleware.ts`
-- Modify: `lib/demo/api-client.ts`
+- Modify: `lib/workspace/api-client.ts`
 - Modify: `lib/auth/api.ts`
-- Modify: `lib/demo/api-client.test.ts`
+- Modify: `lib/workspace/api-client.test.ts`
 - Modify: `lib/auth/session.test.ts`
 
 - [ ] **Step 1: Write failing frontend helper tests**
@@ -538,7 +538,7 @@ Create `lib/observability/request-context.test.ts` with tests for:
 
 - [ ] **Step 2: Add failing API client tests**
 
-Update `lib/demo/api-client.test.ts` and auth/session API tests to assert server-side requests include:
+Update `lib/workspace/api-client.test.ts` and auth/session API tests to assert server-side requests include:
 
 - `X-Request-Id`
 - `traceparent`
@@ -554,7 +554,7 @@ Expected behavior:
 Run:
 
 ```bash
-npm test -- lib/observability/request-context.test.ts lib/demo/api-client.test.ts lib/auth/session.test.ts
+npm test -- lib/observability/request-context.test.ts lib/workspace/api-client.test.ts lib/auth/session.test.ts
 ```
 
 Expected: FAIL until helpers/client propagation are implemented.
@@ -588,7 +588,7 @@ Create `middleware.ts`:
 
 - [ ] **Step 6: Update API clients**
 
-Update `lib/demo/api-client.ts` and `lib/auth/api.ts`:
+Update `lib/workspace/api-client.ts` and `lib/auth/api.ts`:
 
 - call `withObservabilityHeaders` inside request init construction,
 - preserve existing cookie/content-type behavior,
@@ -600,7 +600,7 @@ Update `lib/demo/api-client.ts` and `lib/auth/api.ts`:
 Run:
 
 ```bash
-npm test -- lib/observability/request-context.test.ts lib/demo/api-client.test.ts lib/auth/session.test.ts
+npm test -- lib/observability/request-context.test.ts lib/workspace/api-client.test.ts lib/auth/session.test.ts
 ```
 
 Expected: PASS.
@@ -608,7 +608,7 @@ Expected: PASS.
 - [ ] **Step 8: Commit**
 
 ```bash
-git add lib/observability/request-context.ts lib/observability/request-context.test.ts middleware.ts lib/demo/api-client.ts lib/auth/api.ts lib/demo/api-client.test.ts lib/auth/session.test.ts
+git add lib/observability/request-context.ts lib/observability/request-context.test.ts middleware.ts lib/workspace/api-client.ts lib/auth/api.ts lib/workspace/api-client.test.ts lib/auth/session.test.ts
 git commit -m "feat: propagate request correlation"
 ```
 

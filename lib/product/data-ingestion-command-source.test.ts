@@ -8,7 +8,7 @@ function sourceFile(path: string) {
 
 describe("data ingestion command briefing source", () => {
   it("renders data ingestion as a pipeline monitor rather than another command packet", () => {
-    const source = sourceFile("app/(demo)/admin/data-ingestion/page.tsx");
+    const source = sourceFile("app/(workspace)/admin/data-ingestion/page.tsx");
     const monitorSource = sourceFile("components/product/data-ingestion-pipeline-monitor.tsx");
 
     expect(source).toContain("DataIngestionPipelineMonitor");
@@ -32,7 +32,7 @@ describe("data ingestion command briefing source", () => {
   });
 
   it("keeps the detailed ingestion evidence workspace mounted", () => {
-    const source = sourceFile("app/(demo)/admin/data-ingestion/page.tsx");
+    const source = sourceFile("app/(workspace)/admin/data-ingestion/page.tsx");
     const workspaceSource = sourceFile("components/product/data-ingestion-workspace.tsx");
 
     expect(source).toContain('data-admin-module="data-ingestion"');

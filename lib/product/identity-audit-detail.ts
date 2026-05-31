@@ -2,7 +2,7 @@ import type { AuthRole } from "@/lib/auth/api";
 import type {
   AdminAuditEventApiResponse,
   AdminUserAccessApiResponse,
-} from "@/lib/demo/api-types";
+} from "@/lib/workspace/api-types";
 import type {
   EvidenceCommandChip,
   EvidenceCommandDecision,

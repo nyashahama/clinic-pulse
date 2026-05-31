@@ -6,9 +6,9 @@ import { describe, expect, it } from "vitest";
 const scenarioControlsPage = path.join(
   process.cwd(),
   "app",
-  "(demo)",
+  "(workspace)",
   "admin",
-  "demo-controls",
+  "scenario-controls",
   "page-client.tsx",
 );
 const scenarioBriefing = path.join(

@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 const auditEvidencePage = path.join(
   process.cwd(),
   "app",
-  "(demo)",
+  "(workspace)",
   "admin",
   "audit-evidence",
   "page.tsx",
@@ -14,7 +14,7 @@ const auditEvidencePage = path.join(
 const securityPage = path.join(
   process.cwd(),
   "app",
-  "(demo)",
+  "(workspace)",
   "admin",
   "security",
   "page.tsx",
@@ -56,7 +56,7 @@ describe("admin evidence operations surfaces", () => {
   it("keeps security posture on a distinct risk-surface briefing", () => {
     const source = readSource(securityPage);
     const modelSource = readSource(
-      path.join(process.cwd(), "lib", "demo", "admin-security-evidence.ts"),
+      path.join(process.cwd(), "lib", "workspace", "admin-security-evidence.ts"),
     );
 
     expect(source).toContain("Security risk surface");

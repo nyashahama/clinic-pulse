@@ -21,25 +21,25 @@ import {
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { useDemoStore } from "@/lib/demo/demo-store";
+import { useWorkspaceStore } from "@/lib/workspace/workspace-store";
 import {
   shouldOpenBookingModal,
   shouldOpenBookingModalFromSearchParams,
 } from "@/lib/landing/booking-modal";
 import { cn } from "@/lib/utils";
-import type { DemoLeadFormInput } from "@/components/demo/demo-lead-form";
+import type { WalkthroughLeadFormInput } from "@/components/workspace/walkthrough-lead-form";
 
 const monthDays = Array.from({ length: 31 }, (_, index) => index + 1);
 const leadingBlankDays = Array.from({ length: 5 }, (_, index) => `blank-${index}`);
 const timeSlots = ["09:00", "10:30", "12:00", "14:00", "15:30"];
 const customerLogos = ["District Health", "CareAccess", "Ubuntu Clinics", "FieldOps", "Community Care"];
 
-type InterestType = DemoLeadFormInput["interest"];
+type InterestType = WalkthroughLeadFormInput["interest"];
 
 export function BookingHero() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { addDemoLead } = useDemoStore();
+  const { addWalkthroughLead } = useWorkspaceStore();
   const [duration, setDuration] = useState<30 | 45>(30);
   const [selectedDay, setSelectedDay] = useState(4);
   const [selectedTime, setSelectedTime] = useState("10:30");
@@ -113,7 +113,7 @@ export function BookingHero() {
       .filter(Boolean)
       .join("\n");
 
-    addDemoLead({
+    addWalkthroughLead({
       ...lead,
       name: lead.name.trim(),
       workEmail: lead.workEmail.trim(),
@@ -125,7 +125,7 @@ export function BookingHero() {
     });
 
     router.push(
-      `/book-demo/thanks?name=${encodeURIComponent(lead.name)}&organization=${encodeURIComponent(
+      `/book-walkthrough/thanks?name=${encodeURIComponent(lead.name)}&organization=${encodeURIComponent(
         lead.organization,
       )}`,
     );

@@ -69,7 +69,7 @@ test.describe("phase 5 accessibility smoke", () => {
       window.localStorage.setItem("theme", "dark");
     });
 
-    const publicRoutes = ["/", "/book-demo", "/login", "/register"];
+    const publicRoutes = ["/", "/book-walkthrough", "/login", "/register"];
 
     for (const route of publicRoutes) {
       await page.goto(route);
@@ -88,7 +88,7 @@ test.describe("phase 5 accessibility smoke", () => {
       "/admin/data-ingestion",
       "/admin/integrations",
       "/admin/security",
-      "/demo",
+      "/district",
       "/district",
       "/district/clinic-evidence",
       "/district/clinic-network",

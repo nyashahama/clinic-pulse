@@ -1,12 +1,12 @@
 # Engineering Decisions
 
-## 1. Build A Real Full-Stack Demo
+## 1. Build A Real Full-Stack Product
 
 Decision: use a Next.js frontend, Go API, and Postgres database instead of a static prototype.
 
-Reasoning: ClinicPulse is meant to demonstrate operational credibility. A real API, schema, auth layer, migrations, and tests make the demo inspectable by technical evaluators.
+Reasoning: ClinicPulse is meant to demonstrate operational credibility. A real API, schema, auth layer, migrations, and tests make the product inspectable by technical evaluators.
 
-Tradeoff: the local setup is heavier than a static demo, but the Makefile keeps the path repeatable.
+Tradeoff: the local setup is heavier than a static prototype, but the Makefile keeps the path repeatable.
 
 ## 2. Use Same-Origin Browser API Proxying
 
@@ -16,19 +16,19 @@ Reasoning: the frontend avoids cross-origin browser configuration during local d
 
 Tradeoff: deployment needs the proxy base URL configured correctly.
 
-## 3. Keep Demo Fallback Explicit
+## 3. Keep Seeded Fallback Explicit
 
-Decision: allow seeded frontend fallback only when configured or in non-production demo contexts.
+Decision: allow seeded frontend fallback only when configured or in explicit non-production seeded contexts.
 
 Reasoning: demos should stay usable if a backend call fails locally, but staging and production should expose API failures.
 
-Tradeoff: fallback logic must be treated as demo resilience, not production correctness.
+Tradeoff: fallback logic must be treated as local fallback resilience, not production correctness.
 
 ## 4. Model Roles In The Backend
 
 Decision: use session auth and role middleware for reporter, district manager, org admin, and system admin access.
 
-Reasoning: the demo needs to show different operational surfaces without relying only on frontend hiding.
+Reasoning: the product needs to show different operational surfaces without relying only on frontend hiding.
 
 Tradeoff: local setup needs seeded users and a login flow.
 
@@ -62,11 +62,11 @@ Decision: document `v0.1.0-alpha` now, but create the tag only after verificatio
 
 Reasoning: a release tag should mean the repo is ready to hand to reviewers.
 
-Tradeoff: the visible release marker waits until screenshots, demo/video decisions, and tests are in acceptable shape.
+Tradeoff: the visible release marker waits until screenshots, walkthrough/video decisions, and tests are in acceptable shape.
 
 ## 9. Keep The Authenticated Role Model Focused Before Phase 3
 
-Decision: keep the authenticated product centered on reporter, district manager, organisation admin, and system admin before Phase 3. Clinic coordinator, partner/API user, public user, and founder/admin remain future personas, public routes, admin sub-surfaces, or demo-only responsibilities until a real workflow requires promotion.
+Decision: keep the authenticated product centered on reporter, district manager, organisation admin, and system admin before Phase 3. Clinic coordinator, partner/API user, public user, and founder/admin remain future personas, public routes, admin sub-surfaces, or showcase-only responsibilities until a real workflow requires promotion.
 
 Reasoning: the next product proof is the operational handoff loop: reporter submits a clinic signal, district manager acts on it, admin reviews evidence, and public or partner surfaces consume trusted availability. Adding every future persona now would create more dashboards, permissions, and placeholder states before the core workflow is real.
 

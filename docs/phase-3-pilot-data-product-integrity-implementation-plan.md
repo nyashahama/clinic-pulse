@@ -31,19 +31,19 @@ Modify likely:
 - `services/api/internal/http/handlers.go`: handlers for controlled ingestion evidence and sync visibility.
 - `services/api/internal/http/handlers_test.go`: handler auth, scoping, and response tests.
 - `services/api/internal/service/*`: ingestion validation, provenance, stale reconciliation, export/webhook retry helpers if needed.
-- `lib/demo/api-types.ts`: frontend API response types for trust and ingestion evidence.
-- `lib/demo/api-client.ts`: frontend API helpers for any new endpoints.
-- `lib/demo/api-client.test.ts`: API route contract tests.
-- `lib/demo/server-hydration.ts`: hydrate pilot trust data where existing surfaces need it.
-- `app/(demo)/field/page.tsx`: show field trust/sync state summary.
-- `app/(demo)/field/submit-report/page.tsx`: replace placeholder with pilot-safe submit/report status surface if still placeholder.
-- `app/(demo)/field/sync-queue/page.tsx`: replace placeholder with queue/sync state surface.
-- `app/(demo)/field/drafts-sync/page.tsx`: replace placeholder or hide from pilot navigation if redundant.
-- `app/(demo)/district/page.tsx`: expose data trust labels in district operating view.
-- `app/(demo)/admin/data-ingestion/page.tsx`: show ingestion source, latest run, sync failure, and stale reconciliation evidence.
-- `app/(demo)/admin/audit-evidence/page.tsx`: include provenance, ingestion, sync, export, webhook, and safety-relevant evidence.
-- `app/(demo)/admin/reporting-coverage/page.tsx`: include source/freshness/review confidence summaries.
-- `app/(demo)/admin/security/page.tsx`: link safety-sensitive partner credential risks where relevant.
+- `lib/workspace/api-types.ts`: frontend API response types for trust and ingestion evidence.
+- `lib/workspace/api-client.ts`: frontend API helpers for any new endpoints.
+- `lib/workspace/api-client.test.ts`: API route contract tests.
+- `lib/workspace/server-hydration.ts`: hydrate pilot trust data where existing surfaces need it.
+- `app/(workspace)/field/page.tsx`: show field trust/sync state summary.
+- `app/(workspace)/field/submit-report/page.tsx`: replace placeholder with pilot-safe submit/report status surface if still placeholder.
+- `app/(workspace)/field/sync-queue/page.tsx`: replace placeholder with queue/sync state surface.
+- `app/(workspace)/field/drafts-sync/page.tsx`: replace placeholder or hide from pilot navigation if redundant.
+- `app/(workspace)/district/page.tsx`: expose data trust labels in district operating view.
+- `app/(workspace)/admin/data-ingestion/page.tsx`: show ingestion source, latest run, sync failure, and stale reconciliation evidence.
+- `app/(workspace)/admin/audit-evidence/page.tsx`: include provenance, ingestion, sync, export, webhook, and safety-relevant evidence.
+- `app/(workspace)/admin/reporting-coverage/page.tsx`: include source/freshness/review confidence summaries.
+- `app/(workspace)/admin/security/page.tsx`: link safety-sensitive partner credential risks where relevant.
 - `app/(auth)/login/page.tsx`: link safety page beside privacy and terms.
 - `app/(auth)/register/page.tsx`: link safety page beside privacy and terms.
 - `components/product/*`: add compact trust labels or evidence cells if existing primitives need extension.
@@ -384,8 +384,8 @@ describe("pilot route policy", () => {
   });
 
   it("allows demo-only routes to stay marked as sandbox", () => {
-    expect(pilotRoutePolicyFor("/demo/interventions")).toEqual({
-      route: "/demo/interventions",
+    expect(pilotRoutePolicyFor("/district/interventions")).toEqual({
+      route: "/district/interventions",
       pilotCritical: false,
       allowedOutcomes: ["demo_sandbox", "hide"],
     });
@@ -458,7 +458,7 @@ Expected: PASS.
 Run:
 
 ```bash
-rg -n '"/field/submit-report"|"/field/sync-queue"|"/field/drafts-sync"|"/demo/interventions"|"/demo/severity-queue"|"/demo/clinic-network"' lib/product/workspace-config.tsx app components
+rg -n '"/field/submit-report"|"/field/sync-queue"|"/field/drafts-sync"|"/district/interventions"|"/district/severity-queue"|"/district/clinic-network"' lib/product/workspace-config.tsx app components
 ```
 
 Expected: identify routes that are linked from navigation while still placeholder-backed.
@@ -490,18 +490,18 @@ Expected: one commit. If `workspace-config.tsx` did not need changes, omit it fr
 
 **Files:**
 
-- Modify: `app/(demo)/field/page.tsx`
-- Modify: `app/(demo)/field/sync-queue/page.tsx`
-- Modify: `app/(demo)/field/drafts-sync/page.tsx`
-- Modify: `lib/demo/api-types.ts`
-- Modify: `lib/demo/api-client.ts`
-- Modify: `lib/demo/api-client.test.ts`
-- Modify: `lib/demo/server-hydration.ts`
+- Modify: `app/(workspace)/field/page.tsx`
+- Modify: `app/(workspace)/field/sync-queue/page.tsx`
+- Modify: `app/(workspace)/field/drafts-sync/page.tsx`
+- Modify: `lib/workspace/api-types.ts`
+- Modify: `lib/workspace/api-client.ts`
+- Modify: `lib/workspace/api-client.test.ts`
+- Modify: `lib/workspace/server-hydration.ts`
 - Test: `tests/e2e/phase-3-pilot-integrity.spec.ts`
 
 - [ ] **Step 1: Add failing API client expectations for sync summary visibility**
 
-In `lib/demo/api-client.test.ts`, add:
+In `lib/workspace/api-client.test.ts`, add:
 
 ```ts
 it("requests the authenticated sync summary for pilot visibility", async () => {
@@ -535,14 +535,14 @@ If `getSyncSummary` already exists, adapt the import and expected response shape
 Run:
 
 ```bash
-npm test -- lib/demo/api-client.test.ts
+npm test -- lib/workspace/api-client.test.ts
 ```
 
 Expected: FAIL only if the helper/shape is missing. If it already passes, continue and reuse existing helper.
 
 - [ ] **Step 3: Add or align sync summary types and client helper**
 
-In `lib/demo/api-types.ts`, ensure this type exists:
+In `lib/workspace/api-types.ts`, ensure this type exists:
 
 ```ts
 export type SyncSummaryApiResponse = {
@@ -558,7 +558,7 @@ export type SyncSummaryApiResponse = {
 };
 ```
 
-In `lib/demo/api-client.ts`, ensure this helper exists:
+In `lib/workspace/api-client.ts`, ensure this helper exists:
 
 ```ts
 export async function getSyncSummary(options?: ClinicPulseApiRequestOptions) {
@@ -571,18 +571,18 @@ export async function getSyncSummary(options?: ClinicPulseApiRequestOptions) {
 Run:
 
 ```bash
-npm test -- lib/demo/api-client.test.ts
+npm test -- lib/workspace/api-client.test.ts
 ```
 
 Expected: PASS.
 
 - [ ] **Step 5: Replace `/field/sync-queue` placeholder with pilot-safe sync state page**
 
-In `app/(demo)/field/sync-queue/page.tsx`, render a server component that:
+In `app/(workspace)/field/sync-queue/page.tsx`, render a server component that:
 
 ```tsx
 import { requireWorkflowSession } from "@/lib/auth/session";
-import { getSyncSummary } from "@/lib/demo/api-client";
+import { getSyncSummary } from "@/lib/workspace/api-client";
 
 export default async function FieldSyncQueuePage() {
   const session = await requireWorkflowSession("reporter");
@@ -628,7 +628,7 @@ Adjust the session cookie access to match the current `requireWorkflowSession` r
 
 - [ ] **Step 6: Replace or downgrade `/field/drafts-sync` placeholder**
 
-If there is no real server-backed draft model, update `app/(demo)/field/drafts-sync/page.tsx` to clearly state:
+If there is no real server-backed draft model, update `app/(workspace)/field/drafts-sync/page.tsx` to clearly state:
 
 ```tsx
 <h1>Draft sync is local-only before submission</h1>
@@ -661,7 +661,7 @@ test("reporter can inspect sync queue trust state", async ({ page }) => {
 Run:
 
 ```bash
-npm test -- lib/demo/api-client.test.ts
+npm test -- lib/workspace/api-client.test.ts
 E2E_DATABASE_URL="postgres://clinicpulse:clinicpulse@localhost:55432/clinicpulse_e2e?sslmode=disable" npx playwright test tests/e2e/phase-3-pilot-integrity.spec.ts --project=desktop-chrome
 ```
 
@@ -672,7 +672,7 @@ Expected: unit tests pass and Playwright reporter sync queue test passes.
 Run:
 
 ```bash
-git add lib/demo/api-types.ts lib/demo/api-client.ts lib/demo/api-client.test.ts app/\(demo\)/field/sync-queue/page.tsx app/\(demo\)/field/drafts-sync/page.tsx tests/e2e/phase-3-pilot-integrity.spec.ts
+git add lib/workspace/api-types.ts lib/workspace/api-client.ts lib/workspace/api-client.test.ts app/\(demo\)/field/sync-queue/page.tsx app/\(demo\)/field/drafts-sync/page.tsx tests/e2e/phase-3-pilot-integrity.spec.ts
 git commit -m "feat: show pilot sync integrity state"
 ```
 
@@ -682,10 +682,10 @@ Expected: one commit with field sync visibility.
 
 **Files:**
 
-- Modify: `app/(demo)/district/page.tsx`
-- Modify: `app/(demo)/admin/reporting-coverage/page.tsx`
-- Modify: `app/(demo)/admin/data-ingestion/page.tsx`
-- Modify: `app/(demo)/admin/audit-evidence/page.tsx`
+- Modify: `app/(workspace)/district/page.tsx`
+- Modify: `app/(workspace)/admin/reporting-coverage/page.tsx`
+- Modify: `app/(workspace)/admin/data-ingestion/page.tsx`
+- Modify: `app/(workspace)/admin/audit-evidence/page.tsx`
 - Modify: `components/product/*` if shared trust label component is needed.
 - Test: `lib/product/data-trust.test.ts`
 - Test: `tests/e2e/phase-3-pilot-integrity.spec.ts`
@@ -712,7 +712,7 @@ Use the existing component style if the product shell already has an equivalent 
 
 - [ ] **Step 2: Add district trust labels**
 
-In `app/(demo)/district/page.tsx`, add compact source/freshness/review labels near clinic status or review queue rows:
+In `app/(workspace)/district/page.tsx`, add compact source/freshness/review labels near clinic status or review queue rows:
 
 ```tsx
 const trust = buildDataTrustState({
@@ -733,7 +733,7 @@ Expected visible copy includes one of:
 
 - [ ] **Step 3: Add reporting coverage trust labels**
 
-In `app/(demo)/admin/reporting-coverage/page.tsx`, add columns or summary cards for:
+In `app/(workspace)/admin/reporting-coverage/page.tsx`, add columns or summary cards for:
 
 - Source.
 - Freshness.
@@ -744,7 +744,7 @@ Use `buildDataTrustState` rather than hand-coded labels.
 
 - [ ] **Step 4: Add data ingestion trust evidence**
 
-In `app/(demo)/admin/data-ingestion/page.tsx`, show:
+In `app/(workspace)/admin/data-ingestion/page.tsx`, show:
 
 - Latest sync/ingestion evidence.
 - Stale reconciliation state.
@@ -754,7 +754,7 @@ In `app/(demo)/admin/data-ingestion/page.tsx`, show:
 
 - [ ] **Step 5: Add audit evidence trust filters or labels**
 
-In `app/(demo)/admin/audit-evidence/page.tsx`, include trust-related event groups for:
+In `app/(workspace)/admin/audit-evidence/page.tsx`, include trust-related event groups for:
 
 - Report submission.
 - Report review.
@@ -1114,8 +1114,8 @@ Expected: one commit. Add any pilot-relevant route files that received safety no
 
 - Modify: stale reconciliation service/handler if audit idempotency is missing.
 - Modify: partner export/webhook service/handler if retry evidence is missing.
-- Modify: `app/(demo)/admin/data-ingestion/page.tsx`
-- Modify: `app/(demo)/admin/audit-evidence/page.tsx`
+- Modify: `app/(workspace)/admin/data-ingestion/page.tsx`
+- Modify: `app/(workspace)/admin/audit-evidence/page.tsx`
 - Modify: docs for command-triggered processing.
 
 - [ ] **Step 1: Audit existing processing paths**

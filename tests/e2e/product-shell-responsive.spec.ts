@@ -53,13 +53,9 @@ test.describe("product shell responsive behavior", () => {
     await expect(mobileSidebar).toBeHidden();
   });
 
-  test("keeps demo showcase and district product routes separate", async ({ page }) => {
+  test("renders the district product workspace on the district route", async ({ page }) => {
     await signInAsDistrictManager(page);
     await expect(page).toHaveURL(/\/district$/);
-
-    await page.goto("/demo");
-    await expect(page).toHaveURL(/\/demo$/);
-    await expect(page.getByRole("heading", { name: "Unified severity queue" })).toBeVisible();
 
     await page.goto("/district");
     await expect(page).toHaveURL(/\/district$/);

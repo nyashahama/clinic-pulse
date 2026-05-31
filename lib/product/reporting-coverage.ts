@@ -2,7 +2,7 @@ import type {
   ClinicDetailApiResponse,
   ReportApiResponse,
   SyncSummaryApiResponse,
-} from "@/lib/demo/api-types";
+} from "@/lib/workspace/api-types";
 import { buildAdminReportDetailHref } from "@/lib/product/admin-detail-routes";
 import { summarizeReportingCoverage, type GovernanceTone } from "@/lib/product/admin-governance";
 import {
@@ -174,7 +174,7 @@ const sourceLabels: Record<DataSource, string> = {
   field_report: "Field data",
   partner_export: "Partner export",
   pilot_import: "Imported data",
-  seeded_demo: "Scenario data",
+  scenario_seed: "Scenario data",
   system_reconciliation: "System reconciliation",
 };
 
@@ -594,7 +594,7 @@ function dataSourceForClinic(clinic: ClinicDetailApiResponse): DataSource {
     return "pilot_import";
   }
 
-  return "seeded_demo";
+  return "scenario_seed";
 }
 
 function dataFreshnessForClinic(clinic: ClinicDetailApiResponse): DataFreshness {

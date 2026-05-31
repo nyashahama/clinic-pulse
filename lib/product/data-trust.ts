@@ -1,5 +1,5 @@
 export type DataSource =
-  | "seeded_demo"
+  | "scenario_seed"
   | "pilot_import"
   | "field_report"
   | "system_reconciliation"
@@ -35,7 +35,7 @@ export type DataTrustState = {
 };
 
 const sourceLabels: Record<DataSource, string> = {
-  seeded_demo: "Scenario data",
+  scenario_seed: "Scenario data",
   pilot_import: "Imported data",
   field_report: "Field data",
   system_reconciliation: "System reconciliation data",
@@ -98,7 +98,7 @@ export function buildDataTrustState(input: DataTrustInput): DataTrustState {
     };
   }
 
-  if (input.source === "seeded_demo") {
+  if (input.source === "scenario_seed") {
     return {
       ...base,
       tone: "attention",

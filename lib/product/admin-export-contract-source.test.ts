@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 describe("admin export and API contract pages", () => {
   it("presents the export schema as a handoff cockpit instead of a copied command shell", () => {
-    const source = readFileSync("app/(demo)/admin/export-schema/page.tsx", "utf8");
+    const source = readFileSync("app/(workspace)/admin/export-schema/page.tsx", "utf8");
     const model = readFileSync("lib/product/export-schema.ts", "utf8");
     const workspace = readFileSync(
       "components/product/export-schema-workspace.tsx",
@@ -28,7 +28,7 @@ describe("admin export and API contract pages", () => {
   });
 
   it("turns the API contract page into a route-native API reference cockpit", () => {
-    const source = readFileSync("app/(demo)/admin/api-contract/page.tsx", "utf8");
+    const source = readFileSync("app/(workspace)/admin/api-contract/page.tsx", "utf8");
     const model = readFileSync("lib/product/api-contract.ts", "utf8");
     const workspace = readFileSync("components/product/api-contract-workspace.tsx", "utf8");
 
