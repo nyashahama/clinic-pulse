@@ -1,3 +1,12 @@
+import type {
+  EvidenceCommandChip,
+  EvidenceCommandDecision,
+  EvidenceCommandMetric,
+  EvidenceCommandSection,
+  EvidenceCommandTimelineItem,
+  EvidenceCommandTone,
+} from "@/lib/product/evidence-command";
+
 export type SecurityEvidenceTone = "clear" | "attention" | "blocked" | "info";
 
 export type SecurityEvidenceKind =
@@ -51,6 +60,34 @@ export type SecurityEvidenceSourceReference = {
 };
 
 export type SecurityEvidenceViewModel = {
+  commandBrief: {
+    chips: EvidenceCommandChip[];
+    metrics: EvidenceCommandMetric[];
+    caseBrief: {
+      title: string;
+      description: string;
+      summary: {
+        label: string;
+        value: string;
+        tone: EvidenceCommandTone;
+        emphasis: true;
+      };
+      primaryFields: Array<{
+        label: string;
+        value: string;
+        href?: string;
+        tone?: EvidenceCommandTone;
+        emphasis?: boolean;
+      }>;
+      sections: EvidenceCommandSection[];
+    };
+    decision: EvidenceCommandDecision;
+    timeline: {
+      title: string;
+      description: string;
+      items: EvidenceCommandTimelineItem[];
+    };
+  };
   metrics: SecuritySummaryMetric[];
   rows: SecurityEvidenceRow[];
   posture: {

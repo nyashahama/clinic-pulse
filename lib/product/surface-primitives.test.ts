@@ -357,6 +357,48 @@ describe("product surface primitives", () => {
     expect(html).toContain("bg-bg-muted/60");
   });
 
+  it("keeps five evidence command metrics on one wide row", () => {
+    const html = renderToStaticMarkup(
+      createElement(EvidenceCommandMetricStrip, {
+        metrics: [
+          {
+            label: "Advisor findings",
+            value: "2",
+            detail: "Rows needing security review",
+            tone: "attention",
+          },
+          {
+            label: "Credential exposure",
+            value: "1",
+            detail: "0 revoked",
+            tone: "stable",
+          },
+          {
+            label: "Webhook delivery",
+            value: "0",
+            detail: "2 records",
+            tone: "stable",
+          },
+          {
+            label: "Privileged access",
+            value: "2",
+            detail: "Administrator roles",
+            tone: "attention",
+          },
+          {
+            label: "Access audit trail",
+            value: "100",
+            detail: "Audit events",
+            tone: "info",
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain("xl:grid-cols-5");
+    expect(html).not.toContain("xl:grid-cols-4");
+  });
+
   it("renders evidence case briefs as grouped operational summaries", () => {
     const html = renderToStaticMarkup(
       createElement(EvidenceCaseBriefPanel, {

@@ -212,7 +212,10 @@ export function EvidenceCommandMetricStrip({
   return (
     <section
       aria-label={ariaLabel}
-      className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+      className={cn(
+        "grid gap-3 sm:grid-cols-2",
+        metrics.length >= 5 ? "xl:grid-cols-5" : "xl:grid-cols-4",
+      )}
     >
       {metrics.map((metric) => (
         <article

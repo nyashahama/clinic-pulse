@@ -15,6 +15,11 @@ import {
 } from "@/lib/product/admin-detail-routes";
 import { summarizeSecurityPosture } from "@/lib/product/admin-governance";
 import type {
+  EvidenceCommandChip,
+  EvidenceCommandMetric,
+  EvidenceCommandTone,
+} from "@/lib/product/evidence-command";
+import type {
   SecurityEvidenceRow,
   SecurityEvidenceSourceReference,
   SecurityEvidenceTone,
@@ -102,9 +107,22 @@ export function buildSecurityEvidenceViewModel({
   const reviewFindingCount = rows.filter(
     (row) => row.stateTone === "attention" || row.stateTone === "blocked",
   ).length;
+  const metrics = buildMetrics({
+    reviewFindingCount,
+    activeApiKeys,
+    revokedApiKeys,
+    expiredApiKeys,
+    failingWebhookCount: failingWebhookSubscriptions.length + failingWebhookEvents.length,
+    webhookRecordCount: webhookSubscriptions.length + webhookEvents.length,
+    privilegedUserCount: privilegedUsers.length,
+    accessAuditCount: accessAuditEvents.length,
+  });
 
   return {
-    metrics: buildMetrics({
+    commandBrief: buildCommandBrief({
+      metrics,
+      posture,
+      rows,
       reviewFindingCount,
       activeApiKeys,
       revokedApiKeys,
@@ -114,6 +132,7 @@ export function buildSecurityEvidenceViewModel({
       privilegedUserCount: privilegedUsers.length,
       accessAuditCount: accessAuditEvents.length,
     }),
+    metrics,
     posture,
     rows,
     sourceReferences,
@@ -176,6 +195,245 @@ function buildMetrics({
       tone: accessAuditCount > 0 ? "info" : "attention",
     },
   ];
+}
+
+function buildCommandBrief({
+  metrics,
+  posture,
+  rows,
+  reviewFindingCount,
+  activeApiKeys,
+  revokedApiKeys,
+  expiredApiKeys,
+  failingWebhookCount,
+  webhookRecordCount,
+  privilegedUserCount,
+  accessAuditCount,
+}: {
+  metrics: SecuritySummaryMetric[];
+  posture: SecurityEvidenceViewModel["posture"];
+  rows: SecurityEvidenceRow[];
+  reviewFindingCount: number;
+  activeApiKeys: number;
+  revokedApiKeys: number;
+  expiredApiKeys: number;
+  failingWebhookCount: number;
+  webhookRecordCount: number;
+  privilegedUserCount: number;
+  accessAuditCount: number;
+}): SecurityEvidenceViewModel["commandBrief"] {
+  const leadEvidence =
+    rows.find((row) => row.stateTone === "blocked" || row.stateTone === "attention") ??
+    rows[0];
+  const leadTone = leadEvidence ? toEvidenceTone(leadEvidence.stateTone) : "info";
+  const commandChips: EvidenceCommandChip[] = [
+    { label: posture.summary, tone: toEvidenceTone(posture.tone) },
+    {
+      label:
+        reviewFindingCount > 0
+          ? `${formatCount(reviewFindingCount)} findings to review`
+          : "No advisor findings",
+      tone: toEvidenceTone(toneForAttention(reviewFindingCount)),
+    },
+    {
+      label: `${formatCount(rows.length)} source-linked rows`,
+      tone: rows.length > 0 ? "info" : "neutral",
+    },
+  ];
+  const commandMetrics: EvidenceCommandMetric[] = metrics.map((metric) => ({
+    label: metric.label,
+    value: metric.value,
+    detail: metric.detail,
+    tone: toEvidenceTone(metric.tone),
+    icon: securityMetricIcon(metric.id),
+    href: securityMetricHref(metric.id),
+    actionLabel: securityMetricActionLabel(metric.id),
+  }));
+
+  return {
+    chips: commandChips,
+    metrics: commandMetrics,
+    caseBrief: {
+      title: "Security posture packet",
+      description:
+        "Source-linked security evidence for credential lifecycle, webhook receiver integrity, privileged access, and access audit activity.",
+      summary: {
+        label: "Evidence verdict",
+        value: posture.summary,
+        tone: toEvidenceTone(posture.tone),
+        emphasis: true,
+      },
+      primaryFields: [
+        {
+          label: "Advisor findings",
+          value: formatCount(reviewFindingCount),
+          href: "#security-evidence-workspace",
+          tone: toEvidenceTone(toneForAttention(reviewFindingCount)),
+          emphasis: true,
+        },
+        {
+          label: "Security evidence",
+          value: `${formatCount(rows.length)} rows`,
+          href: "#security-evidence-workspace",
+        },
+        {
+          label: "Lead source",
+          value: leadEvidence?.sourceLabel ?? "Unavailable",
+          href: leadEvidence?.sourceHref,
+          tone: leadTone,
+        },
+      ],
+      sections: [
+        {
+          title: "Credential lifecycle rail",
+          description: "Credential and receiver evidence that can expose partner or tenant security pressure.",
+          fields: [
+            {
+              label: "Active credentials",
+              value: formatCount(activeApiKeys),
+              href: "/admin/integrations",
+              tone: activeApiKeys > 0 ? "stable" : "attention",
+            },
+            {
+              label: "Revoked credentials",
+              value: formatCount(revokedApiKeys),
+              href: "/admin/integrations",
+              tone: revokedApiKeys > 0 ? "info" : "neutral",
+            },
+            {
+              label: "Expired credentials",
+              value: formatCount(expiredApiKeys),
+              href: "/admin/integrations",
+              tone: toEvidenceTone(toneForAttention(expiredApiKeys)),
+            },
+            {
+              label: "Webhook delivery",
+              value:
+                failingWebhookCount > 0
+                  ? `${formatCount(failingWebhookCount)} failing`
+                  : `${formatCount(webhookRecordCount)} records`,
+              href: "/admin/integrations",
+              tone: toEvidenceTone(toneForAttention(failingWebhookCount)),
+            },
+          ],
+        },
+        {
+          title: "Privileged access watch",
+          description:
+            "Access, role, and audit trail evidence that should stay visible before pilot handoff.",
+          fields: [
+            {
+              label: "Privileged users",
+              value: formatCount(privilegedUserCount),
+              href: "/admin/users-roles",
+              tone: toEvidenceTone(toneForAttention(privilegedUserCount)),
+            },
+            {
+              label: "Access audit trail",
+              value: `${formatCount(accessAuditCount)} events`,
+              href: "/admin/audit-evidence",
+              tone: accessAuditCount > 0 ? "info" : "attention",
+            },
+            {
+              label: "Lead review",
+              value: leadEvidence?.subject ?? "No selected evidence",
+              href: leadEvidence?.sourceHref,
+              tone: leadTone,
+              fullWidth: true,
+            },
+          ],
+        },
+      ],
+    },
+    decision: {
+      contextLabel: "Security posture",
+      title:
+        reviewFindingCount > 0
+          ? "Security evidence needs review"
+          : "Security posture is clear",
+      scoreLabel: "Lead evidence",
+      scoreValue: leadEvidence?.subject ?? "No evidence rows",
+      chips: commandChips,
+      nextStep:
+        reviewFindingCount > 0 && leadEvidence
+          ? `Review ${leadEvidence.subject} before promoting this posture.`
+          : "Keep monitoring credential, webhook, privileged access, and audit evidence.",
+      nextStepTone: leadTone,
+      impactTitle: "System impact",
+      impact:
+        "System administrators need security posture to connect credentials, receivers, privileged roles, and audit events before they trust partner or tenant handoff.",
+      verificationTitle: "Verification",
+      verification:
+        "Use the selected-row security workspace below to confirm the source record, raw facts, review state, and next step.",
+      evidence: leadEvidence
+        ? {
+            label: leadEvidence.reviewState,
+            detail: leadEvidence.nextStep,
+            href: leadEvidence.sourceHref,
+            tone: leadTone,
+          }
+        : undefined,
+      actions: [
+        {
+          label: "Review security evidence",
+          href: "#security-evidence-workspace",
+          priority: "primary",
+          icon: "stream",
+        },
+        {
+          label: "Open audit evidence",
+          href: "/admin/audit-evidence",
+          priority: "secondary",
+          icon: "stream",
+        },
+        {
+          label: "Open users and roles",
+          href: "/admin/users-roles",
+          priority: "secondary",
+          icon: "stream",
+        },
+      ],
+    },
+    timeline: {
+      title: "Security evidence timeline",
+      description:
+        "The review sequence a system administrator should follow before trusting the security posture.",
+      items: [
+        {
+          label: "Credentials",
+          title:
+            expiredApiKeys > 0
+              ? `${formatCount(expiredApiKeys)} expired credentials`
+              : `${formatCount(activeApiKeys)} active credentials`,
+          description: `${formatCount(revokedApiKeys)} revoked credentials remain visible for lifecycle review.`,
+          tone: toEvidenceTone(toneForAttention(expiredApiKeys)),
+        },
+        {
+          label: "Webhooks",
+          title:
+            failingWebhookCount > 0
+              ? `${formatCount(failingWebhookCount)} receiver failures`
+              : "Webhook receiver evidence clear",
+          description: `${formatCount(webhookRecordCount)} subscription and delivery records in scope.`,
+          tone: toEvidenceTone(toneForAttention(failingWebhookCount)),
+        },
+        {
+          label: "Access",
+          title: `${formatCount(privilegedUserCount)} privileged users`,
+          description:
+            "Organisation and system administrator roles stay visible for posture review.",
+          tone: toEvidenceTone(toneForAttention(privilegedUserCount)),
+        },
+        {
+          label: "Audit",
+          title: `${formatCount(accessAuditCount)} access audit events`,
+          description:
+            "Auth, role, user, API, and webhook audit activity provides actor and entity context.",
+          tone: accessAuditCount > 0 ? "info" : "attention",
+        },
+      ],
+    },
+  };
 }
 
 function buildCredentialRow(
@@ -428,6 +686,74 @@ function apiKeyState(apiKey: PartnerApiKeyApiResponse, now: Date) {
   }
 
   return { label: "Review", tone: "attention" as SecurityEvidenceTone };
+}
+
+function toEvidenceTone(tone: SecurityEvidenceTone): EvidenceCommandTone {
+  if (tone === "blocked") {
+    return "critical";
+  }
+
+  if (tone === "attention") {
+    return "attention";
+  }
+
+  if (tone === "info") {
+    return "info";
+  }
+
+  return "stable";
+}
+
+function securityMetricHref(id: string) {
+  if (id === "advisor-findings") {
+    return "#security-evidence-workspace";
+  }
+
+  if (id === "privileged-access") {
+    return "/admin/users-roles";
+  }
+
+  if (id === "access-audit-trail") {
+    return "/admin/audit-evidence";
+  }
+
+  return "/admin/integrations";
+}
+
+function securityMetricActionLabel(id: string) {
+  if (id === "advisor-findings") {
+    return "Review evidence";
+  }
+
+  if (id === "privileged-access") {
+    return "Open users";
+  }
+
+  if (id === "access-audit-trail") {
+    return "Open audit";
+  }
+
+  return "Open integrations";
+}
+
+function securityMetricIcon(id: string): EvidenceCommandMetric["icon"] {
+  if (id === "advisor-findings") {
+    return "alert";
+  }
+
+  if (id === "webhook-delivery") {
+    return "radio";
+  }
+
+  if (id === "privileged-access") {
+    return "user";
+  }
+
+  if (id === "credential-exposure") {
+    return "check";
+  }
+
+  return "activity";
 }
 
 function isExpired(apiKey: PartnerApiKeyApiResponse, now: Date) {

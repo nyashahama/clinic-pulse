@@ -49,13 +49,19 @@ describe("admin evidence operations surfaces", () => {
     expect(source).not.toContain("Audit evidence queue");
   });
 
-  it("promotes security posture into the same evidence cockpit system", () => {
+  it("keeps security posture on the shared evidence-command briefing", () => {
     const source = readSource(securityPage);
+    const modelSource = readSource(
+      path.join(process.cwd(), "lib", "demo", "admin-security-evidence.ts"),
+    );
 
-    expect(source).toContain("EvidenceOperationsBriefing");
+    expect(source).toContain("EvidenceCommandHeader");
+    expect(source).toContain("EvidenceCommandMetricStrip");
+    expect(source).toContain("EvidenceCaseBriefPanel");
     expect(source).toContain("Security posture cockpit");
-    expect(source).toContain("Credential lifecycle rail");
-    expect(source).toContain("Privileged access watch");
+    expect(modelSource).toContain("Credential lifecycle rail");
+    expect(modelSource).toContain("Privileged access watch");
+    expect(source).not.toContain("EvidenceOperationsBriefing");
     expect(source).not.toContain("AdminModuleHeader");
     expect(source).not.toContain("AdminFilterBar");
   });
