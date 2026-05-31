@@ -95,6 +95,17 @@ async function readComputedSurface(locator: Locator): Promise<ComputedSurface> {
   });
 }
 
+async function openUserMenu(page: Page) {
+  const userMenuTrigger = page.locator('[data-slot="dropdown-menu-trigger"]').first();
+
+  if ((await userMenuTrigger.count()) === 0) {
+    await page.getByRole("button", { name: "Toggle dashboard navigation" }).click();
+  }
+
+  await expect(userMenuTrigger).toBeVisible();
+  await userMenuTrigger.click();
+}
+
 async function readVisibleActionBackgrounds(
   page: Page,
   name: RegExp,
@@ -284,7 +295,7 @@ test.describe("authenticated dashboard theme controls", () => {
     await page.keyboard.press("Escape");
     await expect(palette).toBeHidden();
 
-    await page.locator('[data-slot="dropdown-menu-trigger"]').first().click();
+    await openUserMenu(page);
     const menu = page.locator('[data-slot="dropdown-menu-content"]').first();
     const menuSurface = await readComputedSurface(menu);
     expect(menuSurface.background).toBe(menuSurface.popover);
