@@ -5,7 +5,7 @@ const demoAccount = {
   password: "ClinicPulseDemo123!",
 };
 
-const DARK_THEME_COLOR = "hsl(240deg 10% 3.92%)";
+const DARK_THEME_COLOR = "hsl(0 0% 7.1%)";
 const LIGHT_THEME_COLOR = "hsl(0 0% 100%)";
 
 async function signIn(page: Page) {
@@ -26,6 +26,27 @@ async function expectLightTheme(page: Page) {
 
 async function expectThemeColor(page: Page, color: string) {
   await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", color);
+}
+
+async function readDarkThemeSurfaceTokens(page: Page) {
+  return page.evaluate(() => {
+    const htmlStyles = getComputedStyle(document.documentElement);
+    const bodyStyles = getComputedStyle(document.body);
+
+    return {
+      background: htmlStyles.getPropertyValue("--background").trim(),
+      card: htmlStyles.getPropertyValue("--card").trim(),
+      muted: htmlStyles.getPropertyValue("--muted").trim(),
+      border: htmlStyles.getPropertyValue("--border").trim(),
+      sidebar: htmlStyles.getPropertyValue("--sidebar").trim(),
+      bgDefault: htmlStyles.getPropertyValue("--bg-default").trim(),
+      bgMuted: htmlStyles.getPropertyValue("--bg-muted").trim(),
+      bgSubtle: htmlStyles.getPropertyValue("--bg-subtle").trim(),
+      borderDefault: htmlStyles.getPropertyValue("--border-default").trim(),
+      contentDefault: htmlStyles.getPropertyValue("--content-default").trim(),
+      bodyBackground: bodyStyles.backgroundColor,
+    };
+  });
 }
 
 test.describe("authenticated dashboard theme controls", () => {
@@ -84,5 +105,29 @@ test.describe("authenticated dashboard theme controls", () => {
     await expect(
       page.getByRole("heading", { name: "Organisation Governance Workbench" }),
     ).toBeVisible();
+  });
+
+  test("uses Supabase Studio-style dark surface tiers on the authenticated dashboard", async ({
+    page,
+  }) => {
+    await signIn(page);
+    await page.getByRole("button", { name: "Use dark theme" }).click();
+    await expectDarkTheme(page);
+
+    const tokens = await readDarkThemeSurfaceTokens(page);
+
+    expect(tokens).toMatchObject({
+      background: "#121212",
+      card: "#1f1f1f",
+      muted: "#242424",
+      border: "#2e2e2e",
+      sidebar: "#171717",
+      bgDefault: "31 31 31",
+      bgMuted: "23 23 23",
+      bgSubtle: "36 36 36",
+      borderDefault: "46 46 46",
+      contentDefault: "224 224 224",
+    });
+    expect(tokens.bodyBackground).toBe("rgb(18, 18, 18)");
   });
 });

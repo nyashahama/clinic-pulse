@@ -128,49 +128,49 @@
 }
 
 .dark {
-  --background: oklch(0.195 0 0);
-  --foreground: oklch(0.94 0 0);
-  --card: oklch(0.225 0 0);
-  --card-foreground: oklch(0.94 0 0);
-  --popover: oklch(0.225 0 0);
-  --popover-foreground: oklch(0.94 0 0);
-  --primary: #0D7A6B;
-  --primary-foreground: #ffffff;
-  --secondary: oklch(0.26 0 0);
-  --secondary-foreground: oklch(0.75 0 0);
-  --muted: oklch(0.165 0 0);
-  --muted-foreground: oklch(0.6 0 0);
-  --accent: oklch(0.26 0 0);
-  --accent-foreground: oklch(0.94 0 0);
-  --destructive: oklch(0.7 0.15 25);
-  --border: oklch(0.27 0 0);
-  --input: oklch(0.27 0 0);
-  --ring: #0D7A6B;
-  --sidebar: oklch(0.175 0 0);
-  --sidebar-foreground: oklch(0.78 0 0);
-  --sidebar-primary: #0D7A6B;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: oklch(0.94 0 0 / 0.06);
-  --sidebar-accent-foreground: oklch(0.94 0 0);
-  --sidebar-border: oklch(0.25 0 0);
-  --sidebar-ring: #0D7A6B;
+  --background: hsl(0 0% 7.1%);
+  --foreground: hsl(0 0% 98%);
+  --card: hsl(0 0% 12.2%);
+  --card-foreground: hsl(0 0% 98%);
+  --popover: hsl(0 0% 12.2%);
+  --popover-foreground: hsl(0 0% 98%);
+  --primary: hsl(153.1 60.2% 52.7%);
+  --primary-foreground: hsl(0 0% 7.1%);
+  --secondary: hsl(0 0% 14.1%);
+  --secondary-foreground: hsl(0 0% 98%);
+  --muted: hsl(0 0% 14.1%);
+  --muted-foreground: hsl(0 0% 53.7%);
+  --accent: hsl(0 0% 19.2%);
+  --accent-foreground: hsl(0 0% 98%);
+  --destructive: hsl(10.2 77.9% 53.9%);
+  --border: hsl(0 0% 18%);
+  --input: hsl(0 0% 22.4%);
+  --ring: hsl(153.1 60.2% 52.7%);
+  --sidebar: hsl(0 0% 9%);
+  --sidebar-foreground: hsl(0 0% 90%);
+  --sidebar-primary: hsl(153.1 60.2% 52.7%);
+  --sidebar-primary-foreground: hsl(0 0% 7.1%);
+  --sidebar-accent: hsl(0 0% 19.2%);
+  --sidebar-accent-foreground: hsl(0 0% 98%);
+  --sidebar-border: hsl(0 0% 18%);
+  --sidebar-ring: hsl(153.1 60.2% 52.7%);
 
-  --bg-default: 36 36 36;
-  --bg-muted: 28 28 28;
-  --bg-subtle: 42 42 42;
-  --bg-emphasis: 64 64 64;
+  --bg-default: 31 31 31;
+  --bg-muted: 23 23 23;
+  --bg-subtle: 36 36 36;
+  --bg-emphasis: 49 49 49;
   --bg-inverted: 250 250 250;
 
-  --border-emphasis: 115 115 115;
-  --border-default: 64 64 64;
-  --border-muted: 38 38 38;
-  --border-subtle: 48 48 48;
+  --border-emphasis: 69 69 69;
+  --border-default: 46 46 46;
+  --border-muted: 36 36 36;
+  --border-subtle: 38 38 38;
 
-  --content-inverted: 23 23 23;
-  --content-muted: 115 115 115;
-  --content-subtle: 163 163 163;
-  --content-default: 212 212 212;
-  --content-emphasis: 245 245 245;
+  --content-inverted: 18 18 18;
+  --content-muted: 137 137 137;
+  --content-subtle: 180 180 180;
+  --content-default: 224 224 224;
+  --content-emphasis: 250 250 250;
 }
 
 @keyframes fade-in {
