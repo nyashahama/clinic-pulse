@@ -12,6 +12,8 @@ export type EvidenceCommandMetric = {
   detail: string;
   tone: EvidenceCommandTone;
   icon?: "activity" | "alert" | "check" | "clock" | "mail" | "offline" | "radio" | "user";
+  href?: string;
+  actionLabel?: string;
 };
 
 export type EvidenceCommandChip = {

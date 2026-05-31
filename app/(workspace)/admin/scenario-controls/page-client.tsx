@@ -2,10 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-import {
-  AdminFilterBar,
-  AdminModuleHeader,
-} from "@/components/product/admin-module";
+import { ScenarioRehearsalBriefing } from "@/components/product/scenario-rehearsal-briefing";
 import { ScenarioControlsWorkspace } from "@/components/product/scenario-controls-workspace";
 import {
   INCIDENT_REPLAY_SOURCE_CLINIC_ID,
@@ -16,9 +13,6 @@ import {
   STOCKOUT_TRIGGER_CLINIC_ID,
 } from "@/lib/workspace/clinics";
 import { useWorkspaceStore } from "@/lib/workspace/workspace-store";
-import {
-  StatusBadge,
-} from "../governance-formatters";
 import {
   buildScenarioControlsViewModel,
   type ScenarioControlCommandId,
@@ -38,7 +32,7 @@ export default function ScenarioControlsPageClient() {
     triggerStaffingShortage,
     triggerStockout,
   } = useWorkspaceStore();
-  const [lastAction, setLastAction] = useState("Scenario controls are ready.");
+  const [lastAction, setLastAction] = useState("Scenario rehearsal cockpit is ready.");
   const [selectedCommandId, setSelectedCommandId] =
     useState<ScenarioControlCommandId>("incident_replay");
   const clinicNameById = useMemo(
@@ -49,7 +43,6 @@ export default function ScenarioControlsPageClient() {
     clinicNameById.get(STOCKOUT_TRIGGER_CLINIC_ID) ?? "Mamelodi East";
   const staffingClinicLabel =
     clinicNameById.get(STAFFING_TRIGGER_CLINIC_ID) ?? "Soshanguve Block F";
-  const activeAlerts = state.alerts.filter((alert) => alert.status !== "resolved");
   const viewModel = useMemo(
     () =>
       buildScenarioControlsViewModel({
@@ -141,18 +134,11 @@ export default function ScenarioControlsPageClient() {
 
   return (
     <div className="grid min-w-0 gap-4 pb-6" data-admin-module="scenario-controls">
-      <AdminModuleHeader
-        eyebrow="Platform operations"
-        title="Scenario controls"
-        description="Run local incident rehearsals, preview expected state changes, and verify the resulting audit trail from one operations console."
+      <ScenarioRehearsalBriefing
+        title="Scenario rehearsal cockpit"
+        viewModel={viewModel}
+        onRunCommand={handleRunCommand}
       />
-
-      <AdminFilterBar>
-        <StatusBadge tone={activeAlerts.length > 0 ? "attention" : "clear"}>
-          Local scenario state
-        </StatusBadge>
-        <span className="text-sm text-muted-foreground">{lastAction}</span>
-      </AdminFilterBar>
 
       <ScenarioControlsWorkspace
         viewModel={viewModel}

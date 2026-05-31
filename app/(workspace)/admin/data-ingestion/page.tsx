@@ -1,8 +1,11 @@
+import type { AdminTone } from "@/components/product/admin-module";
 import {
-  AdminFilterBar,
-  AdminModuleHeader,
-  type AdminTone,
-} from "@/components/product/admin-module";
+  DataIngestionPipelineMonitor,
+  type DataIngestionPipelineAction,
+  type DataIngestionPipelineRun,
+  type DataIngestionPipelineStage,
+  type DataIngestionStageTriageItem,
+} from "@/components/product/data-ingestion-pipeline-monitor";
 import {
   type DataIngestionBacklogItem,
   type DataIngestionDiagnostic,
@@ -30,17 +33,8 @@ import {
   formatDateTime,
   formatLabel,
   getReportingCoverageTone,
-  StatusBadge,
   toneForAttention,
 } from "../governance-formatters";
-
-type IngestionSignal = {
-  id: string;
-  signal: string;
-  value: number;
-  evidence: string;
-  tone: AdminTone;
-};
 
 type IngestionIssue = {
   label: string;
@@ -278,6 +272,42 @@ function buildClinicBacklogLedgerItem(row: ClinicDetailApiResponse): DataIngesti
   };
 }
 
+function stageIdForIngestionItem(item: DataIngestionLedgerItem) {
+  const issue = item.issueLabel.toLowerCase();
+  const source = item.sourceLabel.toLowerCase();
+
+  if (source.includes("offline") || issue.includes("offline")) {
+    return "offline-queue";
+  }
+
+  if (item.issueTone === "blocked" || issue.includes("rejected")) {
+    return "validation-gate";
+  }
+
+  if (
+    source.includes("clinic current status") ||
+    issue.includes("freshness") ||
+    issue.includes("confirmation")
+  ) {
+    return "coverage-promotion";
+  }
+
+  return "field-report-intake";
+}
+
+function buildStageTriageItem(item: DataIngestionLedgerItem): DataIngestionStageTriageItem {
+  return {
+    id: item.id,
+    stageId: stageIdForIngestionItem(item),
+    title: item.clinicLabel,
+    detail: item.evidence,
+    evidenceLabel: `${item.issueLabel}; ${item.trustLabel}`,
+    actionLabel: item.actionLabel,
+    href: item.clinicHref,
+    tone: item.issueTone,
+  };
+}
+
 export default async function Page() {
   await requireWorkspaceWorkflowAccess("admin");
 
@@ -335,83 +365,194 @@ export default async function Page() {
       tone: toneForAttention(syncSummary.validationFailures),
     },
   ];
-  const ingestionSignals: IngestionSignal[] = [
+  const ingestionSignals: DataIngestionPipelineRun[] = [
     {
       id: "offline-queue",
       signal: "Offline queue",
-      value: syncSummary.pendingOfflineReports,
+      value: formatCount(syncSummary.pendingOfflineReports),
       evidence: `${formatCount(syncSummary.offlineReportsReceived)} offline reports received in the sync window`,
       tone: toneForAttention(syncSummary.pendingOfflineReports),
+      windowLabel: formatDateTime(syncSummary.windowStartedAt),
     },
     {
       id: "validation-failures",
       signal: "Validation failures",
-      value: syncSummary.validationFailures,
+      value: formatCount(syncSummary.validationFailures),
       evidence: "Reports blocked by validation before clinic status changes",
       tone: toneForAttention(syncSummary.validationFailures),
+      windowLabel: formatDateTime(syncSummary.windowStartedAt),
     },
     {
       id: "conflicts",
       signal: "Conflict review",
-      value: syncSummary.conflictsNeedingAttention,
+      value: formatCount(syncSummary.conflictsNeedingAttention),
       evidence: `${formatCount(syncSummary.duplicateSyncsHandled)} duplicate syncs handled`,
       tone: toneForAttention(syncSummary.conflictsNeedingAttention),
+      windowLabel: formatDateTime(syncSummary.windowStartedAt),
     },
     {
       id: "freshness",
       signal: "Stale or needs-confirmation clinics",
-      value: syncSummary.staleClinics + syncSummary.needsConfirmationClinics,
+      value: formatCount(syncSummary.staleClinics + syncSummary.needsConfirmationClinics),
       evidence: `${formatCount(syncSummary.staleClinics)} stale; ${formatCount(
         syncSummary.needsConfirmationClinics,
       )} need confirmation`,
       tone: toneForAttention(syncSummary.staleClinics + syncSummary.needsConfirmationClinics),
+      windowLabel: formatDateTime(syncSummary.windowStartedAt),
+    },
+  ];
+  const statusLabel = coverage.blockers.length
+    ? `${formatCount(coverage.readinessPercent)}% readiness needs ingestion review`
+    : "Ingestion evidence is ready for promotion";
+  const pipelineStages: DataIngestionPipelineStage[] = [
+    {
+      id: "field-report-intake",
+      label: "Field report intake",
+      value: formatCount(pendingReports.length),
+      detail:
+        pendingReports.length > 0
+          ? "Report payloads are waiting for review before they can promote clinic status."
+          : "No field reports are waiting at the intake gate.",
+      tone: toneForAttention(pendingReports.length),
+      href: "#data-ingestion-workspace",
+      actionLabel: "Open ledger",
+    },
+    {
+      id: "offline-queue",
+      label: "Offline queue",
+      value: formatCount(syncSummary.pendingOfflineReports),
+      detail: `${formatCount(syncSummary.offlineReportsReceived)} offline reports received in the sync window.`,
+      tone: toneForAttention(syncSummary.pendingOfflineReports),
+      href: "#data-ingestion-workspace",
+      actionLabel: "Review queue",
+    },
+    {
+      id: "validation-gate",
+      label: "Validation gate",
+      value: formatCount(syncSummary.validationFailures),
+      detail: `${formatCount(syncSummary.conflictsNeedingAttention)} conflicts need attention before promotion.`,
+      tone: toneForAttention(syncSummary.validationFailures),
+      href: "#data-ingestion-workspace",
+      actionLabel: "Review failures",
+    },
+    {
+      id: "coverage-promotion",
+      label: "Coverage promotion",
+      value: `${formatCount(coverage.readinessPercent)}%`,
+      detail: coverage.blockers.length ? coverage.blockers.join("; ") : "Coverage is ready for promotion.",
+      tone: coverage.tone,
+      href: "/admin/reporting-coverage",
+      actionLabel: "Review coverage",
+    },
+  ];
+  const stageTriageItems: DataIngestionStageTriageItem[] = ingestionItems.map(buildStageTriageItem);
+
+  if (
+    syncSummary.validationFailures > 0 &&
+    !stageTriageItems.some((item) => item.stageId === "validation-gate")
+  ) {
+    stageTriageItems.push({
+      id: "validation-gate-signal",
+      stageId: "validation-gate",
+      title: "Validation gate",
+      detail: `${formatCount(
+        syncSummary.validationFailures,
+      )} validation failures are blocking clinic status promotion.`,
+      evidenceLabel: `${formatCount(syncSummary.conflictsNeedingAttention)} conflicts need attention`,
+      actionLabel: "Review failures",
+      href: "#data-ingestion-workspace",
+      tone: toneForAttention(syncSummary.validationFailures),
+    });
+  }
+
+  if (
+    syncSummary.pendingOfflineReports > 0 &&
+    !stageTriageItems.some((item) => item.stageId === "offline-queue")
+  ) {
+    stageTriageItems.push({
+      id: "offline-queue-signal",
+      stageId: "offline-queue",
+      title: "Offline queue",
+      detail: `${formatCount(
+        syncSummary.offlineReportsReceived,
+      )} offline reports were received in the sync window.`,
+      evidenceLabel: `${formatCount(syncSummary.pendingOfflineReports)} reports queued`,
+      actionLabel: "Review queue",
+      href: "#data-ingestion-workspace",
+      tone: toneForAttention(syncSummary.pendingOfflineReports),
+    });
+  }
+
+  const ingestionActions: DataIngestionPipelineAction[] = [
+    {
+      label: "Review ingestion ledger",
+      href: "#data-ingestion-workspace",
+      priority: "primary",
+    },
+    {
+      label: "Open tenant health",
+      href: "/admin/tenant-health",
+      priority: "secondary",
+    },
+    {
+      label: "Review coverage",
+      href: "/admin/reporting-coverage",
+      priority: "secondary",
     },
   ];
 
   return (
     <div className="space-y-4" data-admin-module="data-ingestion">
-      <AdminModuleHeader
-        eyebrow="Platform operations"
-        title="Ingestion pressure"
-        description="Read-only review of sync freshness, pending field reports, offline queue, validation failures, and clinic confirmation pressure."
-      />
-      <AdminFilterBar>
-        <StatusBadge tone={coverage.tone}>Read only ingestion evidence</StatusBadge>
-        <span className="text-sm text-muted-foreground">
-          Sync, ingestion, stale reconciliation, source, freshness, and review state are visible here.
-          Retry and incident handoff controls are not exposed.
-        </span>
-      </AdminFilterBar>
-      <DataIngestionWorkspace
+      <DataIngestionPipelineMonitor
+        title="Ingestion pipeline monitor"
+        statusLabel={statusLabel}
+        statusTone={coverage.tone}
+        rowCountLabel={`${formatCount(ingestionItems.length)} ingestion rows`}
+        blockerLabel={
+          coverage.blockers.length > 0
+            ? `${formatCount(coverage.blockers.length)} blockers`
+            : "No ingestion blockers"
+        }
+        blockerTone={coverage.tone}
         metrics={ingestionMetrics}
-        items={ingestionItems}
-        diagnostics={ingestionSignals.map(
-          (signal): DataIngestionDiagnostic => ({
-            id: signal.id,
-            label: signal.signal,
-            value: formatCount(signal.value),
-            evidence: signal.evidence,
-            tone: signal.tone,
-            windowLabel: formatDateTime(syncSummary.windowStartedAt),
-          }),
-        )}
-        backlogItems={clinicsNeedingReview.map((row): DataIngestionBacklogItem => {
-          const trust = dataTrustForClinic(row);
-
-          return {
-            id: row.clinic.id,
-            clinicName: row.clinic.name,
-            district: row.clinic.district,
-            freshnessLabel: formatLabel(row.currentStatus?.freshness),
-            freshnessTone: clinicNeedsIngestionReview(row) ? "attention" : "clear",
-            trustLabel: trust.label,
-            trustTone: trust.tone,
-            trustDescription: trust.description,
-            lastUpdateLabel: formatDateTime(row.currentStatus?.updatedAt),
-            clinicHref: buildClinicDetailHref(row.clinic.id),
-          };
-        })}
+        pipelineStages={pipelineStages}
+        triageItems={stageTriageItems}
+        runs={ingestionSignals}
+        actions={ingestionActions}
       />
+
+      <section id="data-ingestion-workspace" className="scroll-mt-24">
+        <DataIngestionWorkspace
+          metrics={ingestionMetrics}
+          items={ingestionItems}
+          diagnostics={ingestionSignals.map(
+            (signal): DataIngestionDiagnostic => ({
+              id: signal.id,
+              label: signal.signal,
+              value: signal.value,
+              evidence: signal.evidence,
+              tone: signal.tone,
+              windowLabel: signal.windowLabel,
+            }),
+          )}
+          backlogItems={clinicsNeedingReview.map((row): DataIngestionBacklogItem => {
+            const trust = dataTrustForClinic(row);
+
+            return {
+              id: row.clinic.id,
+              clinicName: row.clinic.name,
+              district: row.clinic.district,
+              freshnessLabel: formatLabel(row.currentStatus?.freshness),
+              freshnessTone: clinicNeedsIngestionReview(row) ? "attention" : "clear",
+              trustLabel: trust.label,
+              trustTone: trust.tone,
+              trustDescription: trust.description,
+              lastUpdateLabel: formatDateTime(row.currentStatus?.updatedAt),
+              clinicHref: buildClinicDetailHref(row.clinic.id),
+            };
+          })}
+        />
+      </section>
     </div>
   );
 }

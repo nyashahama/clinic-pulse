@@ -342,7 +342,7 @@ function buildReadinessReview(
 
   if (!activeRow) {
     return {
-      title: "Organisation readiness review",
+      title: "Coverage exception board",
       activeClinicName: "No clinics in coverage scope",
       activeBlocker: "Coverage scope is empty",
       activeDetail: "Add clinic evidence before readiness can be reviewed.",
@@ -360,7 +360,7 @@ function buildReadinessReview(
   }
 
   return {
-    title: "Organisation readiness review",
+    title: "Coverage exception board",
     activeClinicName: activeRow.clinicName,
     activeBlocker: getActiveBlocker(activeRow),
     activeDetail: activeRow.evidenceNote,

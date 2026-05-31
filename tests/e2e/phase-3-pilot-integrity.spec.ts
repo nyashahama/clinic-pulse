@@ -40,7 +40,7 @@ test("protected pilot route login returns to the originally requested route", as
     page.getByRole("button", { name: "Log in" }).click(),
   ]);
 
-  await expect(page.getByRole("heading", { name: "Reporting coverage" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Coverage exception board" })).toBeVisible();
   await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
 });
 
@@ -53,17 +53,18 @@ test("district and admin surfaces expose data trust labels", async ({ page }) =>
 
   await signInAs(page, "org-admin@clinicpulse.local", "/admin");
   await page.goto("/admin/reporting-coverage");
-  await expect(page.getByText(/source, freshness, and review state/i).first()).toBeVisible();
+  await expect(page.getByText(/source, freshness, trust state/i).first()).toBeVisible();
   await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
 
   await page.goto("/admin/data-ingestion");
-  await expect(page.getByText(/sync, ingestion, stale reconciliation/i).first()).toBeVisible();
+  await expect(page.getByText(/source pipeline map/i).first()).toBeVisible();
   await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
 
   await page.goto("/admin/audit-evidence");
+  await expect(page.getByRole("heading", { name: "Audit event ledger" })).toBeVisible();
+  await expect(page.getByText("Evidence export and retention")).toBeVisible();
   await expect(page.getByLabel("Audit evidence workspace")).toBeVisible();
   await expect(page.getByLabel("Linked evidence packets")).toBeVisible();
-  await expect(page.getByText("Audit evidence queue")).toBeVisible();
   await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
 });
 

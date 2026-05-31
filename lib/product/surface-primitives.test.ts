@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -53,6 +54,10 @@ import {
 } from "@/lib/product/clinic-status";
 import { formatEvidenceSource } from "@/lib/product/evidence-command";
 import type { PendingReportReview } from "@/lib/product/report-review";
+
+function readWorkspaceSource(path: string) {
+  return readFileSync(path, "utf8");
+}
 
 describe("product surface primitives", () => {
   it("renders panel title, description, metadata, and content", () => {
@@ -138,6 +143,9 @@ describe("product surface primitives", () => {
     expect(html).toContain("bg-bg-default");
     expect(html).toContain("bg-bg-muted/60");
     expect(html).toContain("divide-border-subtle");
+    expect(html).toContain("ring-black/5");
+    expect(html).toContain("dark:ring-white/[0.04]");
+    expect(html).toContain("dark:shadow-black/35");
     expect(html).not.toContain('class="overflow-hidden rounded-lg border bg-card');
   });
 
@@ -157,8 +165,34 @@ describe("product surface primitives", () => {
 
     expect(html).toContain("border-border-subtle");
     expect(html).toContain("bg-bg-default");
+    expect(html).toContain("ring-black/5");
+    expect(html).toContain("dark:ring-white/[0.04]");
+    expect(html).toContain("dark:shadow-black/35");
     expect(html).not.toContain('class="rounded-lg border bg-card');
     expect(html).not.toContain('class="flex flex-col gap-2 rounded-lg border bg-card');
+  });
+
+  it("keeps transient overlays on dark-native product surfaces", () => {
+    const tooltipSource = readWorkspaceSource("components/ui/tooltip.tsx");
+    const dropdownSource = readWorkspaceSource("components/ui/dropdown-menu.tsx");
+    const commandPaletteSource = readWorkspaceSource(
+      "components/product/workspace-command-palette.tsx",
+    );
+
+    expect(tooltipSource).toContain("bg-popover");
+    expect(tooltipSource).toContain("text-popover-foreground");
+    expect(tooltipSource).toContain("dark:bg-card");
+    expect(tooltipSource).toContain("dark:shadow-black/35");
+    expect(tooltipSource).not.toContain("bg-foreground");
+    expect(tooltipSource).not.toContain("text-background");
+
+    expect(dropdownSource).toContain("border border-border");
+    expect(dropdownSource).toContain("dark:ring-white/[0.06]");
+    expect(dropdownSource).toContain("dark:shadow-black/35");
+
+    expect(commandPaletteSource).toContain("dark:ring-white/[0.06]");
+    expect(commandPaletteSource).toContain("dark:shadow-black/35");
+    expect(commandPaletteSource).toContain("focus-visible:bg-muted");
   });
 
   it("renders admin status badges from the shared admin tone primitive", () => {
@@ -169,6 +203,8 @@ describe("product surface primitives", () => {
     expect(html).toContain("Needs review");
     expect(html).toContain("rounded-md");
     expect(html).toContain("bg-amber-50");
+    expect(html).toContain("dark:bg-amber-400/10");
+    expect(html).toContain("dark:border-amber-400/35");
   });
 
   it("renders operational detail pages with hero, actions, metrics, and timeline primitives", () => {
@@ -355,6 +391,48 @@ describe("product surface primitives", () => {
     expect(html).toContain("group/button");
     expect(html).toContain("bg-primary");
     expect(html).toContain("bg-bg-muted/60");
+  });
+
+  it("keeps five evidence command metrics on one wide row", () => {
+    const html = renderToStaticMarkup(
+      createElement(EvidenceCommandMetricStrip, {
+        metrics: [
+          {
+            label: "Advisor findings",
+            value: "2",
+            detail: "Rows needing security review",
+            tone: "attention",
+          },
+          {
+            label: "Credential exposure",
+            value: "1",
+            detail: "0 revoked",
+            tone: "stable",
+          },
+          {
+            label: "Webhook delivery",
+            value: "0",
+            detail: "2 records",
+            tone: "stable",
+          },
+          {
+            label: "Privileged access",
+            value: "2",
+            detail: "Administrator roles",
+            tone: "attention",
+          },
+          {
+            label: "Access audit trail",
+            value: "100",
+            detail: "Audit events",
+            tone: "info",
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain("xl:grid-cols-5");
+    expect(html).not.toContain("xl:grid-cols-4");
   });
 
   it("renders evidence case briefs as grouped operational summaries", () => {

@@ -203,9 +203,13 @@ it("links reporting coverage clinic rows to operational clinic detail", () => {
 
   expect(source).toContain("ReportingCoverageLedger");
   expect(source).not.toContain("AdminEvidenceTable");
-  expect(componentSource).toContain("Organisation readiness review");
-  expect(componentSource).toContain('aria-label="Readiness review task queue"');
-  expect(componentSource).toContain('aria-label="Selected clinic readiness packet"');
+  expect(componentSource).toContain("Coverage exception board");
+  expect(componentSource).toContain("<h1");
+  expect(componentSource).toContain('aria-label="Coverage component map"');
+  expect(componentSource).toContain('aria-label="Coverage exception queue"');
+  expect(componentSource).toContain('aria-label="Evidence receipt inspector"');
+  expect(componentSource).not.toContain("Organisation readiness review");
+  expect(componentSource).not.toContain("bg-neutral-950");
   expect(componentSource).toContain('aria-label={viewModel.ledger.title}');
   expect(componentSource).toContain("Inspect coverage receipt for");
   expect(componentSource).toContain("onSelectReceipt(row.clinicId)");
@@ -293,14 +297,14 @@ it("uses a scenario operations workspace instead of generic action cards", () =>
 
   expect(source).toContain("ScenarioControlsWorkspace");
   expect(source).toContain("buildScenarioControlsViewModel");
-  expect(source).not.toContain("@/components/workspace/scenario-controls");
+  expect(source).not.toContain("DemoControls");
   expect(source).not.toContain("AdminEvidenceTable");
   expect(componentSource).toContain('aria-label="Scenario controls workspace"');
-  expect(componentSource).toContain('aria-label="Scenario runbook"');
-  expect(componentSource).toContain('aria-label="Scenario command panel"');
-  expect(componentSource).toContain('aria-label="Selected scenario evidence flow"');
-  expect(componentSource).toContain('aria-label="Scenario evidence timeline"');
-  expect(componentSource).toContain('aria-label="Scenario safety checks"');
+  expect(componentSource).toContain('aria-label="Launch controls"');
+  expect(componentSource).toContain('aria-label="Scenario playback deck"');
+  expect(componentSource).toContain('aria-label="Selected state diff"');
+  expect(componentSource).toContain('aria-label="Scenario flight recorder"');
+  expect(componentSource).toContain('aria-label="Preflight checklist"');
   expect(componentSource).toContain("onSelectCommand(command.id)");
   expect(componentSource).toContain("onRunCommand(selectedCommand.id)");
   expect(componentSource).toContain("aria-pressed={isSelected}");
@@ -371,10 +375,10 @@ it("links stakeholder activity rows to lead detail", () => {
 
 it("uses operational detail layouts for report and lead details", () => {
   const adminReportDetail = readFileSync("app/(workspace)/admin/reports/[reportId]/page.tsx", "utf8");
-  const workspaceReportDetail = readFileSync("app/(workspace)/district/reports/[reportId]/page-client.tsx", "utf8");
+  const demoReportDetail = readFileSync("app/(workspace)/district/reports/[reportId]/page-client.tsx", "utf8");
   const leadDetail = readFileSync("app/(workspace)/admin/leads/[leadId]/page-client.tsx", "utf8");
 
-  for (const source of [adminReportDetail, workspaceReportDetail, leadDetail]) {
+  for (const source of [adminReportDetail, demoReportDetail, leadDetail]) {
     expect(source).toContain("EvidenceCommandHeader");
     expect(source).toContain("EvidenceCommandMetricStrip");
     expect(source).toContain("EvidenceCaseBriefPanel");
@@ -386,22 +390,22 @@ it("uses operational detail layouts for report and lead details", () => {
   }
 
   expect(adminReportDetail).toContain("buildReportDecisionCopy");
-  expect(workspaceReportDetail).toContain("buildReportDecisionCopy");
+  expect(demoReportDetail).toContain("buildReportDecisionCopy");
   expect(leadDetail).toContain("buildLeadDecisionCopy");
   expect(adminReportDetail).toContain('contextLabel: "Backstop review"');
-  expect(workspaceReportDetail).toContain('contextLabel: "Signal response"');
+  expect(demoReportDetail).toContain('contextLabel: "Signal response"');
   expect(leadDetail).toContain('contextLabel: "Stakeholder handoff"');
   expect(adminReportDetail).toContain('label: "Signal summary"');
-  expect(workspaceReportDetail).toContain('label: "Signal summary"');
+  expect(demoReportDetail).toContain('label: "Signal summary"');
   expect(leadDetail).toContain('label: "Follow-up summary"');
   expect(adminReportDetail).toContain('title: "Operational pressure"');
-  expect(workspaceReportDetail).toContain('title: "Operational pressure"');
+  expect(demoReportDetail).toContain('title: "Operational pressure"');
   expect(leadDetail).toContain('title: "Qualification"');
   expect(adminReportDetail).toContain("content-start gap-4");
-  expect(workspaceReportDetail).toContain("content-start gap-4");
+  expect(demoReportDetail).toContain("content-start gap-4");
   expect(leadDetail).toContain("content-start gap-4");
 
-  for (const source of [adminReportDetail, workspaceReportDetail, leadDetail]) {
+  for (const source of [adminReportDetail, demoReportDetail, leadDetail]) {
     expect(source).not.toContain("Selected evidence decision");
     expect(source).not.toContain("Selected signal decision");
     expect(source).not.toContain("Selected lead decision");
@@ -425,13 +429,18 @@ it("links admin user evidence rows to user detail", () => {
   const usersPage = readFileSync("app/(workspace)/admin/users-roles/page.tsx", "utf8");
   const lifecycle = readFileSync("components/product/admin-user-lifecycle.tsx", "utf8");
   const accessReview = readFileSync("app/(workspace)/admin/access-review/page.tsx", "utf8");
+  const accessReviewWorkspace = readFileSync(
+    "components/product/access-review-workspace.tsx",
+    "utf8",
+  );
 
   expect(usersPage).toContain('const returnSource = "admin-users-roles";');
   expect(usersPage).toContain("detailReturnSource={returnSource}");
   expect(lifecycle).toContain("buildAdminUserDetailHref(user.userId, detailReturnSource)");
   expect(lifecycle).toContain('import Link from "next/link";');
   expect(accessReview).toContain('const returnSource = "admin-access-review";');
-  expect(accessReview).toContain("buildAdminUserDetailHref(row.userId, returnSource)");
+  expect(accessReview).toContain("returnSource={returnSource}");
+  expect(accessReviewWorkspace).toContain("buildAdminUserDetailHref(subject.userId, returnSource)");
 });
 
 it("links audit evidence rows to canonical entity details", () => {
@@ -497,15 +506,24 @@ it("uses an operations workspace for integration evidence", () => {
   const modelSource = readFileSync("lib/product/integration-operations.ts", "utf8");
 
   expect(source).toContain("IntegrationOperationsWorkspace");
-  expect(source).toContain("Integration operations command centre");
-  expect(source).toContain("Integration evidence queue");
+  expect(source).toContain("PartnerOperationsBriefing");
+  expect(source).toContain("Integration Delivery Console");
+  expect(source).toContain("Delivery runbook");
+  expect(source).toContain("Endpoint smoke matrix");
   expect(source).toContain("buildIntegrationOperationsModel");
-  expect(source).toContain('aria-label="Integration command center"');
-  expect(source).toContain('aria-label="Developer handoff"');
+  expect(source).toContain("buildPartnerLaunchCockpitModel");
+  expect(source).toContain('aria-label="Delivery runbook"');
+  expect(source).toContain('aria-label="Endpoint smoke matrix"');
+  expect(source).toContain('id="endpoint-smoke-matrix"');
+  expect(source).toContain('aria-label="Endpoint smoke cards"');
   expect(source).toContain('aria-label="Webhook delivery log"');
   expect(source).toContain('id="webhook-delivery-log"');
   expect(source).toContain("commandCardAccentClassName");
   expect(source).toContain("whitespace-pre-wrap");
+  expect(source).toContain("break-all");
+  expect(source).toContain("max-w-full overflow-hidden");
+  expect(source).toContain("md:hidden");
+  expect(source).toContain("hidden md:block");
   expect(source).not.toContain("overflow-x-auto rounded-md");
   expect(source).not.toContain("<AdminEvidenceTable");
   expect(source).not.toContain("<AdminMetricStrip");
@@ -516,19 +534,27 @@ it("uses an operations workspace for integration evidence", () => {
   expect(componentSource).toContain('aria-label="Integration evidence controls"');
   expect(componentSource).toContain('aria-label="Integration evidence lanes"');
   expect(componentSource).toContain('aria-label="Integration evidence rows"');
+  expect(componentSource).toContain('aria-label="Integration evidence cards"');
   expect(componentSource).toContain('aria-label="Integration check evidence"');
   expect(componentSource).toContain('aria-label="Selected integration evidence"');
   expect(componentSource).toContain("Clear filters");
   expect(componentSource).toContain("Open source evidence");
   expect(componentSource).toContain("onSelectRow(row.id)");
   expect(componentSource).toContain("aria-selected={isSelected}");
-  expect(componentSource).toContain("navigateToSource(row)");
+  expect(componentSource).not.toContain("window.location.assign");
   expect(componentSource).toContain("filterIntegrationEvidenceRows");
+  expect(componentSource).toContain("md:hidden");
+  expect(componentSource).toContain("hidden md:block");
   expect(componentSource).toContain("hidden sm:inline");
-  expect(componentSource).toContain("md:sticky md:top-3");
+  expect(componentSource).toContain("xl:sticky xl:top-3");
   expect(componentSource).not.toContain("Reference map");
   expect(componentSource).not.toContain("Hookdeck");
   expect(componentSource).not.toContain("Dub");
+  expect(componentSource).not.toContain("Svix");
+  expect(componentSource).not.toContain("Kestra");
+  expect(componentSource).not.toContain("Temporal");
+  expect(modelSource).toContain("buildEndpointEvidenceRows(endpointRows)");
+  expect(modelSource).toContain('sourceHref: "#endpoint-smoke-matrix"');
   expect(modelSource).toContain('const returnSource = "admin-integrations";');
   expect(modelSource).toContain("buildAdminApiKeyDetailHref(row.id, returnSource)");
   expect(modelSource).toContain("buildAdminWebhookSubscriptionDetailHref");

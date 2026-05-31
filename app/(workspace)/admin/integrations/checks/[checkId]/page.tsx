@@ -1,23 +1,16 @@
 import { notFound } from "next/navigation";
 
-import {
-  AdminDetailFieldGrid,
-  AdminDetailJsonBlock,
-  AdminDetailShell,
-} from "@/components/product/admin-detail";
+import { AdminDetailShell } from "@/components/product/admin-detail";
+import { IntegrationEvidenceDetailBriefing } from "@/components/product/integration-evidence-detail-briefing";
 import {
   getAdminReturnSource,
   getAdminReturnTarget,
   parseAdminNumericId,
   type AdminSearchParams,
 } from "@/lib/product/admin-detail-routes";
+import { buildIntegrationDetailModel } from "@/lib/product/integration-detail";
 import { requireWorkspaceWorkflowAccess } from "../../../../workflow-guard";
 import { loadAdminPartnerReadiness } from "../../../admin-loaders";
-import {
-  formatDateTime,
-  formatLabel,
-  StatusBadge,
-} from "../../../governance-formatters";
 
 type IntegrationCheckDetailPageProps = {
   params: Promise<{
@@ -25,18 +18,6 @@ type IntegrationCheckDetailPageProps = {
   }>;
   searchParams: Promise<AdminSearchParams>;
 };
-
-function checkTone(status: string) {
-  if (status === "passing") {
-    return "clear" as const;
-  }
-
-  if (status === "failing") {
-    return "blocked" as const;
-  }
-
-  return "attention" as const;
-}
 
 export default async function Page({
   params,
@@ -62,47 +43,22 @@ export default async function Page({
   }
 
   const returnTarget = getAdminReturnTarget(getAdminReturnSource(query));
+  const model = buildIntegrationDetailModel({
+    kind: "integration-check",
+    check,
+    returnHref: returnTarget.href,
+  });
 
   return (
     <AdminDetailShell
-      eyebrow="Partner operations"
+      eyebrow={model.eyebrow}
       title="Integration check detail"
-      description={check.summary}
+      description={model.description}
       returnHref={returnTarget.href}
       returnLabel={returnTarget.label}
+      hideHeader
     >
-      <AdminDetailFieldGrid
-        fields={[
-          {
-            label: "Check",
-            value: formatLabel(check.checkName),
-          },
-          {
-            label: "Status",
-            value: (
-              <StatusBadge tone={checkTone(check.status)}>
-                {formatLabel(check.status)}
-              </StatusBadge>
-            ),
-          },
-          {
-            label: "Organisation",
-            value: check.organisationId
-              ? `Organisation ${check.organisationId}`
-              : "Platform",
-          },
-          {
-            label: "Checked",
-            value: formatDateTime(check.checkedAt),
-          },
-          {
-            label: "Summary",
-            value: check.summary,
-            className: "sm:col-span-2 xl:col-span-3",
-          },
-        ]}
-      />
-      <AdminDetailJsonBlock title="Metadata" value={check.metadata} />
+      <IntegrationEvidenceDetailBriefing model={model} />
     </AdminDetailShell>
   );
 }

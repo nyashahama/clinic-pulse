@@ -219,7 +219,7 @@ function BookingPanel({
 
       <form className="max-h-[76vh] overflow-y-auto overflow-x-hidden px-4 py-7 sm:px-6" onSubmit={onSubmit}>
         <div className="flex items-start gap-4">
-          <div className="grid size-9 shrink-0 place-items-center rounded-full bg-[#eaf2ff] text-[#3f7df1]">
+          <div className="grid size-9 shrink-0 place-items-center rounded-full bg-[#eaf2ff] text-[#3f7df1] dark:bg-primary/15 dark:text-primary">
             <UserRound className="size-5" />
           </div>
           <div>
@@ -298,7 +298,7 @@ function BookingPanel({
                     : "bg-transparent text-neutral-400",
                   selectedDay === day && "bg-neutral-950 text-white hover:bg-neutral-950",
                   isAvailable && "dark:bg-muted dark:text-foreground dark:hover:bg-accent",
-                  selectedDay === day && "dark:bg-foreground dark:text-background dark:hover:bg-foreground",
+                  selectedDay === day && "dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90",
                 )}
               >
                 {day}

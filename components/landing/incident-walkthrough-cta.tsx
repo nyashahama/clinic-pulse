@@ -38,7 +38,7 @@ export function IncidentWalkthroughCTA() {
               <ButtonLink
                 href={incidentWalkthroughCta.primaryCta.href}
                 variant="primary"
-                className="h-11 border-white bg-white text-neutral-950 hover:bg-neutral-100 hover:ring-white/10"
+                className="h-11 border-primary bg-primary text-primary-foreground shadow-[0_0_0_1px_rgba(62,207,142,0.16),0_18px_48px_rgba(62,207,142,0.16)] hover:bg-primary/90 hover:ring-primary/20"
               >
                 {incidentWalkthroughCta.primaryCta.label}
                 <ArrowRight className="size-4" />

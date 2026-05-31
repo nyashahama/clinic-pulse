@@ -52,7 +52,7 @@ export function LiveIncidentHero({ onBookWalkthrough }: LiveIncidentHeroProps) {
               <button
                 type="button"
                 onClick={onBookWalkthrough}
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-white px-5 text-sm font-semibold text-neutral-950 transition hover:bg-neutral-200 sm:w-auto"
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-primary bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_0_0_1px_rgba(62,207,142,0.16),0_18px_48px_rgba(62,207,142,0.18)] transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-primary/35 sm:w-auto"
               >
                 {liveIncidentHero.primaryCta.label}
                 <ArrowRight className="size-4" />

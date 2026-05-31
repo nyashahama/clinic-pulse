@@ -97,7 +97,7 @@ describe("buildReportingCoverageViewModel", () => {
     expect(viewModel.header.readiness.value).toBe("0%");
     expect(viewModel.header.syncWindow).toContain("22 May 2026");
     expect(viewModel.readinessReview).toEqual({
-      title: "Organisation readiness review",
+      title: "Coverage exception board",
       activeClinicName: "clinic-stale Clinic",
       activeBlocker: "Pending field report blocks readiness",
       activeDetail: "Backstop review required before coverage is trusted",

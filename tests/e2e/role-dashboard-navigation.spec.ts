@@ -70,7 +70,7 @@ const roleScenarios: Array<{
     role: "system_admin",
     email: "system-admin@clinicpulse.local",
     home: "/admin",
-    heading: "Platform Command Console",
+    heading: "Platform Operations Cockpit",
     sidebarLabels: [
       "Platform Overview",
       "Tenant health",
@@ -83,9 +83,10 @@ const roleScenarios: Array<{
       "Audit evidence",
     ],
     landmarks: [
-      { selector: '[aria-label="Platform command metrics"]' },
-      { selector: '[aria-label="Operational command lanes"]' },
-      { selector: '[aria-label="Audit and evidence console"]' },
+      { selector: '[aria-label="Active operational case"]' },
+      { selector: '[aria-label="Platform health monitors"]' },
+      { selector: '[aria-label="Operations queue"]' },
+      { selector: '[aria-label="Selected operational case"]' },
     ],
   },
 ];
@@ -809,9 +810,9 @@ test.describe("phase 1 role dashboard navigation", () => {
     await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
     await expect(page.locator('[data-admin-module="scenario-controls"]')).toBeVisible();
     await expect(page.locator('[aria-label="Scenario controls workspace"]')).toBeVisible();
-    await expect(page.locator('[aria-label="Scenario runbook"]')).toBeVisible();
-    await expect(page.locator('[aria-label="Scenario command panel"]')).toBeVisible();
-    await expect(page.locator('[aria-label="Scenario evidence timeline"]')).toBeVisible();
+    await expect(page.locator('[aria-label="Launch controls"]')).toBeVisible();
+    await expect(page.locator('[aria-label="Scenario playback deck"]')).toBeVisible();
+    await expect(page.locator('[aria-label="Scenario flight recorder"]')).toBeVisible();
     await expect(page.getByRole("button", { name: "Reset scenario" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Trigger stockout" })).toBeVisible();
   });

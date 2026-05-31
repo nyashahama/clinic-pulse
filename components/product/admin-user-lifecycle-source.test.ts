@@ -53,8 +53,8 @@ describe("AdminUserLifecycle source", () => {
     expect(pageSource).toContain("createPilotUserAction");
     expect(pageSource).toContain("CreatePilotUserForm");
     expect(pageSource).toContain("UsersTableClient");
-    expect(pageSource).toContain("Users and roles command centre");
-    expect(pageSource).toContain("Access lifecycle queue");
-    expect(pageSource).toContain('id="user-lifecycle-workspace"');
+    expect(pageSource).toContain("Access lifecycle cockpit");
+    expect(pageSource).toContain("Lifecycle controls");
+    expect(pageSource).toContain('id="lifecycle-controls"');
   });
 });

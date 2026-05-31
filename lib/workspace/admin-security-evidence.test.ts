@@ -124,6 +124,37 @@ describe("buildSecurityEvidenceViewModel", () => {
       "Logto console",
       "Supabase security advisor",
     ]);
+    expect(viewModel.commandBrief.caseBrief.title).toBe("Security posture packet");
+    expect(viewModel.commandBrief.caseBrief.summary.label).toBe("Evidence verdict");
+    expect(viewModel.commandBrief.metrics.map((metric) => metric.label)).toEqual([
+      "Advisor findings",
+      "Credential exposure",
+      "Webhook delivery",
+      "Privileged access",
+      "Access audit trail",
+    ]);
+    expect(viewModel.commandBrief.decision.actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          href: "#security-evidence-workspace",
+          priority: "primary",
+        }),
+        expect.objectContaining({
+          href: "/admin/audit-evidence",
+          priority: "secondary",
+        }),
+        expect.objectContaining({
+          href: "/admin/users-roles",
+          priority: "secondary",
+        }),
+      ]),
+    );
+    expect(viewModel.commandBrief.timeline.items.map((item) => item.label)).toEqual([
+      "Credentials",
+      "Webhooks",
+      "Access",
+      "Audit",
+    ]);
     expect(viewModel.rows.map((row) => row.kind)).toEqual([
       "webhook",
       "privileged-access",

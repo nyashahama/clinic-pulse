@@ -3,15 +3,15 @@ import { expect, test, type Page } from "@playwright/test";
 import { PRODUCT_LANGUAGE_BAN_LIST } from "../../lib/workspace/operations-scenario";
 import { phaseOneWorkspaceRouteChecklist } from "../../lib/workspace/operations-runbook";
 
-const localAccount = {
+const demoAccount = {
   email: "org-admin@clinicpulse.local",
   password: "ClinicPulseDemo123!",
 };
 
 async function signIn(page: Page) {
   await page.goto("/login");
-  await page.getByLabel("Email").fill(localAccount.email);
-  await page.getByLabel("Password").fill(localAccount.password);
+  await page.getByLabel("Email").fill(demoAccount.email);
+  await page.getByLabel("Password").fill(demoAccount.password);
   await page.getByRole("button", { name: "Log in" }).click();
   await expect(page).toHaveURL(/\/admin$/);
 }
@@ -95,16 +95,18 @@ test.describe("phase-one operations route checklist", () => {
     await expectNoStagedProductLanguage(page);
 
     await expect(
-      page.getByRole("heading", { name: "Tshwane North District operating picture" }),
+      page.getByRole("heading", { name: "Unified severity queue" }),
     ).toBeVisible();
-    await expect(page.locator('[data-district-home="command-page"]')).toBeVisible();
-    await expect(page.locator("[data-district-command-map]")).toBeVisible();
-    await expect(page.locator("[data-district-command-queue]")).toBeVisible();
-    await expect(page.locator("[data-district-decision-packet]")).toBeVisible();
-    await expect(page.getByText("Supporting operations", { exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Clinic roster" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Alert queue" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Report stream" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Command actions" })).toBeVisible();
+
+    const firstPriority = page.getByRole("button", { name: /priority 1/i }).first();
+    await expect(firstPriority).toBeVisible();
+    await firstPriority.click();
+    await expect(page.getByText(/primary action/i)).toBeVisible();
+    await expect(page.getByText(/expected outcome/i)).toBeVisible();
+
+    await expect(page.getByRole("heading", { name: "Clinic table" })).toBeVisible();
+    await expect(page.getByText("Report stream")).toBeVisible();
 
     await page.goto("/district/clinics/clinic-mabopane-station");
     await expectNoStagedProductLanguage(page);
@@ -125,31 +127,37 @@ test.describe("phase-one operations route checklist", () => {
 
     await page.goto("/admin/data-ingestion");
     await expectNoStagedProductLanguage(page);
-    await expect(page.getByRole("heading", { name: "Ingestion pressure" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Ingestion pipeline monitor" })).toBeVisible();
 
     await page.goto("/admin/partner-readiness");
     await expectNoStagedProductLanguage(page);
     await expect(
-      page.getByRole("heading", { name: "Partner readiness command centre" }),
+      page.getByRole("heading", { name: "Partner Launch Cockpit" }).first(),
     ).toBeVisible();
 
     await page.goto("/admin/scenario-controls");
     await expectNoStagedProductLanguage(page);
-    await expect(page.getByRole("heading", { name: "Scenario controls" })).toBeVisible();
-    await expect(page.locator('[data-admin-module="scenario-controls"]')).toBeVisible();
-    const scenarioCommandPanel = page.locator('[aria-label="Scenario command panel"]');
-    await expect(scenarioCommandPanel).toBeVisible();
-    await expect(page.locator('[aria-label="Scenario evidence timeline"]')).toBeVisible();
     await expect(
-      scenarioCommandPanel.getByRole("heading", { name: "Replay incident" }),
+      page.getByRole("heading", { name: "Scenario rehearsal cockpit" }),
     ).toBeVisible();
-    await scenarioCommandPanel.getByRole("button", { name: "Replay incident" }).click();
-    await expect(scenarioCommandPanel).toContainText(
-      "Incident replay applied across field report, alert, reroute, audit, and webhook evidence.",
-    );
-    await expect(page.locator('[aria-label="Scenario evidence timeline"]')).toContainText(
-      /Partner Webhook/i,
-    );
+
+    await page.goto("/district");
+    await expectNoStagedProductLanguage(page);
+    const supportingOperations = page
+      .getByText("Supporting operations", { exact: true })
+      .filter({ visible: true })
+      .first();
+    await expect(supportingOperations).toBeVisible();
+    await supportingOperations.scrollIntoViewIfNeeded();
+    const replayIncident = page.getByRole("button", { name: "Replay incident" });
+    await replayIncident.scrollIntoViewIfNeeded();
+    await expect(replayIncident).toBeVisible();
+    await replayIncident.click();
+    await expect(page.getByRole("heading", { name: "Incident replay" })).toBeVisible();
+    await expect(
+      page.getByText("Partner webhook", { exact: true }).filter({ visible: true }).first(),
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Delivered preview" })).toBeVisible();
 
     expect(clientApiWarnings).toEqual([]);
   });

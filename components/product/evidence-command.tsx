@@ -203,14 +203,19 @@ export function EvidenceCommandHeader({
 }
 
 export function EvidenceCommandMetricStrip({
+  ariaLabel = "Evidence command signals",
   metrics,
 }: {
+  ariaLabel?: string;
   metrics: EvidenceCommandMetric[];
 }) {
   return (
     <section
-      aria-label="Evidence command signals"
-      className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+      aria-label={ariaLabel}
+      className={cn(
+        "grid gap-3 sm:grid-cols-2",
+        metrics.length >= 5 ? "xl:grid-cols-5" : "xl:grid-cols-4",
+      )}
     >
       {metrics.map((metric) => (
         <article
@@ -241,6 +246,18 @@ export function EvidenceCommandMetricStrip({
                 {metric.detail}
               </p>
             </div>
+            {metric.href && metric.actionLabel ? (
+              <Link
+                className={cn(
+                  buttonVariants({ size: "sm", variant: "outline" }),
+                  "mt-auto justify-between gap-1.5",
+                )}
+                href={metric.href}
+              >
+                {metric.actionLabel}
+                <ArrowRight className="size-3.5" />
+              </Link>
+            ) : null}
           </div>
         </article>
       ))}

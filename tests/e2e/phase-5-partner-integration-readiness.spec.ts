@@ -48,17 +48,20 @@ async function expectIntegrationsModule(page: Page) {
   await expect(page.getByText("Implementation placeholder")).toHaveCount(0);
   await expect(page.locator('[data-admin-module="integrations"]')).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Integration operations command centre" }),
+    page.getByRole("heading", { name: "Integration Delivery Console" }),
   ).toBeVisible();
-  await expect(page.getByText("Integration evidence queue", { exact: true })).toBeVisible();
+  await expect(page.getByText("Launch gate runway", { exact: true })).toBeVisible();
+  await expect(page.getByText("Delivery runbook", { exact: true })).toBeVisible();
   await expect(page.getByText("Integration evidence workspace", { exact: true })).toBeVisible();
   await expect(
     page.getByRole("searchbox", { name: "Search integration evidence" }),
   ).toBeVisible();
   await expect(page.getByText("Selected integration evidence", { exact: true })).toBeVisible();
-  await expect(page.getByText("Developer handoff", { exact: true })).toBeVisible();
+  await expect(page.getByText("Endpoint smoke matrix", { exact: true })).toBeVisible();
   await expect(page.getByText("Webhook delivery log", { exact: true })).toBeVisible();
-  await expect(page.getByText("$CLINICPULSE_PARTNER_API_KEY").first()).toBeVisible();
+  await expect(
+    page.getByText("$CLINICPULSE_PARTNER_API_KEY").filter({ visible: true }).first(),
+  ).toBeVisible();
   await expect(page.getByText("Reference map", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Hookdeck Outpost", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Dub Webhooks", { exact: true })).toHaveCount(0);
@@ -71,7 +74,7 @@ async function expectPartnerReadinessLaunchCockpit(page: Page) {
     page.getByRole("heading", { name: "Partner Launch Cockpit" }),
   ).toBeVisible();
   await expect(page.getByText("Readiness gates", { exact: true })).toBeVisible();
-  await expect(page.getByText("Handoff packet", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Handoff packet" })).toBeVisible();
   await expect(page.getByText("Partner action queue", { exact: true })).toBeVisible();
   await expect(page.getByText("Partner evidence ledger", { exact: true })).toBeVisible();
   await expect(page.getByText("Selected partner evidence", { exact: true })).toBeVisible();
