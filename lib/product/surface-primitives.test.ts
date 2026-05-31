@@ -138,6 +138,9 @@ describe("product surface primitives", () => {
     expect(html).toContain("bg-bg-default");
     expect(html).toContain("bg-bg-muted/60");
     expect(html).toContain("divide-border-subtle");
+    expect(html).toContain("ring-black/5");
+    expect(html).toContain("dark:ring-white/[0.04]");
+    expect(html).toContain("dark:shadow-black/35");
     expect(html).not.toContain('class="overflow-hidden rounded-lg border bg-card');
   });
 
@@ -157,6 +160,9 @@ describe("product surface primitives", () => {
 
     expect(html).toContain("border-border-subtle");
     expect(html).toContain("bg-bg-default");
+    expect(html).toContain("ring-black/5");
+    expect(html).toContain("dark:ring-white/[0.04]");
+    expect(html).toContain("dark:shadow-black/35");
     expect(html).not.toContain('class="rounded-lg border bg-card');
     expect(html).not.toContain('class="flex flex-col gap-2 rounded-lg border bg-card');
   });
@@ -169,6 +175,8 @@ describe("product surface primitives", () => {
     expect(html).toContain("Needs review");
     expect(html).toContain("rounded-md");
     expect(html).toContain("bg-amber-50");
+    expect(html).toContain("dark:bg-amber-400/10");
+    expect(html).toContain("dark:border-amber-400/35");
   });
 
   it("renders operational detail pages with hero, actions, metrics, and timeline primitives", () => {

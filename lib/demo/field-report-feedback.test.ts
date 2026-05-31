@@ -27,6 +27,8 @@ describe("field report feedback", () => {
     expect(html).toContain("Report sent to review");
     expect(html).toContain("Waiting for district review.");
     expect(html).toContain("Mamelodi East Community Clinic");
+    expect(html).toContain("dark:bg-emerald-400/10");
+    expect(html).toContain("dark:border-emerald-400/30");
   });
 
   it("renders toast-style immediate feedback", () => {
@@ -40,5 +42,8 @@ describe("field report feedback", () => {
     expect(html).toContain('aria-live="polite"');
     expect(html).toContain("Report sent to review");
     expect(html).toContain("Waiting for district review.");
+    expect(html).toContain("dark:bg-card");
+    expect(html).toContain("dark:shadow-black/35");
+    expect(html).toContain("dark:border-emerald-400/35");
   });
 });

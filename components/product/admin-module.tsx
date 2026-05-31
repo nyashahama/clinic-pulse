@@ -19,6 +19,9 @@ export type AdminAction = {
   buttonProps?: Omit<ComponentProps<typeof Button>, "children">;
 };
 
+const adminSurfaceElevationClassName =
+  "shadow-sm ring-1 ring-black/5 dark:ring-white/[0.04] dark:shadow-black/35";
+
 export type AdminModuleHeaderProps = {
   eyebrow?: ReactNode;
   title: ReactNode;
@@ -38,7 +41,8 @@ export function AdminModuleHeader({
     <section
       data-admin-module
       className={cn(
-        "rounded-lg border border-border-subtle bg-bg-default px-4 py-4 text-content-default shadow-sm sm:px-5",
+        "rounded-lg border border-border-subtle bg-bg-default px-4 py-4 text-content-default sm:px-5",
+        adminSurfaceElevationClassName,
         className,
       )}
     >
@@ -85,12 +89,12 @@ export type AdminMetricStripProps = {
 };
 
 const adminToneClassName: Record<AdminTone, string> = {
-  clear: "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100",
+  clear: "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-100",
   attention:
-    "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100",
+    "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-400/35 dark:bg-amber-400/10 dark:text-amber-100",
   blocked:
-    "border-destructive/30 bg-destructive/10 text-destructive dark:border-destructive/40 dark:bg-destructive/20",
-  info: "border-sky-200 bg-sky-50 text-sky-950 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-100",
+    "border-destructive/30 bg-destructive/10 text-destructive dark:border-red-400/35 dark:bg-red-500/10 dark:text-red-100",
+  info: "border-sky-200 bg-sky-50 text-sky-950 dark:border-sky-400/30 dark:bg-sky-400/10 dark:text-sky-100",
 };
 
 export function getAdminToneClassName(tone: AdminTone) {
@@ -113,7 +117,8 @@ export function AdminMetricStrip({
           <div
             key={index}
             className={cn(
-              "min-w-0 rounded-lg border px-4 py-3 shadow-sm",
+              "min-w-0 rounded-lg border px-4 py-3",
+              adminSurfaceElevationClassName,
               getAdminToneClassName(tone),
             )}
           >
@@ -169,7 +174,8 @@ export function AdminFilterBar({ children, className }: AdminFilterBarProps) {
     <div
       data-admin-module
       className={cn(
-        "flex flex-col gap-2 rounded-lg border border-border-subtle bg-bg-default p-3 text-content-default shadow-sm sm:flex-row sm:flex-wrap sm:items-center",
+        "flex flex-col gap-2 rounded-lg border border-border-subtle bg-bg-default p-3 text-content-default sm:flex-row sm:flex-wrap sm:items-center",
+        adminSurfaceElevationClassName,
         className,
       )}
     >
@@ -211,7 +217,8 @@ export function AdminEvidenceTable<Row>({
       data-admin-module
       aria-label={label}
       className={cn(
-        "overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm",
+        "overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default",
+        adminSurfaceElevationClassName,
         className,
       )}
     >
