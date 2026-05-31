@@ -17,14 +17,22 @@ describe("admin export and API contract pages", () => {
 
   it("turns the API contract page into a route-native API reference cockpit", () => {
     const source = readFileSync("app/(demo)/admin/api-contract/page.tsx", "utf8");
+    const model = readFileSync("lib/product/api-contract.ts", "utf8");
+    const workspace = readFileSync("components/product/api-contract-workspace.tsx", "utf8");
 
     expect(source).toContain("API contract cockpit");
-    expect(source).toContain("Endpoint rail");
-    expect(source).toContain("Request contract");
-    expect(source).toContain("Response contract");
-    expect(source).toContain("Safety boundary");
-    expect(source).toContain("Consumer handoff");
-    expect(source).toContain("evidenceHref");
+    expect(source).toContain("buildApiContractModel");
+    expect(source).toContain("ApiContractWorkspace");
+    expect(workspace).toContain('aria-label="API contract workspace"');
+    expect(workspace).toContain('aria-label="Contract endpoint list"');
+    expect(workspace).toContain('aria-label="Selected endpoint contract"');
+    expect(workspace).toContain('aria-label="Request parameters"');
+    expect(workspace).toContain('aria-label="Response contract"');
+    expect(workspace).toContain('aria-label="Sample payload"');
+    expect(workspace).toContain("onSelectEndpoint(endpoint.id)");
+    expect(model).toContain("Swagger UI operation components");
+    expect(model).toContain("OpenMetadata data contract schema table");
+    expect(model).toContain("buildAdminExportRunDetailHref");
     expect(source).not.toContain('AdminDetailJsonBlock title="Endpoint contract"');
   });
 });

@@ -646,6 +646,54 @@ test("admin overview preview controls open detail pages", async ({ page }) => {
   await expect(page.getByText("Response contract").first()).toBeVisible();
 });
 
+test("system admin inspects API contract endpoints before opening source evidence", async ({
+  page,
+}) => {
+  await signIn(page, "system-admin@clinicpulse.local");
+  await page.goto("/admin/api-contract");
+
+  await expect(page.getByRole("heading", { name: "API contract cockpit" })).toBeVisible();
+  await expect(page.getByLabel("API contract workspace")).toBeVisible();
+  await expect(page.getByLabel("Contract endpoint list")).toBeVisible();
+  await expect(page.getByLabel("Selected endpoint contract")).toBeVisible();
+
+  await page
+    .getByLabel("Contract endpoint list")
+    .getByRole("button", {
+      name: /Select GET \/v1\/partner\/export\/latest endpoint contract/i,
+    })
+    .click();
+  await expect(page).toHaveURL(/\/admin\/api-contract$/);
+  await expect(page.getByLabel("Selected endpoint contract")).toContainText(
+    "/v1/partner/export/latest",
+  );
+  await expect(page.getByLabel("Request parameters")).toContainText("Authorization");
+  await expect(page.getByLabel("Response contract")).toContainText("checksum");
+  await expect(page.getByLabel("Sample payload")).toContainText("checksum");
+
+  const evidenceLink = page
+    .getByLabel("Selected endpoint contract")
+    .getByRole("link", { name: /Open source evidence/i });
+  await expect(evidenceLink).toHaveAttribute(
+    "href",
+    /\/admin\/integrations\/export-runs\/\d+\?from=admin-api-contract$/,
+  );
+
+  await page.getByLabel("Search API contract endpoints").fill("integration-status");
+  await expect(page.getByLabel("Selected endpoint contract")).toContainText(
+    "/v1/partner/export/latest",
+  );
+  await page
+    .getByLabel("Contract endpoint list")
+    .getByRole("button", {
+      name: /Select GET \/v1\/partner\/integration-status endpoint contract/i,
+    })
+    .click();
+  await expect(page.getByLabel("Selected endpoint contract")).toContainText(
+    "/v1/partner/integration-status",
+  );
+});
+
 test("stakeholder activity rows open lead detail pages", async ({ page }) => {
   await signIn(page, "org-admin@clinicpulse.local");
   await page.goto("/admin");
