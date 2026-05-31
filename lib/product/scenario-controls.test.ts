@@ -15,7 +15,7 @@ describe("buildScenarioControlsViewModel", () => {
       stockoutClinicLabel: "Mamelodi East Community Clinic",
       staffingClinicLabel: "Soshanguve Block F Clinic",
       selectedCommandId: "stockout",
-      lastAction: "Scenario controls are ready.",
+      lastAction: "Scenario rehearsal cockpit is ready.",
     });
 
     expect(scenarioControlCommandIds).toEqual([
