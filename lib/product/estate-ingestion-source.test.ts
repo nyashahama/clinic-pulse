@@ -50,10 +50,11 @@ describe("admin estate and ingestion cockpit surfaces", () => {
   it("promotes tenant health into the estate cockpit system", () => {
     const source = readSource(tenantHealthBoard);
 
-    expect(source).toContain("EstateOperationsBriefing");
+    expect(source).toContain("EvidenceCommandHeader");
+    expect(source).toContain("EvidenceCommandMetricStrip");
     expect(source).toContain("Tenant health cockpit");
-    expect(source).toContain("Estate scorecard rail");
-    expect(source).toContain("Health routing");
+    expect(source).toContain("EvidenceCaseBriefPanel");
+    expect(source).not.toContain("EstateOperationsBriefing");
   });
 
   it("keeps the shared estate briefing product-only and reference-neutral", () => {

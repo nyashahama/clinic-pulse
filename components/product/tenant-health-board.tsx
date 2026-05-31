@@ -8,7 +8,14 @@ import {
   SlidersHorizontalIcon,
 } from "lucide-react";
 
-import { EstateOperationsBriefing } from "@/components/product/estate-operations-briefing";
+import {
+  EvidenceCaseBriefPanel,
+  EvidenceCommandChip,
+  EvidenceCommandHeader,
+  EvidenceCommandMetricStrip,
+  EvidenceDecisionPanel,
+  EvidenceTimeline,
+} from "@/components/product/evidence-command";
 import type {
   TenantHealthSignal,
   TenantHealthTone,
@@ -79,32 +86,47 @@ function ToneBadge({
 }
 
 export function TenantHealthBoard({ viewModel }: TenantHealthBoardProps) {
+  const headerActions = viewModel.commandBrief.decision.actions.filter(
+    (action) => action.priority === "secondary",
+  );
+
   return (
     <div className="grid min-w-0 gap-4 pb-6" data-admin-module="tenant-health">
-      <EstateOperationsBriefing
+      <EvidenceCommandHeader
+        actions={headerActions}
         eyebrow={viewModel.header.eyebrow}
         title="Tenant health cockpit"
         description={viewModel.header.description}
-        statusLabel={`${viewModel.header.score.value} estate readiness`}
-        statusDetail={`${viewModel.header.score.detail}. Scope: ${viewModel.header.scope}.`}
-        statusTone={viewModel.header.score.tone}
-        railLabel="Estate scorecard rail"
-        routingLabel="Health routing"
-        metrics={viewModel.metrics}
-        routes={viewModel.signalLedger.items.map((item) => ({
-          id: item.id,
-          label: item.label,
-          value: item.value,
-          detail: item.detail,
-          href: item.href,
-          tone: item.tone,
-        }))}
-        actions={viewModel.actions.map((action) => ({
-          label: action.label,
-          href: action.href,
-          variant: action.priority === "primary" ? "primary" : "secondary",
-        }))}
+      >
+        <div className="flex flex-wrap gap-1.5">
+          {viewModel.commandBrief.chips.map((chip) => (
+            <EvidenceCommandChip chip={chip} key={`${chip.label}-${chip.tone ?? "neutral"}`} />
+          ))}
+        </div>
+      </EvidenceCommandHeader>
+
+      <EvidenceCommandMetricStrip
+        ariaLabel="Tenant health command metrics"
+        metrics={viewModel.commandBrief.metrics}
       />
+
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+        <EvidenceCaseBriefPanel
+          description={viewModel.commandBrief.caseBrief.description}
+          primaryFields={viewModel.commandBrief.caseBrief.primaryFields}
+          sections={viewModel.commandBrief.caseBrief.sections}
+          summary={viewModel.commandBrief.caseBrief.summary}
+          title={viewModel.commandBrief.caseBrief.title}
+        />
+        <div className="grid min-w-0 content-start gap-4">
+          <EvidenceDecisionPanel decision={viewModel.commandBrief.decision} />
+          <EvidenceTimeline
+            description={viewModel.commandBrief.timeline.description}
+            items={viewModel.commandBrief.timeline.items}
+            title={viewModel.commandBrief.timeline.title}
+          />
+        </div>
+      </div>
 
       <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] xl:items-start">
         <section className="min-w-0 rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm">

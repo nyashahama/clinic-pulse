@@ -128,6 +128,19 @@ describe("buildTenantHealthViewModel", () => {
       "Audit access",
       "Partner readiness",
     ]);
+    expect(viewModel.commandBrief.caseBrief.title).toBe("Tenant readiness packet");
+    expect(viewModel.commandBrief.metrics.map((metric) => metric.label)).toEqual([
+      "Tenant readiness",
+      "District footprint",
+      "Open health signals",
+      "Access review load",
+    ]);
+    expect(viewModel.commandBrief.decision.actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ href: "/admin/data-ingestion", priority: "primary" }),
+        expect.objectContaining({ href: "/admin/access-review", priority: "secondary" }),
+      ]),
+    );
     expect(viewModel.signalLedger.items[1]?.detail).toContain("1 pending review");
     expect(viewModel.sourceReferences.map((reference) => reference.source)).toEqual([
       "Supabase Studio",
