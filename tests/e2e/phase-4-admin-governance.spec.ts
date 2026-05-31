@@ -154,9 +154,21 @@ test("access review keeps implementation research out of user-facing UI", async 
   await signIn(page, "system-admin@clinicpulse.local");
   await page.goto("/admin/access-review");
 
-  await expect(
-    page.getByRole("heading", { name: "Access review command centre" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Effective access cockpit" })).toBeVisible();
+  await expect(page.getByLabel("Effective access workspace")).toBeVisible();
+  await expect(page.getByLabel("Selected principal packet")).toBeVisible();
+  await expect(page.getByLabel("Permission audit matrix")).toBeVisible();
+  await expectResearchRailHidden(page);
+});
+
+test("users and roles shows lifecycle controls and role assignment map", async ({ page }) => {
+  await signIn(page, "org-admin@clinicpulse.local");
+  await page.goto("/admin/users-roles");
+
+  await expect(page.getByRole("heading", { name: "Access lifecycle cockpit" })).toBeVisible();
+  await expect(page.getByLabel("Role assignment map")).toBeVisible();
+  await expect(page.getByLabel("Lifecycle controls")).toBeVisible();
+  await expect(page.getByText("Effective access baseline")).toBeVisible();
   await expectResearchRailHidden(page);
 });
 

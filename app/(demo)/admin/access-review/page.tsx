@@ -1,72 +1,44 @@
 import Link from "next/link";
 import {
+  ArrowRightIcon,
   FileSearchIcon,
   KeyRoundIcon,
   ShieldAlertIcon,
   ShieldCheckIcon,
+  UserRoundCheckIcon,
 } from "lucide-react";
 
 import {
-  AdminEmptyState,
-  AdminEvidenceTable,
   AdminStatusBadge,
   getAdminToneClassName,
   type AdminTone,
 } from "@/components/product/admin-module";
 import { buttonVariants } from "@/components/ui/button";
-import type { AuthRole } from "@/lib/auth/api";
-import type { AdminUserAccessApiResponse } from "@/lib/demo/api-types";
-import { buildAdminUserDetailHref } from "@/lib/product/admin-detail-routes";
-import { classifyAccessRisk } from "@/lib/product/admin-governance";
+import {
+  buildAdminUserDetailHref,
+} from "@/lib/product/admin-detail-routes";
+import {
+  buildAdminAccessLifecycleModel,
+  type AccessLifecycleSubject,
+  type AccessPermissionState,
+  type AccessLifecycleUser,
+} from "@/lib/product/admin-access-lifecycle";
 import { cn } from "@/lib/utils";
 import { requireDemoWorkflowAccess } from "../../workflow-guard";
 import { loadAdminUsers } from "../admin-loaders";
-import {
-  formatCount,
-  formatDateTime,
-  formatLabel,
-  toneForAttention,
-} from "../governance-formatters";
+import { formatCount, formatDateTime } from "../governance-formatters";
 
-const activeRoles = new Set<AuthRole>([
-  "reporter",
-  "district_manager",
-  "org_admin",
-  "system_admin",
-]);
 const returnSource = "admin-access-review";
 
-function isActiveRole(role: string): role is AuthRole {
-  return activeRoles.has(role as AuthRole);
-}
-
-function getReviewReasons(user: AdminUserAccessApiResponse) {
-  if (!isActiveRole(user.role)) {
-    return ["Unrecognised role assignment"];
+function permissionTone(state: AccessPermissionState): AdminTone {
+  if (state === "allow") {
+    return "clear";
   }
 
-  return classifyAccessRisk({
-    role: user.role,
-    disabled: Boolean(user.disabledAt),
-    district: user.district,
-    lastSeenAt: user.lastSeenAt,
-  }).reasons;
+  return state === "conditional" ? "attention" : "blocked";
 }
 
-function getUserAccessRowKey(user: AdminUserAccessApiResponse) {
-  return [
-    user.userId,
-    user.role,
-    user.organisationId ?? "platform",
-    user.district ?? "all-districts",
-  ].join(":");
-}
-
-function plural(value: number, singular: string, pluralLabel = `${singular}s`) {
-  return `${formatCount(value)} ${value === 1 ? singular : pluralLabel}`;
-}
-
-function getLatestAccessActivityLabel(users: AdminUserAccessApiResponse[]) {
+function getLatestAccessActivityLabel(users: AccessLifecycleUser[]) {
   const latest = users
     .flatMap((user) => [user.lastSeenAt, user.createdAt, user.disabledAt])
     .filter((value): value is string => Boolean(value))
@@ -74,251 +46,413 @@ function getLatestAccessActivityLabel(users: AdminUserAccessApiResponse[]) {
     .filter((date) => !Number.isNaN(date.getTime()))
     .sort((left, right) => right.getTime() - left.getTime())[0];
 
-  return latest ? formatDateTime(latest.toISOString()) : "Unavailable";
+  return latest ? formatDateTime(latest.toISOString()) : "No access evidence";
+}
+
+function subjectDetailHref(subject: AccessLifecycleSubject) {
+  return buildAdminUserDetailHref(subject.userId, returnSource);
 }
 
 export default async function Page() {
   await requireDemoWorkflowAccess("admin");
 
   const users = await loadAdminUsers();
-  const reviewRows = users
-    .map((user) => ({ ...user, reasons: getReviewReasons(user) }))
-    .filter((user) => user.reasons.length > 0);
-  const privilegedAccess = users.filter((user) =>
-    ["org_admin", "system_admin"].includes(user.role),
-  ).length;
-  const staleSessions = users.filter((user) => !user.lastSeenAt).length;
-  const missingDistrictScope = users.filter(
-    (user) => user.role === "district_manager" && !user.district,
-  ).length;
-  const disabledAccounts = users.filter((user) => Boolean(user.disabledAt)).length;
+  const model = buildAdminAccessLifecycleModel(users);
+  const selectedSubject = model.subjects.find((subject) => subject.id === model.defaultSubjectId);
+  const reviewSubjects = model.subjects.filter((subject) => subject.reviewReasons.length > 0);
   const activeBlocker =
-    reviewRows.length > 0
-      ? `${plural(reviewRows.length, "access record")} need review`
-      : "Access evidence is ready";
-  const latestActivityLabel = getLatestAccessActivityLabel(users);
-  const taskCards = [
-    {
-      id: "queue",
-      title: "Inspect access queue",
-      description:
-        "Open each flagged user and confirm why role, scope, lifecycle, or session evidence needs review.",
-      href: "#access-review-queue",
-      stateLabel: reviewRows.length ? `${formatCount(reviewRows.length)} follow-ups` : "Ready",
-      tone: toneForAttention(reviewRows.length),
-      Icon: FileSearchIcon,
-    },
-    {
-      id: "privileged",
-      title: "Confirm privileged access",
-      description:
-        "Review organisation and system administrator roles before readiness evidence is trusted.",
-      href: "/admin/users-roles",
-      stateLabel: plural(privilegedAccess, "privileged user"),
-      tone: toneForAttention(privilegedAccess),
-      Icon: ShieldCheckIcon,
-    },
-    {
-      id: "sessions",
-      title: "Clear stale sessions",
-      description:
-        "Find users with no recent session evidence and revoke or refresh access through the lifecycle workspace.",
-      href: "/admin/users-roles#user-lifecycle-workspace",
-      stateLabel: staleSessions ? `${formatCount(staleSessions)} stale` : "Current",
-      tone: toneForAttention(staleSessions),
-      Icon: KeyRoundIcon,
-    },
-    {
-      id: "scope",
-      title: "Resolve scope gaps",
-      description:
-        "Check district manager assignments and disabled account state before recording audit evidence.",
-      href: "/admin/audit-evidence",
-      stateLabel: missingDistrictScope ? `${formatCount(missingDistrictScope)} gaps` : "Scoped",
-      tone: toneForAttention(missingDistrictScope + disabledAccounts),
-      Icon: ShieldAlertIcon,
-    },
-  ];
+    reviewSubjects.length > 0
+      ? `${formatCount(reviewSubjects.length)} principals need reviewer attention`
+      : "Effective access evidence is ready";
 
   return (
     <div className="space-y-4" data-admin-module="access-review">
-      <section className="overflow-hidden rounded-lg border border-neutral-900 bg-neutral-950 text-white shadow-sm">
-        <div className="grid gap-8 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-normal text-neutral-400">
-              Platform operations
-            </p>
-            <h1 className="mt-2 break-words text-2xl font-semibold leading-tight sm:text-3xl">
-              Access review command centre
-            </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-neutral-300">
-              Triage privileged roles, stale sessions, disabled accounts, and district scope before access evidence is recorded in the audit trail.
-            </p>
-            <div className="mt-5 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-normal text-neutral-400">
-                  Active blocker
-                </p>
-                <p className="mt-1 break-words text-xl font-semibold">
-                  {activeBlocker}
-                </p>
-              </div>
-              <p className="text-xs text-neutral-400">
-                Latest activity: {latestActivityLabel}
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2 lg:justify-end">
-            <a className={buttonVariants({ size: "sm" })} href="#access-review-queue">
-              Review queue
+      <section
+        aria-label="Effective access cockpit"
+        className="grid gap-4 rounded-lg border border-border-subtle bg-bg-default p-4 text-content-default shadow-sm lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)] lg:p-5"
+      >
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+            Access review
+          </p>
+          <h1 className="mt-1 max-w-4xl text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
+            Effective access cockpit
+          </h1>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
+            Review what each principal can actually do across field reporting, district
+            operations, organisation governance, partner handoff, and platform administration
+            before recording access evidence.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <a className={buttonVariants({ size: "sm" })} href="#effective-access-workspace">
+              <FileSearchIcon aria-hidden="true" />
+              <span>Review access matrix</span>
             </a>
             <Link
-              className={cn(
-                buttonVariants({ size: "sm", variant: "outline" }),
-                "border-white/25 bg-white/10 text-white hover:bg-white/15 hover:text-white",
-              )}
+              className={buttonVariants({ size: "sm", variant: "outline" })}
               href="/admin/users-roles"
             >
-              Open users and roles
+              <KeyRoundIcon aria-hidden="true" />
+              <span>Open lifecycle controls</span>
             </Link>
           </div>
-        </div>
-        <div className="grid border-t border-white/10 bg-white/[0.03] sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            {
-              label: "Privileged access",
-              value: formatCount(privilegedAccess),
-              detail: "Organisation and system administrator roles",
-            },
-            {
-              label: "Stale or no session",
-              value: formatCount(staleSessions),
-              detail: "Users missing recent session evidence",
-            },
-            {
-              label: "Missing district scope",
-              value: formatCount(missingDistrictScope),
-              detail: "District manager access without district proof",
-            },
-            {
-              label: "Disabled accounts",
-              value: formatCount(disabledAccounts),
-              detail: "Lifecycle records that need audit context",
-            },
-          ].map((metric) => (
-            <div
-              key={metric.label}
-              className="min-w-0 border-t border-white/10 px-5 py-4 first:border-t-0 sm:border-l sm:border-t-0 sm:first:border-l-0"
-            >
-              <p className="text-xs font-semibold uppercase tracking-normal text-neutral-400">
-                {metric.label}
-              </p>
-              <p className="mt-1 break-words text-2xl font-semibold">{metric.value}</p>
-              <p className="mt-1 break-words text-xs leading-5 text-neutral-400">
-                {metric.detail}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section aria-label="Access review task queue" className="grid gap-3">
-        <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-              Next actions
-            </p>
-            <h2 className="text-xl font-semibold text-foreground">Access evidence queue</h2>
-          </div>
-          <p className="max-w-2xl text-sm text-muted-foreground">
-            Use audit evidence as the review record path for access decisions.
-          </p>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {taskCards.map(({ Icon, ...task }) => (
-            <Link
-              key={task.id}
-              href={task.href}
-              className="min-w-0 rounded-lg border border-border-subtle bg-bg-default p-4 text-content-default shadow-sm transition hover:bg-bg-muted/60"
-            >
-              <div className="flex min-w-0 items-start justify-between gap-3">
-                <span
-                  className={cn(
-                    "inline-flex size-9 shrink-0 items-center justify-center rounded-lg border",
-                    getAdminToneClassName(task.tone as AdminTone),
-                  )}
-                  aria-hidden="true"
-                >
-                  <Icon className="size-4" />
-                </span>
-                <AdminStatusBadge tone={task.tone as AdminTone}>{task.stateLabel}</AdminStatusBadge>
-              </div>
-              <h3 className="mt-4 break-words text-base font-semibold text-foreground">
-                {task.title}
-              </h3>
-              <p className="mt-2 break-words text-sm leading-5 text-muted-foreground">
-                {task.description}
-              </p>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section id="access-review-queue" className="scroll-mt-24">
-        <AdminEvidenceTable
-          label="Access review queue"
-          rows={reviewRows}
-          getRowKey={getUserAccessRowKey}
-          getRowAriaLabel={(row) => `Open ${row.displayName} user detail`}
-          getRowHref={(row) => buildAdminUserDetailHref(row.userId, returnSource)}
-          emptyState={
-            <AdminEmptyState
-              title="No access risks in the current operating evidence"
-              description="Active users have recognised roles, scoped district access where required, recent session evidence, and no disabled account flags."
-            />
-          }
-          columns={[
-            {
-              key: "user",
-              header: "User",
-              render: (row) => (
-                <div className="min-w-0">
-                  <p className="font-medium text-foreground">{row.displayName}</p>
-                  <p className="break-all text-xs text-muted-foreground">{row.email}</p>
-                </div>
-              ),
-            },
-            {
-              key: "role",
-              header: "Role",
-              render: (row) => <AdminStatusBadge tone="info">{formatLabel(row.role)}</AdminStatusBadge>,
-            },
-            {
-              key: "scope",
-              header: "Scope",
-              render: (row) => row.district ?? row.organisationId ?? "Unavailable",
-            },
-            {
-              key: "reasons",
-              header: "Risk reasons",
-              render: (row) => (
-                <p className="max-w-sm text-sm text-muted-foreground">
-                  {row.reasons.join("; ")}
+          <div className="mt-5 grid gap-2 sm:grid-cols-3">
+            {[
+              {
+                label: "Active blocker",
+                value: activeBlocker,
+                tone: reviewSubjects.length ? "attention" : "clear",
+              },
+              {
+                label: "Latest evidence",
+                value: getLatestAccessActivityLabel(users),
+                tone: "info",
+              },
+              {
+                label: "Audit route",
+                value: "Record decision in audit evidence",
+                tone: "clear",
+              },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className={cn(
+                  "min-w-0 rounded-md border p-3",
+                  getAdminToneClassName(item.tone as AdminTone),
+                )}
+              >
+                <p className="text-xs font-semibold uppercase tracking-normal opacity-75">
+                  {item.label}
                 </p>
-              ),
-            },
-            {
-              key: "lastSeen",
-              header: "Last seen",
-              render: (row) => formatDateTime(row.lastSeenAt),
-            },
-            {
-              key: "record",
-              header: "Review record",
-              render: () => "Record decision in audit evidence",
-            },
-          ]}
-        />
+                <p className="mt-1 break-words text-sm font-semibold leading-5">
+                  {item.value}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <aside
+          aria-label="Selected principal packet"
+          className="min-w-0 rounded-lg border border-border-subtle bg-bg-muted/55 p-3"
+        >
+          <div className="flex min-w-0 items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                Selected principal packet
+              </p>
+              <h2 className="mt-1 break-words text-base font-semibold text-foreground">
+                {selectedSubject?.displayName ?? "No principal selected"}
+              </h2>
+              {selectedSubject ? (
+                <p className="mt-1 break-all text-xs text-muted-foreground">
+                  {selectedSubject.email}
+                </p>
+              ) : null}
+            </div>
+            {selectedSubject ? (
+              <AdminStatusBadge tone={selectedSubject.stateTone as AdminTone}>
+                {selectedSubject.stateLabel}
+              </AdminStatusBadge>
+            ) : null}
+          </div>
+          {selectedSubject ? (
+            <dl className="mt-3 divide-y divide-border-subtle">
+              {[
+                ["Role", selectedSubject.roleLabel],
+                ["Scope", selectedSubject.scopeLabel],
+                [
+                  "Review state",
+                  selectedSubject.reviewReasons.length
+                    ? selectedSubject.reviewReasons.join("; ")
+                    : "No review flags",
+                ],
+                [
+                  "Effective actions",
+                  `${selectedSubject.allowedActions} allowed, ${selectedSubject.conditionalActions} conditional, ${selectedSubject.forbiddenActions} denied`,
+                ],
+              ].map(([label, value]) => (
+                <div key={label} className="grid gap-1 py-3 first:pt-0 last:pb-0">
+                  <dt className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                    {label}
+                  </dt>
+                  <dd className="break-words text-sm font-medium text-foreground">
+                    {value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
+        </aside>
+      </section>
+
+      <section
+        aria-label="Access review metrics"
+        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+      >
+        {[
+          {
+            label: "Principals",
+            value: model.summary.totalUsers,
+            detail: `${model.summary.activeUsers} active accounts in scope`,
+            tone: "info" as AdminTone,
+          },
+          {
+            label: "Need review",
+            value: model.summary.reviewSubjects,
+            detail: "Role, district, lifecycle, or session flags",
+            tone: model.summary.reviewSubjects ? "attention" : "clear",
+          },
+          {
+            label: "Conditional grants",
+            value: model.summary.conditionalActions,
+            detail: "Permissions that need scope or lifecycle confirmation",
+            tone: model.summary.conditionalActions ? "attention" : "clear",
+          },
+          {
+            label: "Privileged users",
+            value: model.summary.privilegedUsers,
+            detail: "Organisation and system administrator roles",
+            tone: model.summary.privilegedUsers ? "attention" : "clear",
+          },
+        ].map((metric) => (
+          <article
+            key={metric.label}
+            className={cn(
+              "min-w-0 rounded-lg border p-4 shadow-sm",
+              getAdminToneClassName(metric.tone as AdminTone),
+            )}
+          >
+            <p className="text-xs font-semibold uppercase tracking-normal opacity-75">
+              {metric.label}
+            </p>
+            <p className="mt-1 break-words text-2xl font-semibold leading-tight">
+              {metric.value}
+            </p>
+            <p className="mt-1 break-words text-xs leading-5 opacity-80">
+              {metric.detail}
+            </p>
+          </article>
+        ))}
+      </section>
+
+      <section
+        id="effective-access-workspace"
+        aria-label="Effective access workspace"
+        className="grid scroll-mt-24 gap-4 lg:grid-cols-[19rem_minmax(0,1fr)]"
+      >
+        <aside className="min-w-0 rounded-lg border border-border-subtle bg-bg-default p-3 text-content-default shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+            Principals
+          </p>
+          <h2 className="mt-1 text-base font-semibold text-foreground">
+            Review queue
+          </h2>
+          <div className="mt-3 grid gap-2">
+            {model.subjects.map((subject) => {
+              const active = subject.id === model.defaultSubjectId;
+
+              return (
+                <Link
+                  key={subject.id}
+                  href={subjectDetailHref(subject)}
+                  className={cn(
+                    "group grid min-w-0 gap-2 rounded-md border border-border-subtle bg-bg-muted/45 p-3 transition hover:bg-bg-muted",
+                    active && "border-primary/45 bg-primary/5",
+                  )}
+                >
+                  <div className="flex min-w-0 items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="break-words text-sm font-semibold text-foreground">
+                        {subject.displayName}
+                      </p>
+                      <p className="break-words text-xs text-muted-foreground">
+                        {subject.roleLabel}
+                      </p>
+                    </div>
+                    <ArrowRightIcon className="mt-1 size-3.5 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5" />
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <AdminStatusBadge tone={subject.stateTone as AdminTone}>
+                      {subject.stateLabel}
+                    </AdminStatusBadge>
+                    <AdminStatusBadge
+                      tone={subject.reviewReasons.length ? "attention" : "clear"}
+                    >
+                      {subject.reviewReasons.length ? "Review" : "Clear"}
+                    </AdminStatusBadge>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </aside>
+
+        <div className="grid min-w-0 gap-4">
+          <section
+            aria-label="Permission audit matrix"
+            className="rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm"
+          >
+            <div className="grid gap-3 border-b border-border-subtle p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                  Permission audit matrix
+                </p>
+                <h2 className="mt-1 text-xl font-semibold text-foreground">
+                  {selectedSubject
+                    ? `${selectedSubject.displayName} effective access`
+                    : "Effective access"}
+                </h2>
+                <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+                  Permissions are grouped by the operational surfaces an org admin actually
+                  governs, then marked allowed, conditional, or denied with source evidence.
+                </p>
+              </div>
+              <Link
+                href="/admin/audit-evidence"
+                className={cn(buttonVariants({ size: "sm", variant: "outline" }), "w-fit")}
+              >
+                <ShieldCheckIcon aria-hidden="true" />
+                <span>Open audit evidence</span>
+              </Link>
+            </div>
+
+            {selectedSubject ? (
+              <div className="divide-y divide-border-subtle">
+                {selectedSubject.permissionResources.map((resource) => (
+                  <article
+                    key={resource.id}
+                    className="grid gap-4 p-4 xl:grid-cols-[minmax(13rem,0.45fr)_minmax(0,1fr)]"
+                  >
+                    <div className="min-w-0">
+                      <h3 className="break-words text-base font-semibold text-foreground">
+                        {resource.label}
+                      </h3>
+                      <p className="mt-1 break-words text-sm leading-5 text-muted-foreground">
+                        {resource.description}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        <AdminStatusBadge tone="clear">
+                          {resource.allowedCount} allowed
+                        </AdminStatusBadge>
+                        <AdminStatusBadge tone="attention">
+                          {resource.conditionalCount} conditional
+                        </AdminStatusBadge>
+                        <AdminStatusBadge tone="blocked">
+                          {resource.forbiddenCount} denied
+                        </AdminStatusBadge>
+                      </div>
+                    </div>
+                    <div className="grid min-w-0 gap-2">
+                      {resource.actions.map((action) => (
+                        <div
+                          key={action.id}
+                          className="grid gap-3 rounded-md border border-border-subtle bg-bg-muted/35 p-3 md:grid-cols-[minmax(0,1fr)_minmax(9rem,auto)]"
+                        >
+                          <div className="min-w-0">
+                            <p className="break-words text-sm font-semibold text-foreground">
+                              {action.label}
+                            </p>
+                            <p className="mt-1 break-words text-xs leading-5 text-muted-foreground">
+                              {action.description}
+                            </p>
+                            <p className="mt-2 break-words text-xs leading-5 text-muted-foreground">
+                              Granted by: {action.grantedBy.join(", ")}
+                            </p>
+                          </div>
+                          <div className="min-w-0 md:text-right">
+                            <AdminStatusBadge tone={permissionTone(action.state)}>
+                              {action.state}
+                            </AdminStatusBadge>
+                            <p className="mt-2 break-words text-xs leading-5 text-muted-foreground">
+                              {action.reviewNote}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : null}
+          </section>
+
+          <section
+            aria-label="Review decision queue"
+            className="rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm"
+          >
+            <div className="border-b border-border-subtle p-4">
+              <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                Review decision queue
+              </p>
+              <h2 className="mt-1 text-xl font-semibold text-foreground">
+                Access decisions that need evidence
+              </h2>
+            </div>
+            <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
+              {(reviewSubjects.length ? reviewSubjects : model.subjects).map((subject) => (
+                <Link
+                  key={subject.id}
+                  href={subjectDetailHref(subject)}
+                  className="group min-w-0 rounded-lg border border-border-subtle bg-bg-muted/35 p-3 transition hover:bg-bg-muted"
+                >
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <span
+                      className={cn(
+                        "inline-flex size-8 shrink-0 items-center justify-center rounded-md border",
+                        getAdminToneClassName(
+                          subject.reviewReasons.length ? "attention" : "clear",
+                        ),
+                      )}
+                      aria-hidden="true"
+                    >
+                      {subject.reviewReasons.length ? (
+                        <ShieldAlertIcon className="size-4" />
+                      ) : (
+                        <UserRoundCheckIcon className="size-4" />
+                      )}
+                    </span>
+                    <ArrowRightIcon className="size-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5" />
+                  </div>
+                  <h3 className="mt-3 break-words text-sm font-semibold text-foreground">
+                    {subject.displayName}
+                  </h3>
+                  <p className="mt-1 break-words text-xs leading-5 text-muted-foreground">
+                    {subject.reviewReasons.length
+                      ? subject.reviewReasons.join("; ")
+                      : "No review flags in the current evidence."}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section
+        aria-label="Access evidence handoff"
+        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+      >
+        {model.evidenceLinks.map((link) => (
+          <Link
+            key={link.label}
+            href={link.href}
+            className="group min-w-0 rounded-lg border border-border-subtle bg-bg-default p-4 text-content-default shadow-sm transition hover:bg-bg-muted/60"
+          >
+            <div className="flex min-w-0 items-center justify-between gap-3">
+              <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                Evidence handoff
+              </p>
+              <ArrowRightIcon className="size-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5" />
+            </div>
+            <h2 className="mt-2 break-words text-base font-semibold text-foreground">
+              {link.label}
+            </h2>
+            <p className="mt-2 break-words text-sm leading-5 text-muted-foreground">
+              {link.description}
+            </p>
+          </Link>
+        ))}
       </section>
     </div>
   );

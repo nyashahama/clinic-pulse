@@ -68,7 +68,7 @@ export function CommandPalette({ users, open, onClose }: CommandPaletteProps) {
         description: "Add a pilot user to the organisation",
         icon: <UserPlusIcon className="size-4" />,
         onSelect: () => {
-          router.push("/admin/users-roles#user-lifecycle-workspace");
+          router.push("/admin/users-roles#lifecycle-controls");
           onClose();
         },
       },
