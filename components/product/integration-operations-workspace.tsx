@@ -77,8 +77,9 @@ const laneToneClassName: Record<IntegrationEvidenceKindFilter, string> = {
 
 const metricToneClassName: Record<IntegrationTone, string> = {
   clear: "border-border-subtle bg-bg-default",
-  attention: "border-amber-200 bg-amber-50/45",
-  blocked: "border-rose-200 bg-rose-50/45",
+  attention:
+    "border-amber-200 bg-amber-50/45 dark:border-amber-400/35 dark:bg-amber-400/10",
+  blocked: "border-rose-200 bg-rose-50/45 dark:border-red-400/35 dark:bg-red-500/10",
   info: "border-border-subtle bg-bg-default",
 };
 
@@ -343,7 +344,8 @@ function IntegrationEvidenceRows({
                   data-state={isSelected ? "selected" : undefined}
                   className={cn(
                     "cursor-pointer border-border-subtle align-top focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                    isSelected && "bg-sky-50/70 hover:bg-sky-50/80",
+                    isSelected &&
+                      "bg-sky-50/70 hover:bg-sky-50/80 dark:bg-sky-400/10 dark:hover:bg-sky-400/15",
                   )}
                   onClick={() => navigateToSource(row)}
                   onFocus={() => onSelectRow(row.id)}

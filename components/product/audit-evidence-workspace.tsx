@@ -76,10 +76,14 @@ const laneAccentClassName: Record<AuditEvidenceLaneFilter, string> = {
 };
 
 const metricToneClassName: Record<AuditEvidenceTone, string> = {
-  clear: "border-emerald-200 bg-emerald-50/55 text-emerald-950",
-  attention: "border-amber-200 bg-amber-50/65 text-amber-950",
-  blocked: "border-rose-200 bg-rose-50/65 text-rose-950",
-  info: "border-sky-200 bg-sky-50/55 text-sky-950",
+  clear:
+    "border-emerald-200 bg-emerald-50/55 text-emerald-950 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-100",
+  attention:
+    "border-amber-200 bg-amber-50/65 text-amber-950 dark:border-amber-400/35 dark:bg-amber-400/10 dark:text-amber-100",
+  blocked:
+    "border-rose-200 bg-rose-50/65 text-rose-950 dark:border-red-400/35 dark:bg-red-500/10 dark:text-red-100",
+  info:
+    "border-sky-200 bg-sky-50/55 text-sky-950 dark:border-sky-400/30 dark:bg-sky-400/10 dark:text-sky-100",
 };
 
 export function AuditEvidenceWorkspace({ viewModel }: AuditEvidenceWorkspaceProps) {
@@ -332,7 +336,8 @@ function AuditEvidenceRows({
                   data-state={isSelected ? "selected" : undefined}
                   className={cn(
                     "cursor-pointer border-border-subtle align-top focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                    isSelected && "bg-sky-50/70 hover:bg-sky-50/80",
+                    isSelected &&
+                      "bg-sky-50/70 hover:bg-sky-50/80 dark:bg-sky-400/10 dark:hover:bg-sky-400/15",
                   )}
                   onClick={() => onSelectRow(row.id)}
                   onKeyDown={(event) => handleRowKeyDown(event, () => onSelectRow(row.id))}
@@ -374,7 +379,8 @@ function AuditEvidenceRows({
               key={row.id}
               className={cn(
                 "grid min-w-0 gap-2 rounded-lg border border-border-subtle bg-bg-default p-3",
-                isSelected && "border-sky-300 bg-sky-50/70",
+                isSelected &&
+                  "border-sky-300 bg-sky-50/70 dark:border-sky-400/35 dark:bg-sky-400/10",
               )}
             >
               <button

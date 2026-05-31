@@ -596,7 +596,8 @@ function PartnerEvidenceRows({
                   data-state={selected ? "selected" : undefined}
                   className={cn(
                     "cursor-pointer border-border-subtle align-top focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                    selected && "bg-sky-50/70 hover:bg-sky-50/80",
+                    selected &&
+                      "bg-sky-50/70 hover:bg-sky-50/80 dark:bg-sky-400/10 dark:hover:bg-sky-400/15",
                   )}
                   onClick={() => onSelectRow(row.id)}
                   onKeyDown={(event) => handleRowKeyDown(event, () => onSelectRow(row.id))}
@@ -641,7 +642,8 @@ function PartnerEvidenceRows({
               aria-pressed={selected}
               className={cn(
                 "grid min-w-0 gap-2 rounded-md border border-border-subtle bg-bg-default p-3 text-left transition hover:bg-bg-muted/60",
-                selected && "border-sky-300 bg-sky-50/70",
+                selected &&
+                  "border-sky-300 bg-sky-50/70 dark:border-sky-400/35 dark:bg-sky-400/10",
               )}
               onClick={() => onSelectRow(row.id)}
             >
