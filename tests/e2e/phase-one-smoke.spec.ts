@@ -127,7 +127,7 @@ test.describe("phase-one operations route checklist", () => {
 
     await page.goto("/admin/data-ingestion");
     await expectNoStagedProductLanguage(page);
-    await expect(page.getByRole("heading", { name: "Ingestion command cockpit" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Ingestion pipeline monitor" })).toBeVisible();
 
     await page.goto("/admin/partner-readiness");
     await expectNoStagedProductLanguage(page);

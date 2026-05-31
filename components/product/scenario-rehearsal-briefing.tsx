@@ -115,7 +115,7 @@ export function ScenarioRehearsalBriefing({
             <div className="flex min-w-0 items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                  Command ready
+                  Playback command
                 </p>
                 <p className="mt-2 break-words text-lg font-semibold leading-tight text-foreground">
                   {selectedCommand.label}
@@ -155,11 +155,11 @@ export function ScenarioRehearsalBriefing({
           <div className="flex min-w-0 items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                Command launch rail
+                Rehearsal playback console
               </p>
               <p className="mt-1 max-w-2xl break-words text-sm leading-5 text-muted-foreground">
-                State, alert pressure, offline receipts, and audit output stay visible before
-                any rehearsal command runs.
+                Playback starts from the selected scenario command while active alerts, offline
+                receipts, and audit output stay visible before a run begins.
               </p>
             </div>
             <PlayCircleIcon className="size-5 shrink-0 text-teal-700" aria-hidden="true" />
@@ -200,7 +200,7 @@ export function ScenarioRehearsalBriefing({
         <div className="min-w-0 p-4">
           <div className="flex min-w-0 items-center justify-between gap-3">
             <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-              Evidence replay path
+              Run state diff
             </p>
             <ArrowRightIcon className="size-4 shrink-0 text-teal-700" aria-hidden="true" />
           </div>
@@ -233,7 +233,7 @@ export function ScenarioRehearsalBriefing({
 
         <div className="border-t border-border-subtle bg-bg-muted/30 p-4 lg:border-l lg:border-t-0">
           <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-            Rehearsal guardrails
+            Preflight checklist
           </p>
           <p className="mt-2 break-words text-sm font-semibold text-foreground">
             {firstEvidenceStage?.label ?? "Evidence chain is ready"}

@@ -4,13 +4,21 @@ import { describe, expect, it } from "vitest";
 
 describe("admin access lifecycle source", () => {
   it("presents access review as an effective-access workspace", () => {
-    const source = readFileSync("app/(demo)/admin/access-review/page.tsx", "utf8");
+    const pageSource = readFileSync("app/(demo)/admin/access-review/page.tsx", "utf8");
+    const workspaceSource = readFileSync(
+      "components/product/access-review-workspace.tsx",
+      "utf8",
+    );
+    const source = `${pageSource}\n${workspaceSource}`;
 
     expect(source).toContain("Effective access cockpit");
     expect(source).toContain("Effective access workspace");
     expect(source).toContain("Permission audit matrix");
     expect(source).toContain("Selected principal packet");
-    expect(source).toContain("Review decision queue");
+    expect(source).toContain("Principal review queue");
+    expect(source).toContain("Search principals");
+    expect(source).toContain("Search actions and grant sources");
+    expect(source).toContain("buildAdminUserDetailHref(subject.userId, returnSource)");
     expect(source).not.toContain("Access review command centre");
   });
 

@@ -5,7 +5,9 @@ export type AdminReturnSource =
   | "admin-access-review"
   | "admin-audit-evidence"
   | "admin-integrations"
-  | "admin-security";
+  | "admin-security"
+  | "admin-api-contract"
+  | "admin-export-schema";
 
 export type AdminReturnTarget = {
   href: string;
@@ -37,6 +39,14 @@ const adminReturnTargets: Record<AdminReturnSource, AdminReturnTarget> = {
   "admin-security": {
     href: "/admin/security",
     label: "Back to security posture",
+  },
+  "admin-api-contract": {
+    href: "/admin/api-contract",
+    label: "Back to API contract",
+  },
+  "admin-export-schema": {
+    href: "/admin/export-schema",
+    label: "Back to export schema",
   },
 };
 

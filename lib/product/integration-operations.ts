@@ -97,7 +97,7 @@ export type IntegrationSourceReference = {
   source: string;
   role: string;
   repositoryUrl: string;
-  license: "MIT" | "AGPL reference-only";
+  license: "MIT" | "Apache-2.0";
 };
 
 export type IntegrationOperationsModel = {
@@ -143,34 +143,22 @@ const returnSource = "admin-integrations";
 
 const sourceReferences: IntegrationSourceReference[] = [
   {
-    source: "Infisical admin integrations",
-    role: "Tabbed integration configuration with instance-wide workflow connectors and admin-owned setup boundaries.",
-    repositoryUrl: "https://github.com/Infisical/infisical",
+    source: "Svix webhook delivery console",
+    role: "Endpoint, event type, message attempt, replay, and receiver-state patterns adapted into ClinicPulse delivery evidence.",
+    repositoryUrl: "https://github.com/svix/svix-webhooks",
     license: "MIT",
   },
   {
-    source: "Cal.com BTCPay setup",
-    role: "Credential validation paired with webhook provisioning before a connector is treated as ready.",
-    repositoryUrl: "https://github.com/calcom/cal.com",
+    source: "Kestra execution detail",
+    role: "Execution overview, run status, metadata, outputs, and state-history inspection adapted for integration checks and exports.",
+    repositoryUrl: "https://github.com/kestra-io/kestra",
+    license: "Apache-2.0",
+  },
+  {
+    source: "Temporal event history",
+    role: "Compact history, event detail, JSON evidence, and selected-row timeline patterns adapted for audit-safe integration packets.",
+    repositoryUrl: "https://github.com/temporalio/ui",
     license: "MIT",
-  },
-  {
-    source: "Unkey request log details",
-    role: "API-key verification logs, permission chips, and empty-state guidance for credential troubleshooting.",
-    repositoryUrl: "https://github.com/unkeyed/unkey",
-    license: "AGPL reference-only",
-  },
-  {
-    source: "Dub events metadata",
-    role: "Event-row metadata previews, copy affordances, and event IDs for delivery debugging.",
-    repositoryUrl: "https://github.com/dubinc/dub",
-    license: "AGPL reference-only",
-  },
-  {
-    source: "OpenStatus health check",
-    role: "Health-check posture and endpoint diagnostic language for integration status review.",
-    repositoryUrl: "https://github.com/openstatusHQ/openstatus",
-    license: "AGPL reference-only",
   },
 ];
 
@@ -233,6 +221,7 @@ export function buildIntegrationOperationsModel(
   const endpointCoverage = endpointRows.filter((row) => row.covered).length;
   const latestExportRun = latestExport(readiness.exportRuns);
   const credentialRows = buildCredentialRows(readiness.apiKeys, coveredScopes, now);
+  const endpointEvidenceRows = buildEndpointEvidenceRows(endpointRows);
   const subscriptionRows = buildWebhookSubscriptionRows(
     readiness.webhookSubscriptions,
   );
@@ -241,6 +230,7 @@ export function buildIntegrationOperationsModel(
   const checkRows = buildCheckRows(readiness.integrationChecks);
   const evidenceRows = prioritizeEvidenceRows([
     ...credentialRows,
+    ...endpointEvidenceRows,
     ...subscriptionRows,
     ...eventRows,
     ...exportRows,
@@ -511,7 +501,42 @@ function buildCredentialRows(
       observedLabel: formatIntegrationDateTime(row.lastUsedAt ?? row.updatedAt),
       nextStep: state.nextStep,
       sourceHref: buildAdminApiKeyDetailHref(row.id, returnSource),
-      ariaLabel: `Open ${row.name} API key detail`,
+      ariaLabel: `Inspect ${row.name} API key evidence`,
+      rawFacts,
+    });
+  });
+}
+
+function buildEndpointEvidenceRows(endpointRows: IntegrationEndpointRow[]) {
+  return endpointRows.map((row): IntegrationEvidenceRow => {
+    const evidenceBasis = row.covered
+      ? `Active partner credentials cover ${row.scope} for ${row.method} ${row.path}.`
+      : `No active partner credential covers ${row.scope} for ${row.method} ${row.path}.`;
+    const nextStep = row.covered
+      ? "Run the smoke test when validating the partner API contract before handoff."
+      : `Add ${row.scope} to an active partner credential before treating this endpoint as ready.`;
+    const rawFacts = [
+      { label: "Method", value: row.method },
+      { label: "Path", value: row.path },
+      { label: "Scope", value: row.scope },
+      { label: "Purpose", value: row.purpose },
+      { label: "Smoke test", value: row.command },
+    ];
+
+    return withSearchText({
+      id: endpointEvidenceId(row),
+      kind: "endpoint",
+      title: row.purpose,
+      subject: row.path,
+      subjectDetail: `${row.method} / scope ${row.scope}`,
+      sourceLabel: "Partner API contract",
+      stateLabel: row.covered ? "Covered" : "Missing scope",
+      tone: row.tone,
+      evidenceBasis,
+      observedLabel: "Static contract",
+      nextStep,
+      sourceHref: "#endpoint-smoke-matrix",
+      ariaLabel: `Inspect ${row.method} ${row.path} endpoint evidence`,
       rawFacts,
     });
   });
@@ -544,7 +569,7 @@ function buildWebhookSubscriptionRows(
       observedLabel: formatIntegrationDateTime(row.lastTestedAt ?? row.updatedAt),
       nextStep: state.nextStep,
       sourceHref: buildAdminWebhookSubscriptionDetailHref(row.id, returnSource),
-      ariaLabel: `Open webhook subscription ${row.id} detail`,
+      ariaLabel: `Inspect webhook subscription ${row.id} evidence`,
       rawFacts,
     });
   });
@@ -574,7 +599,7 @@ function buildWebhookEventRows(events: PartnerWebhookEventApiResponse[]) {
       observedLabel: formatIntegrationDateTime(row.deliveredAt ?? row.createdAt),
       nextStep: state.nextStep,
       sourceHref: buildAdminWebhookEventDetailHref(row.id, returnSource),
-      ariaLabel: `Open webhook event ${row.id} detail`,
+      ariaLabel: `Inspect webhook event ${row.id} evidence`,
       rawFacts,
     });
   });
@@ -605,7 +630,7 @@ function buildExportRows(exportRuns: PartnerExportRunApiResponse[]) {
       observedLabel: formatIntegrationDateTime(row.createdAt),
       nextStep: "Use the checksum and scope evidence when validating the partner handoff.",
       sourceHref: buildAdminExportRunDetailHref(row.id, returnSource),
-      ariaLabel: `Open export run ${row.id} detail`,
+      ariaLabel: `Inspect export run ${row.id} evidence`,
       rawFacts,
     });
   });
@@ -637,7 +662,7 @@ function buildCheckRows(checks: IntegrationStatusCheckApiResponse[]) {
           ? "Keep this check in the operational evidence trail."
           : "Open the check detail and resolve the failing integration condition.",
       sourceHref: buildAdminIntegrationCheckDetailHref(row.id, returnSource),
-      ariaLabel: `Open ${formatIntegrationLabel(row.checkName)} integration check detail`,
+      ariaLabel: `Inspect ${formatIntegrationLabel(row.checkName)} integration check evidence`,
       rawFacts,
     });
   });
@@ -808,6 +833,15 @@ function prioritizeEvidenceRows(rows: IntegrationEvidenceRow[]) {
   };
 
   return [...rows].sort((left, right) => priority[left.tone] - priority[right.tone]);
+}
+
+function endpointEvidenceId(row: IntegrationEndpointRow) {
+  const pathSlug = row.path
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
+
+  return `endpoint-${row.method.toLowerCase()}-${pathSlug}`;
 }
 
 function withSearchText(

@@ -59,7 +59,9 @@ async function expectIntegrationsModule(page: Page) {
   await expect(page.getByText("Selected integration evidence", { exact: true })).toBeVisible();
   await expect(page.getByText("Endpoint smoke matrix", { exact: true })).toBeVisible();
   await expect(page.getByText("Webhook delivery log", { exact: true })).toBeVisible();
-  await expect(page.getByText("$CLINICPULSE_PARTNER_API_KEY").first()).toBeVisible();
+  await expect(
+    page.getByText("$CLINICPULSE_PARTNER_API_KEY").filter({ visible: true }).first(),
+  ).toBeVisible();
   await expect(page.getByText("Reference map", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Hookdeck Outpost", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Dub Webhooks", { exact: true })).toHaveCount(0);

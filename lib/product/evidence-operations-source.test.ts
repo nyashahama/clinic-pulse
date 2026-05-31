@@ -38,30 +38,33 @@ function readSource(filePath: string) {
 }
 
 describe("admin evidence operations surfaces", () => {
-  it("keeps audit evidence on the shared evidence-command briefing", () => {
+  it("renders audit evidence as a distinct event-ledger briefing", () => {
     const source = readSource(auditEvidencePage);
 
-    expect(source).toContain("EvidenceCommandHeader");
-    expect(source).toContain("EvidenceCommandMetricStrip");
-    expect(source).toContain("EvidenceCaseBriefPanel");
-    expect(source).toContain("Audit evidence cockpit");
-    expect(source).toContain("Evidence review lane");
-    expect(source).toContain("Operational decision");
+    expect(source).toContain("Audit event ledger");
+    expect(source).toContain("Audit query builder");
+    expect(source).toContain("Selected event record");
+    expect(source).toContain("Evidence export and retention");
+    expect(source).not.toContain("EvidenceCommandHeader");
+    expect(source).not.toContain("EvidenceCommandMetricStrip");
+    expect(source).not.toContain("EvidenceCaseBriefPanel");
     expect(source).not.toContain("EvidenceOperationsBriefing");
     expect(source).not.toContain("Audit evidence command centre");
     expect(source).not.toContain("Audit evidence queue");
   });
 
-  it("keeps security posture on the shared evidence-command briefing", () => {
+  it("keeps security posture on a distinct risk-surface briefing", () => {
     const source = readSource(securityPage);
     const modelSource = readSource(
       path.join(process.cwd(), "lib", "demo", "admin-security-evidence.ts"),
     );
 
-    expect(source).toContain("EvidenceCommandHeader");
-    expect(source).toContain("EvidenceCommandMetricStrip");
-    expect(source).toContain("EvidenceCaseBriefPanel");
-    expect(source).toContain("Security posture cockpit");
+    expect(source).toContain("Security risk surface");
+    expect(source).toContain('aria-label="Credential and access risk lanes"');
+    expect(source).toContain('aria-label="Security lead evidence inspector"');
+    expect(source).not.toContain("EvidenceCommandHeader");
+    expect(source).not.toContain("EvidenceCommandMetricStrip");
+    expect(source).not.toContain("EvidenceCaseBriefPanel");
     expect(modelSource).toContain("Credential lifecycle rail");
     expect(modelSource).toContain("Privileged access watch");
     expect(source).not.toContain("EvidenceOperationsBriefing");

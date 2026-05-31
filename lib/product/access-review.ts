@@ -16,6 +16,14 @@ export const accessReviewSourceReferences: AccessReviewSourceReference[] = [
     licenseUse: "adaptable",
   },
   {
+    source: "Keycloak effective role mappings",
+    href: "https://github.com/keycloak/keycloak",
+    sourcePath: "js/apps/admin-ui/src/components/role-mapping/RoleMapping.tsx",
+    role:
+      "Direct versus effective role mapping patterns for separating baseline grants from inherited access.",
+    licenseUse: "adaptable",
+  },
+  {
     source: "Supabase Team Settings",
     href: "https://github.com/supabase/supabase",
     sourcePath:

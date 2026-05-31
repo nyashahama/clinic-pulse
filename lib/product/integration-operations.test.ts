@@ -158,6 +158,11 @@ describe("buildIntegrationOperationsModel", () => {
     expect(model.evidenceRows.map((row) => row.kind)).toEqual([
       "webhook",
       "credential",
+      "endpoint",
+      "endpoint",
+      "endpoint",
+      "endpoint",
+      "endpoint",
       "webhook",
       "export",
       "check",
@@ -207,6 +212,37 @@ describe("buildIntegrationOperationsModel", () => {
     ).toEqual(["export-31"]);
   });
 
+  it("promotes endpoint coverage into inspectable evidence rows", () => {
+    const model = buildIntegrationOperationsModel(
+      makeReadiness({
+        apiKeys: [],
+      }),
+      {
+        now: new Date("2026-05-24T10:00:00.000Z"),
+      },
+    );
+    const endpointRows = model.evidenceRows.filter((row) => row.kind === "endpoint");
+
+    expect(endpointRows).toHaveLength(integrationEndpointRows.length);
+    expect(endpointRows[0]).toMatchObject({
+      id: expect.stringMatching(/^endpoint-/),
+      subject: "/v1/partner/clinics",
+      subjectDetail: "GET / scope clinics:read",
+      sourceLabel: "Partner API contract",
+      stateLabel: "Missing scope",
+      tone: "attention",
+      sourceHref: "#endpoint-smoke-matrix",
+    });
+    expect(getDefaultIntegrationEvidenceRowId(model.evidenceRows)).toBe(endpointRows[0]?.id);
+    expect(
+      filterIntegrationEvidenceRows(model.evidenceRows, {
+        activeKind: "endpoint",
+        stateFilter: "needs-review",
+        query: "exports:read",
+      }).map((row) => row.subject),
+    ).toEqual(["/v1/partner/export/latest"]);
+  });
+
   it("selects the first review row by default", () => {
     const model = buildIntegrationOperationsModel(makeReadiness(), {
       now: new Date("2026-05-24T10:00:00.000Z"),
@@ -239,19 +275,15 @@ describe("buildIntegrationOperationsModel", () => {
     });
 
     expect(model.sourceReferences.map((reference) => reference.source)).toEqual([
-      "Infisical admin integrations",
-      "Cal.com BTCPay setup",
-      "Unkey request log details",
-      "Dub events metadata",
-      "OpenStatus health check",
+      "Svix webhook delivery console",
+      "Kestra execution detail",
+      "Temporal event history",
     ]);
     expect(model.sourceReferences.every((reference) => reference.repositoryUrl)).toBe(true);
     expect(model.sourceReferences.map((reference) => reference.license)).toEqual([
       "MIT",
+      "Apache-2.0",
       "MIT",
-      "AGPL reference-only",
-      "AGPL reference-only",
-      "AGPL reference-only",
     ]);
   });
 

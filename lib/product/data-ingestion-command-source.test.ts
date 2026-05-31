@@ -7,14 +7,27 @@ function sourceFile(path: string) {
 }
 
 describe("data ingestion command briefing source", () => {
-  it("renders data ingestion with the shared evidence-command primitives", () => {
+  it("renders data ingestion as a pipeline monitor rather than another command packet", () => {
     const source = sourceFile("app/(demo)/admin/data-ingestion/page.tsx");
+    const monitorSource = sourceFile("components/product/data-ingestion-pipeline-monitor.tsx");
 
-    expect(source).toContain("EvidenceCommandHeader");
-    expect(source).toContain("EvidenceCommandMetricStrip");
-    expect(source).toContain("EvidenceCaseBriefPanel");
-    expect(source).toContain("EvidenceDecisionPanel");
-    expect(source).toContain("EvidenceTimeline");
+    expect(source).toContain("DataIngestionPipelineMonitor");
+    expect(source).toContain("Ingestion pipeline monitor");
+    expect(monitorSource).toContain("useState");
+    expect(monitorSource).toContain('aria-label="Source pipeline map"');
+    expect(monitorSource).toContain('aria-label="Ingestion failure-origin inspector"');
+    expect(monitorSource).toContain('aria-label="Pipeline run history"');
+    expect(monitorSource).toContain("Inspect pipeline stage");
+    expect(monitorSource).toContain("Inspect run step");
+    expect(monitorSource).toContain("Stage triage queue");
+    expect(monitorSource).toContain("Active ingestion issue");
+    expect(monitorSource).toContain("Mark stage reviewed");
+    expect(monitorSource).toContain("triageItems");
+    expect(source).not.toContain("EvidenceCommandHeader");
+    expect(source).not.toContain("EvidenceCommandMetricStrip");
+    expect(source).not.toContain("EvidenceCaseBriefPanel");
+    expect(source).not.toContain("EvidenceDecisionPanel");
+    expect(source).not.toContain("EvidenceTimeline");
     expect(source).not.toContain("EstateOperationsBriefing");
   });
 
