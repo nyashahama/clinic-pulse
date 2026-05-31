@@ -132,7 +132,7 @@ test.describe("phase-one operations route checklist", () => {
     await page.goto("/admin/partner-readiness");
     await expectNoStagedProductLanguage(page);
     await expect(
-      page.getByRole("heading", { name: "Partner readiness command centre" }),
+      page.getByRole("heading", { name: "Partner Launch Cockpit" }).first(),
     ).toBeVisible();
 
     await page.goto("/admin/demo-controls");

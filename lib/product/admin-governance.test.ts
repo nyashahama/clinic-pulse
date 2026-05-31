@@ -497,11 +497,14 @@ it("uses an operations workspace for integration evidence", () => {
   const modelSource = readFileSync("lib/product/integration-operations.ts", "utf8");
 
   expect(source).toContain("IntegrationOperationsWorkspace");
-  expect(source).toContain("Integration operations command centre");
-  expect(source).toContain("Integration evidence queue");
+  expect(source).toContain("PartnerOperationsBriefing");
+  expect(source).toContain("Integration Delivery Console");
+  expect(source).toContain("Delivery runbook");
+  expect(source).toContain("Endpoint smoke matrix");
   expect(source).toContain("buildIntegrationOperationsModel");
-  expect(source).toContain('aria-label="Integration command center"');
-  expect(source).toContain('aria-label="Developer handoff"');
+  expect(source).toContain("buildPartnerLaunchCockpitModel");
+  expect(source).toContain('aria-label="Delivery runbook"');
+  expect(source).toContain('aria-label="Endpoint smoke matrix"');
   expect(source).toContain('aria-label="Webhook delivery log"');
   expect(source).toContain('id="webhook-delivery-log"');
   expect(source).toContain("commandCardAccentClassName");

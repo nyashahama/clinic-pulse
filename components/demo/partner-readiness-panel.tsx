@@ -829,7 +829,7 @@ export function PartnerReadinessPanel({
     <section className="rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm">
       <SectionHeader
         eyebrow="Partner readiness"
-        title="Partner Launch Cockpit"
+        title="Launch readiness workspace"
         description={readinessModel.description}
         actions={<SeverityBadge severity={readinessModel.severity} />}
       />

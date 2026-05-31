@@ -125,8 +125,10 @@ test("integration operations keeps implementation research out of user-facing UI
   await page.goto("/admin/integrations");
 
   await expect(
-    page.getByRole("heading", { name: "Integration operations command centre" }),
+    page.getByRole("heading", { name: "Integration Delivery Console" }),
   ).toBeVisible();
+  await expect(page.getByText("Launch gate runway", { exact: true })).toBeVisible();
+  await expect(page.getByText("Endpoint smoke matrix", { exact: true })).toBeVisible();
   await expectResearchRailHidden(page);
 });
 
@@ -145,8 +147,10 @@ test("partner readiness keeps implementation research out of user-facing UI", as
   await page.goto("/admin/partner-readiness");
 
   await expect(
-    page.getByRole("heading", { name: "Partner readiness command centre" }),
+    page.getByRole("heading", { name: "Partner Launch Cockpit" }).first(),
   ).toBeVisible();
+  await expect(page.getByText("Launch gate runway", { exact: true })).toBeVisible();
+  await expect(page.getByText("Handoff packet", { exact: true }).first()).toBeVisible();
   await expectResearchRailHidden(page);
 });
 
