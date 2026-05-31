@@ -296,11 +296,11 @@ it("uses a scenario operations workspace instead of generic action cards", () =>
   expect(source).not.toContain("DemoControls");
   expect(source).not.toContain("AdminEvidenceTable");
   expect(componentSource).toContain('aria-label="Scenario controls workspace"');
-  expect(componentSource).toContain('aria-label="Scenario runbook"');
+  expect(componentSource).toContain('aria-label="Launch controls"');
   expect(componentSource).toContain('aria-label="Scenario command panel"');
-  expect(componentSource).toContain('aria-label="Selected scenario evidence flow"');
+  expect(componentSource).toContain('aria-label="Selected evidence replay path"');
   expect(componentSource).toContain('aria-label="Scenario evidence timeline"');
-  expect(componentSource).toContain('aria-label="Scenario safety checks"');
+  expect(componentSource).toContain('aria-label="Rehearsal guardrails"');
   expect(componentSource).toContain("onSelectCommand(command.id)");
   expect(componentSource).toContain("onRunCommand(selectedCommand.id)");
   expect(componentSource).toContain("aria-pressed={isSelected}");

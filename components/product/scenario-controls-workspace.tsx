@@ -90,33 +90,14 @@ export function ScenarioControlsWorkspace({
       aria-label="Scenario controls workspace"
       className="grid min-w-0 gap-4 text-content-default"
     >
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {viewModel.summaryMetrics.map((metric) => (
-          <div
-            key={metric.id}
-            className={cn("min-w-0 rounded-lg border px-4 py-3 shadow-sm", toneClassName[metric.tone])}
-          >
-            <p className="break-words text-xs font-medium text-current/70">
-              {metric.label}
-            </p>
-            <p className="mt-1 break-words font-mono text-2xl font-semibold leading-tight">
-              {metric.value}
-            </p>
-            <p className="mt-2 break-words text-xs leading-4 text-current/75">
-              {metric.detail}
-            </p>
-          </div>
-        ))}
-      </div>
-
       <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(280px,0.38fr)_minmax(0,0.62fr)]">
         <section
-          aria-label="Scenario runbook"
+          aria-label="Launch controls"
           className="order-2 min-w-0 overflow-hidden rounded-lg border border-border-subtle bg-bg-default shadow-sm xl:order-1 xl:row-span-3"
         >
           <div className="border-b border-border-subtle px-4 py-3">
             <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
-              Scenario runbook
+              Launch controls
             </p>
             <p className="mt-1 text-sm leading-5 text-muted-foreground">
               Choose the operating path before executing a scenario action.
@@ -252,14 +233,14 @@ export function ScenarioControlsWorkspace({
             <div className="border-t border-border-subtle px-4 py-3">
               <div className="flex min-w-0 items-center justify-between gap-3">
                 <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
-                  Evidence flow
+                  Evidence replay path
                 </p>
                 <span className="text-xs text-muted-foreground">
                   {selectedCommand.evidenceStages.length} steps
                 </span>
               </div>
               <ol
-                aria-label="Selected scenario evidence flow"
+                aria-label="Selected evidence replay path"
                 className="mt-3 grid gap-2 md:grid-cols-2"
               >
                 {selectedCommand.evidenceStages.map((stage, index) => (
@@ -290,7 +271,7 @@ export function ScenarioControlsWorkspace({
         </section>
 
         <section
-          aria-label="Scenario safety checks"
+          aria-label="Rehearsal guardrails"
           className="order-3 overflow-hidden rounded-lg border border-border-subtle bg-bg-default shadow-sm xl:col-start-2"
         >
             <div className="grid gap-0 divide-y divide-border-subtle md:grid-cols-3 md:divide-x md:divide-y-0">
