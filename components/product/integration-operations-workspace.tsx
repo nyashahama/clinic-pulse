@@ -299,17 +299,58 @@ function IntegrationEvidenceRows({
     );
   }
 
-  const navigateToSource = (row: IntegrationEvidenceRow) => {
-    onSelectRow(row.id);
-    window.location.assign(row.sourceHref);
-  };
-
   return (
     <div
       aria-label="Integration evidence rows"
       className="min-w-0 border-b border-border-subtle xl:border-b-0 xl:border-r"
     >
-      <div aria-label="Integration check evidence">
+      <div aria-label="Integration evidence cards" className="grid gap-2 p-3 md:hidden">
+        {rows.map((row) => {
+          const isSelected = row.id === selectedId;
+
+          return (
+            <button
+              key={row.id}
+              type="button"
+              aria-label={row.ariaLabel}
+              aria-pressed={isSelected}
+              className={cn(
+                "grid min-w-0 gap-3 rounded-lg border border-border-subtle bg-bg-default p-3 text-left transition hover:bg-bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                isSelected && "border-sky-200 bg-sky-50/70",
+              )}
+              onClick={() => onSelectRow(row.id)}
+            >
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
+                    {row.sourceLabel}
+                  </p>
+                  <p className="mt-1 break-words text-sm font-semibold leading-5 text-foreground">
+                    {row.subject}
+                  </p>
+                  <p className="mt-1 break-words text-xs leading-5 text-muted-foreground">
+                    {row.subjectDetail}
+                  </p>
+                </div>
+                <AdminStatusBadge tone={row.tone}>{row.stateLabel}</AdminStatusBadge>
+              </div>
+
+              <div className="grid gap-2 text-xs leading-5 text-muted-foreground">
+                <p className="break-words">
+                  <span className="font-medium text-foreground">Basis: </span>
+                  {row.evidenceBasis}
+                </p>
+                <p className="break-words">
+                  <span className="font-medium text-foreground">Observed: </span>
+                  {row.observedLabel}
+                </p>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      <div aria-label="Integration check evidence" className="hidden md:block">
         <Table className="table-fixed">
           <TableHeader className="bg-bg-muted/60">
             <TableRow className="border-border-subtle bg-bg-muted/60 hover:bg-bg-muted/60">
@@ -345,10 +386,10 @@ function IntegrationEvidenceRows({
                     "cursor-pointer border-border-subtle align-top focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     isSelected && "bg-sky-50/70 hover:bg-sky-50/80",
                   )}
-                  onClick={() => navigateToSource(row)}
+                  onClick={() => onSelectRow(row.id)}
                   onFocus={() => onSelectRow(row.id)}
                   onMouseEnter={() => onSelectRow(row.id)}
-                  onKeyDown={(event) => handleRowKeyDown(event, () => navigateToSource(row))}
+                  onKeyDown={(event) => handleRowKeyDown(event, () => onSelectRow(row.id))}
                 >
                   <TableCell className="whitespace-normal break-words px-3 py-3 align-top">
                     <p className="font-medium text-foreground">{row.sourceLabel}</p>
@@ -385,7 +426,7 @@ function IntegrationEvidenceDetails({ row }: { row: IntegrationEvidenceRow | nul
   return (
     <aside
       aria-label="Selected integration evidence"
-      className="grid gap-3 bg-bg-muted/30 p-3 md:sticky md:top-3"
+      className="order-first grid gap-3 bg-bg-muted/30 p-3 xl:order-none xl:sticky xl:top-3"
     >
       {row ? (
         <div className="overflow-hidden rounded-lg border border-border-subtle bg-bg-default shadow-sm">

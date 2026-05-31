@@ -31,7 +31,7 @@ describe("buildSystemAdminCommandModel", () => {
   test("builds a referenced platform command surface from current admin pressure", () => {
     const model = buildSystemAdminCommandModel(baseInput);
 
-    expect(model.header.title).toBe("Platform Command Console");
+    expect(model.header.title).toBe("Platform Operations Cockpit");
     expect(model.references.map((reference) => reference.source)).toEqual([
       "Supabase Studio",
       "shadcn dashboard",
@@ -50,15 +50,30 @@ describe("buildSystemAdminCommandModel", () => {
       "security-posture",
       "audit-readiness",
     ]);
+    expect(model.healthMonitors.map((monitor) => monitor.id)).toEqual([
+      "tenant-health",
+      "ingestion-pressure",
+      "security-posture",
+      "audit-readiness",
+    ]);
   });
 
-  test("prioritizes action lanes with real destination links", () => {
+  test("prioritizes a single active operational case with real destination links", () => {
     const model = buildSystemAdminCommandModel(baseInput);
-    const needsAction = model.lanes.find((lane) => lane.id === "needs-action");
 
-    expect(needsAction?.items[0]).toMatchObject({
+    expect(model.activeCase).toMatchObject({
+      id: "ingestion-review",
       href: "/admin/data-ingestion",
       tone: "attention",
+      primaryActionLabel: "Open data ingestion",
+    });
+    expect(model.activeCase.progress).toMatchObject({
+      label: "Open signals",
+      value: "3",
+    });
+    expect(model.operationQueue[0]).toMatchObject({
+      id: "ingestion-review",
+      href: "/admin/data-ingestion",
     });
     expect(model.evidenceRows.map((row) => row.href)).toEqual([
       "/admin/audit-evidence",
@@ -69,23 +84,19 @@ describe("buildSystemAdminCommandModel", () => {
     ]);
   });
 
-  test("builds a platform command brief for the shared evidence-command shell", () => {
+  test("builds a cockpit workflow instead of a generic command brief", () => {
     const model = buildSystemAdminCommandModel(baseInput);
 
-    expect(model.commandBrief.caseBrief.title).toBe("Platform readiness packet");
-    expect(model.commandBrief.metrics.map((metric) => metric.label)).toEqual([
-      "Tenant health",
-      "Ingestion pressure",
-      "Security posture",
-      "Audit readiness",
+    expect(model.activeCase.summary).toBe("3 ingestion signals need review");
+    expect(model.activeCase.nextStep).toContain("Open Data ingestion");
+    expect(model.operationQueue.map((item) => item.id)).toEqual([
+      "ingestion-review",
+      "tenant-health",
+      "security-access",
+      "audit-evidence",
+      "partner-readiness",
     ]);
-    expect(model.commandBrief.decision.actions).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ href: "/admin/data-ingestion", priority: "primary" }),
-        expect.objectContaining({ href: "/admin/tenant-health", priority: "secondary" }),
-      ]),
-    );
-    expect(model.commandBrief.timeline.items.map((item) => item.label)).toEqual([
+    expect(model.reliabilityTimeline.map((item) => item.label)).toEqual([
       "Sync",
       "Ingestion",
       "Security",

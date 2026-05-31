@@ -45,15 +45,16 @@ describe("admin scenario rehearsal cockpit", () => {
     expect(source).not.toContain("AdminFilterBar");
   });
 
-  it("adds launch, evidence, and guardrail framing to the scenario workspace", () => {
+  it("adds playback, preflight, state diff, and flight-recorder framing to the scenario workspace", () => {
     const briefingSource = readSource(scenarioBriefing);
     const workspaceSource = readSource(scenarioWorkspace);
 
-    expect(briefingSource).toContain("Command launch rail");
-    expect(briefingSource).toContain("Evidence replay path");
-    expect(briefingSource).toContain("Rehearsal guardrails");
+    expect(briefingSource).toContain("Rehearsal playback console");
+    expect(briefingSource).toContain("Run state diff");
+    expect(briefingSource).toContain("Preflight checklist");
     expect(workspaceSource).toContain("Launch controls");
-    expect(workspaceSource).toContain("Evidence replay path");
+    expect(workspaceSource).toContain("Scenario flight recorder");
+    expect(workspaceSource).toContain("Selected state diff");
   });
 
   it("keeps open-source reference names out of the product UI source", () => {

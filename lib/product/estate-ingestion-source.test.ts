@@ -38,25 +38,37 @@ function readSource(filePath: string) {
 describe("admin estate and ingestion cockpit surfaces", () => {
   it("replaces the data ingestion header/filter shell with an ingestion cockpit", () => {
     const source = readSource(dataIngestionPage);
+    const monitorSource = readSource(
+      path.join(process.cwd(), "components", "product", "data-ingestion-pipeline-monitor.tsx"),
+    );
 
-    expect(source).toContain("EvidenceCommandHeader");
-    expect(source).toContain("EvidenceCommandMetricStrip");
-    expect(source).toContain("EvidenceCaseBriefPanel");
-    expect(source).toContain("Ingestion command cockpit");
-    expect(source).toContain("Intake queue rail");
-    expect(source).toContain("Promotion route map");
+    expect(source).toContain("DataIngestionPipelineMonitor");
+    expect(source).toContain("Ingestion pipeline monitor");
+    expect(monitorSource).toContain("Source pipeline map");
+    expect(monitorSource).toContain("Ingestion failure-origin inspector");
+    expect(monitorSource).toContain("Pipeline run history");
+    expect(monitorSource).toContain("Inspect pipeline stage");
+    expect(monitorSource).toContain("Inspect run step");
+    expect(monitorSource).toContain("Stage triage queue");
+    expect(monitorSource).toContain("Active ingestion issue");
+    expect(monitorSource).toContain("Mark stage reviewed");
+    expect(source).not.toContain("EvidenceCommandHeader");
+    expect(source).not.toContain("EvidenceCommandMetricStrip");
+    expect(source).not.toContain("EvidenceCaseBriefPanel");
     expect(source).not.toContain("EstateOperationsBriefing");
     expect(source).not.toContain("AdminModuleHeader");
     expect(source).not.toContain("AdminFilterBar");
   });
 
-  it("promotes tenant health into the estate cockpit system", () => {
+  it("promotes tenant health into a distinct estate map", () => {
     const source = readSource(tenantHealthBoard);
 
-    expect(source).toContain("EvidenceCommandHeader");
-    expect(source).toContain("EvidenceCommandMetricStrip");
-    expect(source).toContain("Tenant health cockpit");
-    expect(source).toContain("EvidenceCaseBriefPanel");
+    expect(source).toContain("Tenant estate health map");
+    expect(source).toContain("District readiness heatmap");
+    expect(source).toContain("Estate signal switchboard");
+    expect(source).not.toContain("EvidenceCommandHeader");
+    expect(source).not.toContain("EvidenceCommandMetricStrip");
+    expect(source).not.toContain("EvidenceCaseBriefPanel");
     expect(source).not.toContain("EstateOperationsBriefing");
   });
 

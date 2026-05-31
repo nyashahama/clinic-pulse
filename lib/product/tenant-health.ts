@@ -138,16 +138,16 @@ const adminRoles = new Set<AuthRole>([
 const numberFormatter = new Intl.NumberFormat("en-ZA");
 const sourceReferences: TenantHealthSourceReference[] = [
   {
-    source: "Supabase Studio",
-    role: "Tenant estate shell, concise health sections, and operator-first page hierarchy.",
-    href: "https://github.com/supabase/supabase",
+    source: "Argo CD",
+    role: "Application health, sync status, resource status rollups, and operator drilldown hierarchy.",
+    href: "https://github.com/argoproj/argo-cd",
     licenseUse: "adaptable",
   },
   {
-    source: "OpenStatus",
-    role: "Reliability language for freshness, uptime-style health, and clear incident posture.",
-    href: "https://github.com/openstatusHQ/openstatus",
-    licenseUse: "reference-only",
+    source: "OneUptime",
+    role: "Monitor and incident triage patterns for active health signals and service ownership.",
+    href: "https://github.com/OneUptime/oneuptime",
+    licenseUse: "adaptable",
   },
   {
     source: "Twenty",
@@ -481,7 +481,7 @@ export function buildTenantHealthViewModel({
   return {
     header: {
       eyebrow: "Platform operations",
-      title: "Tenant health cockpit",
+      title: "Tenant estate health map",
       description:
         "A tenant-wide health board for coverage, access, ingestion, and partner readiness across the active organisation.",
       score: {
@@ -513,7 +513,7 @@ export function buildTenantHealthViewModel({
                 : "Open tenant health",
       })),
       caseBrief: {
-        title: "Tenant readiness packet",
+        title: "Tenant estate packet",
         description:
           "Estate-level evidence for clinic freshness, district coverage, ingestion pressure, privileged access, and partner readiness.",
         summary: {

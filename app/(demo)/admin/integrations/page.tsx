@@ -131,8 +131,9 @@ export default async function Page() {
       </section>
 
       <section
+        id="endpoint-smoke-matrix"
         aria-label="Endpoint smoke matrix"
-        className="overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm"
+        className="scroll-mt-24 overflow-hidden rounded-lg border border-border-subtle bg-bg-default text-content-default shadow-sm"
       >
         <div className="flex min-w-0 flex-col gap-2 border-b border-border-subtle px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
@@ -146,7 +147,34 @@ export default async function Page() {
           <TerminalSquareIcon className="size-5 text-muted-foreground" aria-hidden="true" />
         </div>
 
-        <div>
+        <div aria-label="Endpoint smoke cards" className="grid gap-2 p-3 md:hidden">
+          {model.endpointRows.map((row) => (
+            <article
+              key={row.path}
+              className="grid min-w-0 gap-3 rounded-lg border border-border-subtle bg-bg-default p-3"
+            >
+              <div className="grid min-w-0 gap-2">
+                <div className="min-w-0">
+                  <p className="break-words text-sm font-semibold text-foreground">
+                    {row.method} {row.path}
+                  </p>
+                  <p className="mt-1 break-words text-xs leading-5 text-muted-foreground">
+                    {row.purpose}
+                  </p>
+                </div>
+                <div className="flex min-w-0 flex-wrap gap-2">
+                  <AdminStatusBadge tone={row.tone} className="shrink-0">
+                    {row.covered ? "Covered" : "Missing"}
+                  </AdminStatusBadge>
+                  <AdminStatusBadge tone="info">{row.scope}</AdminStatusBadge>
+                </div>
+              </div>
+              <SmokeCommand command={row.command} />
+            </article>
+          ))}
+        </div>
+
+        <div className="hidden md:block">
           <table className="w-full table-fixed text-sm">
             <thead className="bg-bg-muted/60 text-left text-xs uppercase tracking-normal text-muted-foreground">
               <tr className="border-b border-border-subtle">
@@ -335,8 +363,8 @@ function IntegrationCommandCard({ card }: { card: IntegrationActionCard }) {
 
 function SmokeCommand({ command }: { command: string }) {
   return (
-    <div className="rounded-md border border-border-subtle bg-bg-muted/70">
-      <code className="block whitespace-pre-wrap break-words px-2 py-1 font-mono text-xs leading-5 text-content-default">
+    <div className="max-w-full overflow-hidden rounded-md border border-border-subtle bg-bg-muted/70">
+      <code className="block whitespace-pre-wrap break-all px-2 py-1 font-mono text-xs leading-5 text-content-default">
         {command}
       </code>
     </div>

@@ -7,14 +7,18 @@ function sourceFile(path: string) {
 }
 
 describe("audit evidence command briefing source", () => {
-  it("renders audit evidence with the shared evidence-command primitives", () => {
+  it("renders audit evidence as an event ledger rather than another command packet", () => {
     const source = sourceFile("app/(demo)/admin/audit-evidence/page.tsx");
 
-    expect(source).toContain("EvidenceCommandHeader");
-    expect(source).toContain("EvidenceCommandMetricStrip");
-    expect(source).toContain("EvidenceCaseBriefPanel");
-    expect(source).toContain("EvidenceDecisionPanel");
-    expect(source).toContain("EvidenceTimeline");
+    expect(source).toContain("Audit event ledger");
+    expect(source).toContain('aria-label="Audit query builder"');
+    expect(source).toContain('aria-label="Selected event record"');
+    expect(source).toContain('aria-label="Evidence export and retention"');
+    expect(source).not.toContain("EvidenceCommandHeader");
+    expect(source).not.toContain("EvidenceCommandMetricStrip");
+    expect(source).not.toContain("EvidenceCaseBriefPanel");
+    expect(source).not.toContain("EvidenceDecisionPanel");
+    expect(source).not.toContain("EvidenceTimeline");
     expect(source).not.toContain("EvidenceOperationsBriefing");
   });
 

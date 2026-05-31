@@ -15,6 +15,8 @@ export type AccessLifecycleUser = {
 
 export type AccessPermissionState = "allow" | "conditional" | "forbid";
 
+export type AccessPermissionStateFilter = AccessPermissionState | "all";
+
 export type AccessPermissionAction = {
   id: string;
   label: string;
@@ -82,6 +84,98 @@ export type AdminAccessLifecycleModel = {
     description: string;
   }>;
 };
+
+export function filterAccessReviewSubjects(
+  subjects: AccessLifecycleSubject[],
+  query: string,
+): AccessLifecycleSubject[] {
+  const normalizedQuery = normalizeSearch(query);
+
+  if (!normalizedQuery) {
+    return subjects;
+  }
+
+  return subjects.filter((subject) =>
+    subjectSearchText(subject).includes(normalizedQuery),
+  );
+}
+
+export function filterAccessPermissionResources(
+  subject: AccessLifecycleSubject,
+  filters: { query?: string; state?: AccessPermissionStateFilter },
+): AccessPermissionResource[] {
+  const normalizedQuery = normalizeSearch(filters.query ?? "");
+  const stateFilter = filters.state ?? "all";
+
+  return subject.permissionResources
+    .map((resource) => {
+      const resourceMatches =
+        !normalizedQuery || resourceSearchText(resource).includes(normalizedQuery);
+      const actions = resource.actions.filter((action) => {
+        const stateMatches = stateFilter === "all" || action.state === stateFilter;
+        const queryMatches =
+          resourceMatches ||
+          !normalizedQuery ||
+          actionSearchText(action).includes(normalizedQuery);
+
+        return stateMatches && queryMatches;
+      });
+
+      return {
+        ...resource,
+        actions,
+        allowedCount: actions.filter((action) => action.state === "allow").length,
+        conditionalCount: actions.filter((action) => action.state === "conditional").length,
+        forbiddenCount: actions.filter((action) => action.state === "forbid").length,
+      };
+    })
+    .filter((resource) => resource.actions.length > 0);
+}
+
+function normalizeSearch(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function subjectSearchText(subject: AccessLifecycleSubject) {
+  return normalizeSearch(
+    [
+      subject.displayName,
+      subject.email,
+      subject.roleLabel,
+      subject.scopeLabel,
+      subject.stateLabel,
+      subject.riskLabel,
+      ...subject.reviewReasons,
+      ...subject.permissionResources.flatMap((resource) => [
+        resource.label,
+        resource.description,
+        ...resource.actions.flatMap((action) => [
+          action.label,
+          action.description,
+          action.state,
+          action.reviewNote,
+          ...action.grantedBy,
+        ]),
+      ]),
+    ].join(" "),
+  );
+}
+
+function resourceSearchText(resource: AccessPermissionResource) {
+  return normalizeSearch([resource.label, resource.description].join(" "));
+}
+
+function actionSearchText(action: AccessPermissionAction) {
+  return normalizeSearch(
+    [
+      action.label,
+      action.description,
+      action.state,
+      action.reviewNote,
+      ...action.grantedBy,
+    ].join(" "),
+  );
+}
 
 const activeRoles = new Set<AuthRole>([
   "reporter",

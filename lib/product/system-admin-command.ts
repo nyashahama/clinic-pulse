@@ -74,6 +74,42 @@ export type SystemAdminReliabilityRow = {
   tone: SystemAdminCommandTone;
 };
 
+export type SystemAdminHealthMonitor = SystemAdminCommandMetric & {
+  statusLabel: string;
+  checkLabel: string;
+};
+
+export type SystemAdminOperationCase = {
+  id: string;
+  label: string;
+  title: string;
+  summary: string;
+  detail: string;
+  value: string;
+  href: string;
+  tone: SystemAdminCommandTone;
+  stateLabel: string;
+  primaryActionLabel: string;
+  progress: {
+    label: string;
+    value: string;
+    detail: string;
+    percent: number;
+  };
+  nextStep: string;
+  impact: string;
+  verification: string;
+  evidenceLabel: string;
+  evidenceDetail: string;
+};
+
+export type SystemAdminReliabilityTimelineItem = {
+  label: string;
+  title: string;
+  description: string;
+  tone: SystemAdminCommandTone;
+};
+
 export type SystemAdminCommandModel = {
   header: {
     eyebrow: string;
@@ -111,6 +147,10 @@ export type SystemAdminCommandModel = {
     };
   };
   metrics: SystemAdminCommandMetric[];
+  healthMonitors: SystemAdminHealthMonitor[];
+  activeCase: SystemAdminOperationCase;
+  operationQueue: SystemAdminOperationCase[];
+  reliabilityTimeline: SystemAdminReliabilityTimelineItem[];
   lanes: SystemAdminCommandLane[];
   evidenceRows: SystemAdminEvidenceRow[];
   reliabilityRows: SystemAdminReliabilityRow[];
@@ -229,6 +269,22 @@ function toneForCount(value: number): SystemAdminCommandTone {
   return value > 0 ? "attention" : "clear";
 }
 
+function commandToneLabel(tone: SystemAdminCommandTone) {
+  if (tone === "attention") {
+    return "Review";
+  }
+
+  if (tone === "blocked") {
+    return "Blocked";
+  }
+
+  if (tone === "info") {
+    return "Watch";
+  }
+
+  return "Clear";
+}
+
 function toneForPartnerReadiness(severity: PartnerReadinessSeverity): SystemAdminCommandTone {
   if (severity === "attention") {
     return "attention";
@@ -271,6 +327,30 @@ function evidenceMetricIcon(id: SystemAdminMetricId): EvidenceCommandMetric["ico
   }
 
   return "alert";
+}
+
+function actionLabelForHref(href: string) {
+  if (href === "/admin/data-ingestion") {
+    return "Open data ingestion";
+  }
+
+  if (href === "/admin/tenant-health") {
+    return "Open tenant health";
+  }
+
+  if (href === "/admin/security") {
+    return "Open security";
+  }
+
+  if (href === "/admin/audit-evidence") {
+    return "Open audit evidence";
+  }
+
+  if (href === "/admin/partner-readiness") {
+    return "Open partner readiness";
+  }
+
+  return "Open module";
 }
 
 function sortByTone(left: SystemAdminLaneItem, right: SystemAdminLaneItem) {
@@ -436,6 +516,107 @@ export function buildSystemAdminCommandModel(
     .sort(sortByTone);
   const leadItem = needsActionItems[0] ?? watchingItems[0] ?? clearItems[0] ?? commandItems[0];
   const leadTone = toEvidenceTone(leadItem.tone);
+  const healthMonitors: SystemAdminHealthMonitor[] = metrics.map((metric) => ({
+    ...metric,
+    statusLabel: commandToneLabel(metric.tone),
+    checkLabel:
+      metric.tone === "attention" || metric.tone === "blocked"
+        ? "Needs operator review"
+        : metric.tone === "info"
+          ? "Evidence available"
+          : "No blocking signal",
+  }));
+  const operationCaseOrder = [
+    "ingestion-review",
+    "tenant-health",
+    "security-access",
+    "audit-evidence",
+    "partner-readiness",
+  ];
+  const operationQueue = operationCaseOrder
+    .map((id) => commandItems.find((item) => item.id === id))
+    .filter((item): item is SystemAdminLaneItem => Boolean(item))
+    .map<SystemAdminOperationCase>((item) => {
+      const progress =
+        item.id === "ingestion-review"
+          ? {
+              label: "Open signals",
+              value: formatCount(ingestionPressure),
+              detail: "Field review, freshness, sync, conflict, and validation signals.",
+              percent: ingestionPressure > 0 ? 68 : 100,
+            }
+          : item.id === "tenant-health"
+            ? {
+                label: "Stale clinics",
+                value: formatCount(input.staleClinicCount),
+                detail: "Clinic freshness signals affecting tenant readiness.",
+                percent: input.staleClinicCount > 0 ? 42 : 100,
+              }
+            : item.id === "security-access"
+              ? {
+                  label: "Review items",
+                  value: formatCount(securityPressure),
+                  detail: "Open alerts plus new or contacted access follow-up records.",
+                  percent: securityPressure > 0 ? 56 : 100,
+                }
+              : item.id === "audit-evidence"
+                ? {
+                    label: "Audit events",
+                    value: formatCount(input.auditEventCount),
+                    detail: "Actor, event, export, and integration evidence available.",
+                    percent: input.auditEventCount > 0 ? 84 : 24,
+                  }
+                : {
+                    label: "Ready checks",
+                    value: formatCount(readyPartnerMetrics),
+                    detail: "Partner readiness metrics ready for handoff review.",
+                    percent: input.partnerReadiness.metrics.length
+                      ? Math.round((readyPartnerMetrics / input.partnerReadiness.metrics.length) * 100)
+                      : 0,
+                  };
+
+      return {
+        ...item,
+        summary: item.title,
+        stateLabel: commandToneLabel(item.tone),
+        primaryActionLabel: actionLabelForHref(item.href),
+        progress,
+        nextStep:
+          item.tone === "attention" || item.tone === "blocked"
+            ? `Open ${item.label} and clear the lead operational signal before platform handoff.`
+            : `Keep ${item.label.toLowerCase()} visible while the platform remains in review.`,
+        impact:
+          "This case explains the current platform posture before the operator leaves the overview.",
+        verification:
+          "Open the source module, confirm the linked evidence, then return here to check the case state.",
+        evidenceLabel: item.value,
+        evidenceDetail: item.detail,
+      };
+    });
+  const activeCase =
+    operationQueue.find((item) => item.id === leadItem.id) ?? operationQueue[0] ?? {
+      id: "platform-clear",
+      label: "Platform",
+      title: "Platform operations are clear",
+      summary: "No operational case is currently active",
+      detail: "Tenant health, ingestion, security, partner readiness, and audit evidence are clear.",
+      value: "Clear",
+      href: "/admin/tenant-health",
+      tone: "clear",
+      stateLabel: "Clear",
+      primaryActionLabel: "Open tenant health",
+      progress: {
+        label: "Readiness",
+        value: "100%",
+        detail: "No active operational pressure.",
+        percent: 100,
+      },
+      nextStep: "Keep monitoring tenant freshness, security, and partner proof.",
+      impact: "The platform overview is clear enough for routine monitoring.",
+      verification: "Use the linked modules to verify evidence remains current.",
+      evidenceLabel: "Clear",
+      evidenceDetail: "No active operational pressure.",
+    };
   const commandMetrics: EvidenceCommandMetric[] = metrics.map((metric) => ({
     label: metric.label,
     value: metric.value,
@@ -505,9 +686,9 @@ export function buildSystemAdminCommandModel(
   return {
     header: {
       eyebrow: "Platform operations",
-      title: "Platform Command Console",
+      title: "Platform Operations Cockpit",
       description:
-        "A control plane for tenant health, ingestion review, security posture, partner readiness, and audit evidence.",
+        "A control plane for active platform cases, health monitors, source evidence, and reliability state.",
       syncLabel: formatSyncLabel(input.syncSummary.lastSyncAt),
       activeAlertLabel:
         input.activeAlertCount > 0
@@ -621,18 +802,56 @@ export function buildSystemAdminCommandModel(
       },
     },
     metrics,
+    healthMonitors,
+    activeCase,
+    operationQueue,
+    reliabilityTimeline: [
+      {
+        label: "Sync",
+        title: formatSyncLabel(input.syncSummary.lastSyncAt),
+        description: "Latest sync evidence anchors the platform operations cockpit.",
+        tone: input.syncSummary.lastSyncAt ? "clear" : "attention",
+      },
+      {
+        label: "Ingestion",
+        title:
+          ingestionPressure > 0
+            ? `${formatCount(ingestionPressure)} ingestion signals open`
+            : "No ingestion pressure",
+        description: "Pending reports, offline queues, stale clinics, conflicts, and validation failures.",
+        tone: toneForCount(ingestionPressure),
+      },
+      {
+        label: "Security",
+        title:
+          securityPressure > 0
+            ? `${formatCount(securityPressure)} security signals open`
+            : "Security posture clear",
+        description: "Privileged access, active alerts, and access follow-up evidence.",
+        tone: toneForCount(securityPressure),
+      },
+      {
+        label: "Partner",
+        title:
+          partnerTone === "clear"
+            ? "Partner handoff ready"
+            : "Partner handoff needs review",
+        description: "API keys, webhooks, exports, delivery checks, and readiness evidence.",
+        tone: partnerTone,
+      },
+    ],
     lanes: [
       {
         id: "needs-action",
         label: "Needs action",
         description: "Work that changes readiness or exposes operational risk.",
-        items: needsActionItems.length ? needsActionItems : clearItems.slice(0, 1),
+        items: needsActionItems,
       },
       {
         id: "watching",
         label: "Watching",
         description: "Evidence-heavy surfaces that should stay visible during review.",
-        items: watchingItems.length ? watchingItems : commandItems.slice(0, 2),
+        items: watchingItems,
       },
       {
         id: "clear",

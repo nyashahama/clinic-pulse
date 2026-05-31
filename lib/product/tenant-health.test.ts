@@ -101,7 +101,7 @@ describe("buildTenantHealthViewModel", () => {
       users,
     });
 
-    expect(viewModel.header.title).toBe("Tenant health cockpit");
+    expect(viewModel.header.title).toBe("Tenant estate health map");
     expect(viewModel.header.score.label).toBe("Estate score");
     expect(viewModel.metrics.map((metric) => metric.label)).toEqual([
       "Tenant readiness",
@@ -128,7 +128,7 @@ describe("buildTenantHealthViewModel", () => {
       "Audit access",
       "Partner readiness",
     ]);
-    expect(viewModel.commandBrief.caseBrief.title).toBe("Tenant readiness packet");
+    expect(viewModel.commandBrief.caseBrief.title).toBe("Tenant estate packet");
     expect(viewModel.commandBrief.metrics.map((metric) => metric.label)).toEqual([
       "Tenant readiness",
       "District footprint",
@@ -143,8 +143,8 @@ describe("buildTenantHealthViewModel", () => {
     );
     expect(viewModel.signalLedger.items[1]?.detail).toContain("1 pending review");
     expect(viewModel.sourceReferences.map((reference) => reference.source)).toEqual([
-      "Supabase Studio",
-      "OpenStatus",
+      "Argo CD",
+      "OneUptime",
       "Twenty",
       "shadcn dashboard",
     ]);

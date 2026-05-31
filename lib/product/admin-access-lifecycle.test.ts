@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { buildAdminAccessLifecycleModel } from "@/lib/product/admin-access-lifecycle";
+import {
+  buildAdminAccessLifecycleModel,
+  filterAccessPermissionResources,
+  filterAccessReviewSubjects,
+} from "@/lib/product/admin-access-lifecycle";
 
 const users = [
   {
@@ -83,7 +87,27 @@ describe("buildAdminAccessLifecycleModel", () => {
       selected?.permissionResources
         .flatMap((resource) => resource.actions)
         .filter((action) => action.state === "conditional")
-        .map((action) => action.label),
+      .map((action) => action.label),
     ).toContain("Manage district clinic state");
+  });
+
+  it("filters principals and permission evidence for the access review workspace", () => {
+    const model = buildAdminAccessLifecycleModel(users);
+    const selected = model.subjects.find((subject) => subject.id === "user-2");
+
+    expect(filterAccessReviewSubjects(model.subjects, "field reporter")).toEqual([
+      expect.objectContaining({ id: "user-3" }),
+    ]);
+
+    expect(selected).toBeDefined();
+    const conditionalResources = filterAccessPermissionResources(selected!, {
+      query: "district",
+      state: "conditional",
+    });
+    expect(conditionalResources.flatMap((resource) => resource.actions)).toEqual([
+      expect.objectContaining({ label: "Review field report evidence", state: "conditional" }),
+      expect.objectContaining({ label: "Manage district clinic state", state: "conditional" }),
+    ]);
+    expect(conditionalResources.every((resource) => resource.conditionalCount > 0)).toBe(true);
   });
 });
