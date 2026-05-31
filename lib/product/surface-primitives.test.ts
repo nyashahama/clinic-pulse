@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -53,6 +54,10 @@ import {
 } from "@/lib/product/clinic-status";
 import { formatEvidenceSource } from "@/lib/product/evidence-command";
 import type { PendingReportReview } from "@/lib/product/report-review";
+
+function readWorkspaceSource(path: string) {
+  return readFileSync(path, "utf8");
+}
 
 describe("product surface primitives", () => {
   it("renders panel title, description, metadata, and content", () => {
@@ -165,6 +170,29 @@ describe("product surface primitives", () => {
     expect(html).toContain("dark:shadow-black/35");
     expect(html).not.toContain('class="rounded-lg border bg-card');
     expect(html).not.toContain('class="flex flex-col gap-2 rounded-lg border bg-card');
+  });
+
+  it("keeps transient overlays on dark-native product surfaces", () => {
+    const tooltipSource = readWorkspaceSource("components/ui/tooltip.tsx");
+    const dropdownSource = readWorkspaceSource("components/ui/dropdown-menu.tsx");
+    const commandPaletteSource = readWorkspaceSource(
+      "components/product/workspace-command-palette.tsx",
+    );
+
+    expect(tooltipSource).toContain("bg-popover");
+    expect(tooltipSource).toContain("text-popover-foreground");
+    expect(tooltipSource).toContain("dark:bg-card");
+    expect(tooltipSource).toContain("dark:shadow-black/35");
+    expect(tooltipSource).not.toContain("bg-foreground");
+    expect(tooltipSource).not.toContain("text-background");
+
+    expect(dropdownSource).toContain("border border-border");
+    expect(dropdownSource).toContain("dark:ring-white/[0.06]");
+    expect(dropdownSource).toContain("dark:shadow-black/35");
+
+    expect(commandPaletteSource).toContain("dark:ring-white/[0.06]");
+    expect(commandPaletteSource).toContain("dark:shadow-black/35");
+    expect(commandPaletteSource).toContain("focus-visible:bg-muted");
   });
 
   it("renders admin status badges from the shared admin tone primitive", () => {

@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 const demoAccount = {
   email: "org-admin@clinicpulse.local",
@@ -55,6 +55,45 @@ type VisibleActionBackground = {
   primary: string;
   text: string;
 };
+
+type ComputedSurface = {
+  background: string;
+  border: string;
+  boxShadow: string;
+  card: string;
+  foreground: string;
+  muted: string;
+  popover: string;
+  text: string;
+};
+
+async function readComputedSurface(locator: Locator): Promise<ComputedSurface> {
+  await expect(locator).toBeVisible();
+
+  return locator.evaluate((element) => {
+    const readTokenColor = (token: string) => {
+      const probe = document.createElement("div");
+      probe.style.backgroundColor = `var(${token})`;
+      document.body.append(probe);
+      const color = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+
+      return color;
+    };
+    const styles = getComputedStyle(element);
+
+    return {
+      background: styles.backgroundColor,
+      border: styles.borderColor,
+      boxShadow: styles.boxShadow,
+      card: readTokenColor("--card"),
+      foreground: readTokenColor("--foreground"),
+      muted: readTokenColor("--muted"),
+      popover: readTokenColor("--popover"),
+      text: element.textContent?.replace(/\s+/g, " ").trim() ?? "",
+    };
+  });
+}
 
 async function readVisibleActionBackgrounds(
   page: Page,
@@ -223,5 +262,40 @@ test.describe("authenticated dashboard theme controls", () => {
         }
       }
     }
+  });
+
+  test("keeps command palette and user menu overlays dark-native", async ({ page }) => {
+    await signIn(page);
+    await page.getByRole("button", { name: "Use dark theme" }).click();
+    await expectDarkTheme(page);
+
+    await page.getByRole("button", { name: "Open command palette" }).click();
+    const palette = page.getByRole("dialog", {
+      name: "ClinicPulse command palette",
+    });
+    await expect(palette).toBeVisible();
+
+    const paletteSurface = await readComputedSurface(page.locator('[role="document"]'));
+    expect(paletteSurface.background).toBe(paletteSurface.popover);
+    expect(paletteSurface.background).not.toBe(paletteSurface.foreground);
+    expect(paletteSurface.border).toBe("rgb(46, 46, 46)");
+    expect(paletteSurface.boxShadow).toContain("/ 0.35");
+
+    await page.keyboard.press("Escape");
+    await expect(palette).toBeHidden();
+
+    await page.locator('[data-slot="dropdown-menu-trigger"]').first().click();
+    const menu = page.locator('[data-slot="dropdown-menu-content"]').first();
+    const menuSurface = await readComputedSurface(menu);
+    expect(menuSurface.background).toBe(menuSurface.popover);
+    expect(menuSurface.background).not.toBe(menuSurface.foreground);
+    expect(menuSurface.border).toBe("rgb(46, 46, 46)");
+    expect(menuSurface.boxShadow).toContain("/ 0.35");
+
+    const firstItem = page.locator('[data-slot="dropdown-menu-item"]').first();
+    await firstItem.focus();
+    const focusedItemSurface = await readComputedSurface(firstItem);
+    expect(focusedItemSurface.background).toBe(focusedItemSurface.muted);
+    expect(focusedItemSurface.text).toContain("Admin Overview");
   });
 });
