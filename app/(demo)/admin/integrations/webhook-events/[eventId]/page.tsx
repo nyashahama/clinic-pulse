@@ -1,24 +1,16 @@
 import { notFound } from "next/navigation";
 
-import {
-  AdminDetailFieldGrid,
-  AdminDetailJsonBlock,
-  AdminDetailShell,
-} from "@/components/product/admin-detail";
+import { AdminDetailShell } from "@/components/product/admin-detail";
+import { IntegrationEvidenceDetailBriefing } from "@/components/product/integration-evidence-detail-briefing";
 import {
   getAdminReturnSource,
   getAdminReturnTarget,
   parseAdminNumericId,
   type AdminSearchParams,
 } from "@/lib/product/admin-detail-routes";
+import { buildIntegrationDetailModel } from "@/lib/product/integration-detail";
 import { requireDemoWorkflowAccess } from "../../../../workflow-guard";
 import { loadAdminPartnerReadiness } from "../../../admin-loaders";
-import {
-  formatCount,
-  formatDateTime,
-  formatLabel,
-  StatusBadge,
-} from "../../../governance-formatters";
 
 type WebhookEventDetailPageProps = {
   params: Promise<{
@@ -26,18 +18,6 @@ type WebhookEventDetailPageProps = {
   }>;
   searchParams: Promise<AdminSearchParams>;
 };
-
-function eventTone(status: string) {
-  if (status === "failed") {
-    return "blocked" as const;
-  }
-
-  if (status === "delivered") {
-    return "clear" as const;
-  }
-
-  return "info" as const;
-}
 
 export default async function Page({
   params,
@@ -66,56 +46,23 @@ export default async function Page({
     (row) => row.id === event.subscriptionId,
   );
   const returnTarget = getAdminReturnTarget(getAdminReturnSource(query));
+  const model = buildIntegrationDetailModel({
+    kind: "webhook-event",
+    event,
+    subscription,
+    returnHref: returnTarget.href,
+  });
 
   return (
     <AdminDetailShell
-      eyebrow="Partner operations"
+      eyebrow={model.eyebrow}
       title="Webhook event detail"
-      description={`${formatLabel(event.eventType)} / ${formatLabel(event.status)}`}
+      description={model.description}
       returnHref={returnTarget.href}
       returnLabel={returnTarget.label}
+      hideHeader
     >
-      <AdminDetailFieldGrid
-        fields={[
-          {
-            label: "Event type",
-            value: <StatusBadge tone="info">{formatLabel(event.eventType)}</StatusBadge>,
-          },
-          {
-            label: "Status",
-            value: (
-              <StatusBadge tone={eventTone(event.status)}>
-                {formatLabel(event.status)}
-              </StatusBadge>
-            ),
-          },
-          {
-            label: "Subscription",
-            value: subscription
-              ? `${subscription.name} (${event.subscriptionId})`
-              : `Subscription ${event.subscriptionId}`,
-          },
-          {
-            label: "Attempts",
-            value: formatCount(event.attemptCount),
-          },
-          {
-            label: "Created",
-            value: formatDateTime(event.createdAt),
-          },
-          {
-            label: "Delivered",
-            value: formatDateTime(event.deliveredAt),
-          },
-          {
-            label: "Last error",
-            value: event.lastError ?? "None recorded",
-            className: "sm:col-span-2 xl:col-span-3",
-          },
-        ]}
-      />
-      <AdminDetailJsonBlock title="Payload" value={event.payload} />
-      <AdminDetailJsonBlock title="Metadata" value={event.metadata} />
+      <IntegrationEvidenceDetailBriefing model={model} />
     </AdminDetailShell>
   );
 }

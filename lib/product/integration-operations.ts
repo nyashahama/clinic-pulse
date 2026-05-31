@@ -457,7 +457,13 @@ export function formatIntegrationLabel(value?: string | null) {
     return "Unavailable";
   }
 
-  const normalized = value.replaceAll("_", " ").replaceAll(".", " ");
+  const normalized = value
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replaceAll("_", " ")
+    .replaceAll(".", " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
 
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }

@@ -327,11 +327,74 @@ test("entity-backed admin evidence rows open detail pages", async ({ page }) => 
     page.waitForURL(/\/admin\/integrations\/checks\/\d+\?from=admin-integrations$/),
     integrationCheckRow.click(),
   ]);
-  await expect(page.getByRole("heading", { name: "Integration check detail" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Integration check evidence brief" }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Check packet" })).toBeVisible();
   await Promise.all([
     page.waitForURL(/\/admin\/integrations$/),
     page.getByRole("link", { name: "Back to integrations" }).click(),
   ]);
+
+  const readinessResponse = await page.request.get(
+    "/api/clinicpulse/v1/admin/partner-readiness",
+  );
+  expect(
+    readinessResponse.ok(),
+    `Partner readiness lookup failed with ${readinessResponse.status()}`,
+  ).toBe(true);
+  const readiness = (await readinessResponse.json()) as {
+    apiKeys: Array<{ id: number }>;
+    webhookSubscriptions: Array<{ id: number }>;
+    webhookEvents: Array<{ id: number }>;
+    exportRuns: Array<{ id: number }>;
+    integrationChecks: Array<{ id: number }>;
+  };
+  expect(readiness.apiKeys[0], "expected seeded API key evidence").toBeTruthy();
+  expect(
+    readiness.webhookSubscriptions[0],
+    "expected seeded webhook subscription evidence",
+  ).toBeTruthy();
+  expect(readiness.webhookEvents[0], "expected seeded webhook event evidence").toBeTruthy();
+  expect(readiness.exportRuns[0], "expected seeded export run evidence").toBeTruthy();
+  expect(
+    readiness.integrationChecks[0],
+    "expected seeded integration check evidence",
+  ).toBeTruthy();
+  const integrationDetailRoutes = [
+    {
+      path: `/admin/integrations/api-keys/${readiness.apiKeys[0]?.id}?from=admin-integrations`,
+      heading: "API key evidence brief",
+      packet: "Credential packet",
+    },
+    {
+      path: `/admin/integrations/webhook-subscriptions/${readiness.webhookSubscriptions[0]?.id}?from=admin-integrations`,
+      heading: "Webhook receiver evidence brief",
+      packet: "Receiver packet",
+    },
+    {
+      path: `/admin/integrations/webhook-events/${readiness.webhookEvents[0]?.id}?from=admin-integrations`,
+      heading: "Webhook event evidence brief",
+      packet: "Delivery packet",
+    },
+    {
+      path: `/admin/integrations/export-runs/${readiness.exportRuns[0]?.id}?from=admin-integrations`,
+      heading: "Export package evidence brief",
+      packet: "Export packet",
+    },
+    {
+      path: `/admin/integrations/checks/${readiness.integrationChecks[0]?.id}?from=admin-integrations`,
+      heading: "Integration check evidence brief",
+      packet: "Check packet",
+    },
+  ];
+
+  for (const route of integrationDetailRoutes) {
+    await page.goto(route.path);
+    await expect(page.getByRole("heading", { name: route.heading })).toBeVisible();
+    await expect(page.getByRole("heading", { name: route.packet })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Back to integrations" })).toBeVisible();
+  }
 });
 
 test("report review cards open report detail pages", async ({ page }) => {
