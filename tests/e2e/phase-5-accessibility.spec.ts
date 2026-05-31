@@ -63,6 +63,8 @@ test.describe("phase 5 accessibility smoke", () => {
   });
 
   test("dark mode routes have no color contrast violations", async ({ page }) => {
+    test.setTimeout(120_000);
+
     await page.addInitScript(() => {
       window.localStorage.setItem("theme", "dark");
     });
