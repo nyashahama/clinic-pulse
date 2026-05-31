@@ -11,6 +11,14 @@ import {
   classifyAccessRisk,
   summarizeReportingCoverage,
 } from "@/lib/product/admin-governance";
+import type {
+  EvidenceCommandChip,
+  EvidenceCommandDecision,
+  EvidenceCommandMetric,
+  EvidenceCommandSection,
+  EvidenceCommandTimelineItem,
+  EvidenceCommandTone,
+} from "@/lib/product/evidence-command";
 
 export type TenantHealthTone = "clear" | "attention" | "blocked" | "info";
 
@@ -69,6 +77,34 @@ export type TenantHealthViewModel = {
       tone: TenantHealthTone;
     };
     scope: string;
+  };
+  commandBrief: {
+    chips: EvidenceCommandChip[];
+    metrics: EvidenceCommandMetric[];
+    caseBrief: {
+      title: string;
+      description: string;
+      summary: {
+        label: string;
+        value: string;
+        tone: EvidenceCommandTone;
+        emphasis: true;
+      };
+      primaryFields: Array<{
+        label: string;
+        value: string;
+        href?: string;
+        tone?: EvidenceCommandTone;
+        emphasis?: boolean;
+      }>;
+      sections: EvidenceCommandSection[];
+    };
+    decision: EvidenceCommandDecision;
+    timeline: {
+      title: string;
+      description: string;
+      items: EvidenceCommandTimelineItem[];
+    };
   };
   actions: TenantHealthAction[];
   metrics: TenantHealthMetric[];
@@ -157,6 +193,54 @@ function toneForReadiness(readinessPercent: number, pressure: number): TenantHea
   }
 
   return "clear";
+}
+
+function toEvidenceTone(tone: TenantHealthTone): EvidenceCommandTone {
+  if (tone === "blocked") {
+    return "critical";
+  }
+
+  if (tone === "attention") {
+    return "attention";
+  }
+
+  if (tone === "info") {
+    return "info";
+  }
+
+  return "stable";
+}
+
+function tenantHealthMetricHref(label: string) {
+  if (label === "Tenant readiness") {
+    return "/admin/reporting-coverage";
+  }
+
+  if (label === "Open health signals") {
+    return "/admin/data-ingestion";
+  }
+
+  if (label === "Access review load") {
+    return "/admin/access-review";
+  }
+
+  return "/admin/tenant-health";
+}
+
+function tenantHealthMetricIcon(label: string): EvidenceCommandMetric["icon"] {
+  if (label === "Open health signals") {
+    return "radio";
+  }
+
+  if (label === "Access review load") {
+    return "user";
+  }
+
+  if (label === "Tenant readiness") {
+    return "check";
+  }
+
+  return "activity";
 }
 
 function accessRiskCount(users: AdminUserAccessApiResponse[]) {
@@ -280,6 +364,119 @@ export function buildTenantHealthViewModel({
       ? `${formatCount(districts.length)} districts`
       : "District scope unavailable",
   ].join(" / ");
+  const actions: TenantHealthAction[] = [
+    {
+      label: "Review ingestion",
+      href: "/admin/data-ingestion",
+      icon: "stream",
+      priority: "primary",
+    },
+    {
+      label: "Audit access",
+      href: "/admin/access-review",
+      icon: "shield",
+      priority: "secondary",
+    },
+    {
+      label: "Partner readiness",
+      href: "/admin/partner-readiness",
+      icon: "plug",
+      priority: "secondary",
+    },
+  ];
+  const metrics: TenantHealthMetric[] = [
+    {
+      label: "Tenant readiness",
+      value: `${formatCount(coverage.readinessPercent)}%`,
+      detail: coverage.blockers.length
+        ? coverage.blockers.join("; ")
+        : "No reporting coverage blockers",
+      tone: coverage.tone,
+    },
+    {
+      label: "District footprint",
+      value: formatCount(districts.length),
+      detail: `${formatCount(clinics.length)} operational clinics in scope`,
+      tone: "info",
+    },
+    {
+      label: "Open health signals",
+      value: formatCount(ingestionSignals),
+      detail: `${formatCount(pendingReports.length)} pending review; ${formatCount(
+        syncSummary.pendingOfflineReports,
+      )} offline queue`,
+      tone: toneForPressure(ingestionSignals),
+    },
+    {
+      label: "Access review load",
+      value: formatCount(accessRisks),
+      detail: `${formatCount(privilegedUsers)} privileged users in the estate`,
+      tone: toneForPressure(accessRisks),
+    },
+  ];
+  const signalItems: TenantHealthSignal[] = [
+    {
+      id: "coverage-freshness",
+      label: "Coverage freshness",
+      value: `${formatCount(
+        syncSummary.staleClinics + syncSummary.needsConfirmationClinics,
+      )} clinics`,
+      detail: `${formatCount(syncSummary.staleClinics)} stale; ${formatCount(
+        syncSummary.needsConfirmationClinics,
+      )} need confirmation`,
+      tone: toneForPressure(syncSummary.staleClinics + syncSummary.needsConfirmationClinics),
+      href: "/admin/reporting-coverage",
+      actionLabel: "Open coverage",
+    },
+    {
+      id: "ingestion-queue",
+      label: "Ingestion queue",
+      value: `${formatCount(ingestionSignals)} signals`,
+      detail: `${formatCount(pendingReports.length)} pending review; ${formatCount(
+        syncSummary.validationFailures,
+      )} validation failures; ${formatCount(
+        syncSummary.conflictsNeedingAttention,
+      )} conflicts`,
+      tone: toneForPressure(ingestionSignals),
+      href: "/admin/data-ingestion",
+      actionLabel: "Review ingestion",
+    },
+    {
+      id: "privileged-access",
+      label: "Privileged access",
+      value: `${formatCount(accessRisks)} flags`,
+      detail: `${formatCount(privilegedUsers)} privileged users; ${formatCount(
+        users.length,
+      )} total access records`,
+      tone: toneForPressure(accessRisks),
+      href: "/admin/access-review",
+      actionLabel: "Audit access",
+    },
+    {
+      id: "partner-readiness",
+      label: "Partner readiness",
+      value: partnerReadinessModel.title,
+      detail: partnerReadinessModel.description,
+      tone: partnerReadinessModel.severity === "clear" ? "clear" : "attention",
+      href: "/admin/partner-readiness",
+      actionLabel: "Open partner",
+    },
+  ];
+  const leadSignal =
+    signalItems.find((item) => item.tone === "blocked" || item.tone === "attention") ??
+    signalItems[0];
+  const leadTone = toEvidenceTone(leadSignal.tone);
+  const commandChips: EvidenceCommandChip[] = [
+    { label: scope, tone: "neutral" },
+    { label: `${formatCount(coverage.readinessPercent)}% readiness`, tone: toEvidenceTone(estateTone) },
+    {
+      label:
+        ingestionSignals > 0
+          ? `${formatCount(ingestionSignals)} health signals`
+          : "No health signals",
+      tone: toEvidenceTone(toneForPressure(ingestionSignals)),
+    },
+  ];
 
   return {
     header: {
@@ -297,56 +494,174 @@ export function buildTenantHealthViewModel({
       },
       scope,
     },
-    actions: [
-      {
-        label: "Review ingestion",
-        href: "/admin/data-ingestion",
-        icon: "stream",
-        priority: "primary",
+    commandBrief: {
+      chips: commandChips,
+      metrics: metrics.map((metric) => ({
+        label: metric.label,
+        value: metric.value,
+        detail: metric.detail,
+        tone: toEvidenceTone(metric.tone),
+        icon: tenantHealthMetricIcon(metric.label),
+        href: tenantHealthMetricHref(metric.label),
+        actionLabel:
+          metric.label === "Tenant readiness"
+            ? "Open coverage"
+            : metric.label === "Open health signals"
+              ? "Review ingestion"
+              : metric.label === "Access review load"
+                ? "Audit access"
+                : "Open tenant health",
+      })),
+      caseBrief: {
+        title: "Tenant readiness packet",
+        description:
+          "Estate-level evidence for clinic freshness, district coverage, ingestion pressure, privileged access, and partner readiness.",
+        summary: {
+          label: "Estate verdict",
+          value: `${formatCount(coverage.readinessPercent)}% estate readiness`,
+          tone: toEvidenceTone(estateTone),
+          emphasis: true,
+        },
+        primaryFields: [
+          {
+            label: "Scope",
+            value: scope,
+            emphasis: true,
+          },
+          {
+            label: "Clinic estate",
+            value: `${formatCount(clinics.length)} clinics`,
+            href: "/admin/reporting-coverage",
+          },
+          {
+            label: "Districts",
+            value: formatCount(districts.length),
+          },
+        ],
+        sections: [
+          {
+            title: "Health routing",
+            description: "The system-admin destinations that explain estate readiness.",
+            fields: signalItems.map((item) => ({
+              label: item.label,
+              value: item.actionLabel,
+              href: item.href,
+            })),
+          },
+          {
+            title: "Readiness evidence",
+            description: "The live signals that determine whether the estate is clear or under review.",
+            fields: [
+              {
+                label: "Reporting coverage",
+                value: coverage.blockers.length ? coverage.blockers.join("; ") : "Clear",
+                tone: toEvidenceTone(coverage.tone),
+              },
+              {
+                label: "Ingestion queue",
+                value: `${formatCount(ingestionSignals)} signals`,
+                tone: toEvidenceTone(toneForPressure(ingestionSignals)),
+              },
+              {
+                label: "Access review",
+                value: `${formatCount(accessRisks)} flags`,
+                tone: toEvidenceTone(toneForPressure(accessRisks)),
+              },
+              {
+                label: "Partner readiness",
+                value: partnerReadinessModel.title,
+                tone: partnerReadinessModel.severity === "clear" ? "stable" : "attention",
+              },
+            ],
+          },
+        ],
       },
-      {
-        label: "Audit access",
-        href: "/admin/access-review",
-        icon: "shield",
-        priority: "secondary",
+      decision: {
+        contextLabel: "Tenant health",
+        title:
+          estateTone === "clear"
+            ? "Tenant estate is ready"
+            : "Tenant estate needs health review",
+        scoreLabel: "Lead signal",
+        scoreValue: leadSignal.label,
+        chips: commandChips,
+        nextStep:
+          estateTone === "clear"
+            ? "Keep tenant health in monitoring while partner and access evidence stay current."
+            : `Open ${leadSignal.label.toLowerCase()} and resolve the lead readiness signal before handoff.`,
+        nextStepTone: leadTone,
+        impactTitle: "System impact",
+        impact:
+          "System administrators need tenant health to connect clinic freshness, ingestion pressure, access posture, and partner readiness before they trust downstream modules.",
+        verificationTitle: "Verification",
+        verification:
+          "Use the detailed district stack and signal ledger below to confirm where the readiness score is coming from.",
+        evidence: {
+          label: leadSignal.detail,
+          detail: leadSignal.value,
+          href: leadSignal.href,
+          tone: leadTone,
+        },
+        actions: [
+          {
+            label: "Review ingestion",
+            href: "/admin/data-ingestion",
+            priority: "primary",
+            icon: "stream",
+          },
+          {
+            label: "Audit access",
+            href: "/admin/access-review",
+            priority: "secondary",
+            icon: "stream",
+          },
+        ],
       },
-      {
-        label: "Partner readiness",
-        href: "/admin/partner-readiness",
-        icon: "plug",
-        priority: "secondary",
+      timeline: {
+        title: "Tenant health evidence timeline",
+        description:
+          "The operating sequence a system administrator should check before trusting the tenant estate.",
+        items: [
+          {
+            label: "Coverage",
+            title:
+              coverage.blockers.length > 0
+                ? `${formatCount(coverage.blockers.length)} coverage blockers`
+                : "Coverage evidence clear",
+            description: coverage.blockers.length
+              ? coverage.blockers.join("; ")
+              : "Reporting coverage is not raising freshness blockers.",
+            tone: toEvidenceTone(coverage.tone),
+          },
+          {
+            label: "Ingestion",
+            title:
+              ingestionSignals > 0
+                ? `${formatCount(ingestionSignals)} ingestion signals`
+                : "No ingestion pressure",
+            description: signalItems.find((item) => item.id === "ingestion-queue")?.detail ?? "",
+            tone: toEvidenceTone(toneForPressure(ingestionSignals)),
+          },
+          {
+            label: "Access",
+            title:
+              accessRisks > 0
+                ? `${formatCount(accessRisks)} access flags`
+                : "Access review load clear",
+            description: signalItems.find((item) => item.id === "privileged-access")?.detail ?? "",
+            tone: toEvidenceTone(toneForPressure(accessRisks)),
+          },
+          {
+            label: "Partner",
+            title: partnerReadinessModel.title,
+            description: partnerReadinessModel.description,
+            tone: partnerReadinessModel.severity === "clear" ? "stable" : "attention",
+          },
+        ],
       },
-    ],
-    metrics: [
-      {
-        label: "Tenant readiness",
-        value: `${formatCount(coverage.readinessPercent)}%`,
-        detail: coverage.blockers.length
-          ? coverage.blockers.join("; ")
-          : "No reporting coverage blockers",
-        tone: coverage.tone,
-      },
-      {
-        label: "District footprint",
-        value: formatCount(districts.length),
-        detail: `${formatCount(clinics.length)} operational clinics in scope`,
-        tone: "info",
-      },
-      {
-        label: "Open health signals",
-        value: formatCount(ingestionSignals),
-        detail: `${formatCount(pendingReports.length)} pending review; ${formatCount(
-          syncSummary.pendingOfflineReports,
-        )} offline queue`,
-        tone: toneForPressure(ingestionSignals),
-      },
-      {
-        label: "Access review load",
-        value: formatCount(accessRisks),
-        detail: `${formatCount(privilegedUsers)} privileged users in the estate`,
-        tone: toneForPressure(accessRisks),
-      },
-    ],
+    },
+    actions,
+    metrics,
     districtStack: {
       title: "District health stack",
       description:
@@ -357,54 +672,7 @@ export function buildTenantHealthViewModel({
       title: "Health signal ledger",
       description:
         "The platform signals that explain why the tenant is clear, under review, or blocked.",
-      items: [
-        {
-          id: "coverage-freshness",
-          label: "Coverage freshness",
-          value: `${formatCount(
-            syncSummary.staleClinics + syncSummary.needsConfirmationClinics,
-          )} clinics`,
-          detail: `${formatCount(syncSummary.staleClinics)} stale; ${formatCount(
-            syncSummary.needsConfirmationClinics,
-          )} need confirmation`,
-          tone: toneForPressure(syncSummary.staleClinics + syncSummary.needsConfirmationClinics),
-          href: "/admin/reporting-coverage",
-          actionLabel: "Open coverage",
-        },
-        {
-          id: "ingestion-queue",
-          label: "Ingestion queue",
-          value: `${formatCount(ingestionSignals)} signals`,
-          detail: `${formatCount(pendingReports.length)} pending review; ${formatCount(
-            syncSummary.validationFailures,
-          )} validation failures; ${formatCount(
-            syncSummary.conflictsNeedingAttention,
-          )} conflicts`,
-          tone: toneForPressure(ingestionSignals),
-          href: "/admin/data-ingestion",
-          actionLabel: "Review ingestion",
-        },
-        {
-          id: "privileged-access",
-          label: "Privileged access",
-          value: `${formatCount(accessRisks)} flags`,
-          detail: `${formatCount(privilegedUsers)} privileged users; ${formatCount(
-            users.length,
-          )} total access records`,
-          tone: toneForPressure(accessRisks),
-          href: "/admin/access-review",
-          actionLabel: "Audit access",
-        },
-        {
-          id: "partner-readiness",
-          label: "Partner readiness",
-          value: partnerReadinessModel.title,
-          detail: partnerReadinessModel.description,
-          tone: partnerReadinessModel.severity === "clear" ? "clear" : "attention",
-          href: "/admin/partner-readiness",
-          actionLabel: "Open partner",
-        },
-      ],
+      items: signalItems,
     },
     sourceReferences,
   };
