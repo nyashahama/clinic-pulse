@@ -641,8 +641,9 @@ test("admin overview preview controls open detail pages", async ({ page }) => {
     page.getByRole("link", { name: "Open API contract" }).click(),
   ]);
   await expect(page.getByRole("heading", { name: "API contract cockpit" })).toBeVisible();
-  await expect(page.getByLabel("Endpoint rail")).toBeVisible();
-  await expect(page.getByText("Request contract").first()).toBeVisible();
+  await expect(page.getByLabel("API contract workspace")).toBeVisible();
+  await expect(page.getByLabel("Contract endpoint list")).toBeVisible();
+  await expect(page.getByLabel("Request parameters")).toBeVisible();
   await expect(page.getByText("Response contract").first()).toBeVisible();
 });
 
