@@ -20,10 +20,10 @@ describe("phaseOneDemoRouteChecklist", () => {
   it("covers every route in the operations walkthrough order", () => {
     expect(phaseOneDemoRouteChecklist.map((entry) => entry.path)).toEqual([
       "/",
-      "/book-demo",
-      "/book-demo/thanks",
-      "/demo",
-      "/demo/clinics/clinic-mabopane-station",
+      "/request-walkthrough",
+      "/request-walkthrough/thanks",
+      "/districts",
+      "/districts/clinics/clinic-mabopane-station",
       "/finder",
       "/field",
       "/admin",
@@ -44,7 +44,7 @@ describe("phaseOneDemoRouteChecklist", () => {
 
   it("keeps clinic detail proof aligned with the showcase capture route", () => {
     const clinicDetail = phaseOneDemoRouteChecklist.find((entry) =>
-      entry.path.startsWith("/demo/clinics/"),
+      entry.path.startsWith("/districts/clinics/"),
     );
     const showcaseCaptureSpec = readFileSync(
       path.join(process.cwd(), "tests", "showcase", "capture-assets.spec.ts"),
@@ -52,7 +52,7 @@ describe("phaseOneDemoRouteChecklist", () => {
     );
 
     expect(clinicDetail).toMatchObject({
-      path: "/demo/clinics/clinic-mabopane-station",
+      path: "/districts/clinics/clinic-mabopane-station",
       proofMoment:
         "Clinic detail shows Mabopane Station incident evidence, patient routing impact, report history, and escalation path.",
     });

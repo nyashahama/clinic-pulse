@@ -3,10 +3,10 @@ import Link from "next/link";
 
 const navigation = {
   product: [
-    { name: "District Console", href: "/demo" },
+    { name: "District Console", href: "/districts" },
     { name: "Field Reports", href: "/field" },
     { name: "Clinic Finder", href: "/finder" },
-    { name: "Book Walkthrough", href: "/book-demo" },
+    { name: "Book Walkthrough", href: "/request-walkthrough" },
   ],
   proof: [
     { name: "Operating Gap", href: "/#problem" },
