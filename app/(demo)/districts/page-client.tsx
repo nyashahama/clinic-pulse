@@ -216,7 +216,7 @@ export default function DistrictConsolePage({
   const statusFilterLabel = statusFilter.replaceAll("_", " ");
   const replayNonIdle = replayStatus !== "idle";
   const isReplayFilterBypassed = hasStatusFilter && replayStatus !== "idle";
-  const reportReturnSource = consoleHref === "/district" ? "district" : "demo";
+  const reportReturnSource = consoleHref === "/district" ? "district" : "districts";
 
   const openClinicDetail = (clinicId: string) => {
     router.push(`${consoleHref}/clinics/${encodeURIComponent(clinicId)}`);
