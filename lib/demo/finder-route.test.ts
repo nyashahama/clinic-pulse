@@ -20,7 +20,7 @@ const legacyDemoClinicDetailPage = path.join(
 const restrictedDemoClinicDetailPage = path.join(
   appDir,
   "(demo)",
-  "demo",
+  "districts",
   "clinics",
   "[clinicId]",
   "page.tsx",
@@ -28,7 +28,7 @@ const restrictedDemoClinicDetailPage = path.join(
 const restrictedDemoClinicDetailClient = path.join(
   appDir,
   "(demo)",
-  "demo",
+  "districts",
   "clinics",
   "[clinicId]",
   "page-client.tsx",
