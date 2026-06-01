@@ -101,8 +101,8 @@ const hiddenStandaloneHrefs = [
 
 const publicDashboardHrefs = [
   "/",
-  "/book-demo",
-  "/book-demo/thanks",
+  "/request-walkthrough",
+  "/request-walkthrough/thanks",
   "/finder",
   "/clinics",
   "/login",
@@ -753,7 +753,7 @@ test.describe("phase 1 role dashboard navigation", () => {
   test("demo showcase does not expose report review", async ({ page }) => {
     await signInAs(page, "district-manager@clinicpulse.local", "/district");
 
-    await page.goto("/demo");
+    await page.goto("/districts");
 
     await expect(
       page.locator('[data-role-dashboard="district_manager"]').filter({ visible: true }),
@@ -771,9 +771,9 @@ test.describe("phase 1 role dashboard navigation", () => {
         backLabel: "Back to district console",
       },
       {
-        path: "/demo",
-        urlPattern: /\/demo\/reports\/[^?]+\?from=demo$/,
-        backLabel: "Back to demo console",
+        path: "/districts",
+        urlPattern: /\/districts\/reports\/[^?]+\?from=districts$/,
+        backLabel: "Back to district console",
       },
     ] as const) {
       await page.goto(scenario.path);
