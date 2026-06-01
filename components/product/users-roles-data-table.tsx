@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import {
+  ArrowUpRightIcon,
   ArrowUpDownIcon,
   CheckIcon,
   ChevronLeftIcon,
@@ -13,6 +14,7 @@ import {
   EyeOffIcon,
   KeyRoundIcon,
   SearchIcon,
+  ShieldCheckIcon,
   XIcon,
 } from "lucide-react";
 
@@ -27,8 +29,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type {
+  AccessLifecycleSubject,
+  AccessPermissionResource,
+  AccessPermissionState,
+} from "@/lib/product/admin-access-lifecycle";
 import { buildAdminUserDetailHref } from "@/lib/product/admin-detail-routes";
 import { classifyAccessRisk } from "@/lib/product/admin-governance";
+import { cn } from "@/lib/utils";
 
 type AuthRole = "system_admin" | "org_admin" | "district_manager" | "reporter";
 
@@ -110,16 +118,28 @@ type SortDirection = "asc" | "desc";
 
 type UsersRolesDataTableProps = {
   users: UserRow[];
+  accessSubjects?: AccessLifecycleSubject[];
+  defaultSubjectId?: string | null;
+  evidenceLinks?: AccessEvidenceLink[];
   detailReturnSource?: string;
   onBulkDisable?: (userIds: number[]) => Promise<void>;
   onBulkEnable?: (userIds: number[]) => Promise<void>;
   onBulkRevokeSessions?: (userIds: number[]) => Promise<void>;
 };
 
+type AccessEvidenceLink = {
+  label: string;
+  href: string;
+  description: string;
+};
+
 const PAGE_SIZE = 10;
 
 export function UsersRolesDataTable({
   users,
+  accessSubjects = [],
+  defaultSubjectId = null,
+  evidenceLinks = [],
   detailReturnSource = "admin-users-roles",
   onBulkDisable,
   onBulkEnable,
@@ -130,6 +150,9 @@ export function UsersRolesDataTable({
   const searchParams = useSearchParams();
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkActionLoading, setBulkActionLoading] = useState<string | null>(null);
+  const [inspectedUserId, setInspectedUserId] = useState<number | null>(() =>
+    getInitialInspectedUserId(users, accessSubjects, defaultSubjectId),
+  );
 
   const search = searchParams.get("q") || "";
   const roleFilter = searchParams.get("role") || "all";
@@ -137,6 +160,10 @@ export function UsersRolesDataTable({
   const page = parseInt(searchParams.get("page") || "1", 10);
   const sortField = (searchParams.get("sort") as SortField) || "displayName";
   const sortDirection = (searchParams.get("dir") as SortDirection) || "asc";
+  const subjectsByUserId = useMemo(
+    () => new Map(accessSubjects.map((subject) => [subject.userId, subject])),
+    [accessSubjects],
+  );
 
   const createQueryString = useCallback(
     (updates: Record<string, string>) => {
@@ -207,6 +234,12 @@ export function UsersRolesDataTable({
   const totalPages = Math.ceil(filteredUsers.length / PAGE_SIZE);
   const safePage = Math.min(Math.max(1, page), totalPages || 1);
   const paginatedUsers = filteredUsers.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const inspectedUser =
+    filteredUsers.find((user) => user.userId === inspectedUserId) ??
+    filteredUsers[0] ??
+    null;
+  const inspectedSubject = inspectedUser ? subjectsByUserId.get(inspectedUser.userId) ?? null : null;
+  const activeInspectedUserId = inspectedUser?.userId ?? null;
 
   const allPageSelected =
     paginatedUsers.length > 0 && paginatedUsers.every((u) => selectedIds.has(u.userId));
@@ -268,12 +301,15 @@ export function UsersRolesDataTable({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.42fr)] xl:items-start">
+      <div className="min-w-0 space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-1 items-center gap-2 flex-wrap">
           <div className="relative flex-1 min-w-[200px] max-w-sm">
             <SearchIcon className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              type="search"
+              aria-label="Search users"
               placeholder="Search by name or email..."
               value={search}
               onChange={(e) => updateParams({ q: e.target.value, page: "1" })}
@@ -438,17 +474,43 @@ export function UsersRolesDataTable({
                   const risk = getRisk(user);
                   const detailHref = buildAdminUserDetailHref(user.userId, detailReturnSource);
                   const isSelected = selectedIds.has(user.userId);
+                  const isInspected = activeInspectedUserId === user.userId;
 
                   return (
                     <TableRow
                       key={user.userId}
-                      className={`hover:bg-bg-muted/60 ${isSelected ? "bg-accent/50" : ""}`}
+                      tabIndex={0}
+                      aria-selected={isInspected}
+                      data-state={isInspected ? "selected" : undefined}
+                      className={cn(
+                        "cursor-pointer hover:bg-bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                        isInspected &&
+                          "bg-sky-50/70 hover:bg-sky-50/80 dark:bg-sky-950/35 dark:hover:bg-sky-950/45",
+                        isSelected && "bg-accent/50",
+                      )}
+                      onClick={() => setInspectedUserId(user.userId)}
+                      onFocus={() => setInspectedUserId(user.userId)}
+                      onKeyDown={(event) => {
+                        if (event.target !== event.currentTarget) {
+                          return;
+                        }
+                        if (event.key !== "Enter" && event.key !== " ") {
+                          return;
+                        }
+                        event.preventDefault();
+                        setInspectedUserId(user.userId);
+                      }}
                     >
                       <TableCell className="px-3 py-3 w-10">
                         <input
                           type="checkbox"
+                          aria-label={`Select ${user.displayName}`}
                           checked={isSelected}
-                          onChange={() => toggleSelect(user.userId)}
+                          onChange={(event) => {
+                            event.stopPropagation();
+                            toggleSelect(user.userId);
+                          }}
+                          onClick={(event) => event.stopPropagation()}
                           className="size-4 rounded border-input accent-foreground"
                         />
                       </TableCell>
@@ -553,6 +615,245 @@ export function UsersRolesDataTable({
           </div>
         </div>
       )}
+      </div>
+      <PrincipalAccessPacket
+        user={inspectedUser}
+        subject={inspectedSubject}
+        evidenceLinks={evidenceLinks}
+        detailReturnSource={detailReturnSource}
+      />
     </div>
   );
+}
+
+function getInitialInspectedUserId(
+  users: UserRow[],
+  subjects: AccessLifecycleSubject[],
+  defaultSubjectId: string | null,
+) {
+  const defaultSubject = defaultSubjectId
+    ? subjects.find((subject) => subject.id === defaultSubjectId)
+    : null;
+
+  return defaultSubject?.userId ?? subjects[0]?.userId ?? users[0]?.userId ?? null;
+}
+
+function PrincipalAccessPacket({
+  user,
+  subject,
+  evidenceLinks,
+  detailReturnSource,
+}: {
+  user: UserRow | null;
+  subject: AccessLifecycleSubject | null;
+  evidenceLinks: AccessEvidenceLink[];
+  detailReturnSource: string;
+}) {
+  if (!user || !subject) {
+    return (
+      <aside
+        aria-label="Selected principal access packet"
+        className="rounded-lg border border-border-subtle bg-bg-default p-4 text-sm text-muted-foreground shadow-sm"
+      >
+        Select a user row to inspect its role, lifecycle state, and effective access evidence.
+      </aside>
+    );
+  }
+
+  const detailHref = buildAdminUserDetailHref(user.userId, detailReturnSource);
+  const reviewReasons = subject.reviewReasons.length
+    ? subject.reviewReasons
+    : ["No active review reasons"];
+
+  return (
+    <aside
+      aria-label="Selected principal access packet"
+      className="grid gap-3 rounded-lg border border-border-subtle bg-bg-default p-4 text-content-default shadow-sm"
+    >
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+            Selected principal
+          </p>
+          <h2 className="mt-1 text-base font-semibold text-foreground">
+            Principal access packet
+          </h2>
+        </div>
+        <span
+          className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-border-subtle bg-bg-muted/60 text-muted-foreground"
+          aria-hidden="true"
+        >
+          <ShieldCheckIcon className="size-4" />
+        </span>
+      </div>
+
+      <div className="rounded-lg border border-border-subtle bg-bg-muted/40 p-3">
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="break-words text-lg font-semibold leading-tight text-foreground">
+              {subject.displayName}
+            </h3>
+            <p className="mt-1 break-all text-xs text-muted-foreground">{subject.email}</p>
+          </div>
+          <AdminStatusBadge tone={subject.stateTone}>{subject.stateLabel}</AdminStatusBadge>
+        </div>
+
+        <dl className="mt-3 grid gap-2 text-sm">
+          <PacketFact label="Assigned role">{subject.roleLabel}</PacketFact>
+          <PacketFact label="Scope">{subject.scopeLabel}</PacketFact>
+          <PacketFact label="Review state">{subject.riskLabel}</PacketFact>
+        </dl>
+      </div>
+
+      <section aria-label="Effective access" className="grid gap-2">
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold text-foreground">Effective access</h3>
+          <div className="flex shrink-0 gap-1">
+            <AccessCountBadge state="allow" value={subject.allowedActions} />
+            <AccessCountBadge state="conditional" value={subject.conditionalActions} />
+            <AccessCountBadge state="forbid" value={subject.forbiddenActions} />
+          </div>
+        </div>
+
+        <div className="grid gap-2">
+          {subject.permissionResources.map((resource) => (
+            <PermissionResourceCard key={resource.id} resource={resource} />
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-border-subtle bg-bg-muted/35 p-3">
+        <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+          Review reasons
+        </p>
+        <ul className="mt-2 grid gap-1 text-sm text-foreground">
+          {reviewReasons.map((reason) => (
+            <li key={reason} className="break-words">
+              {reason}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {evidenceLinks.length ? (
+        <section className="rounded-lg border border-border-subtle bg-bg-muted/35 p-3">
+          <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+            Source evidence
+          </p>
+          <div className="mt-2 grid gap-2">
+            {evidenceLinks.map((link) => (
+              <Link
+                key={`${link.label}-${link.href}`}
+                href={link.href}
+                className="grid gap-1 rounded-md border border-border-subtle bg-bg-default p-2 text-sm transition hover:bg-bg-muted"
+              >
+                <span className="inline-flex items-center gap-1 font-medium text-foreground">
+                  {link.label}
+                  <ArrowUpRightIcon className="size-3.5" aria-hidden="true" />
+                </span>
+                <span className="break-words text-xs leading-5 text-muted-foreground">
+                  {link.description}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+        <Link
+          href={detailHref}
+          className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg bg-foreground px-3 py-2 text-sm font-medium text-background transition hover:bg-foreground/90"
+        >
+          Open user evidence
+          <ArrowUpRightIcon className="size-4" aria-hidden="true" />
+        </Link>
+        <Link
+          href="/admin/access-review#effective-access-workspace"
+          className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-border-subtle bg-bg-default px-3 py-2 text-sm font-medium text-foreground transition hover:bg-bg-muted"
+        >
+          Open access review
+          <ArrowUpRightIcon className="size-4" aria-hidden="true" />
+        </Link>
+      </div>
+    </aside>
+  );
+}
+
+function PacketFact({ label, children }: { label: string; children: string }) {
+  return (
+    <div className="grid gap-1 rounded-md bg-bg-default p-2">
+      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
+      <dd className="break-words font-medium text-foreground">{children}</dd>
+    </div>
+  );
+}
+
+function AccessCountBadge({
+  state,
+  value,
+}: {
+  state: AccessPermissionState;
+  value: number;
+}) {
+  const label: Record<AccessPermissionState, string> = {
+    allow: "Allow",
+    conditional: "Review",
+    forbid: "Deny",
+  };
+
+  return (
+    <span className="rounded-md border border-border-subtle bg-bg-default px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
+      {label[state]} {value}
+    </span>
+  );
+}
+
+function PermissionResourceCard({ resource }: { resource: AccessPermissionResource }) {
+  return (
+    <article className="rounded-lg border border-border-subtle bg-bg-muted/25 p-3">
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="break-words text-sm font-semibold text-foreground">{resource.label}</p>
+          <p className="mt-1 break-words text-xs leading-5 text-muted-foreground">
+            {resource.description}
+          </p>
+        </div>
+        <span className="rounded-md bg-bg-default px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
+          {resource.allowedCount}/{resource.actions.length}
+        </span>
+      </div>
+
+      <div className="mt-3 grid gap-2">
+        {resource.actions.map((action) => (
+          <div
+            key={action.id}
+            className="grid gap-1 rounded-md border border-border-subtle bg-bg-default p-2"
+          >
+            <div className="flex min-w-0 items-center justify-between gap-2">
+              <p className="break-words text-sm font-medium text-foreground">{action.label}</p>
+              <PermissionStateBadge state={action.state} />
+            </div>
+            <p className="break-words text-xs leading-5 text-muted-foreground">
+              {action.reviewNote}
+            </p>
+            <p className="break-words text-xs leading-5 text-muted-foreground">
+              <span className="font-medium text-foreground">Source: </span>
+              {action.grantedBy.join(", ")}
+            </p>
+          </div>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+function PermissionStateBadge({ state }: { state: AccessPermissionState }) {
+  const badge: Record<AccessPermissionState, { label: string; tone: AdminTone }> = {
+    allow: { label: "Allowed", tone: "clear" },
+    conditional: { label: "Review", tone: "attention" },
+    forbid: { label: "Denied", tone: "blocked" },
+  };
+
+  return <AdminStatusBadge tone={badge[state].tone}>{badge[state].label}</AdminStatusBadge>;
 }
