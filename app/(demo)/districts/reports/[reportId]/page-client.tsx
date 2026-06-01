@@ -34,7 +34,7 @@ import {
 } from "@/lib/product/evidence-command";
 
 type ReportDetailPageClientProps = {
-  consoleHref?: "/demo" | "/district";
+  consoleHref?: "/districts" | "/district";
 };
 
 const reportStreamCopy = {
@@ -118,7 +118,7 @@ function formatDuration(startValue: string, endValue: string) {
   return remainder === 0 ? `${hours}h` : `${hours}h ${remainder}m`;
 }
 
-function getReturnTarget(consoleHref: "/demo" | "/district", from?: string | null) {
+function getReturnTarget(consoleHref: "/districts" | "/district", from?: string | null) {
   if (consoleHref === "/district" && from === "district-severity-queue") {
     return {
       href: "/district/severity-queue",
@@ -135,7 +135,7 @@ function getReturnTarget(consoleHref: "/demo" | "/district", from?: string | nul
 }
 
 export default function ReportDetailPageClient({
-  consoleHref = "/demo",
+  consoleHref = "/districts",
 }: ReportDetailPageClientProps) {
   const { state } = useDemoStore();
   const params = useParams<{ reportId?: string | string[] }>();

@@ -142,7 +142,7 @@ function buildClinicDataTrustState(
 }
 
 export default function DistrictConsolePage({
-  consoleHref = "/demo",
+  consoleHref = "/districts",
   pendingReports,
   session,
   showReportReview = false,

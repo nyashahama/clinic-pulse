@@ -1,7 +1,7 @@
 import { connection } from "next/server";
 
 import { requireDashboardWorkflowAccess } from "../../../workflow-guard";
-import ClinicDetailPageClient from "../../../demo/clinics/[clinicId]/page-client";
+import ClinicDetailPageClient from "../../../districts/clinics/[clinicId]/page-client";
 
 export default async function DistrictClinicDetailPage() {
   await connection();
