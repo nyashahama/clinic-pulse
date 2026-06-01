@@ -344,7 +344,13 @@ export default async function Page() {
             Search, filter, sort, and open user evidence without leaving the lifecycle surface.
           </p>
         </div>
-        <UsersTableClient users={users} detailReturnSource={returnSource} />
+        <UsersTableClient
+          users={users}
+          accessSubjects={model.subjects}
+          defaultSubjectId={model.defaultSubjectId}
+          evidenceLinks={model.evidenceLinks}
+          detailReturnSource={returnSource}
+        />
       </section>
     </div>
   );
