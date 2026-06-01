@@ -317,7 +317,8 @@ function IntegrationEvidenceRows({
               aria-pressed={isSelected}
               className={cn(
                 "grid min-w-0 gap-3 rounded-lg border border-border-subtle bg-bg-default p-3 text-left transition hover:bg-bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                isSelected && "border-sky-200 bg-sky-50/70",
+                isSelected &&
+                  "border-sky-200 bg-sky-50/70 dark:border-sky-400/35 dark:bg-sky-400/10",
               )}
               onClick={() => onSelectRow(row.id)}
             >

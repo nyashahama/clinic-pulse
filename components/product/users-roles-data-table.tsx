@@ -150,6 +150,9 @@ export function UsersRolesDataTable({
   const searchParams = useSearchParams();
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkActionLoading, setBulkActionLoading] = useState<string | null>(null);
+  const [disabledOverrides, setDisabledOverrides] = useState<Map<number, string | null>>(
+    new Map(),
+  );
   const [inspectedUserId, setInspectedUserId] = useState<number | null>(() =>
     getInitialInspectedUserId(users, accessSubjects, defaultSubjectId),
   );
@@ -163,6 +166,15 @@ export function UsersRolesDataTable({
   const subjectsByUserId = useMemo(
     () => new Map(accessSubjects.map((subject) => [subject.userId, subject])),
     [accessSubjects],
+  );
+  const lifecycleUsers = useMemo(
+    () =>
+      users.map((user) =>
+        disabledOverrides.has(user.userId)
+          ? { ...user, disabledAt: disabledOverrides.get(user.userId) }
+          : user,
+      ),
+    [disabledOverrides, users],
   );
 
   const createQueryString = useCallback(
@@ -188,7 +200,7 @@ export function UsersRolesDataTable({
   );
 
   const filteredUsers = useMemo(() => {
-    let result = users;
+    let result = lifecycleUsers;
 
     if (search) {
       const lowerSearch = search.toLowerCase();
@@ -229,7 +241,7 @@ export function UsersRolesDataTable({
     });
 
     return result;
-  }, [users, search, roleFilter, statusFilter, sortField, sortDirection]);
+  }, [lifecycleUsers, search, roleFilter, statusFilter, sortField, sortDirection]);
 
   const totalPages = Math.ceil(filteredUsers.length / PAGE_SIZE);
   const safePage = Math.min(Math.max(1, page), totalPages || 1);
@@ -285,7 +297,18 @@ export function UsersRolesDataTable({
     setBulkActionLoading(action);
     try {
       await handler(Array.from(selectedIds));
+      if (action === "disable" || action === "enable") {
+        const nextDisabledAt = action === "disable" ? new Date().toISOString() : null;
+        setDisabledOverrides((current) => {
+          const next = new Map(current);
+          for (const userId of selectedIds) {
+            next.set(userId, nextDisabledAt);
+          }
+          return next;
+        });
+      }
       clearSelection();
+      router.refresh();
     } finally {
       setBulkActionLoading(null);
     }
@@ -661,8 +684,14 @@ function PrincipalAccessPacket({
   }
 
   const detailHref = buildAdminUserDetailHref(user.userId, detailReturnSource);
-  const reviewReasons = subject.reviewReasons.length
-    ? subject.reviewReasons
+  const disabled = Boolean(user.disabledAt);
+  const stateLabel = disabled ? "Disabled" : subject.stateLabel;
+  const stateTone = disabled ? "attention" : subject.stateTone;
+  const baseReviewReasons = disabled
+    ? Array.from(new Set(["Disabled account", ...subject.reviewReasons]))
+    : subject.reviewReasons;
+  const reviewReasons = baseReviewReasons.length
+    ? baseReviewReasons
     : ["No active review reasons"];
 
   return (
@@ -695,7 +724,7 @@ function PrincipalAccessPacket({
             </h3>
             <p className="mt-1 break-all text-xs text-muted-foreground">{subject.email}</p>
           </div>
-          <AdminStatusBadge tone={subject.stateTone}>{subject.stateLabel}</AdminStatusBadge>
+          <AdminStatusBadge tone={stateTone}>{stateLabel}</AdminStatusBadge>
         </div>
 
         <dl className="mt-3 grid gap-2 text-sm">
