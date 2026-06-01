@@ -84,7 +84,7 @@ export function CreatePilotUserForm({ createUserAction }: CreatePilotUserFormPro
         <form
           ref={formRef}
           action={handleSubmit}
-          className="grid gap-3 rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm md:grid-cols-[minmax(12rem,1.2fr)_minmax(12rem,1fr)_minmax(10rem,0.8fr)_minmax(8rem,0.6fr)_minmax(10rem,0.8fr)_auto]"
+          className="grid gap-3 rounded-lg border border-border-subtle bg-bg-default p-4 shadow-sm md:grid-cols-2 xl:grid-cols-3"
         >
           <div className="grid gap-1">
             <FieldLabel htmlFor="pilot-email">Work email</FieldLabel>
@@ -110,7 +110,7 @@ export function CreatePilotUserForm({ createUserAction }: CreatePilotUserFormPro
             <FieldLabel htmlFor="pilot-district">District</FieldLabel>
             <Input id="pilot-district" name="district" autoComplete="off" placeholder="Tshwane" />
           </div>
-          <div className="flex items-end">
+          <div className="flex items-end md:col-span-2 xl:col-span-1">
             <Button type="submit" size="sm" disabled={pending}>
               <UserPlusIcon className="size-4" />
               <span>{pending ? "Creating..." : "Create account"}</span>

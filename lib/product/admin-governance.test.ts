@@ -537,6 +537,9 @@ it("uses an operations workspace for integration evidence", () => {
   expect(componentSource).toContain('aria-label="Integration evidence cards"');
   expect(componentSource).toContain('aria-label="Integration check evidence"');
   expect(componentSource).toContain('aria-label="Selected integration evidence"');
+  expect(componentSource).toContain(
+    "border-sky-200 bg-sky-50/70 dark:border-sky-400/35 dark:bg-sky-400/10",
+  );
   expect(componentSource).toContain("Clear filters");
   expect(componentSource).toContain("Open source evidence");
   expect(componentSource).toContain("onSelectRow(row.id)");

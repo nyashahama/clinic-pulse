@@ -358,6 +358,71 @@ test("users and roles shows lifecycle controls and role assignment map", async (
   await expectResearchRailHidden(page);
 });
 
+test("users and roles directory drives the selected principal access packet", async ({ page }) => {
+  await signIn(page, "org-admin@clinicpulse.local");
+  await page.goto("/admin/users-roles");
+
+  const packet = page.getByLabel("Selected principal access packet");
+  await expect(packet).toBeVisible();
+  await expect(packet.getByRole("heading", { name: "Principal access packet" })).toBeVisible();
+  await expect(packet).toContainText("Assigned role");
+  await expect(packet).toContainText("Effective access");
+  await expect(packet).toContainText("Source evidence");
+  await expect(packet).toContainText("Source:");
+  await expect(packet.getByRole("link", { name: /Audit evidence/i })).toHaveAttribute(
+    "href",
+    "/admin/audit-evidence",
+  );
+
+  await page.getByRole("searchbox", { name: "Search users" }).fill("Organisation Admin");
+  const organisationAdminRow = page.getByRole("row", { name: /Organisation Admin/i }).first();
+  await expect(organisationAdminRow).toBeVisible();
+  await organisationAdminRow.click();
+
+  await expect(packet.getByRole("heading", { name: "Organisation Admin" })).toBeVisible();
+  await expect(packet).toContainText("Platform administration");
+  await expect(
+    packet.getByRole("link", { name: "Open user evidence" }),
+  ).toHaveAttribute("href", /\/admin\/users-roles\/\d+\?from=admin-users-roles$/);
+
+  await page.getByRole("searchbox", { name: "Search users" }).fill("no-visible-principal");
+  await expect(page.getByText("No users match your filters. Try adjusting your search.")).toBeVisible();
+  await expect(packet).toContainText(
+    "Select a user row to inspect its role, lifecycle state, and effective access evidence.",
+  );
+});
+
+test("users and roles bulk disable refreshes the selected principal packet", async ({ page }) => {
+  await signIn(page, "org-admin@clinicpulse.local");
+  await page.goto("/admin/users-roles");
+
+  const pilotEmail = `bulk-disable-${Date.now()}@example.test`;
+  const pilotName = `Bulk Disable ${Date.now()}`;
+
+  await page.getByRole("button", { name: "Create pilot user" }).click();
+  await page.getByLabel("Work email").fill(pilotEmail);
+  await page.getByLabel("Display name").fill(pilotName);
+  await page.getByLabel("Role", { exact: true }).selectOption("reporter");
+  await page.getByLabel("Organisation ID").fill("1");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page.getByRole("status")).toContainText(`User ${pilotName} created.`);
+
+  await page.getByRole("searchbox", { name: "Search users" }).fill(pilotEmail);
+  const pilotRow = page.getByRole("row", { name: new RegExp(pilotEmail, "i") }).first();
+  await expect(pilotRow).toBeVisible();
+  await expect(pilotRow).toContainText("Active");
+
+  await pilotRow.click();
+  await expect(page.getByLabel("Selected principal access packet")).toContainText(pilotName);
+  await pilotRow.getByLabel(`Select ${pilotName}`).check();
+  await expect(page.getByText("1 user selected")).toBeVisible();
+  await page.getByRole("button", { name: "Disable" }).click();
+
+  await expect(page.getByText("1 user selected")).toHaveCount(0);
+  await expect(pilotRow).toContainText("Disabled");
+  await expect(page.getByLabel("Selected principal access packet")).toContainText("Disabled");
+});
+
 test("reporting coverage clinic names open operational detail", async ({ page }) => {
   await signIn(page, "org-admin@clinicpulse.local");
   await page.goto("/admin/reporting-coverage");
