@@ -139,7 +139,7 @@ export function Hero() {
           className="mt-8 flex flex-wrap items-center justify-center gap-2.5"
         >
           <ButtonLink href="/request-walkthrough" variant="primary">
-            Request Demo
+            Request walkthrough
             <svg
               className="ml-1 size-3.5"
               fill="none"

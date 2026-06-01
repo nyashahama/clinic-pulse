@@ -129,7 +129,7 @@ function getReturnTarget(consoleHref: "/districts" | "/district", from?: string 
 
   return {
     href: `${consoleHref}#clinic-evidence`,
-    label: consoleHref === "/district" ? "Back to district console" : "Back to demo console",
+    label: "Back to district console",
     clinicFrom: "report-detail",
   };
 }
@@ -182,7 +182,7 @@ export default function ReportDetailPageClient({
               <p className="font-medium text-content-emphasis">Report not found</p>
               <p className="mt-1 max-w-xl">
                 Report id {reportId ? `"${reportId}"` : "was not provided"} is not present in
-                the current demo evidence stream.
+                the current evidence stream.
               </p>
             </div>
           </div>
