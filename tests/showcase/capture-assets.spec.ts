@@ -66,25 +66,25 @@ async function captureScreenshots(page: Page) {
   await expectNoStagedProductLanguage(page);
   await capture(page, "landing-desktop.png");
 
-  await gotoStable(page, "/book-demo");
+  await gotoStable(page, "/request-walkthrough");
   await expect(
     page.getByRole("dialog", { name: "Book a Clinic Pulse walkthrough" }),
   ).toBeVisible();
   await expectNoStagedProductLanguage(page);
   await capture(page, "booking-flow-desktop.png");
 
-  await gotoStable(page, "/book-demo/thanks?name=Smoke&organization=E2E%20District");
+  await gotoStable(page, "/request-walkthrough/thanks?name=Smoke&organization=E2E%20District");
   await expect(page.getByRole("heading", { name: "Thanks, Smoke" })).toBeVisible();
   await expectNoStagedProductLanguage(page);
   await capture(page, "booking-thanks-desktop.png");
 
   await signIn(page);
-  await gotoStable(page, "/demo");
+  await gotoStable(page, "/districts");
   await expect(page.getByRole("heading", { name: "Clinic table" })).toBeVisible();
   await expectNoStagedProductLanguage(page);
   await capture(page, "district-console-desktop.png");
 
-  await gotoStable(page, "/demo/clinics/clinic-mabopane-station");
+  await gotoStable(page, "/districts/clinics/clinic-mabopane-station");
   await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Mabopane Station Clinic" })).toBeVisible();
   await expectNoStagedProductLanguage(page);
@@ -126,11 +126,11 @@ async function recordWalkthrough(browser: Browser, baseURL: string | undefined) 
   await page.waitForTimeout(900);
 
   await signIn(page);
-  await gotoStable(page, "/demo");
+  await gotoStable(page, "/districts");
   await expectNoStagedProductLanguage(page);
   await page.waitForTimeout(900);
 
-  await gotoStable(page, "/demo/clinics/clinic-mabopane-station");
+  await gotoStable(page, "/districts/clinics/clinic-mabopane-station");
   await expectNoStagedProductLanguage(page);
   await page.waitForTimeout(900);
 

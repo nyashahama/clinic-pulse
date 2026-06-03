@@ -18,7 +18,7 @@ const baseClinic = {
   operatingHours: "08:00-16:00",
   imageKey: "clinic-front-01",
   image: {
-    src: "/demo/clinics/clinic-front-01.jpg",
+    src: "/districts/clinics/clinic-front-01.jpg",
     alt: "Clinic entrance.",
     caption: "Clinic frontage.",
     credit: "ClinicPulse demo asset",

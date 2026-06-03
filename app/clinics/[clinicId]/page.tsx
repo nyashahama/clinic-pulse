@@ -166,7 +166,7 @@ export default async function PublicClinicDetailPage({ params }: PublicClinicDet
                 Back to finder
               </Link>
               <Link
-                href="/book-demo"
+                href="/request-walkthrough"
                 className={buttonVariants({ size: "sm", variant: "outline" })}
               >
                 <CalendarClock className="size-3.5" />

@@ -682,11 +682,11 @@ describe("product surface primitives", () => {
           "report-demo-1": "Operational to degraded",
         },
         onSelectClinic: vi.fn(),
-        getReportDetailHref: (report) => `/demo/reports/${report.id}?from=demo`,
+        getReportDetailHref: (report) => `/districts/reports/${report.id}?from=districts`,
       }),
     );
 
-    expect(html).toContain('href="/demo/reports/report-demo-1?from=demo"');
+    expect(html).toContain('href="/districts/reports/report-demo-1?from=districts"');
     expect(html).toContain("Open report detail");
     expect(html).toContain("Mamelodi East Clinic");
   });

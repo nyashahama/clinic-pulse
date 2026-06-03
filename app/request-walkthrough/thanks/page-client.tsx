@@ -44,7 +44,7 @@ export default function BookDemoThanksPage() {
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <Link href="/demo" className={buttonVariants({ size: "sm", variant: "default" })}>
+          <Link href="/districts" className={buttonVariants({ size: "sm", variant: "default" })}>
             <Sparkles className="size-3.5" />
             Continue to district console
           </Link>

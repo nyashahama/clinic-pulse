@@ -49,8 +49,8 @@ export const HIDDEN_DASHBOARD_PRIMARY_NAV_ROUTES = [
 
 export const PUBLIC_DASHBOARD_NAV_EXCLUSIONS = [
   "/",
-  "/book-demo",
-  "/book-demo/thanks",
+  "/request-walkthrough",
+  "/request-walkthrough/thanks",
   "/finder",
   "/clinics",
   "/login",

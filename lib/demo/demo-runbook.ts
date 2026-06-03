@@ -13,22 +13,22 @@ export const phaseOneDemoRouteChecklist: DemoRouteChecklistEntry[] = [
     viewports: ["desktop", "mobile"],
   },
   {
-    path: "/book-demo",
+    path: "/request-walkthrough",
     proofMoment: "Booking flow captures an operations walkthrough request.",
     viewports: ["desktop", "mobile"],
   },
   {
-    path: "/book-demo/thanks",
+    path: "/request-walkthrough/thanks",
     proofMoment: "Confirmation page gives clear next navigation into district, finder, field, and admin work.",
     viewports: ["desktop", "mobile"],
   },
   {
-    path: "/demo",
+    path: "/districts",
     proofMoment: "District command center opens the Mabopane Station incident from severity queue to action.",
     viewports: ["desktop", "mobile"],
   },
   {
-    path: "/demo/clinics/clinic-mabopane-station",
+    path: "/districts/clinics/clinic-mabopane-station",
     proofMoment:
       "Clinic detail shows Mabopane Station incident evidence, patient routing impact, report history, and escalation path.",
     viewports: ["desktop", "mobile"],

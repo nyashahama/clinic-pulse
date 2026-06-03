@@ -20,8 +20,8 @@ describe("pilot route policy", () => {
   });
 
   it("allows demo-only routes to stay marked as sandbox", () => {
-    expect(pilotRoutePolicyFor("/demo/interventions")).toEqual({
-      route: "/demo/interventions",
+    expect(pilotRoutePolicyFor("/districts/interventions")).toEqual({
+      route: "/districts/interventions",
       pilotCritical: false,
       allowedOutcomes: ["demo_sandbox", "hide"],
     });

@@ -62,7 +62,7 @@ export function DemoLeadTable({ leads, onLeadStatusChange }: DemoLeadTableProps)
         <SectionHeader
           eyebrow="Operations pipeline"
           title="Operations leads"
-          description="No booking submissions yet. Share `/book-demo` and leads will appear here live."
+          description="No booking submissions yet. Share `/request-walkthrough` and leads will appear here live."
         />
 
         <div className="mt-4 rounded-lg border border-dashed border-border-subtle bg-bg-subtle px-4 py-8 text-sm text-content-subtle">
@@ -78,7 +78,7 @@ export function DemoLeadTable({ leads, onLeadStatusChange }: DemoLeadTableProps)
         <SectionHeader
           eyebrow="Operations pipeline"
           title="Operations leads"
-          description="Inbound booking interest from /book-demo with quick status controls."
+          description="Inbound booking interest from /request-walkthrough with quick status controls."
         />
       </div>
 

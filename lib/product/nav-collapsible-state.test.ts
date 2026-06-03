@@ -7,7 +7,7 @@ describe("resolveNavCollapsibleOpen", () => {
     expect(
       resolveNavCollapsibleOpen({
         active: true,
-        activeSignature: "/demo",
+        activeSignature: "/districts",
         closedActiveSignature: null,
         userOpen: false,
       }),
@@ -37,8 +37,8 @@ describe("resolveNavCollapsibleOpen", () => {
     expect(
       resolveNavCollapsibleOpen({
         active: true,
-        activeSignature: "/demo",
-        closedActiveSignature: "/demo",
+        activeSignature: "/districts",
+        closedActiveSignature: "/districts",
         userOpen: false,
       }),
     ).toBe(false);
@@ -48,8 +48,8 @@ describe("resolveNavCollapsibleOpen", () => {
     expect(
       resolveNavCollapsibleOpen({
         active: true,
-        activeSignature: "/demo/severity-queue",
-        closedActiveSignature: "/demo",
+        activeSignature: "/districts/severity-queue",
+        closedActiveSignature: "/districts",
         userOpen: false,
       }),
     ).toBe(true);

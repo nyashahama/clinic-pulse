@@ -16,8 +16,8 @@ describe("isDashboardNavUrlActive", () => {
   it("marks a subpath active for its base route", () => {
     expect(
       isDashboardNavUrlActive(
-        "/demo",
-        "/demo/clinics/clinic-mabopane-station",
+        "/districts",
+        "/districts/clinics/clinic-mabopane-station",
         searchParams(),
       ),
     ).toBe(true);
@@ -26,22 +26,22 @@ describe("isDashboardNavUrlActive", () => {
   it("requires exact query matches for query-specific URLs", () => {
     expect(
       isDashboardNavUrlActive(
-        "/demo?status=non_functional",
-        "/demo",
+        "/districts?status=non_functional",
+        "/districts",
         searchParams("status=non_functional"),
       ),
     ).toBe(true);
     expect(
       isDashboardNavUrlActive(
-        "/demo?status=non_functional",
-        "/demo",
+        "/districts?status=non_functional",
+        "/districts",
         searchParams("status=functional"),
       ),
     ).toBe(false);
     expect(
       isDashboardNavUrlActive(
-        "/demo?status=non_functional",
-        "/demo/clinics/clinic-mabopane-station",
+        "/districts?status=non_functional",
+        "/districts/clinics/clinic-mabopane-station",
         searchParams("status=non_functional"),
       ),
     ).toBe(false);
@@ -59,9 +59,9 @@ describe("isDashboardNavUrlActive", () => {
     ).toBe(false);
   });
 
-  it("does not mark same-page demo hash anchors active from the base path", () => {
+  it("does not mark same-page district hash anchors active from the base path", () => {
     expect(
-      isDashboardNavUrlActive("/demo#severity-queue", "/demo", searchParams()),
+      isDashboardNavUrlActive("/districts#severity-queue", "/districts", searchParams()),
     ).toBe(false);
   });
 });

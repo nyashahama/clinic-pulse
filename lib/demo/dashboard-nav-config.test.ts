@@ -24,8 +24,8 @@ const expectedHiddenDashboardPrimaryNavRoutes = [
 
 const expectedPublicDashboardNavExclusions = [
   "/",
-  "/book-demo",
-  "/book-demo/thanks",
+  "/request-walkthrough",
+  "/request-walkthrough/thanks",
   "/finder",
   "/clinics",
   "/login",

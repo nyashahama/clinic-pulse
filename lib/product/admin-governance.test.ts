@@ -318,7 +318,7 @@ it("uses a scenario operations workspace instead of generic action cards", () =>
 });
 
 it("uses admin clinic detail return sources for back navigation", () => {
-  const source = readFileSync("app/(demo)/demo/clinics/[clinicId]/page-client.tsx", "utf8");
+  const source = readFileSync("app/(demo)/districts/clinics/[clinicId]/page-client.tsx", "utf8");
 
   expect(source).toContain("useSearchParams");
   expect(source).toContain('"admin-data-ingestion"');
@@ -375,7 +375,7 @@ it("links stakeholder activity rows to lead detail", () => {
 
 it("uses operational detail layouts for report and lead details", () => {
   const adminReportDetail = readFileSync("app/(demo)/admin/reports/[reportId]/page.tsx", "utf8");
-  const demoReportDetail = readFileSync("app/(demo)/demo/reports/[reportId]/page-client.tsx", "utf8");
+  const demoReportDetail = readFileSync("app/(demo)/districts/reports/[reportId]/page-client.tsx", "utf8");
   const leadDetail = readFileSync("app/(demo)/admin/leads/[leadId]/page-client.tsx", "utf8");
 
   for (const source of [adminReportDetail, demoReportDetail, leadDetail]) {

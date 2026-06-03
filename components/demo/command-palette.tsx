@@ -31,7 +31,7 @@ type CommandPaletteProps = {
 };
 
 export function CommandPalette({
-  districtConsoleHref = "/demo",
+  districtConsoleHref = "/districts",
   open,
   onOpenChange,
 }: CommandPaletteProps) {

@@ -123,7 +123,7 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
     });
 
     router.push(
-      `/book-demo/thanks?name=${encodeURIComponent(lead.name)}&organization=${encodeURIComponent(
+      `/request-walkthrough/thanks?name=${encodeURIComponent(lead.name)}&organization=${encodeURIComponent(
         lead.organization,
       )}`,
     );

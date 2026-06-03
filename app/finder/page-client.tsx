@@ -36,12 +36,12 @@ export default function FinderPageClient({ clinics }: FinderPageClientProps) {
           />
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <Link href="/demo" className={buttonVariants({ size: "sm", variant: "outline" })}>
+            <Link href="/districts" className={buttonVariants({ size: "sm", variant: "outline" })}>
               <Compass className="size-3.5" />
               Return to console
             </Link>
 
-            <Link href="/book-demo" className={buttonVariants({ size: "sm", variant: "outline" })}>
+            <Link href="/request-walkthrough" className={buttonVariants({ size: "sm", variant: "outline" })}>
               <CalendarClock className="size-3.5" />
               Request operations walkthrough
             </Link>

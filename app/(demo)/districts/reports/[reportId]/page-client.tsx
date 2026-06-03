@@ -34,7 +34,7 @@ import {
 } from "@/lib/product/evidence-command";
 
 type ReportDetailPageClientProps = {
-  consoleHref?: "/demo" | "/district";
+  consoleHref?: "/districts" | "/district";
 };
 
 const reportStreamCopy = {
@@ -118,7 +118,7 @@ function formatDuration(startValue: string, endValue: string) {
   return remainder === 0 ? `${hours}h` : `${hours}h ${remainder}m`;
 }
 
-function getReturnTarget(consoleHref: "/demo" | "/district", from?: string | null) {
+function getReturnTarget(consoleHref: "/districts" | "/district", from?: string | null) {
   if (consoleHref === "/district" && from === "district-severity-queue") {
     return {
       href: "/district/severity-queue",
@@ -129,13 +129,13 @@ function getReturnTarget(consoleHref: "/demo" | "/district", from?: string | nul
 
   return {
     href: `${consoleHref}#clinic-evidence`,
-    label: consoleHref === "/district" ? "Back to district console" : "Back to demo console",
+    label: "Back to district console",
     clinicFrom: "report-detail",
   };
 }
 
 export default function ReportDetailPageClient({
-  consoleHref = "/demo",
+  consoleHref = "/districts",
 }: ReportDetailPageClientProps) {
   const { state } = useDemoStore();
   const params = useParams<{ reportId?: string | string[] }>();
@@ -182,7 +182,7 @@ export default function ReportDetailPageClient({
               <p className="font-medium text-content-emphasis">Report not found</p>
               <p className="mt-1 max-w-xl">
                 Report id {reportId ? `"${reportId}"` : "was not provided"} is not present in
-                the current demo evidence stream.
+                the current evidence stream.
               </p>
             </div>
           </div>
