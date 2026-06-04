@@ -136,7 +136,7 @@ test.describe("phase-one operations route checklist", () => {
 
     await page.goto("/admin/demo-controls");
     await expectNoStagedProductLanguage(page);
-    const replayIncident = page.getByRole("button", { name: "Replay incident" });
+    const replayIncident = page.getByRole("button", { name: "Replay incident" }).first();
     await expect(replayIncident).toBeVisible();
     await replayIncident.click();
     await expect(page.getByRole("heading", { name: "Incident replay" })).toBeVisible();
