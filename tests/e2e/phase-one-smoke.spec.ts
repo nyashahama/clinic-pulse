@@ -31,8 +31,8 @@ test.describe("phase-one operations route checklist", () => {
       "/",
       "/request-walkthrough",
       "/request-walkthrough/thanks",
-      "/district",
-      "/district/clinics/clinic-mabopane-station",
+      "/districts",
+      "/districts/clinics/clinic-mabopane-station",
       "/finder",
       "/field",
       "/admin",
@@ -91,7 +91,7 @@ test.describe("phase-one operations route checklist", () => {
     });
 
     await signIn(page);
-    await page.goto("/district");
+    await page.goto("/districts");
     await expectNoStagedProductLanguage(page);
 
     await expect(
@@ -108,7 +108,7 @@ test.describe("phase-one operations route checklist", () => {
     await expect(page.getByRole("heading", { name: "Clinic table" })).toBeVisible();
     await expect(page.getByText("Report stream")).toBeVisible();
 
-    await page.goto("/district/clinics/clinic-mabopane-station");
+    await page.goto("/districts/clinics/clinic-mabopane-station");
     await expectNoStagedProductLanguage(page);
     await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Mabopane Station Clinic" })).toBeVisible();
@@ -141,7 +141,7 @@ test.describe("phase-one operations route checklist", () => {
       page.getByRole("heading", { name: "Scenario rehearsal cockpit" }),
     ).toBeVisible();
 
-    await page.goto("/district");
+    await page.goto("/districts");
     await expectNoStagedProductLanguage(page);
     const supportingOperations = page
       .getByText("Supporting operations", { exact: true })

@@ -79,12 +79,12 @@ async function captureScreenshots(page: Page) {
   await capture(page, "booking-thanks-desktop.png");
 
   await signIn(page);
-  await gotoStable(page, "/district");
+  await gotoStable(page, "/districts");
   await expect(page.getByRole("heading", { name: "Clinic table" })).toBeVisible();
   await expectNoStagedProductLanguage(page);
   await capture(page, "district-console-desktop.png");
 
-  await gotoStable(page, "/district/clinics/clinic-mabopane-station");
+  await gotoStable(page, "/districts/clinics/clinic-mabopane-station");
   await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Mabopane Station Clinic" })).toBeVisible();
   await expectNoStagedProductLanguage(page);
@@ -126,11 +126,11 @@ async function recordWalkthrough(browser: Browser, baseURL: string | undefined) 
   await page.waitForTimeout(900);
 
   await signIn(page);
-  await gotoStable(page, "/district");
+  await gotoStable(page, "/districts");
   await expectNoStagedProductLanguage(page);
   await page.waitForTimeout(900);
 
-  await gotoStable(page, "/district/clinics/clinic-mabopane-station");
+  await gotoStable(page, "/districts/clinics/clinic-mabopane-station");
   await expectNoStagedProductLanguage(page);
   await page.waitForTimeout(900);
 

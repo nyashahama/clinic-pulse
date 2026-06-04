@@ -15,9 +15,9 @@ The local seed creates these seeded test users:
 
 | Role | Email | Password | Access |
 | --- | --- | --- | --- |
-| System admin | `system-admin@clinicpulse.local` | `ClinicPulseDemo123!` | `/field`, `/district`, `/admin` |
-| Organisation admin | `org-admin@clinicpulse.local` | `ClinicPulseDemo123!` | `/field`, `/district`, `/admin` |
-| District manager | `district-manager@clinicpulse.local` | `ClinicPulseDemo123!` | `/field`, `/district` |
+| System admin | `system-admin@clinicpulse.local` | `ClinicPulseDemo123!` | `/field`, `/districts`, `/admin` |
+| Organisation admin | `org-admin@clinicpulse.local` | `ClinicPulseDemo123!` | `/field`, `/districts`, `/admin` |
+| District manager | `district-manager@clinicpulse.local` | `ClinicPulseDemo123!` | `/field`, `/districts` |
 | Reporter | `reporter@clinicpulse.local` | `ClinicPulseDemo123!` | `/field` |
 
 ## Run Locally In 5 Minutes
@@ -73,8 +73,8 @@ Open `http://localhost:3000`. The review API runs on `http://localhost:18080` an
 | --- | --- | --- |
 | Landing and booking entry | `/` | Product positioning, operating gap, workflows, and booking entry |
 | Booking flow | `/request-walkthrough` and `/request-walkthrough/thanks` | Operations walkthrough request flow and handoff into district routes |
-| District console | `/district` | Clinic status map, incidents, rerouting context, offline sync, and scenario controls |
-| Clinic evidence | `/district/clinics/clinic-mabopane-station` | Mabopane Station incident evidence, patient routing impact, reports, and escalation context |
+| District console | `/districts` | Clinic status map, incidents, rerouting context, offline sync, and scenario controls |
+| Clinic evidence | `/districts/clinics/clinic-mabopane-station` | Mabopane Station incident evidence, patient routing impact, reports, and escalation context |
 | Public finder | `/finder` | Public clinic availability search and alternatives |
 | Field reporting | `/field` | Offline-friendly report submission and sync path |
 | Admin workspace | `/admin` | Lead pipeline, export preview, API preview, partner readiness, and pilot readiness |

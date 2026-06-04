@@ -202,7 +202,7 @@ export function ScenarioHero() {
               Reset
             </Button>
             <Link
-              href="/district"
+              href="/districts"
               className="inline-flex h-9 items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-900 shadow-sm transition hover:bg-neutral-50"
             >
               Open operations console
@@ -264,7 +264,7 @@ export function ScenarioHero() {
                   Product surfaces
                 </p>
                 <div className="mt-2 grid gap-2 text-sm text-neutral-700">
-                  <Link className="hover:text-neutral-950" href="/district">District console</Link>
+                  <Link className="hover:text-neutral-950" href="/districts">District console</Link>
                   <Link className="hover:text-neutral-950" href="/field">Field PWA</Link>
                   <Link className="hover:text-neutral-950" href="/finder">Clinic finder</Link>
                 </div>

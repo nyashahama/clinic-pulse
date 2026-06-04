@@ -20,7 +20,7 @@ const legacyDemoClinicDetailPage = path.join(
 const restrictedDemoClinicDetailPage = path.join(
   appDir,
   "(demo)",
-  "district",
+  "districts",
   "clinics",
   "[clinicId]",
   "page.tsx",
@@ -28,7 +28,7 @@ const restrictedDemoClinicDetailPage = path.join(
 const restrictedDemoClinicDetailClient = path.join(
   appDir,
   "(demo)",
-  "district",
+  "districts",
   "clinics",
   "[clinicId]",
   "page-client.tsx",
@@ -79,7 +79,7 @@ describe("public finder route boundary", () => {
     const pageSource = readFileSync(restrictedDemoClinicDetailPage, "utf8");
     const clientSource = readFileSync(restrictedDemoClinicDetailClient, "utf8");
 
-    expect(pageSource).toContain('requireDashboardWorkflowAccess("district")');
+    expect(pageSource).toContain('requireDemoWorkflowAccess("demo")');
     expect(pageSource).toContain("connection()");
     expect(pageSource).toContain("ClinicDetailPageClient");
     expect(pageSource).not.toContain('"use client"');
@@ -101,7 +101,7 @@ describe("public finder route boundary", () => {
     expect(detailSource).not.toMatch(/from\s+["']@\/lib\/demo\/reports/);
   });
 
-  it("keeps public finder navigation public while operational clinic links use /district", () => {
+  it("keeps public finder navigation public while operational clinic links use /districts", () => {
     expect(existsSync(publicFinderClient)).toBe(true);
     expect(existsSync(demoRunbook)).toBe(true);
 
@@ -109,7 +109,7 @@ describe("public finder route boundary", () => {
     const runbookSource = readFileSync(demoRunbook, "utf8");
 
     expect(clientSource).toContain("router.push(`/clinics/${clinicId}`)");
-    expect(runbookSource).toContain('path: "/district/clinics/clinic-mabopane-station"');
+    expect(runbookSource).toContain('path: "/districts/clinics/clinic-mabopane-station"');
     expect(runbookSource).not.toContain('path: "/clinics/clinic-mabopane-station"');
   });
 

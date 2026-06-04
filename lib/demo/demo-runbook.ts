@@ -23,12 +23,12 @@ export const phaseOneDemoRouteChecklist: DemoRouteChecklistEntry[] = [
     viewports: ["desktop", "mobile"],
   },
   {
-    path: "/district",
+    path: "/districts",
     proofMoment: "District command center opens the Mabopane Station incident from severity queue to action.",
     viewports: ["desktop", "mobile"],
   },
   {
-    path: "/district/clinics/clinic-mabopane-station",
+    path: "/districts/clinics/clinic-mabopane-station",
     proofMoment:
       "Clinic detail shows Mabopane Station incident evidence, patient routing impact, report history, and escalation path.",
     viewports: ["desktop", "mobile"],

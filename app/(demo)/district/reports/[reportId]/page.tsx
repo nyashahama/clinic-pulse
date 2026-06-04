@@ -1,7 +1,7 @@
 import { connection } from "next/server";
 
 import { requireDashboardWorkflowAccess } from "../../../workflow-guard";
-import ReportDetailPageClient from "./page-client";
+import ReportDetailPageClient from "../../../districts/reports/[reportId]/page-client";
 
 export default async function DistrictReportDetailPage() {
   await connection();

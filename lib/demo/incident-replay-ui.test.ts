@@ -19,7 +19,7 @@ const demoPageClientPath = path.join(
   process.cwd(),
   "app",
   "(demo)",
-  "district",
+  "districts",
   "page-client.tsx",
 );
 

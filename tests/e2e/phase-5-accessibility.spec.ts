@@ -88,7 +88,7 @@ test.describe("phase 5 accessibility smoke", () => {
       "/admin/data-ingestion",
       "/admin/integrations",
       "/admin/security",
-      "/district",
+      "/districts",
       "/district",
       "/district/clinic-evidence",
       "/district/clinic-network",

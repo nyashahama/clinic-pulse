@@ -149,7 +149,7 @@ function getReturnTarget(source: string | null, consoleHref: string) {
   };
 }
 
-export default function ClinicDetailPage({   consoleHref = "/district" }: ClinicDetailPageProps) {
+export default function ClinicDetailPage({ consoleHref = "/districts" }: ClinicDetailPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { state } = useDemoStore();
