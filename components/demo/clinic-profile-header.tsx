@@ -27,7 +27,7 @@ function formatTimestamp(value: string) {
 
 export function ClinicProfileHeader({
   clinic,
-  consoleHref = "/districts",
+  consoleHref = "/district",
   returnLabel = "Back to district console",
   onFindAlternative,
   onEscalate,

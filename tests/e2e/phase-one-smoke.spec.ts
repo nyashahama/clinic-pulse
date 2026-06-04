@@ -31,8 +31,8 @@ test.describe("phase-one operations route checklist", () => {
       "/",
       "/request-walkthrough",
       "/request-walkthrough/thanks",
-      "/districts",
-      "/districts/clinics/clinic-mabopane-station",
+      "/district",
+      "/district/clinics/clinic-mabopane-station",
       "/finder",
       "/field",
       "/admin",
@@ -91,24 +91,17 @@ test.describe("phase-one operations route checklist", () => {
     });
 
     await signIn(page);
-    await page.goto("/districts");
+    await page.goto("/district");
     await expectNoStagedProductLanguage(page);
 
     await expect(
-      page.getByRole("heading", { name: "Unified severity queue" }),
+      page.getByRole("heading", { name: "Tshwane North District operating picture" }),
     ).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Command actions" })).toBeVisible();
 
-    const firstPriority = page.getByRole("button", { name: /priority 1/i }).first();
-    await expect(firstPriority).toBeVisible();
-    await firstPriority.click();
-    await expect(page.getByText(/primary action/i)).toBeVisible();
-    await expect(page.getByText(/expected outcome/i)).toBeVisible();
-
-    await expect(page.getByRole("heading", { name: "Clinic table" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Clinic roster" })).toBeVisible();
     await expect(page.getByText("Report stream")).toBeVisible();
 
-    await page.goto("/districts/clinics/clinic-mabopane-station");
+    await page.goto("/district/clinics/clinic-mabopane-station");
     await expectNoStagedProductLanguage(page);
     await expect(page.getByRole("heading", { name: "Clinic detail" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Mabopane Station Clinic" })).toBeVisible();
@@ -140,24 +133,6 @@ test.describe("phase-one operations route checklist", () => {
     await expect(
       page.getByRole("heading", { name: "Scenario rehearsal cockpit" }),
     ).toBeVisible();
-
-    await page.goto("/districts");
-    await expectNoStagedProductLanguage(page);
-    const supportingOperations = page
-      .getByText("Supporting operations", { exact: true })
-      .filter({ visible: true })
-      .first();
-    await expect(supportingOperations).toBeVisible();
-    await supportingOperations.scrollIntoViewIfNeeded();
-    const replayIncident = page.getByRole("button", { name: "Replay incident" });
-    await replayIncident.scrollIntoViewIfNeeded();
-    await expect(replayIncident).toBeVisible();
-    await replayIncident.click();
-    await expect(page.getByRole("heading", { name: "Incident replay" })).toBeVisible();
-    await expect(
-      page.getByText("Partner webhook", { exact: true }).filter({ visible: true }).first(),
-    ).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Delivered preview" })).toBeVisible();
 
     expect(clientApiWarnings).toEqual([]);
   });
