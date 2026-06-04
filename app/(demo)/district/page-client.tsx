@@ -150,7 +150,7 @@ export default function DistrictConsolePage({
 }: DistrictConsolePageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isDistrictWorkspace = false;
+  const isDistrictWorkspace = true;
   const {
     state,
     resetDemo,
