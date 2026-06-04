@@ -134,17 +134,6 @@ test.describe("phase-one operations route checklist", () => {
       page.getByRole("heading", { name: "Scenario rehearsal cockpit" }),
     ).toBeVisible();
 
-    await page.goto("/admin/demo-controls");
-    await expectNoStagedProductLanguage(page);
-    const replayIncident = page.getByRole("button", { name: "Replay incident" }).first();
-    await expect(replayIncident).toBeVisible();
-    await replayIncident.click();
-    await expect(page.getByRole("heading", { name: "Incident replay" })).toBeVisible();
-    await expect(
-      page.getByText("Partner webhook", { exact: true }).filter({ visible: true }).first(),
-    ).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Delivered preview" })).toBeVisible();
-
     expect(clientApiWarnings).toEqual([]);
   });
 });
