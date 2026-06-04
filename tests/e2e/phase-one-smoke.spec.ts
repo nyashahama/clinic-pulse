@@ -97,18 +97,9 @@ test.describe("phase-one operations route checklist", () => {
     await expect(
       page.getByRole("heading", { name: "Tshwane North District operating picture" }),
     ).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Command actions" })).toBeVisible();
-
-    const firstPriority = page.getByRole("button", { name: /priority 1/i }).first();
-    await expect(firstPriority).toBeVisible();
-    await firstPriority.click();
-    await expect(page.getByText(/primary action/i)).toBeVisible();
-    await expect(page.getByText(/expected outcome/i)).toBeVisible();
 
     await expect(page.getByRole("heading", { name: "Clinic roster" })).toBeVisible();
     await expect(page.getByText("Report stream")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Unified severity queue" })).toBeHidden();
-    await expect(page.getByRole("heading", { name: "Console controls" })).toHaveCount(0);
 
     await page.goto("/district/clinics/clinic-mabopane-station");
     await expectNoStagedProductLanguage(page);

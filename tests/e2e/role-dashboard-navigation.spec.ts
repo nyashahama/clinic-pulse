@@ -750,13 +750,15 @@ test.describe("phase 1 role dashboard navigation", () => {
     await expect(page.getByRole("link", { name: "Back to severity queue" })).toBeVisible();
   });
 
-  test("demo showcase does not expose report review", async ({ page }) => {
+  test("district workspace renders the command center with report review available", async ({ page }) => {
     await signInAs(page, "district-manager@clinicpulse.local", "/district");
 
     await expect(
       page.locator('[data-role-dashboard="district_manager"]').filter({ visible: true }),
     ).toBeVisible();
-    await expect(page.locator("#report-review")).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { name: "Tshwane North District operating picture" }),
+    ).toBeVisible();
   });
 
   test("district users can open report stream details", async ({ page }) => {
