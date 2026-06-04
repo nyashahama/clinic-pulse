@@ -3,7 +3,7 @@ import Link from "next/link";
 
 const navigation = {
   product: [
-    { name: "District Console", href: "/districts" },
+    { name: "District Console", href: "/district" },
     { name: "Field Reports", href: "/field" },
     { name: "Clinic Finder", href: "/finder" },
     { name: "Book Walkthrough", href: "/request-walkthrough" },
