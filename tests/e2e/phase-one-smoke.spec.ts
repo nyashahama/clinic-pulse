@@ -95,7 +95,7 @@ test.describe("phase-one operations route checklist", () => {
     await expectNoStagedProductLanguage(page);
 
     await expect(
-      page.getByRole("heading", { name: "Unified severity queue" }),
+      page.getByRole("heading", { name: "Tshwane North District operating picture" }),
     ).toBeVisible();
     await expect(page.getByRole("heading", { name: "Command actions" })).toBeVisible();
 
@@ -105,8 +105,10 @@ test.describe("phase-one operations route checklist", () => {
     await expect(page.getByText(/primary action/i)).toBeVisible();
     await expect(page.getByText(/expected outcome/i)).toBeVisible();
 
-    await expect(page.getByRole("heading", { name: "Clinic table" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Clinic roster" })).toBeVisible();
     await expect(page.getByText("Report stream")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Unified severity queue" })).toBeHidden();
+    await expect(page.getByRole("heading", { name: "Console controls" })).toHaveCount(0);
 
     await page.goto("/district/clinics/clinic-mabopane-station");
     await expectNoStagedProductLanguage(page);
@@ -141,16 +143,9 @@ test.describe("phase-one operations route checklist", () => {
       page.getByRole("heading", { name: "Scenario rehearsal cockpit" }),
     ).toBeVisible();
 
-    await page.goto("/district");
+    await page.goto("/admin/demo-controls");
     await expectNoStagedProductLanguage(page);
-    const supportingOperations = page
-      .getByText("Supporting operations", { exact: true })
-      .filter({ visible: true })
-      .first();
-    await expect(supportingOperations).toBeVisible();
-    await supportingOperations.scrollIntoViewIfNeeded();
     const replayIncident = page.getByRole("button", { name: "Replay incident" });
-    await replayIncident.scrollIntoViewIfNeeded();
     await expect(replayIncident).toBeVisible();
     await replayIncident.click();
     await expect(page.getByRole("heading", { name: "Incident replay" })).toBeVisible();

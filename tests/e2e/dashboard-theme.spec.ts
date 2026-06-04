@@ -175,7 +175,7 @@ test.describe("authenticated dashboard theme controls", () => {
     await page.goto("/district");
     await expectDarkTheme(page);
     await expect(
-      page.getByRole("heading", { name: "Unified severity queue" }),
+      page.getByRole("heading", { name: "Tshwane North District operating picture" }),
     ).toBeVisible();
 
     await page.goto("/field");
