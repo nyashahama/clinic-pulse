@@ -142,7 +142,7 @@ function buildClinicDataTrustState(
 }
 
 export default function DistrictConsolePage({
-  consoleHref = "/districts",
+  consoleHref = "/district",
   pendingReports,
   session,
   showReportReview = false,
@@ -150,7 +150,7 @@ export default function DistrictConsolePage({
 }: DistrictConsolePageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isDistrictWorkspace = consoleHref === "/district";
+  const isDistrictWorkspace = false;
   const {
     state,
     resetDemo,
@@ -216,7 +216,7 @@ export default function DistrictConsolePage({
   const statusFilterLabel = statusFilter.replaceAll("_", " ");
   const replayNonIdle = replayStatus !== "idle";
   const isReplayFilterBypassed = hasStatusFilter && replayStatus !== "idle";
-  const reportReturnSource = consoleHref === "/district" ? "district" : "districts";
+  const reportReturnSource = "district";
 
   const openClinicDetail = (clinicId: string) => {
     router.push(`${consoleHref}/clinics/${encodeURIComponent(clinicId)}`);

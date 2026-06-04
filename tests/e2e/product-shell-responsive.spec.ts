@@ -57,8 +57,8 @@ test.describe("product shell responsive behavior", () => {
     await signInAsDistrictManager(page);
     await expect(page).toHaveURL(/\/district$/);
 
-    await page.goto("/districts");
-    await expect(page).toHaveURL(/\/districts$/);
+    await page.goto("/district");
+    await expect(page).toHaveURL(/\/district$/);
     await expect(page.getByRole("heading", { name: "Unified severity queue" })).toBeVisible();
 
     await page.goto("/district");

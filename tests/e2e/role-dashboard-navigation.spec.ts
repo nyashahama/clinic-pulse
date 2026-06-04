@@ -753,7 +753,7 @@ test.describe("phase 1 role dashboard navigation", () => {
   test("demo showcase does not expose report review", async ({ page }) => {
     await signInAs(page, "district-manager@clinicpulse.local", "/district");
 
-    await page.goto("/districts");
+    await page.goto("/district");
 
     await expect(
       page.locator('[data-role-dashboard="district_manager"]').filter({ visible: true }),
@@ -771,8 +771,8 @@ test.describe("phase 1 role dashboard navigation", () => {
         backLabel: "Back to district console",
       },
       {
-        path: "/districts",
-        urlPattern: /\/districts\/reports\/[^?]+\?from=districts$/,
+        path: "/district",
+        urlPattern: /\/district\/reports\/[^?]+\?from=districts$/,
         backLabel: "Back to district console",
       },
     ] as const) {
