@@ -293,7 +293,8 @@ func (s Store) GetUserByEmail(ctx context.Context, email string) (User, error) {
 	if err != nil {
 		return User{}, err
 	}
-	return userFromRow(row.ID, row.Email, row.DisplayName, row.PasswordHash, row.DisabledAt, row.PasswordChangedAt, row.PasswordResetRequired, row.CreatedAt, row.UpdatedAt), nil
+	u := userFromRow(row.ID, row.Email, row.DisplayName, row.PasswordHash, row.DisabledAt, row.PasswordChangedAt, row.PasswordResetRequired, row.CreatedAt, row.UpdatedAt)
+	return u, nil
 }
 
 func (s Store) CreateUser(ctx context.Context, input CreateUserInput) (User, error) {
@@ -482,7 +483,7 @@ func userFromRow(id int64, email, displayName string, passwordHash *string, disa
 	}
 }
 
-func sessionFromCreateRow(row *db.Session) Session {
+func sessionFromCreateRow(row *db.CreateSessionRow) Session {
 	return Session{
 		ID:         row.ID,
 		UserID:     row.UserID,
@@ -492,7 +493,7 @@ func sessionFromCreateRow(row *db.Session) Session {
 		RevokedAt:  timestamptzPtr(row.RevokedAt),
 		LastSeenAt: timestamptzPtr(row.LastSeenAt),
 		UserAgent:  row.UserAgent,
-		IPAddress:  row.IpAddress,
+		IPAddress:  &row.IpAddress,
 	}
 }
 
@@ -506,7 +507,7 @@ func sessionFromTokenHashRow(row *db.GetSessionByTokenHashRow) Session {
 		RevokedAt:  timestamptzPtr(row.SessionRevokedAt),
 		LastSeenAt: timestamptzPtr(row.SessionLastSeenAt),
 		UserAgent:  row.SessionUserAgent,
-		IPAddress:  row.SessionIpAddress,
+		IPAddress:  &row.SessionIpAddress,
 	}
 }
 

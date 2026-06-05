@@ -35,7 +35,7 @@ RETURNING
     revoked_at,
     last_seen_at,
     user_agent,
-    ip_address;
+    ip_address::text;
 
 -- name: GetSessionByTokenHash :one
 WITH active_session (
@@ -75,7 +75,7 @@ WITH active_session (
         s.revoked_at,
         s.last_seen_at,
         s.user_agent,
-        s.ip_address,
+        s.ip_address::text,
         u.id,
         u.email,
         u.display_name,

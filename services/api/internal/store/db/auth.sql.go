@@ -29,7 +29,7 @@ RETURNING
     revoked_at,
     last_seen_at,
     user_agent,
-    ip_address
+    ip_address::text
 `
 
 type CreateSessionParams struct {
@@ -40,7 +40,19 @@ type CreateSessionParams struct {
 	IpAddress *string            `json:"ip_address"`
 }
 
-func (q *Queries) CreateSession(ctx context.Context, arg *CreateSessionParams) (*Session, error) {
+type CreateSessionRow struct {
+	ID         int64              `json:"id"`
+	UserID     int64              `json:"user_id"`
+	TokenHash  string             `json:"token_hash"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+	RevokedAt  pgtype.Timestamptz `json:"revoked_at"`
+	LastSeenAt pgtype.Timestamptz `json:"last_seen_at"`
+	UserAgent  *string            `json:"user_agent"`
+	IpAddress  string             `json:"ip_address"`
+}
+
+func (q *Queries) CreateSession(ctx context.Context, arg *CreateSessionParams) (*CreateSessionRow, error) {
 	row := q.db.QueryRow(ctx, createSession,
 		arg.UserID,
 		arg.TokenHash,
@@ -48,7 +60,7 @@ func (q *Queries) CreateSession(ctx context.Context, arg *CreateSessionParams) (
 		arg.UserAgent,
 		arg.IpAddress,
 	)
-	var i Session
+	var i CreateSessionRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -234,7 +246,7 @@ WITH active_session (
         s.revoked_at,
         s.last_seen_at,
         s.user_agent,
-        s.ip_address,
+        s.ip_address::text,
         u.id,
         u.email,
         u.display_name,
@@ -276,7 +288,7 @@ type GetSessionByTokenHashRow struct {
 	SessionRevokedAt          pgtype.Timestamptz `json:"session_revoked_at"`
 	SessionLastSeenAt         pgtype.Timestamptz `json:"session_last_seen_at"`
 	SessionUserAgent          *string            `json:"session_user_agent"`
-	SessionIpAddress          *string            `json:"session_ip_address"`
+	SessionIpAddress          string             `json:"session_ip_address"`
 	UserID                    int64              `json:"user_id"`
 	UserEmail                 string             `json:"user_email"`
 	UserDisplayName           string             `json:"user_display_name"`
