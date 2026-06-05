@@ -312,24 +312,6 @@ FROM audit_events
 WHERE clinic_id = $1
 ORDER BY created_at DESC, id DESC`
 
-	listAdminUserAccessSQL = `
-SELECT
-    users.id,
-    users.email,
-    users.display_name,
-    users.disabled_at,
-    users.created_at,
-    organisation_memberships.role,
-    organisation_memberships.organisation_id,
-    organisation_memberships.district,
-    max(sessions.last_seen_at) AS last_seen_at
-FROM users
-JOIN organisation_memberships ON organisation_memberships.user_id = users.id
-LEFT JOIN sessions ON sessions.user_id = users.id AND sessions.revoked_at IS NULL AND sessions.expires_at > now()
-WHERE $1::bigint IS NULL OR organisation_memberships.organisation_id = $1
-GROUP BY users.id, organisation_memberships.id
-ORDER BY organisation_memberships.role, users.display_name, users.id`
-
 	listAdminAuditEventsSQL = `
 SELECT
     id,
@@ -1363,42 +1345,6 @@ func (s Store) ListClinicAuditEvents(ctx context.Context, clinicID string) ([]Au
 
 	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (AuditEvent, error) {
 		return scanAuditEvent(row)
-	})
-}
-
-func (s Store) ListAdminUserAccess(ctx context.Context, organisationID *int64) ([]AdminUserAccessRow, error) {
-	rows, err := s.pool.Query(ctx, listAdminUserAccessSQL, organisationID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (AdminUserAccessRow, error) {
-		var access AdminUserAccessRow
-		var disabledAt sql.NullTime
-		var organisationID sql.NullInt64
-		var district sql.NullString
-		var lastSeenAt sql.NullTime
-
-		if err := row.Scan(
-			&access.UserID,
-			&access.Email,
-			&access.DisplayName,
-			&disabledAt,
-			&access.CreatedAt,
-			&access.Role,
-			&organisationID,
-			&district,
-			&lastSeenAt,
-		); err != nil {
-			return AdminUserAccessRow{}, err
-		}
-
-		access.DisabledAt = nullTimePtr(disabledAt)
-		access.OrganisationID = nullInt64Ptr(organisationID)
-		access.District = nullStringPtr(district)
-		access.LastSeenAt = nullTimePtr(lastSeenAt)
-		return access, nil
 	})
 }
 

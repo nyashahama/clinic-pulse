@@ -40,20 +40,6 @@ func TestStorePublicAPICompiles(t *testing.T) {
 	var _ func(Store) = Store.Close
 }
 
-func TestAdminUserAccessSQLIncludesActiveSessionSignalAndOrganisationScope(t *testing.T) {
-	t.Parallel()
-
-	if !strings.Contains(listAdminUserAccessSQL, "max(sessions.last_seen_at)") {
-		t.Fatal("expected admin user access SQL to include latest active session signal")
-	}
-	if !strings.Contains(listAdminUserAccessSQL, "sessions.expires_at > now()") {
-		t.Fatal("expected admin user access SQL to exclude expired sessions from latest active session signal")
-	}
-	if !strings.Contains(listAdminUserAccessSQL, "WHERE $1::bigint IS NULL OR organisation_memberships.organisation_id = $1") {
-		t.Fatal("expected admin user access SQL to scope by organisation id when present")
-	}
-}
-
 func TestListAdminAuditEventsSQLOrdersRecentEventsAndLimits(t *testing.T) {
 	t.Parallel()
 

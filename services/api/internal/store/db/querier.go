@@ -11,19 +11,37 @@ import (
 )
 
 type Querier interface {
+	CreateSession(ctx context.Context, arg *CreateSessionParams) (*CreateSessionRow, error)
+	CreateUser(ctx context.Context, arg *CreateUserParams) (*CreateUserRow, error)
+	DeleteOrganisationMembershipsForUser(ctx context.Context, userID int64) error
+	DisableUser(ctx context.Context, arg *DisableUserParams) (int64, error)
+	EnableUser(ctx context.Context, id int64) (int64, error)
+	GetAdminUserAccessByUserID(ctx context.Context, userID int64) (*GetAdminUserAccessByUserIDRow, error)
 	GetClinic(ctx context.Context, id string) (*GetClinicRow, error)
 	GetClinicDistrict(ctx context.Context, id string) (string, error)
 	GetCurrentStatus(ctx context.Context, clinicID string) (*GetCurrentStatusRow, error)
 	GetCurrentStatusForUpdate(ctx context.Context, clinicID string) (*GetCurrentStatusForUpdateRow, error)
+	GetSessionByTokenHash(ctx context.Context, tokenHash string) (*GetSessionByTokenHashRow, error)
+	GetUserByEmail(ctx context.Context, lower string) (*GetUserByEmailRow, error)
+	GetUserByID(ctx context.Context, id int64) (*GetUserByIDRow, error)
+	InsertOrganisationMembership(ctx context.Context, arg *InsertOrganisationMembershipParams) (*InsertOrganisationMembershipRow, error)
 	InsertReportSyncAttempt(ctx context.Context, arg *InsertReportSyncAttemptParams) (*ReportSyncAttempt, error)
+	ListAdminUserAccess(ctx context.Context, dollar_1 interface{}) ([]*ListAdminUserAccessRow, error)
 	ListClinicServices(ctx context.Context, clinicID string) ([]*ListClinicServicesRow, error)
 	// clinics
 	ListClinics(ctx context.Context) ([]*ListClinicsRow, error)
 	ListCurrentStatuses(ctx context.Context) ([]*ListCurrentStatusesRow, error)
 	ListCurrentStatusesForReviewScope(ctx context.Context, arg *ListCurrentStatusesForReviewScopeParams) ([]*ListCurrentStatusesForReviewScopeRow, error)
+	ListMembershipsForUser(ctx context.Context, userID int64) ([]*ListMembershipsForUserRow, error)
+	LockUserForMembershipReplacement(ctx context.Context, id int64) (int64, error)
+	RevokeActiveSessionsForUser(ctx context.Context, userID int64) (int64, error)
+	RevokeSession(ctx context.Context, tokenHash string) error
 	SyncSummarySince(ctx context.Context, receivedAt pgtype.Timestamptz) (*SyncSummarySinceRow, error)
 	SyncSummarySinceForReviewScope(ctx context.Context, arg *SyncSummarySinceForReviewScopeParams) (*SyncSummarySinceForReviewScopeRow, error)
 	UpdateCurrentStatusFreshness(ctx context.Context, arg *UpdateCurrentStatusFreshnessParams) (*UpdateCurrentStatusFreshnessRow, error)
+	UpdateUserLifecycle(ctx context.Context, arg *UpdateUserLifecycleParams) (*UpdateUserLifecycleRow, error)
+	UpdateUserLifecycleName(ctx context.Context, arg *UpdateUserLifecycleNameParams) (*UpdateUserLifecycleNameRow, error)
+	UpdateUserPassword(ctx context.Context, arg *UpdateUserPasswordParams) (*UpdateUserPasswordRow, error)
 	UpsertCurrentStatus(ctx context.Context, arg *UpsertCurrentStatusParams) (*UpsertCurrentStatusRow, error)
 	VerifyClinicExists(ctx context.Context, id string) (string, error)
 }
