@@ -116,6 +116,7 @@ pending_offline AS (
 ),
 current_status_counts AS (
     SELECT
+        COUNT(*)::int AS total_count,
         (COUNT(*) FILTER (WHERE current_status.freshness = 'needs_confirmation'))::int AS needs_confirmation_count,
         (COUNT(*) FILTER (WHERE current_status.freshness = 'stale'))::int AS stale_count
     FROM current_status
@@ -124,7 +125,7 @@ median_status_age AS (
     SELECT
         percentile_cont(0.5) WITHIN GROUP (
             ORDER BY EXTRACT(EPOCH FROM (now() - COALESCE(current_status.last_reported_at, current_status.updated_at))) / 3600.0
-        )::double precision AS median_current_status_age_hours
+        ) AS median_current_status_age_hours
     FROM current_status
 )
 SELECT
@@ -133,6 +134,7 @@ SELECT
     conflict_count,
     validation_error_count,
     pending_count,
+    total_count,
     needs_confirmation_count,
     stale_count,
     median_current_status_age_hours
@@ -145,6 +147,7 @@ type SyncSummarySinceRow struct {
 	ConflictCount               int32   `json:"conflict_count"`
 	ValidationErrorCount        int32   `json:"validation_error_count"`
 	PendingCount                int32   `json:"pending_count"`
+	TotalCount                  int32   `json:"total_count"`
 	NeedsConfirmationCount      int32   `json:"needs_confirmation_count"`
 	StaleCount                  int32   `json:"stale_count"`
 	MedianCurrentStatusAgeHours float64 `json:"median_current_status_age_hours"`
@@ -159,6 +162,7 @@ func (q *Queries) SyncSummarySince(ctx context.Context, receivedAt pgtype.Timest
 		&i.ConflictCount,
 		&i.ValidationErrorCount,
 		&i.PendingCount,
+		&i.TotalCount,
 		&i.NeedsConfirmationCount,
 		&i.StaleCount,
 		&i.MedianCurrentStatusAgeHours,
@@ -201,6 +205,7 @@ pending_offline AS (
 ),
 current_status_counts AS (
     SELECT
+        COUNT(*)::int AS total_count,
         (COUNT(*) FILTER (WHERE current_status.freshness = 'needs_confirmation'))::int AS needs_confirmation_count,
         (COUNT(*) FILTER (WHERE current_status.freshness = 'stale'))::int AS stale_count
     FROM current_status
@@ -234,7 +239,7 @@ median_status_age AS (
     SELECT
         percentile_cont(0.5) WITHIN GROUP (
             ORDER BY EXTRACT(EPOCH FROM (now() - COALESCE(current_status.last_reported_at, current_status.updated_at))) / 3600.0
-        )::double precision AS median_current_status_age_hours
+        ) AS median_current_status_age_hours
     FROM current_status
     JOIN clinics ON clinics.id = current_status.clinic_id
     WHERE (
@@ -268,6 +273,7 @@ SELECT
     conflict_count,
     validation_error_count,
     pending_count,
+    total_count,
     needs_confirmation_count,
     stale_count,
     median_current_status_age_hours
@@ -287,6 +293,7 @@ type SyncSummarySinceForReviewScopeRow struct {
 	ConflictCount               int32   `json:"conflict_count"`
 	ValidationErrorCount        int32   `json:"validation_error_count"`
 	PendingCount                int32   `json:"pending_count"`
+	TotalCount                  int32   `json:"total_count"`
 	NeedsConfirmationCount      int32   `json:"needs_confirmation_count"`
 	StaleCount                  int32   `json:"stale_count"`
 	MedianCurrentStatusAgeHours float64 `json:"median_current_status_age_hours"`
@@ -306,6 +313,7 @@ func (q *Queries) SyncSummarySinceForReviewScope(ctx context.Context, arg *SyncS
 		&i.ConflictCount,
 		&i.ValidationErrorCount,
 		&i.PendingCount,
+		&i.TotalCount,
 		&i.NeedsConfirmationCount,
 		&i.StaleCount,
 		&i.MedianCurrentStatusAgeHours,

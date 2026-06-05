@@ -50,6 +50,7 @@ pending_offline AS (
 ),
 current_status_counts AS (
     SELECT
+        COUNT(*)::int AS total_count,
         (COUNT(*) FILTER (WHERE current_status.freshness = 'needs_confirmation'))::int AS needs_confirmation_count,
         (COUNT(*) FILTER (WHERE current_status.freshness = 'stale'))::int AS stale_count
     FROM current_status
@@ -58,7 +59,7 @@ median_status_age AS (
     SELECT
         percentile_cont(0.5) WITHIN GROUP (
             ORDER BY EXTRACT(EPOCH FROM (now() - COALESCE(current_status.last_reported_at, current_status.updated_at))) / 3600.0
-        )::double precision AS median_current_status_age_hours
+        ) AS median_current_status_age_hours
     FROM current_status
 )
 SELECT
@@ -67,6 +68,7 @@ SELECT
     conflict_count,
     validation_error_count,
     pending_count,
+    total_count,
     needs_confirmation_count,
     stale_count,
     median_current_status_age_hours
@@ -107,6 +109,7 @@ pending_offline AS (
 ),
 current_status_counts AS (
     SELECT
+        COUNT(*)::int AS total_count,
         (COUNT(*) FILTER (WHERE current_status.freshness = 'needs_confirmation'))::int AS needs_confirmation_count,
         (COUNT(*) FILTER (WHERE current_status.freshness = 'stale'))::int AS stale_count
     FROM current_status
@@ -140,7 +143,7 @@ median_status_age AS (
     SELECT
         percentile_cont(0.5) WITHIN GROUP (
             ORDER BY EXTRACT(EPOCH FROM (now() - COALESCE(current_status.last_reported_at, current_status.updated_at))) / 3600.0
-        )::double precision AS median_current_status_age_hours
+        ) AS median_current_status_age_hours
     FROM current_status
     JOIN clinics ON clinics.id = current_status.clinic_id
     WHERE (
@@ -174,6 +177,7 @@ SELECT
     conflict_count,
     validation_error_count,
     pending_count,
+    total_count,
     needs_confirmation_count,
     stale_count,
     median_current_status_age_hours

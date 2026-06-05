@@ -31,7 +31,7 @@ func toReportSyncAttempt(row *db.ReportSyncAttempt) (ReportSyncAttempt, error) {
 }
 
 func syncSummaryFromRow(since time.Time, row *db.SyncSummarySinceRow) SyncSummary {
-	return SyncSummary{
+	s := SyncSummary{
 		WindowStartedAt:             since,
 		OfflineReportsReceived:      int(row.CreatedCount),
 		DuplicateSyncsHandled:       int(row.DuplicateCount),
@@ -40,12 +40,15 @@ func syncSummaryFromRow(since time.Time, row *db.SyncSummarySinceRow) SyncSummar
 		PendingOfflineReports:       int(row.PendingCount),
 		NeedsConfirmationClinics:    int(row.NeedsConfirmationCount),
 		StaleClinics:                int(row.StaleCount),
-		MedianCurrentStatusAgeHours: &row.MedianCurrentStatusAgeHours,
 	}
+	if row.TotalCount > 0 {
+		s.MedianCurrentStatusAgeHours = &row.MedianCurrentStatusAgeHours
+	}
+	return s
 }
 
 func syncSummaryFromReviewScopeRow(since time.Time, row *db.SyncSummarySinceForReviewScopeRow) SyncSummary {
-	return SyncSummary{
+	s := SyncSummary{
 		WindowStartedAt:             since,
 		OfflineReportsReceived:      int(row.CreatedCount),
 		DuplicateSyncsHandled:       int(row.DuplicateCount),
@@ -54,6 +57,9 @@ func syncSummaryFromReviewScopeRow(since time.Time, row *db.SyncSummarySinceForR
 		PendingOfflineReports:       int(row.PendingCount),
 		NeedsConfirmationClinics:    int(row.NeedsConfirmationCount),
 		StaleClinics:                int(row.StaleCount),
-		MedianCurrentStatusAgeHours: &row.MedianCurrentStatusAgeHours,
 	}
+	if row.TotalCount > 0 {
+		s.MedianCurrentStatusAgeHours = &row.MedianCurrentStatusAgeHours
+	}
+	return s
 }
