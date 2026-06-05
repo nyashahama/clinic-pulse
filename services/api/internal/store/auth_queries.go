@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/netip"
 	"strconv"
@@ -49,7 +50,29 @@ func (s Store) CreateAdminUserWithAccessTx(ctx context.Context, input CreateAdmi
 	membership := membershipFromCreatedRow(membershipRow)
 
 	auditInput := adminUserCreatedAuditEvent(input.AuditEvent, user)
-	auditEvent, err := insertAuditEvent(ctx, tx, auditInput)
+	normalized := normalizeCreateAuditEventInput(auditInput)
+	metadataJSON, err := json.Marshal(normalized.Metadata)
+	if err != nil {
+		return User{}, OrganisationMembership{}, AuditEvent{}, err
+	}
+	aeRow, err := q.InsertAuditEvent(ctx, &db.InsertAuditEventParams{
+		ExternalID:     normalized.ExternalID,
+		ClinicID:       normalized.ClinicID,
+		ActorName:      normalized.ActorName,
+		EventType:      normalized.EventType,
+		Summary:        normalized.Summary,
+		CreatedAt:      pgtype.Timestamptz{Time: normalized.CreatedAt, Valid: true},
+		ActorUserID:    normalized.ActorUserID,
+		ActorRole:      normalized.ActorRole,
+		OrganisationID: normalized.OrganisationID,
+		EntityType:     normalized.EntityType,
+		EntityID:       normalized.EntityID,
+		Column12:       metadataJSON,
+	})
+	if err != nil {
+		return User{}, OrganisationMembership{}, AuditEvent{}, err
+	}
+	auditEvent, err := toAuditEvent(aeRow)
 	if err != nil {
 		return User{}, OrganisationMembership{}, AuditEvent{}, err
 	}
@@ -82,7 +105,29 @@ func (s Store) UpdateUserLifecycleWithAuditTx(ctx context.Context, input UpdateU
 
 	user := userFromRow(userRow.ID, userRow.Email, userRow.DisplayName, userRow.PasswordHash, userRow.DisabledAt, userRow.PasswordChangedAt, userRow.PasswordResetRequired, userRow.CreatedAt, userRow.UpdatedAt)
 
-	auditEvent, err := insertAuditEvent(ctx, tx, input.AuditEvent)
+	normalized := normalizeCreateAuditEventInput(input.AuditEvent)
+	metadataJSON, err := json.Marshal(normalized.Metadata)
+	if err != nil {
+		return User{}, AuditEvent{}, err
+	}
+	aeRow, err := q.InsertAuditEvent(ctx, &db.InsertAuditEventParams{
+		ExternalID:     normalized.ExternalID,
+		ClinicID:       normalized.ClinicID,
+		ActorName:      normalized.ActorName,
+		EventType:      normalized.EventType,
+		Summary:        normalized.Summary,
+		CreatedAt:      pgtype.Timestamptz{Time: normalized.CreatedAt, Valid: true},
+		ActorUserID:    normalized.ActorUserID,
+		ActorRole:      normalized.ActorRole,
+		OrganisationID: normalized.OrganisationID,
+		EntityType:     normalized.EntityType,
+		EntityID:       normalized.EntityID,
+		Column12:       metadataJSON,
+	})
+	if err != nil {
+		return User{}, AuditEvent{}, err
+	}
+	auditEvent, err := toAuditEvent(aeRow)
 	if err != nil {
 		return User{}, AuditEvent{}, err
 	}
@@ -121,7 +166,30 @@ func (s Store) CreateSessionWithAuditTx(ctx context.Context, input CreateSession
 
 	session := sessionFromCreateRow(row)
 
-	auditEvent, err := insertAuditEvent(ctx, tx, auditEventForSession(input.AuditEvent, session))
+	auditInput := auditEventForSession(input.AuditEvent, session)
+	normalized := normalizeCreateAuditEventInput(auditInput)
+	metadataJSON, err := json.Marshal(normalized.Metadata)
+	if err != nil {
+		return Session{}, AuditEvent{}, err
+	}
+	aeRow, err := q.InsertAuditEvent(ctx, &db.InsertAuditEventParams{
+		ExternalID:     normalized.ExternalID,
+		ClinicID:       normalized.ClinicID,
+		ActorName:      normalized.ActorName,
+		EventType:      normalized.EventType,
+		Summary:        normalized.Summary,
+		CreatedAt:      pgtype.Timestamptz{Time: normalized.CreatedAt, Valid: true},
+		ActorUserID:    normalized.ActorUserID,
+		ActorRole:      normalized.ActorRole,
+		OrganisationID: normalized.OrganisationID,
+		EntityType:     normalized.EntityType,
+		EntityID:       normalized.EntityID,
+		Column12:       metadataJSON,
+	})
+	if err != nil {
+		return Session{}, AuditEvent{}, err
+	}
+	auditEvent, err := toAuditEvent(aeRow)
 	if err != nil {
 		return Session{}, AuditEvent{}, err
 	}
@@ -150,7 +218,29 @@ func (s Store) RevokeActiveSessionsForUserWithAuditTx(ctx context.Context, input
 	input.AuditEvent.Metadata = cloneMetadata(input.AuditEvent.Metadata)
 	input.AuditEvent.Metadata["revokedSessions"] = revokedSessions
 
-	auditEvent, err := insertAuditEvent(ctx, tx, input.AuditEvent)
+	normalized := normalizeCreateAuditEventInput(input.AuditEvent)
+	metadataJSON, err := json.Marshal(normalized.Metadata)
+	if err != nil {
+		return 0, AuditEvent{}, err
+	}
+	aeRow, err := q.InsertAuditEvent(ctx, &db.InsertAuditEventParams{
+		ExternalID:     normalized.ExternalID,
+		ClinicID:       normalized.ClinicID,
+		ActorName:      normalized.ActorName,
+		EventType:      normalized.EventType,
+		Summary:        normalized.Summary,
+		CreatedAt:      pgtype.Timestamptz{Time: normalized.CreatedAt, Valid: true},
+		ActorUserID:    normalized.ActorUserID,
+		ActorRole:      normalized.ActorRole,
+		OrganisationID: normalized.OrganisationID,
+		EntityType:     normalized.EntityType,
+		EntityID:       normalized.EntityID,
+		Column12:       metadataJSON,
+	})
+	if err != nil {
+		return 0, AuditEvent{}, err
+	}
+	auditEvent, err := toAuditEvent(aeRow)
 	if err != nil {
 		return 0, AuditEvent{}, err
 	}
@@ -226,7 +316,29 @@ func (s Store) UpsertOrganisationMembershipWithAuditTx(ctx context.Context, inpu
 
 	membership := membershipFromCreatedRow(row)
 
-	auditEvent, err := insertAuditEvent(ctx, tx, input.AuditEvent)
+	normalized := normalizeCreateAuditEventInput(input.AuditEvent)
+	metadataJSON, err := json.Marshal(normalized.Metadata)
+	if err != nil {
+		return OrganisationMembership{}, AuditEvent{}, err
+	}
+	aeRow, err := q.InsertAuditEvent(ctx, &db.InsertAuditEventParams{
+		ExternalID:     normalized.ExternalID,
+		ClinicID:       normalized.ClinicID,
+		ActorName:      normalized.ActorName,
+		EventType:      normalized.EventType,
+		Summary:        normalized.Summary,
+		CreatedAt:      pgtype.Timestamptz{Time: normalized.CreatedAt, Valid: true},
+		ActorUserID:    normalized.ActorUserID,
+		ActorRole:      normalized.ActorRole,
+		OrganisationID: normalized.OrganisationID,
+		EntityType:     normalized.EntityType,
+		EntityID:       normalized.EntityID,
+		Column12:       metadataJSON,
+	})
+	if err != nil {
+		return OrganisationMembership{}, AuditEvent{}, err
+	}
+	auditEvent, err := toAuditEvent(aeRow)
 	if err != nil {
 		return OrganisationMembership{}, AuditEvent{}, err
 	}

@@ -141,3 +141,133 @@ func syncSummaryFromReviewScopeRow(since time.Time, row *db.SyncSummarySinceForR
 	}
 	return s
 }
+
+func toPartnerAPIKey(row *db.InsertPartnerAPIKeyRow) (PartnerAPIKey, error) {
+	key := PartnerAPIKey{
+		ID:              row.ID,
+		OrganisationID:  row.OrganisationID,
+		Name:            row.Name,
+		Environment:     row.Environment,
+		KeyPrefix:       row.KeyPrefix,
+		KeyHash:         row.KeyHash,
+		ExpiresAt:       timestamptzPtr(row.ExpiresAt),
+		RevokedAt:       timestamptzPtr(row.RevokedAt),
+		LastUsedAt:      timestamptzPtr(row.LastUsedAt),
+		CreatedByUserID: row.CreatedByUserID,
+		CreatedAt:       timestamptzTime(row.CreatedAt),
+		UpdatedAt:       timestamptzTime(row.UpdatedAt),
+	}
+	if row.LastUsedIp != "" {
+		key.LastUsedIP = &row.LastUsedIp
+	}
+	if err := unmarshalStringSlice(row.Scopes, &key.Scopes); err != nil {
+		return PartnerAPIKey{}, err
+	}
+	if err := unmarshalStringSlice(row.AllowedDistricts, &key.AllowedDistricts); err != nil {
+		return PartnerAPIKey{}, err
+	}
+	return key, nil
+}
+
+func toPartnerWebhookSubscription(row *db.PartnerWebhookSubscription) (PartnerWebhookSubscription, error) {
+	sub := PartnerWebhookSubscription{
+		ID:              row.ID,
+		OrganisationID:  row.OrganisationID,
+		Name:            row.Name,
+		TargetURL:       row.TargetUrl,
+		SecretHash:      row.SecretHash,
+		Status:          row.Status,
+		LastTestedAt:    timestamptzPtr(row.LastTestedAt),
+		LastTestStatus:  row.LastTestStatus,
+		LastError:       row.LastError,
+		CreatedByUserID: row.CreatedByUserID,
+		CreatedAt:       timestamptzTime(row.CreatedAt),
+		UpdatedAt:       timestamptzTime(row.UpdatedAt),
+	}
+	if err := unmarshalStringSlice(row.EventTypes, &sub.EventTypes); err != nil {
+		return PartnerWebhookSubscription{}, err
+	}
+	if err := unmarshalMap(row.LastTestMetadata, &sub.LastTestMetadata); err != nil {
+		return PartnerWebhookSubscription{}, err
+	}
+	return sub, nil
+}
+
+func toPartnerWebhookEvent(row *db.PartnerWebhookEvent) (PartnerWebhookEvent, error) {
+	event := PartnerWebhookEvent{
+		ID:             row.ID,
+		SubscriptionID: row.SubscriptionID,
+		EventType:      row.EventType,
+		Status:         row.Status,
+		AttemptCount:   int(row.AttemptCount),
+		LastError:      row.LastError,
+		CreatedAt:      timestamptzTime(row.CreatedAt),
+		DeliveredAt:    timestamptzPtr(row.DeliveredAt),
+	}
+	if err := unmarshalMap(row.Payload, &event.Payload); err != nil {
+		return PartnerWebhookEvent{}, err
+	}
+	if err := unmarshalMap(row.Metadata, &event.Metadata); err != nil {
+		return PartnerWebhookEvent{}, err
+	}
+	return event, nil
+}
+
+func toPartnerExportRun(row *db.PartnerExportRun) (PartnerExportRun, error) {
+	run := PartnerExportRun{
+		ID:                row.ID,
+		OrganisationID:    row.OrganisationID,
+		RequestedByUserID: row.RequestedByUserID,
+		Format:            row.Format,
+		Checksum:          row.Checksum,
+		CreatedAt:         timestamptzTime(row.CreatedAt),
+	}
+	if err := unmarshalMap(row.Scope, &run.Scope); err != nil {
+		return PartnerExportRun{}, err
+	}
+	if err := unmarshalMap(row.RecordCounts, &run.RecordCounts); err != nil {
+		return PartnerExportRun{}, err
+	}
+	if err := unmarshalMap(row.Payload, &run.Payload); err != nil {
+		return PartnerExportRun{}, err
+	}
+	return run, nil
+}
+
+func toIntegrationStatusCheck(row *db.IntegrationStatusCheck) (IntegrationStatusCheck, error) {
+	check := IntegrationStatusCheck{
+		ID:             row.ID,
+		OrganisationID: row.OrganisationID,
+		CheckName:      row.CheckName,
+		Status:         row.Status,
+		Summary:        row.Summary,
+		CheckedAt:      timestamptzTime(row.CheckedAt),
+	}
+	if err := unmarshalMap(row.Metadata, &check.Metadata); err != nil {
+		return IntegrationStatusCheck{}, err
+	}
+	return check, nil
+}
+
+func toAuditEvent(row *db.AuditEvent) (AuditEvent, error) {
+	event := AuditEvent{
+		ID:             row.ID,
+		ExternalID:     row.ExternalID,
+		ActorName:      row.ActorName,
+		EventType:      row.EventType,
+		Summary:        row.Summary,
+		CreatedAt:      timestamptzTime(row.CreatedAt),
+		ActorUserID:    row.ActorUserID,
+		ActorRole:      row.ActorRole,
+		OrganisationID: row.OrganisationID,
+		EntityType:     row.EntityType,
+		EntityID:       row.EntityID,
+	}
+	if row.ClinicID != nil {
+		event.ClinicID = *row.ClinicID
+	}
+	if err := unmarshalMap(row.Metadata, &event.Metadata); err != nil {
+		return AuditEvent{}, err
+	}
+	return event, nil
+}

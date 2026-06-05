@@ -40,17 +40,6 @@ func TestStorePublicAPICompiles(t *testing.T) {
 	var _ func(Store) = Store.Close
 }
 
-func TestListAdminAuditEventsSQLOrdersRecentEventsAndLimits(t *testing.T) {
-	t.Parallel()
-
-	if !strings.Contains(listAdminAuditEventsSQL, "ORDER BY created_at DESC, id DESC") {
-		t.Fatal("expected admin audit event SQL to order newest events first")
-	}
-	if !strings.Contains(listAdminAuditEventsSQL, "LIMIT $2") {
-		t.Fatal("expected admin audit event SQL to use caller-provided limit parameter")
-	}
-}
-
 func TestOfflineSyncStoreMethodSignatures(t *testing.T) {
 	t.Parallel()
 

@@ -585,6 +585,385 @@ func interfaceToTimePtr(v interface{}) *time.Time {
 	return &t
 }
 
+func (s Store) GetPartnerAPIKeyByHash(ctx context.Context, keyHash string) (PartnerAPIKey, error) {
+	row, err := s.db.GetPartnerAPIKeyByHash(ctx, keyHash)
+	if err != nil {
+		return PartnerAPIKey{}, err
+	}
+	conv := db.InsertPartnerAPIKeyRow(*row)
+	return toPartnerAPIKey(&conv)
+}
+
+func (s Store) ListPartnerAPIKeys(ctx context.Context, organisationID *int64) ([]PartnerAPIKey, error) {
+	rows, err := s.db.ListPartnerAPIKeys(ctx, organisationID)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]PartnerAPIKey, len(rows))
+	for i, row := range rows {
+		conv := db.InsertPartnerAPIKeyRow(*row)
+		item, err := toPartnerAPIKey(&conv)
+		if err != nil {
+			return nil, err
+		}
+		items[i] = item
+	}
+	return items, nil
+}
+
+func (s Store) CreatePartnerAPIKey(ctx context.Context, input CreatePartnerAPIKeyInput) (PartnerAPIKey, error) {
+	normalized, err := normalizeCreatePartnerAPIKeyInput(input)
+	if err != nil {
+		return PartnerAPIKey{}, err
+	}
+	scopesJSON, err := json.Marshal(normalized.Scopes)
+	if err != nil {
+		return PartnerAPIKey{}, err
+	}
+	allowedDistrictsJSON, err := json.Marshal(normalized.AllowedDistricts)
+	if err != nil {
+		return PartnerAPIKey{}, err
+	}
+	expiresAt := pgtype.Timestamptz{Valid: false}
+	if normalized.ExpiresAt != nil {
+		expiresAt = pgtype.Timestamptz{Time: *normalized.ExpiresAt, Valid: true}
+	}
+	row, err := s.db.InsertPartnerAPIKey(ctx, &db.InsertPartnerAPIKeyParams{
+		OrganisationID:  normalized.OrganisationID,
+		Name:            normalized.Name,
+		Environment:     normalized.Environment,
+		KeyPrefix:       normalized.KeyPrefix,
+		KeyHash:         normalized.KeyHash,
+		Column6:         scopesJSON,
+		Column7:         allowedDistrictsJSON,
+		ExpiresAt:       expiresAt,
+		CreatedByUserID: normalized.CreatedByUserID,
+		CreatedAt:       pgtype.Timestamptz{Time: normalized.CreatedAt, Valid: true},
+	})
+	if err != nil {
+		return PartnerAPIKey{}, err
+	}
+	return toPartnerAPIKey(row)
+}
+
+func (s Store) TouchPartnerAPIKey(ctx context.Context, keyID int64, ipAddress string, usedAt time.Time) error {
+	rowsAffected, err := s.db.TouchPartnerAPIKey(ctx, &db.TouchPartnerAPIKeyParams{
+		ID:         keyID,
+		Column2:    ipAddress,
+		LastUsedAt: pgtype.Timestamptz{Time: usedAt, Valid: true},
+	})
+	if err != nil {
+		return err
+	}
+	if rowsAffected > 0 {
+		return nil
+	}
+	return s.partnerAPIKeyStateError(ctx, keyID, usedAt)
+}
+
+func (s Store) RevokePartnerAPIKey(ctx context.Context, keyID int64, revokedAt time.Time) error {
+	rowsAffected, err := s.db.RevokePartnerAPIKey(ctx, &db.RevokePartnerAPIKeyParams{
+		ID:        keyID,
+		RevokedAt: pgtype.Timestamptz{Time: revokedAt, Valid: true},
+	})
+	if err != nil {
+		return err
+	}
+	if rowsAffected > 0 {
+		return nil
+	}
+	return s.partnerAPIKeyStateError(ctx, keyID, revokedAt)
+}
+
+func (s Store) CreatePartnerWebhookSubscription(ctx context.Context, input CreatePartnerWebhookSubscriptionInput) (PartnerWebhookSubscription, error) {
+	normalized, err := normalizeCreatePartnerWebhookSubscriptionInput(input)
+	if err != nil {
+		return PartnerWebhookSubscription{}, err
+	}
+	eventTypesJSON, err := json.Marshal(normalized.EventTypes)
+	if err != nil {
+		return PartnerWebhookSubscription{}, err
+	}
+	lastTestMetadataJSON, err := json.Marshal(normalized.LastTestMetadata)
+	if err != nil {
+		return PartnerWebhookSubscription{}, err
+	}
+	row, err := s.db.InsertPartnerWebhookSubscription(ctx, &db.InsertPartnerWebhookSubscriptionParams{
+		OrganisationID:  normalized.OrganisationID,
+		Name:            normalized.Name,
+		TargetUrl:       normalized.TargetURL,
+		Column4:         eventTypesJSON,
+		SecretHash:      normalized.SecretHash,
+		Status:          normalized.Status,
+		Column7:         lastTestMetadataJSON,
+		CreatedByUserID: normalized.CreatedByUserID,
+		CreatedAt:       pgtype.Timestamptz{Time: normalized.CreatedAt, Valid: true},
+	})
+	if err != nil {
+		return PartnerWebhookSubscription{}, err
+	}
+	return toPartnerWebhookSubscription(row)
+}
+
+func (s Store) ListPartnerWebhookSubscriptions(ctx context.Context, organisationID *int64) ([]PartnerWebhookSubscription, error) {
+	rows, err := s.db.ListPartnerWebhookSubscriptions(ctx, organisationID)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]PartnerWebhookSubscription, len(rows))
+	for i, row := range rows {
+		item, err := toPartnerWebhookSubscription(row)
+		if err != nil {
+			return nil, err
+		}
+		items[i] = item
+	}
+	return items, nil
+}
+
+func (s Store) CreatePartnerWebhookEvent(ctx context.Context, input CreatePartnerWebhookEventInput) (PartnerWebhookEvent, error) {
+	normalized, err := normalizeCreatePartnerWebhookEventInput(input)
+	if err != nil {
+		return PartnerWebhookEvent{}, err
+	}
+	payloadJSON, err := json.Marshal(normalized.Payload)
+	if err != nil {
+		return PartnerWebhookEvent{}, err
+	}
+	metadataJSON, err := json.Marshal(normalized.Metadata)
+	if err != nil {
+		return PartnerWebhookEvent{}, err
+	}
+	row, err := s.db.InsertPartnerWebhookEvent(ctx, &db.InsertPartnerWebhookEventParams{
+		SubscriptionID: normalized.SubscriptionID,
+		EventType:      normalized.EventType,
+		Column3:        payloadJSON,
+		Column4:        metadataJSON,
+		Status:         normalized.Status,
+		AttemptCount:   int32(normalized.AttemptCount),
+		LastError:      normalized.LastError,
+		CreatedAt:      pgtype.Timestamptz{Time: normalized.CreatedAt, Valid: true},
+		DeliveredAt:    pgtype.Timestamptz{Time: time.Time{}, Valid: false},
+	})
+	if normalized.DeliveredAt != nil {
+		row, err = s.db.InsertPartnerWebhookEvent(ctx, &db.InsertPartnerWebhookEventParams{
+			SubscriptionID: normalized.SubscriptionID,
+			EventType:      normalized.EventType,
+			Column3:        payloadJSON,
+			Column4:        metadataJSON,
+			Status:         normalized.Status,
+			AttemptCount:   int32(normalized.AttemptCount),
+			LastError:      normalized.LastError,
+			CreatedAt:      pgtype.Timestamptz{Time: normalized.CreatedAt, Valid: true},
+			DeliveredAt:    pgtype.Timestamptz{Time: *normalized.DeliveredAt, Valid: true},
+		})
+		if err != nil {
+			return PartnerWebhookEvent{}, err
+		}
+		return toPartnerWebhookEvent(row)
+	}
+	if err != nil {
+		return PartnerWebhookEvent{}, err
+	}
+	return toPartnerWebhookEvent(row)
+}
+
+func (s Store) ListPartnerWebhookEvents(ctx context.Context, organisationID *int64) ([]PartnerWebhookEvent, error) {
+	rows, err := s.db.ListPartnerWebhookEvents(ctx, organisationID)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]PartnerWebhookEvent, len(rows))
+	for i, row := range rows {
+		item, err := toPartnerWebhookEvent(row)
+		if err != nil {
+			return nil, err
+		}
+		items[i] = item
+	}
+	return items, nil
+}
+
+func (s Store) CreatePartnerExportRun(ctx context.Context, input CreatePartnerExportRunInput) (PartnerExportRun, error) {
+	normalized, err := normalizeCreatePartnerExportRunInput(input)
+	if err != nil {
+		return PartnerExportRun{}, err
+	}
+	scopeJSON, err := json.Marshal(normalized.Scope)
+	if err != nil {
+		return PartnerExportRun{}, err
+	}
+	recordCountsJSON, err := json.Marshal(normalized.RecordCounts)
+	if err != nil {
+		return PartnerExportRun{}, err
+	}
+	payloadJSON, err := json.Marshal(normalized.Payload)
+	if err != nil {
+		return PartnerExportRun{}, err
+	}
+	row, err := s.db.InsertPartnerExportRun(ctx, &db.InsertPartnerExportRunParams{
+		OrganisationID:    normalized.OrganisationID,
+		RequestedByUserID: normalized.RequestedByUserID,
+		Format:            normalized.Format,
+		Column4:           scopeJSON,
+		Column5:           recordCountsJSON,
+		Checksum:          normalized.Checksum,
+		Column7:           payloadJSON,
+		CreatedAt:         pgtype.Timestamptz{Time: normalized.CreatedAt, Valid: true},
+	})
+	if err != nil {
+		return PartnerExportRun{}, err
+	}
+	return toPartnerExportRun(row)
+}
+
+func (s Store) GetPartnerExportRun(ctx context.Context, exportID int64) (PartnerExportRun, error) {
+	row, err := s.db.GetPartnerExportRun(ctx, exportID)
+	if err != nil {
+		return PartnerExportRun{}, err
+	}
+	return toPartnerExportRun(row)
+}
+
+func (s Store) GetPartnerExportRunForOrganisation(ctx context.Context, organisationID *int64, exportID int64) (PartnerExportRun, error) {
+	row, err := s.db.GetPartnerExportRunForOrganisation(ctx, &db.GetPartnerExportRunForOrganisationParams{
+		ID:             exportID,
+		OrganisationID: organisationID,
+	})
+	if err != nil {
+		return PartnerExportRun{}, err
+	}
+	return toPartnerExportRun(row)
+}
+
+func (s Store) GetLatestPartnerExportRun(ctx context.Context, organisationID *int64) (PartnerExportRun, error) {
+	row, err := s.db.GetLatestPartnerExportRun(ctx, organisationID)
+	if err != nil {
+		return PartnerExportRun{}, err
+	}
+	return toPartnerExportRun(row)
+}
+
+func (s Store) ListPartnerExportRuns(ctx context.Context, organisationID *int64) ([]PartnerExportRun, error) {
+	rows, err := s.db.ListPartnerExportRuns(ctx, organisationID)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]PartnerExportRun, len(rows))
+	for i, row := range rows {
+		item, err := toPartnerExportRun(row)
+		if err != nil {
+			return nil, err
+		}
+		items[i] = item
+	}
+	return items, nil
+}
+
+func (s Store) listPartnerExportRuns(ctx context.Context, organisationID *int64) ([]PartnerExportRun, error) {
+	return s.ListPartnerExportRuns(ctx, organisationID)
+}
+
+func (s Store) UpsertIntegrationStatusCheck(ctx context.Context, input UpsertIntegrationStatusCheckInput) (IntegrationStatusCheck, error) {
+	normalized, err := normalizeUpsertIntegrationStatusCheckInput(input)
+	if err != nil {
+		return IntegrationStatusCheck{}, err
+	}
+	metadataJSON, err := json.Marshal(normalized.Metadata)
+	if err != nil {
+		return IntegrationStatusCheck{}, err
+	}
+	row, err := s.db.UpsertIntegrationStatusCheck(ctx, &db.UpsertIntegrationStatusCheckParams{
+		OrganisationID: normalized.OrganisationID,
+		CheckName:      normalized.CheckName,
+		Status:         normalized.Status,
+		Summary:        normalized.Summary,
+		Column5:        metadataJSON,
+		CheckedAt:      pgtype.Timestamptz{Time: normalized.CheckedAt, Valid: true},
+	})
+	if err != nil {
+		return IntegrationStatusCheck{}, err
+	}
+	return toIntegrationStatusCheck(row)
+}
+
+func (s Store) ListIntegrationStatusChecks(ctx context.Context, organisationID *int64) ([]IntegrationStatusCheck, error) {
+	rows, err := s.db.ListIntegrationStatusChecks(ctx, organisationID)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]IntegrationStatusCheck, len(rows))
+	for i, row := range rows {
+		item, err := toIntegrationStatusCheck(row)
+		if err != nil {
+			return nil, err
+		}
+		items[i] = item
+	}
+	return items, nil
+}
+
+func (s Store) CreateAuditEvent(ctx context.Context, input CreateAuditEventInput) (AuditEvent, error) {
+	normalized := normalizeCreateAuditEventInput(input)
+	metadataJSON, err := json.Marshal(normalized.Metadata)
+	if err != nil {
+		return AuditEvent{}, err
+	}
+	row, err := s.db.InsertAuditEvent(ctx, &db.InsertAuditEventParams{
+		ExternalID:     normalized.ExternalID,
+		ClinicID:       normalized.ClinicID,
+		ActorName:      normalized.ActorName,
+		EventType:      normalized.EventType,
+		Summary:        normalized.Summary,
+		CreatedAt:      pgtype.Timestamptz{Time: normalized.CreatedAt, Valid: true},
+		ActorUserID:    normalized.ActorUserID,
+		ActorRole:      normalized.ActorRole,
+		OrganisationID: normalized.OrganisationID,
+		EntityType:     normalized.EntityType,
+		EntityID:       normalized.EntityID,
+		Column12:       metadataJSON,
+	})
+	if err != nil {
+		return AuditEvent{}, err
+	}
+	return toAuditEvent(row)
+}
+
+func (s Store) ListClinicAuditEvents(ctx context.Context, clinicID string) ([]AuditEvent, error) {
+	rows, err := s.db.ListClinicAuditEvents(ctx, &clinicID)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]AuditEvent, len(rows))
+	for i, row := range rows {
+		item, err := toAuditEvent(row)
+		if err != nil {
+			return nil, err
+		}
+		items[i] = item
+	}
+	return items, nil
+}
+
+func (s Store) ListAdminAuditEvents(ctx context.Context, organisationID *int64, limit int) ([]AdminAuditEventRow, error) {
+	rows, err := s.db.ListAdminAuditEvents(ctx, &db.ListAdminAuditEventsParams{
+		OrganisationID: organisationID,
+		Limit:          int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+	items := make([]AdminAuditEventRow, len(rows))
+	for i, row := range rows {
+		item, err := toAuditEvent(row)
+		if err != nil {
+			return nil, err
+		}
+		items[i] = item
+	}
+	return items, nil
+}
+
 func strOrZero(s *string) string {
 	if s == nil {
 		return ""
