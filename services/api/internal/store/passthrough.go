@@ -310,6 +310,29 @@ func (s Store) ListAdminUserAccess(ctx context.Context, organisationID *int64) (
 	return items, nil
 }
 
+func (s Store) ListPilotIngestionRuns(ctx context.Context, organisationID *int64, limit int) ([]PilotIngestionRun, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	rows, err := s.db.ListPilotIngestionRuns(ctx, &db.ListPilotIngestionRunsParams{
+		OrganisationID: organisationID,
+		Limit:          int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	runs := make([]PilotIngestionRun, len(rows))
+	for i, row := range rows {
+		run, err := toPilotIngestionRun(row)
+		if err != nil {
+			return nil, err
+		}
+		runs[i] = run
+	}
+	return runs, nil
+}
+
 func (s Store) DisableUser(ctx context.Context, userID int64, disabledAt time.Time) error {
 	rowsAffected, err := s.db.DisableUser(ctx, &db.DisableUserParams{
 		ID:         userID,

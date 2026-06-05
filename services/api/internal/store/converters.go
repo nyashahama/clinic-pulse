@@ -30,6 +30,26 @@ func toReportSyncAttempt(row *db.ReportSyncAttempt) (ReportSyncAttempt, error) {
 	return attempt, nil
 }
 
+func toPilotIngestionRun(row *db.PilotIngestionRun) (PilotIngestionRun, error) {
+	run := PilotIngestionRun{
+		ID:              row.ID,
+		OrganisationID:  row.OrganisationID,
+		SourceName:      row.SourceName,
+		SourceReference: row.SourceReference,
+		Status:          row.Status,
+		RecordsReceived: int(row.RecordsReceived),
+		RecordsImported: int(row.RecordsImported),
+		RecordsRejected: int(row.RecordsRejected),
+		ActorUserID:     row.ActorUserID,
+		StartedAt:       timestamptzTime(row.StartedAt),
+		CompletedAt:     timestamptzPtr(row.CompletedAt),
+	}
+	if err := unmarshalStringSlice(row.ValidationErrors, &run.ValidationErrors); err != nil {
+		return PilotIngestionRun{}, err
+	}
+	return run, nil
+}
+
 func syncSummaryFromRow(since time.Time, row *db.SyncSummarySinceRow) SyncSummary {
 	s := SyncSummary{
 		WindowStartedAt:             since,

@@ -33,6 +33,7 @@ type Querier interface {
 	ListCurrentStatuses(ctx context.Context) ([]*ListCurrentStatusesRow, error)
 	ListCurrentStatusesForReviewScope(ctx context.Context, arg *ListCurrentStatusesForReviewScopeParams) ([]*ListCurrentStatusesForReviewScopeRow, error)
 	ListMembershipsForUser(ctx context.Context, userID int64) ([]*ListMembershipsForUserRow, error)
+	ListPilotIngestionRuns(ctx context.Context, arg *ListPilotIngestionRunsParams) ([]*PilotIngestionRun, error)
 	LockUserForMembershipReplacement(ctx context.Context, id int64) (int64, error)
 	RevokeActiveSessionsForUser(ctx context.Context, userID int64) (int64, error)
 	RevokeSession(ctx context.Context, tokenHash string) error

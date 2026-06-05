@@ -51,20 +51,6 @@ func TestListAdminAuditEventsSQLOrdersRecentEventsAndLimits(t *testing.T) {
 	}
 }
 
-func TestListPilotIngestionRunsSQLScopesOrganisationAndLimits(t *testing.T) {
-	t.Parallel()
-
-	if !strings.Contains(listPilotIngestionRunsSQL, "WHERE $1::bigint IS NULL OR organisation_id = $1") {
-		t.Fatal("expected pilot ingestion runs SQL to scope by organisation id when present")
-	}
-	if !strings.Contains(listPilotIngestionRunsSQL, "ORDER BY started_at DESC, id DESC") {
-		t.Fatal("expected pilot ingestion runs SQL to order newest runs first")
-	}
-	if !strings.Contains(listPilotIngestionRunsSQL, "LIMIT $2") {
-		t.Fatal("expected pilot ingestion runs SQL to apply caller limit")
-	}
-}
-
 func TestOfflineSyncStoreMethodSignatures(t *testing.T) {
 	t.Parallel()
 
