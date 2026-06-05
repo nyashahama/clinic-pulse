@@ -9,8 +9,18 @@ import (
 )
 
 type Querier interface {
+	GetClinic(ctx context.Context, id string) (*GetClinicRow, error)
+	GetClinicDistrict(ctx context.Context, id string) (string, error)
+	GetCurrentStatus(ctx context.Context, clinicID string) (*GetCurrentStatusRow, error)
+	GetCurrentStatusForUpdate(ctx context.Context, clinicID string) (*GetCurrentStatusForUpdateRow, error)
+	ListClinicServices(ctx context.Context, clinicID string) ([]*ListClinicServicesRow, error)
 	// clinics
-	Ping(ctx context.Context) (int32, error)
+	ListClinics(ctx context.Context) ([]*ListClinicsRow, error)
+	ListCurrentStatuses(ctx context.Context) ([]*ListCurrentStatusesRow, error)
+	ListCurrentStatusesForReviewScope(ctx context.Context, arg *ListCurrentStatusesForReviewScopeParams) ([]*ListCurrentStatusesForReviewScopeRow, error)
+	UpdateCurrentStatusFreshness(ctx context.Context, arg *UpdateCurrentStatusFreshnessParams) (*UpdateCurrentStatusFreshnessRow, error)
+	UpsertCurrentStatus(ctx context.Context, arg *UpsertCurrentStatusParams) (*UpsertCurrentStatusRow, error)
+	VerifyClinicExists(ctx context.Context, id string) (string, error)
 }
 
 var _ Querier = (*Queries)(nil)

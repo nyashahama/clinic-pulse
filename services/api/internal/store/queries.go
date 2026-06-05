@@ -1179,10 +1179,6 @@ func (s Store) GetClinic(ctx context.Context, clinicID string) (ClinicDetail, er
 	return detail, nil
 }
 
-func (s Store) GetCurrentStatus(ctx context.Context, clinicID string) (CurrentStatus, error) {
-	return scanCurrentStatus(s.pool.QueryRow(ctx, getCurrentStatusSQL, clinicID))
-}
-
 func (s Store) GetReportByExternalID(ctx context.Context, externalID string) (Report, error) {
 	return scanReport(s.pool.QueryRow(ctx, getReportByExternalIDSQL, externalID))
 }
@@ -1542,30 +1538,6 @@ func (s Store) GetSyncSummarySinceForReviewScope(ctx context.Context, since time
 	summary.MedianCurrentStatusAgeHours = nullFloat64Ptr(medianAge)
 
 	return summary, nil
-}
-
-func (s Store) ListCurrentStatuses(ctx context.Context) ([]CurrentStatus, error) {
-	rows, err := s.pool.Query(ctx, listCurrentStatusesSQL)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (CurrentStatus, error) {
-		return scanCurrentStatus(row)
-	})
-}
-
-func (s Store) ListCurrentStatusesForReviewScope(ctx context.Context, scope ReportReviewScope) ([]CurrentStatus, error) {
-	rows, err := s.pool.Query(ctx, listCurrentStatusesForReviewScopeSQL, scope.Role, scope.District)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (CurrentStatus, error) {
-		return scanCurrentStatus(row)
-	})
 }
 
 func (s Store) UpdateCurrentStatusFreshness(ctx context.Context, clinicID string, freshness string, updatedAt time.Time, audit *CreateAuditEventInput) (CurrentStatus, bool, error) {

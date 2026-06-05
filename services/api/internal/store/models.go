@@ -1,6 +1,10 @@
 package store
 
-import "time"
+import (
+	"time"
+
+	"clinicpulse/services/api/internal/store/db"
+)
 
 type Clinic struct {
 	ID                 string     `json:"id"`
@@ -274,6 +278,11 @@ type AdminUserAccessRow struct {
 }
 
 type AdminAuditEventRow = AuditEvent
+
+// Type aliases for sqlc-generated row types (non-jsonb tables).
+type ClinicRow = db.Clinic
+type ClinicServiceRow = db.ClinicService
+type CurrentStatusRow = db.CurrentStatus
 
 type PilotIngestionRun struct {
 	ID               string     `json:"id"`
