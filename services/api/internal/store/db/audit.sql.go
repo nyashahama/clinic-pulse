@@ -108,14 +108,14 @@ SELECT
     entity_id,
     metadata
 FROM audit_events
-WHERE $1 IS NULL OR organisation_id = $1
+WHERE $1::bigint IS NULL OR organisation_id = $1
 ORDER BY created_at DESC, id DESC
 LIMIT $2
 `
 
 type ListAdminAuditEventsParams struct {
-	OrganisationID interface{} `json:"organisation_id"`
-	Limit          int32       `json:"limit"`
+	OrganisationID *int64 `json:"organisation_id"`
+	Limit          int32  `json:"limit"`
 }
 
 func (q *Queries) ListAdminAuditEvents(ctx context.Context, arg *ListAdminAuditEventsParams) ([]*AuditEvent, error) {

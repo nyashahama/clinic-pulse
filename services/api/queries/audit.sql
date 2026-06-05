@@ -64,6 +64,6 @@ SELECT
     entity_id,
     metadata
 FROM audit_events
-WHERE sqlc.narg('organisation_id') IS NULL OR organisation_id = sqlc.narg('organisation_id')
+WHERE sqlc.narg('organisation_id')::bigint IS NULL OR organisation_id = sqlc.narg('organisation_id')
 ORDER BY created_at DESC, id DESC
 LIMIT sqlc.arg('limit');

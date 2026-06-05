@@ -212,6 +212,6 @@ SELECT
 FROM users
 JOIN organisation_memberships ON organisation_memberships.user_id = users.id
 LEFT JOIN sessions ON sessions.user_id = users.id AND sessions.revoked_at IS NULL AND sessions.expires_at > now()
-WHERE $1 IS NULL OR organisation_memberships.organisation_id = $1
+WHERE sqlc.narg('organisation_id')::bigint IS NULL OR organisation_memberships.organisation_id = sqlc.narg('organisation_id')
 GROUP BY users.id, organisation_memberships.id
 ORDER BY organisation_memberships.role, users.display_name, users.id;

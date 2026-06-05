@@ -460,7 +460,7 @@ SELECT
 FROM users
 JOIN organisation_memberships ON organisation_memberships.user_id = users.id
 LEFT JOIN sessions ON sessions.user_id = users.id AND sessions.revoked_at IS NULL AND sessions.expires_at > now()
-WHERE $1 IS NULL OR organisation_memberships.organisation_id = $1
+WHERE $1::bigint IS NULL OR organisation_memberships.organisation_id = $1
 GROUP BY users.id, organisation_memberships.id
 ORDER BY organisation_memberships.role, users.display_name, users.id
 `
@@ -477,8 +477,8 @@ type ListAdminUserAccessRow struct {
 	LastSeenAt     interface{}        `json:"last_seen_at"`
 }
 
-func (q *Queries) ListAdminUserAccess(ctx context.Context, dollar_1 interface{}) ([]*ListAdminUserAccessRow, error) {
-	rows, err := q.db.Query(ctx, listAdminUserAccess, dollar_1)
+func (q *Queries) ListAdminUserAccess(ctx context.Context, organisationID *int64) ([]*ListAdminUserAccessRow, error) {
+	rows, err := q.db.Query(ctx, listAdminUserAccess, organisationID)
 	if err != nil {
 		return nil, err
 	}

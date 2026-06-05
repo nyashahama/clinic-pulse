@@ -13,6 +13,6 @@ SELECT
     started_at,
     completed_at
 FROM pilot_ingestion_runs
-WHERE sqlc.narg('organisation_id') IS NULL OR organisation_id = sqlc.narg('organisation_id')
+WHERE sqlc.narg('organisation_id')::bigint IS NULL OR organisation_id = sqlc.narg('organisation_id')
 ORDER BY started_at DESC, id DESC
 LIMIT sqlc.arg('limit');

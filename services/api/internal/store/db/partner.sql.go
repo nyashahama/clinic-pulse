@@ -23,12 +23,12 @@ SELECT
     payload,
     created_at
 FROM partner_export_runs
-WHERE $1 IS NULL OR organisation_id = $1
+WHERE $1::bigint IS NULL OR organisation_id = $1
 ORDER BY created_at DESC, id DESC
 LIMIT 1
 `
 
-func (q *Queries) GetLatestPartnerExportRun(ctx context.Context, organisationID interface{}) (*PartnerExportRun, error) {
+func (q *Queries) GetLatestPartnerExportRun(ctx context.Context, organisationID *int64) (*PartnerExportRun, error) {
 	row := q.db.QueryRow(ctx, getLatestPartnerExportRun, organisationID)
 	var i PartnerExportRun
 	err := row.Scan(
@@ -172,12 +172,12 @@ SELECT
     created_at
 FROM partner_export_runs
 WHERE id = $1
-    AND ($2 IS NULL OR organisation_id = $2)
+    AND ($2::bigint IS NULL OR organisation_id = $2)
 `
 
 type GetPartnerExportRunForOrganisationParams struct {
-	ID             int64       `json:"id"`
-	OrganisationID interface{} `json:"organisation_id"`
+	ID             int64  `json:"id"`
+	OrganisationID *int64 `json:"organisation_id"`
 }
 
 func (q *Queries) GetPartnerExportRunForOrganisation(ctx context.Context, arg *GetPartnerExportRunForOrganisationParams) (*PartnerExportRun, error) {
@@ -507,11 +507,11 @@ SELECT
     metadata,
     checked_at
 FROM integration_status_checks
-WHERE $1 IS NULL OR organisation_id = $1
+WHERE $1::bigint IS NULL OR organisation_id = $1
 ORDER BY checked_at DESC, id DESC
 `
 
-func (q *Queries) ListIntegrationStatusChecks(ctx context.Context, organisationID interface{}) ([]*IntegrationStatusCheck, error) {
+func (q *Queries) ListIntegrationStatusChecks(ctx context.Context, organisationID *int64) ([]*IntegrationStatusCheck, error) {
 	rows, err := q.db.Query(ctx, listIntegrationStatusChecks, organisationID)
 	if err != nil {
 		return nil, err
@@ -557,7 +557,7 @@ SELECT
     created_at,
     updated_at
 FROM partner_api_keys
-WHERE $1 IS NULL OR organisation_id = $1
+WHERE $1::bigint IS NULL OR organisation_id = $1
 ORDER BY created_at DESC, id DESC
 `
 
@@ -579,7 +579,7 @@ type ListPartnerAPIKeysRow struct {
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 }
 
-func (q *Queries) ListPartnerAPIKeys(ctx context.Context, organisationID interface{}) ([]*ListPartnerAPIKeysRow, error) {
+func (q *Queries) ListPartnerAPIKeys(ctx context.Context, organisationID *int64) ([]*ListPartnerAPIKeysRow, error) {
 	rows, err := q.db.Query(ctx, listPartnerAPIKeys, organisationID)
 	if err != nil {
 		return nil, err
@@ -627,11 +627,11 @@ SELECT
     payload,
     created_at
 FROM partner_export_runs
-WHERE $1 IS NULL OR organisation_id = $1
+WHERE $1::bigint IS NULL OR organisation_id = $1
 ORDER BY created_at DESC, id DESC
 `
 
-func (q *Queries) ListPartnerExportRuns(ctx context.Context, organisationID interface{}) ([]*PartnerExportRun, error) {
+func (q *Queries) ListPartnerExportRuns(ctx context.Context, organisationID *int64) ([]*PartnerExportRun, error) {
 	rows, err := q.db.Query(ctx, listPartnerExportRuns, organisationID)
 	if err != nil {
 		return nil, err
@@ -675,11 +675,11 @@ SELECT
     partner_webhook_events.delivered_at
 FROM partner_webhook_events
 JOIN partner_webhook_subscriptions ON partner_webhook_subscriptions.id = partner_webhook_events.subscription_id
-WHERE $1 IS NULL OR partner_webhook_subscriptions.organisation_id = $1
+WHERE $1::bigint IS NULL OR partner_webhook_subscriptions.organisation_id = $1
 ORDER BY partner_webhook_events.created_at DESC, partner_webhook_events.id DESC
 `
 
-func (q *Queries) ListPartnerWebhookEvents(ctx context.Context, organisationID interface{}) ([]*PartnerWebhookEvent, error) {
+func (q *Queries) ListPartnerWebhookEvents(ctx context.Context, organisationID *int64) ([]*PartnerWebhookEvent, error) {
 	rows, err := q.db.Query(ctx, listPartnerWebhookEvents, organisationID)
 	if err != nil {
 		return nil, err
@@ -727,11 +727,11 @@ SELECT
     created_at,
     updated_at
 FROM partner_webhook_subscriptions
-WHERE $1 IS NULL OR organisation_id = $1
+WHERE $1::bigint IS NULL OR organisation_id = $1
 ORDER BY created_at DESC, id DESC
 `
 
-func (q *Queries) ListPartnerWebhookSubscriptions(ctx context.Context, organisationID interface{}) ([]*PartnerWebhookSubscription, error) {
+func (q *Queries) ListPartnerWebhookSubscriptions(ctx context.Context, organisationID *int64) ([]*PartnerWebhookSubscription, error) {
 	rows, err := q.db.Query(ctx, listPartnerWebhookSubscriptions, organisationID)
 	if err != nil {
 		return nil, err

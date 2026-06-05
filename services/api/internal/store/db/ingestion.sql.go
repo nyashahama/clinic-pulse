@@ -24,14 +24,14 @@ SELECT
     started_at,
     completed_at
 FROM pilot_ingestion_runs
-WHERE $1 IS NULL OR organisation_id = $1
+WHERE $1::bigint IS NULL OR organisation_id = $1
 ORDER BY started_at DESC, id DESC
 LIMIT $2
 `
 
 type ListPilotIngestionRunsParams struct {
-	OrganisationID interface{} `json:"organisation_id"`
-	Limit          int32       `json:"limit"`
+	OrganisationID *int64 `json:"organisation_id"`
+	Limit          int32  `json:"limit"`
 }
 
 func (q *Queries) ListPilotIngestionRuns(ctx context.Context, arg *ListPilotIngestionRunsParams) ([]*PilotIngestionRun, error) {

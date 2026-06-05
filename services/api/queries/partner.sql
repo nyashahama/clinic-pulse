@@ -68,7 +68,7 @@ SELECT
     created_at,
     updated_at
 FROM partner_api_keys
-WHERE sqlc.narg('organisation_id') IS NULL OR organisation_id = sqlc.narg('organisation_id')
+WHERE sqlc.narg('organisation_id')::bigint IS NULL OR organisation_id = sqlc.narg('organisation_id')
 ORDER BY created_at DESC, id DESC;
 
 -- name: TouchPartnerAPIKey :execrows
@@ -143,7 +143,7 @@ SELECT
     created_at,
     updated_at
 FROM partner_webhook_subscriptions
-WHERE sqlc.narg('organisation_id') IS NULL OR organisation_id = sqlc.narg('organisation_id')
+WHERE sqlc.narg('organisation_id')::bigint IS NULL OR organisation_id = sqlc.narg('organisation_id')
 ORDER BY created_at DESC, id DESC;
 
 -- name: InsertPartnerWebhookEvent :one
@@ -185,7 +185,7 @@ SELECT
     partner_webhook_events.delivered_at
 FROM partner_webhook_events
 JOIN partner_webhook_subscriptions ON partner_webhook_subscriptions.id = partner_webhook_events.subscription_id
-WHERE sqlc.narg('organisation_id') IS NULL OR partner_webhook_subscriptions.organisation_id = sqlc.narg('organisation_id')
+WHERE sqlc.narg('organisation_id')::bigint IS NULL OR partner_webhook_subscriptions.organisation_id = sqlc.narg('organisation_id')
 ORDER BY partner_webhook_events.created_at DESC, partner_webhook_events.id DESC;
 
 -- name: InsertPartnerExportRun :one
@@ -238,7 +238,7 @@ SELECT
     created_at
 FROM partner_export_runs
 WHERE id = $1
-    AND (sqlc.narg('organisation_id') IS NULL OR organisation_id = sqlc.narg('organisation_id'));
+    AND (sqlc.narg('organisation_id')::bigint IS NULL OR organisation_id = sqlc.narg('organisation_id'));
 
 -- name: GetLatestPartnerExportRun :one
 SELECT
@@ -252,7 +252,7 @@ SELECT
     payload,
     created_at
 FROM partner_export_runs
-WHERE sqlc.narg('organisation_id') IS NULL OR organisation_id = sqlc.narg('organisation_id')
+WHERE sqlc.narg('organisation_id')::bigint IS NULL OR organisation_id = sqlc.narg('organisation_id')
 ORDER BY created_at DESC, id DESC
 LIMIT 1;
 
@@ -268,7 +268,7 @@ SELECT
     payload,
     created_at
 FROM partner_export_runs
-WHERE sqlc.narg('organisation_id') IS NULL OR organisation_id = sqlc.narg('organisation_id')
+WHERE sqlc.narg('organisation_id')::bigint IS NULL OR organisation_id = sqlc.narg('organisation_id')
 ORDER BY created_at DESC, id DESC;
 
 -- name: UpsertIntegrationStatusCheck :one
@@ -305,5 +305,5 @@ SELECT
     metadata,
     checked_at
 FROM integration_status_checks
-WHERE sqlc.narg('organisation_id') IS NULL OR organisation_id = sqlc.narg('organisation_id')
+WHERE sqlc.narg('organisation_id')::bigint IS NULL OR organisation_id = sqlc.narg('organisation_id')
 ORDER BY checked_at DESC, id DESC;
