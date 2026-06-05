@@ -389,7 +389,7 @@ func float64PtrToNumeric(v *float64) pgtype.Numeric {
 		return pgtype.Numeric{Valid: false}
 	}
 	var n pgtype.Numeric
-	if err := n.Scan(*v); err != nil {
+	if err := n.Scan(strconv.FormatFloat(*v, 'f', -1, 64)); err != nil {
 		return pgtype.Numeric{Valid: false}
 	}
 	return n
