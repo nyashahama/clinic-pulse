@@ -115,6 +115,9 @@ func (s Store) GetSyncSummarySinceForReviewScope(ctx context.Context, since time
 	if scope.Role == "district_manager" && scope.District == nil {
 		return SyncSummary{WindowStartedAt: since}, nil
 	}
+	if scope.Role == "reporter" && scope.UserID == nil {
+		return SyncSummary{WindowStartedAt: since}, nil
+	}
 	district := ""
 	if scope.District != nil {
 		district = *scope.District
@@ -160,7 +163,7 @@ func (s Store) CreateReportSyncAttempt(ctx context.Context, input CreateReportSy
 		ReportID:           normalized.ReportID,
 		SubmittedByUserID:  normalized.SubmittedByUserID,
 		OrganisationID:     normalized.OrganisationID,
-		ClinicID:           &normalized.ClinicID,
+		ClinicID:           nullableTrimmedStringArg(normalized.ClinicID),
 		Result:             normalized.Result,
 		ClientAttemptCount: int32(normalized.ClientAttemptCount),
 		QueuedAt:           queuedAt,
