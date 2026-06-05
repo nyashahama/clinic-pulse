@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"clinicpulse/services/api/internal/store/db"
@@ -100,6 +101,80 @@ func currentStatusFromReviewScopeRow(r *db.ListCurrentStatusesForReviewScopeRow)
 		ConfidenceScore: float64Ptr(r.CurrentStatusConfidenceScore),
 		UpdatedAt:       timestamptzTime(r.UpdatedAt),
 	}
+}
+
+func (s Store) GetSyncSummarySince(ctx context.Context, since time.Time) (SyncSummary, error) {
+	row, err := s.db.SyncSummarySince(ctx, pgtype.Timestamptz{Time: since, Valid: true})
+	if err != nil {
+		return SyncSummary{}, err
+	}
+	return syncSummaryFromRow(since, row), nil
+}
+
+func (s Store) GetSyncSummarySinceForReviewScope(ctx context.Context, since time.Time, scope ReportReviewScope) (SyncSummary, error) {
+	if scope.Role == "district_manager" && scope.District == nil {
+		return SyncSummary{WindowStartedAt: since}, nil
+	}
+	district := ""
+	if scope.District != nil {
+		district = *scope.District
+	}
+	userID := int64(0)
+	if scope.UserID != nil {
+		userID = *scope.UserID
+	}
+	row, err := s.db.SyncSummarySinceForReviewScope(ctx, &db.SyncSummarySinceForReviewScopeParams{
+		ReceivedAt: pgtype.Timestamptz{Time: since, Valid: true},
+		Column2:    scope.Role,
+		Column3:    district,
+		Column4:    userID,
+	})
+	if err != nil {
+		return SyncSummary{}, err
+	}
+	return syncSummaryFromReviewScopeRow(since, row), nil
+}
+
+func (s Store) CreateReportSyncAttempt(ctx context.Context, input CreateReportSyncAttemptInput) (ReportSyncAttempt, error) {
+	normalized, err := normalizeCreateReportSyncAttemptInput(input)
+	if err != nil {
+		return ReportSyncAttempt{}, err
+	}
+
+	metadataJSON, err := json.Marshal(normalized.Metadata)
+	if err != nil {
+		return ReportSyncAttempt{}, err
+	}
+
+	queuedAt := pgtype.Timestamptz{Valid: false}
+	if normalized.QueuedAt != nil {
+		queuedAt = pgtype.Timestamptz{Time: *normalized.QueuedAt, Valid: true}
+	}
+	submittedAt := pgtype.Timestamptz{Valid: false}
+	if normalized.SubmittedAt != nil {
+		submittedAt = pgtype.Timestamptz{Time: *normalized.SubmittedAt, Valid: true}
+	}
+
+	row, err := s.db.InsertReportSyncAttempt(ctx, &db.InsertReportSyncAttemptParams{
+		ExternalID:         normalized.ExternalID,
+		ReportID:           normalized.ReportID,
+		SubmittedByUserID:  normalized.SubmittedByUserID,
+		OrganisationID:     normalized.OrganisationID,
+		ClinicID:           &normalized.ClinicID,
+		Result:             normalized.Result,
+		ClientAttemptCount: int32(normalized.ClientAttemptCount),
+		QueuedAt:           queuedAt,
+		SubmittedAt:        submittedAt,
+		ReceivedAt:         pgtype.Timestamptz{Time: normalized.ReceivedAt, Valid: true},
+		ErrorCode:          normalized.ErrorCode,
+		ErrorMessage:       normalized.ErrorMessage,
+		Column13:           metadataJSON,
+	})
+	if err != nil {
+		return ReportSyncAttempt{}, err
+	}
+
+	return toReportSyncAttempt(row)
 }
 
 func timestamptzPtr(t pgtype.Timestamptz) *time.Time {

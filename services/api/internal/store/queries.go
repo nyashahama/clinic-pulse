@@ -490,39 +490,6 @@ RETURNING
 	entity_id,
 	metadata`
 
-	insertReportSyncAttemptSQL = `
-INSERT INTO report_sync_attempts (
-    external_id,
-    report_id,
-    submitted_by_user_id,
-    organisation_id,
-    clinic_id,
-    result,
-    client_attempt_count,
-    queued_at,
-    submitted_at,
-    received_at,
-    error_code,
-    error_message,
-    metadata
-)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb)
-RETURNING
-    id,
-    external_id,
-    report_id,
-    submitted_by_user_id,
-    organisation_id,
-    clinic_id,
-    result,
-    client_attempt_count,
-    queued_at,
-    submitted_at,
-    received_at,
-    error_code,
-    error_message,
-    metadata`
-
 	insertPartnerAPIKeySQL = `
 INSERT INTO partner_api_keys (
     organisation_id,
@@ -833,154 +800,6 @@ FROM integration_status_checks
 WHERE $1::bigint IS NULL OR organisation_id = $1
 ORDER BY checked_at DESC, id DESC`
 
-	syncSummarySinceSQL = `
-WITH attempt_counts AS (
-    SELECT
-        (COUNT(*) FILTER (WHERE result = 'created'))::int AS created_count,
-        (COUNT(*) FILTER (WHERE result = 'duplicate'))::int AS duplicate_count,
-        (COUNT(*) FILTER (WHERE result = 'conflict'))::int AS conflict_count,
-        (COUNT(*) FILTER (WHERE result = 'validation_error'))::int AS validation_error_count
-    FROM report_sync_attempts
-    WHERE received_at >= $1
-),
-pending_offline AS (
-    SELECT COUNT(*)::int AS pending_count
-    FROM reports
-    WHERE offline_created = true
-        AND review_state = 'pending'
-        AND received_at >= $1
-),
-current_status_counts AS (
-    SELECT
-        (COUNT(*) FILTER (WHERE freshness = 'needs_confirmation'))::int AS needs_confirmation_count,
-        (COUNT(*) FILTER (WHERE freshness = 'stale'))::int AS stale_count
-    FROM current_status
-),
-median_status_age AS (
-    SELECT
-        percentile_cont(0.5) WITHIN GROUP (
-            ORDER BY EXTRACT(EPOCH FROM (now() - COALESCE(last_reported_at, updated_at))) / 3600.0
-        )::double precision AS median_current_status_age_hours
-    FROM current_status
-)
-SELECT
-    created_count,
-    duplicate_count,
-    conflict_count,
-    validation_error_count,
-    pending_count,
-    needs_confirmation_count,
-    stale_count,
-    median_current_status_age_hours
-FROM attempt_counts, pending_offline, current_status_counts, median_status_age`
-
-	syncSummarySinceForReviewScopeSQL = `
-WITH attempt_counts AS (
-    SELECT
-        (COUNT(*) FILTER (WHERE report_sync_attempts.result = 'created'))::int AS created_count,
-        (COUNT(*) FILTER (WHERE report_sync_attempts.result = 'duplicate'))::int AS duplicate_count,
-        (COUNT(*) FILTER (WHERE report_sync_attempts.result = 'conflict'))::int AS conflict_count,
-        (COUNT(*) FILTER (WHERE report_sync_attempts.result = 'validation_error'))::int AS validation_error_count
-    FROM report_sync_attempts
-    LEFT JOIN clinics ON clinics.id = report_sync_attempts.clinic_id
-    WHERE report_sync_attempts.received_at >= $1
-        AND (
-            ($2 = 'reporter' AND $4::bigint IS NOT NULL AND report_sync_attempts.submitted_by_user_id = $4)
-            OR
-            (
-                report_sync_attempts.clinic_id IS NOT NULL
-                AND ($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)
-            )
-            OR $2 IN ('org_admin', 'system_admin')
-        )
-),
-pending_offline AS (
-    SELECT COUNT(*)::int AS pending_count
-    FROM reports
-    JOIN clinics ON clinics.id = reports.clinic_id
-    WHERE reports.offline_created = true
-        AND reports.review_state = 'pending'
-        AND reports.received_at >= $1
-        AND (
-            ($2 = 'reporter' AND $4::bigint IS NOT NULL AND reports.submitted_by_user_id = $4)
-            OR ($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)
-            OR $2 IN ('org_admin', 'system_admin')
-        )
-),
-current_status_counts AS (
-    SELECT
-        (COUNT(*) FILTER (WHERE current_status.freshness = 'needs_confirmation'))::int AS needs_confirmation_count,
-        (COUNT(*) FILTER (WHERE current_status.freshness = 'stale'))::int AS stale_count
-    FROM current_status
-    JOIN clinics ON clinics.id = current_status.clinic_id
-    WHERE (
-        (
-            $2 = 'reporter'
-            AND $4::bigint IS NOT NULL
-            AND (
-                EXISTS (
-                    SELECT 1
-                    FROM report_sync_attempts reporter_attempts
-                    WHERE reporter_attempts.submitted_by_user_id = $4
-                        AND reporter_attempts.clinic_id = current_status.clinic_id
-                        AND reporter_attempts.received_at >= $1
-                )
-                OR EXISTS (
-                    SELECT 1
-                    FROM reports reporter_reports
-                    WHERE reporter_reports.submitted_by_user_id = $4
-                        AND reporter_reports.clinic_id = current_status.clinic_id
-                        AND reporter_reports.received_at >= $1
-                )
-            )
-        )
-        OR ($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)
-        OR $2 IN ('org_admin', 'system_admin')
-    )
-),
-median_status_age AS (
-    SELECT
-        percentile_cont(0.5) WITHIN GROUP (
-            ORDER BY EXTRACT(EPOCH FROM (now() - COALESCE(current_status.last_reported_at, current_status.updated_at))) / 3600.0
-        )::double precision AS median_current_status_age_hours
-    FROM current_status
-    JOIN clinics ON clinics.id = current_status.clinic_id
-    WHERE (
-        (
-            $2 = 'reporter'
-            AND $4::bigint IS NOT NULL
-            AND (
-                EXISTS (
-                    SELECT 1
-                    FROM report_sync_attempts reporter_attempts
-                    WHERE reporter_attempts.submitted_by_user_id = $4
-                        AND reporter_attempts.clinic_id = current_status.clinic_id
-                        AND reporter_attempts.received_at >= $1
-                )
-                OR EXISTS (
-                    SELECT 1
-                    FROM reports reporter_reports
-                    WHERE reporter_reports.submitted_by_user_id = $4
-                        AND reporter_reports.clinic_id = current_status.clinic_id
-                        AND reporter_reports.received_at >= $1
-                )
-            )
-        )
-        OR ($2 = 'district_manager' AND $3::text IS NOT NULL AND clinics.district = $3)
-        OR $2 IN ('org_admin', 'system_admin')
-    )
-)
-SELECT
-    created_count,
-    duplicate_count,
-    conflict_count,
-    validation_error_count,
-    pending_count,
-    needs_confirmation_count,
-    stale_count,
-    median_current_status_age_hours
-FROM attempt_counts, pending_offline, current_status_counts, median_status_age`
-
 	getReportForReviewSQL = `
 SELECT
     id,
@@ -1209,34 +1028,6 @@ func (s Store) GetRecentReportByPayload(ctx context.Context, input CreateReportI
 		normalized.QueuePressure,
 		normalized.SubmittedByUserID,
 		windowStart,
-	))
-}
-
-func (s Store) CreateReportSyncAttempt(ctx context.Context, input CreateReportSyncAttemptInput) (ReportSyncAttempt, error) {
-	normalized, err := normalizeCreateReportSyncAttemptInput(input)
-	if err != nil {
-		return ReportSyncAttempt{}, err
-	}
-
-	metadataJSON, err := json.Marshal(normalized.Metadata)
-	if err != nil {
-		return ReportSyncAttempt{}, err
-	}
-
-	return scanReportSyncAttempt(s.pool.QueryRow(ctx, insertReportSyncAttemptSQL,
-		normalized.ExternalID,
-		normalized.ReportID,
-		normalized.SubmittedByUserID,
-		normalized.OrganisationID,
-		nullableTrimmedStringArg(normalized.ClinicID),
-		normalized.Result,
-		normalized.ClientAttemptCount,
-		normalized.QueuedAt,
-		normalized.SubmittedAt,
-		normalized.ReceivedAt,
-		normalized.ErrorCode,
-		normalized.ErrorMessage,
-		string(metadataJSON),
 	))
 }
 
@@ -1494,50 +1285,6 @@ func (s Store) GetPartnerReadinessSnapshot(ctx context.Context, organisationID *
 		ExportRuns:           nonNilPartnerExportRuns(exportRuns),
 		IntegrationChecks:    nonNilIntegrationStatusChecks(integrationChecks),
 	}, nil
-}
-
-func (s Store) GetSyncSummarySince(ctx context.Context, since time.Time) (SyncSummary, error) {
-	var summary SyncSummary
-	var medianAge sql.NullFloat64
-	summary.WindowStartedAt = since
-
-	if err := s.pool.QueryRow(ctx, syncSummarySinceSQL, since).Scan(
-		&summary.OfflineReportsReceived,
-		&summary.DuplicateSyncsHandled,
-		&summary.ConflictsNeedingAttention,
-		&summary.ValidationFailures,
-		&summary.PendingOfflineReports,
-		&summary.NeedsConfirmationClinics,
-		&summary.StaleClinics,
-		&medianAge,
-	); err != nil {
-		return SyncSummary{}, err
-	}
-	summary.MedianCurrentStatusAgeHours = nullFloat64Ptr(medianAge)
-
-	return summary, nil
-}
-
-func (s Store) GetSyncSummarySinceForReviewScope(ctx context.Context, since time.Time, scope ReportReviewScope) (SyncSummary, error) {
-	var summary SyncSummary
-	var medianAge sql.NullFloat64
-	summary.WindowStartedAt = since
-
-	if err := s.pool.QueryRow(ctx, syncSummarySinceForReviewScopeSQL, since, scope.Role, scope.District, scope.UserID).Scan(
-		&summary.OfflineReportsReceived,
-		&summary.DuplicateSyncsHandled,
-		&summary.ConflictsNeedingAttention,
-		&summary.ValidationFailures,
-		&summary.PendingOfflineReports,
-		&summary.NeedsConfirmationClinics,
-		&summary.StaleClinics,
-		&medianAge,
-	); err != nil {
-		return SyncSummary{}, err
-	}
-	summary.MedianCurrentStatusAgeHours = nullFloat64Ptr(medianAge)
-
-	return summary, nil
 }
 
 func (s Store) UpdateCurrentStatusFreshness(ctx context.Context, clinicID string, freshness string, updatedAt time.Time, audit *CreateAuditEventInput) (CurrentStatus, bool, error) {
@@ -2145,57 +1892,6 @@ func scanReport(row pgx.Row) (Report, error) {
 	report.ReviewNotes = nullStringPtr(reviewNotes)
 
 	return report, nil
-}
-
-func scanReportSyncAttempt(row pgx.Row) (ReportSyncAttempt, error) {
-	var attempt ReportSyncAttempt
-	var reportID sql.NullInt64
-	var submittedByUserID sql.NullInt64
-	var organisationID sql.NullInt64
-	var clinicID sql.NullString
-	var queuedAt sql.NullTime
-	var submittedAt sql.NullTime
-	var errorCode sql.NullString
-	var errorMessage sql.NullString
-	var metadataJSON []byte
-
-	if err := row.Scan(
-		&attempt.ID,
-		&attempt.ExternalID,
-		&reportID,
-		&submittedByUserID,
-		&organisationID,
-		&clinicID,
-		&attempt.Result,
-		&attempt.ClientAttemptCount,
-		&queuedAt,
-		&submittedAt,
-		&attempt.ReceivedAt,
-		&errorCode,
-		&errorMessage,
-		&metadataJSON,
-	); err != nil {
-		return ReportSyncAttempt{}, err
-	}
-
-	attempt.ReportID = nullInt64Ptr(reportID)
-	attempt.SubmittedByUserID = nullInt64Ptr(submittedByUserID)
-	attempt.OrganisationID = nullInt64Ptr(organisationID)
-	if clinicID.Valid {
-		attempt.ClinicID = clinicID.String
-	}
-	attempt.QueuedAt = nullTimePtr(queuedAt)
-	attempt.SubmittedAt = nullTimePtr(submittedAt)
-	attempt.ErrorCode = nullStringPtr(errorCode)
-	attempt.ErrorMessage = nullStringPtr(errorMessage)
-	if len(metadataJSON) == 0 {
-		metadataJSON = []byte("{}")
-	}
-	if err := json.Unmarshal(metadataJSON, &attempt.Metadata); err != nil {
-		return ReportSyncAttempt{}, err
-	}
-
-	return attempt, nil
 }
 
 func scanPartnerAPIKey(row pgx.Row) (PartnerAPIKey, error) {

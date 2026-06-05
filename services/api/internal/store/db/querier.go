@@ -6,6 +6,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
@@ -13,11 +15,14 @@ type Querier interface {
 	GetClinicDistrict(ctx context.Context, id string) (string, error)
 	GetCurrentStatus(ctx context.Context, clinicID string) (*GetCurrentStatusRow, error)
 	GetCurrentStatusForUpdate(ctx context.Context, clinicID string) (*GetCurrentStatusForUpdateRow, error)
+	InsertReportSyncAttempt(ctx context.Context, arg *InsertReportSyncAttemptParams) (*ReportSyncAttempt, error)
 	ListClinicServices(ctx context.Context, clinicID string) ([]*ListClinicServicesRow, error)
 	// clinics
 	ListClinics(ctx context.Context) ([]*ListClinicsRow, error)
 	ListCurrentStatuses(ctx context.Context) ([]*ListCurrentStatusesRow, error)
 	ListCurrentStatusesForReviewScope(ctx context.Context, arg *ListCurrentStatusesForReviewScopeParams) ([]*ListCurrentStatusesForReviewScopeRow, error)
+	SyncSummarySince(ctx context.Context, receivedAt pgtype.Timestamptz) (*SyncSummarySinceRow, error)
+	SyncSummarySinceForReviewScope(ctx context.Context, arg *SyncSummarySinceForReviewScopeParams) (*SyncSummarySinceForReviewScopeRow, error)
 	UpdateCurrentStatusFreshness(ctx context.Context, arg *UpdateCurrentStatusFreshnessParams) (*UpdateCurrentStatusFreshnessRow, error)
 	UpsertCurrentStatus(ctx context.Context, arg *UpsertCurrentStatusParams) (*UpsertCurrentStatusRow, error)
 	VerifyClinicExists(ctx context.Context, id string) (string, error)
