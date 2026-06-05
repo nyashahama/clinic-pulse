@@ -105,6 +105,96 @@ func currentStatusFromReviewScopeRow(r *db.ListCurrentStatusesForReviewScopeRow)
 	}
 }
 
+func (s Store) GetReportByExternalID(ctx context.Context, externalID string) (Report, error) {
+	row, err := s.db.GetReportByExternalID(ctx, &externalID)
+	if err != nil {
+		return Report{}, err
+	}
+	return toReport(row)
+}
+
+func (s Store) GetPendingReportByPayload(ctx context.Context, input CreateReportInput) (Report, error) {
+	normalized := normalizePendingCreateReportInput(input)
+	row, err := s.db.GetPendingReportByPayload(ctx, &db.GetPendingReportByPayloadParams{
+		ClinicID: normalized.ClinicID,
+		Source:   normalized.Source,
+		Status:   normalized.Status,
+		Column4:  strOrZero(normalized.Reason),
+		Column5:  strOrZero(normalized.StaffPressure),
+		Column6:  strOrZero(normalized.StockPressure),
+		Column7:  strOrZero(normalized.QueuePressure),
+		Column8:  int64OrZero(normalized.SubmittedByUserID),
+	})
+	if err != nil {
+		return Report{}, err
+	}
+	conv := db.GetReportByExternalIDRow(*row)
+	return toReport(&conv)
+}
+
+func (s Store) GetRecentReportByPayload(ctx context.Context, input CreateReportInput, windowStart time.Time) (Report, error) {
+	normalized := normalizePendingCreateReportInput(input)
+	row, err := s.db.GetRecentReportByPayload(ctx, &db.GetRecentReportByPayloadParams{
+		ClinicID:   normalized.ClinicID,
+		Source:     normalized.Source,
+		Status:     normalized.Status,
+		Column4:    strOrZero(normalized.Reason),
+		Column5:    strOrZero(normalized.StaffPressure),
+		Column6:    strOrZero(normalized.StockPressure),
+		Column7:    strOrZero(normalized.QueuePressure),
+		Column8:    int64OrZero(normalized.SubmittedByUserID),
+		ReceivedAt: pgtype.Timestamptz{Time: windowStart, Valid: true},
+	})
+	if err != nil {
+		return Report{}, err
+	}
+	conv := db.GetReportByExternalIDRow(*row)
+	return toReport(&conv)
+}
+
+func (s Store) ListClinicReports(ctx context.Context, clinicID string) ([]Report, error) {
+	rows, err := s.db.ListClinicReports(ctx, clinicID)
+	if err != nil {
+		return nil, err
+	}
+	reports := make([]Report, len(rows))
+	for i, row := range rows {
+		conv := db.GetReportByExternalIDRow(*row)
+		r, err := toReport(&conv)
+		if err != nil {
+			return nil, err
+		}
+		reports[i] = r
+	}
+	return reports, nil
+}
+
+func (s Store) ListPendingReports(ctx context.Context, scope ReportReviewScope) ([]Report, error) {
+	if scope.Role == "district_manager" && scope.District == nil {
+		return []Report{}, nil
+	}
+	district := ""
+	if scope.District != nil {
+		district = *scope.District
+	}
+	rows, err := s.db.ListPendingReports(ctx, &db.ListPendingReportsParams{
+		Column1: scope.Role,
+		Column2: district,
+	})
+	if err != nil {
+		return nil, err
+	}
+	reports := make([]Report, len(rows))
+	for i, row := range rows {
+		r, err := toReportFromPendingRow(row)
+		if err != nil {
+			return nil, err
+		}
+		reports[i] = r
+	}
+	return reports, nil
+}
+
 func (s Store) GetSyncSummarySince(ctx context.Context, since time.Time) (SyncSummary, error) {
 	row, err := s.db.SyncSummarySince(ctx, pgtype.Timestamptz{Time: since, Valid: true})
 	if err != nil {
@@ -500,6 +590,13 @@ func strOrZero(s *string) string {
 		return ""
 	}
 	return *s
+}
+
+func int64OrZero(i *int64) int64 {
+	if i == nil {
+		return 0
+	}
+	return *i
 }
 
 

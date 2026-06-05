@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 const (
@@ -97,131 +96,6 @@ FROM current_status
 WHERE clinic_id = $1
 FOR UPDATE`
 
-	getReportByExternalIDSQL = `
-SELECT
-    id,
-    external_id,
-    clinic_id,
-    reporter_name,
-    source,
-    offline_created,
-    submitted_at,
-    received_at,
-    status,
-    reason,
-    staff_pressure,
-    stock_pressure,
-    queue_pressure,
-    notes,
-    review_state,
-    confidence_score::double precision,
-    visit_verification,
-    submitted_by_user_id,
-    reviewed_by_user_id,
-    reviewed_at,
-    review_notes
-FROM reports
-WHERE external_id = $1`
-
-	getPendingReportByPayloadSQL = `
-SELECT
-    id,
-    external_id,
-    clinic_id,
-    reporter_name,
-    source,
-    offline_created,
-    submitted_at,
-    received_at,
-    status,
-    reason,
-    staff_pressure,
-    stock_pressure,
-    queue_pressure,
-    notes,
-    review_state,
-    confidence_score::double precision,
-    visit_verification,
-    submitted_by_user_id,
-    reviewed_by_user_id,
-    reviewed_at,
-    review_notes
-FROM reports
-WHERE review_state = 'pending'
-    AND clinic_id = $1
-    AND source = $2
-    AND status = $3
-    AND reason IS NOT DISTINCT FROM $4::text
-    AND staff_pressure IS NOT DISTINCT FROM $5::text
-    AND stock_pressure IS NOT DISTINCT FROM $6::text
-    AND queue_pressure IS NOT DISTINCT FROM $7::text
-    AND submitted_by_user_id IS NOT DISTINCT FROM $8::bigint
-ORDER BY received_at DESC, id DESC
-LIMIT 1`
-
-	getRecentReportByPayloadSQL = `
-SELECT
-    id,
-    external_id,
-    clinic_id,
-    reporter_name,
-    source,
-    offline_created,
-    submitted_at,
-    received_at,
-    status,
-    reason,
-    staff_pressure,
-    stock_pressure,
-    queue_pressure,
-    notes,
-    review_state,
-    confidence_score::double precision,
-    visit_verification,
-    submitted_by_user_id,
-    reviewed_by_user_id,
-    reviewed_at,
-    review_notes
-FROM reports
-WHERE received_at >= $9
-    AND clinic_id = $1
-    AND source = $2
-    AND status = $3
-    AND reason IS NOT DISTINCT FROM $4::text
-    AND staff_pressure IS NOT DISTINCT FROM $5::text
-    AND stock_pressure IS NOT DISTINCT FROM $6::text
-    AND queue_pressure IS NOT DISTINCT FROM $7::text
-    AND submitted_by_user_id IS NOT DISTINCT FROM $8::bigint
-ORDER BY received_at DESC, id DESC
-LIMIT 1`
-
-	listClinicReportsSQL = `
-SELECT
-    id,
-    external_id,
-    clinic_id,
-    reporter_name,
-    source,
-    offline_created,
-    submitted_at,
-    received_at,
-    status,
-    reason,
-    staff_pressure,
-    stock_pressure,
-    queue_pressure,
-	notes,
-	review_state,
-	confidence_score::double precision,
-	visit_verification,
-	submitted_by_user_id,
-	reviewed_by_user_id,
-	reviewed_at,
-	review_notes
-FROM reports
-WHERE clinic_id = $1
-ORDER BY received_at DESC, id DESC`
-
 	listCurrentStatusesSQL = `
 SELECT
     clinic_id,
@@ -260,38 +134,6 @@ WHERE (
     OR $1 IN ('org_admin', 'system_admin')
 )
 ORDER BY current_status.clinic_id`
-
-	listPendingReportsSQL = `
-SELECT
-    reports.id,
-    reports.external_id,
-    reports.clinic_id,
-    reports.reporter_name,
-    reports.source,
-    reports.offline_created,
-    reports.submitted_at,
-    reports.received_at,
-    reports.status,
-    reports.reason,
-    reports.staff_pressure,
-    reports.stock_pressure,
-    reports.queue_pressure,
-    reports.notes,
-    reports.review_state,
-    reports.confidence_score::double precision,
-    reports.visit_verification,
-    reports.submitted_by_user_id,
-    reports.reviewed_by_user_id,
-    reports.reviewed_at,
-    reports.review_notes
-FROM reports
-JOIN clinics ON clinics.id = reports.clinic_id
-WHERE reports.review_state = 'pending'
-    AND (
-        ($1 = 'district_manager' AND $2::text IS NOT NULL AND clinics.district = $2)
-        OR $1 IN ('org_admin', 'system_admin')
-    )
-ORDER BY reports.received_at DESC, reports.id DESC`
 
 	listClinicAuditEventsSQL = `
 SELECT
@@ -333,50 +175,6 @@ ORDER BY created_at DESC, id DESC
 LIMIT $2`
 
 	verifyClinicExistsSQL = `SELECT id FROM clinics WHERE id = $1`
-
-	insertReportSQL = `
-INSERT INTO reports (
-    external_id,
-    clinic_id,
-    reporter_name,
-    source,
-    offline_created,
-    submitted_at,
-    received_at,
-    status,
-    reason,
-    staff_pressure,
-    stock_pressure,
-    queue_pressure,
-	notes,
-	review_state,
-	confidence_score,
-	visit_verification,
-	submitted_by_user_id
-)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-RETURNING
-    id,
-    external_id,
-    clinic_id,
-    reporter_name,
-    source,
-    offline_created,
-    submitted_at,
-    received_at,
-    status,
-    reason,
-    staff_pressure,
-    stock_pressure,
-    queue_pressure,
-    notes,
-    review_state,
-    confidence_score::double precision,
-    visit_verification,
-    submitted_by_user_id,
-    reviewed_by_user_id,
-    reviewed_at,
-    review_notes`
 
 	upsertCurrentStatusSQL = `
 INSERT INTO current_status (
@@ -763,76 +561,6 @@ FROM integration_status_checks
 WHERE $1::bigint IS NULL OR organisation_id = $1
 ORDER BY checked_at DESC, id DESC`
 
-	getReportForReviewSQL = `
-SELECT
-    id,
-    external_id,
-    clinic_id,
-    reporter_name,
-    source,
-    offline_created,
-    submitted_at,
-    received_at,
-    status,
-    reason,
-    staff_pressure,
-    stock_pressure,
-    queue_pressure,
-    notes,
-    review_state,
-    confidence_score::double precision,
-    visit_verification,
-    submitted_by_user_id,
-    reviewed_by_user_id,
-    reviewed_at,
-    review_notes
-FROM reports
-WHERE id = $1
-FOR UPDATE`
-
-	insertReportReviewSQL = `
-INSERT INTO report_reviews (
-    report_id,
-    reviewer_user_id,
-    organisation_id,
-    decision,
-    notes,
-    metadata,
-    created_at
-)
-VALUES ($1, $2, $3, $4, $5, '{}'::jsonb, $6)`
-
-	updateReportReviewStateSQL = `
-UPDATE reports
-SET
-    review_state = $2,
-    reviewed_by_user_id = $3,
-    reviewed_at = $4,
-    review_notes = $5
-WHERE id = $1
-RETURNING
-    id,
-    external_id,
-    clinic_id,
-    reporter_name,
-    source,
-    offline_created,
-    submitted_at,
-    received_at,
-    status,
-    reason,
-    staff_pressure,
-    stock_pressure,
-    queue_pressure,
-    notes,
-    review_state,
-    confidence_score::double precision,
-    visit_verification,
-    submitted_by_user_id,
-    reviewed_by_user_id,
-    reviewed_at,
-    review_notes`
-
 	updateCurrentStatusFreshnessSQL = `
 UPDATE current_status
 SET
@@ -959,39 +687,6 @@ func (s Store) GetClinic(ctx context.Context, clinicID string) (ClinicDetail, er
 	}
 
 	return detail, nil
-}
-
-func (s Store) GetReportByExternalID(ctx context.Context, externalID string) (Report, error) {
-	return scanReport(s.pool.QueryRow(ctx, getReportByExternalIDSQL, externalID))
-}
-
-func (s Store) GetPendingReportByPayload(ctx context.Context, input CreateReportInput) (Report, error) {
-	normalized := normalizePendingCreateReportInput(input)
-	return scanReport(s.pool.QueryRow(ctx, getPendingReportByPayloadSQL,
-		normalized.ClinicID,
-		normalized.Source,
-		normalized.Status,
-		normalized.Reason,
-		normalized.StaffPressure,
-		normalized.StockPressure,
-		normalized.QueuePressure,
-		normalized.SubmittedByUserID,
-	))
-}
-
-func (s Store) GetRecentReportByPayload(ctx context.Context, input CreateReportInput, windowStart time.Time) (Report, error) {
-	normalized := normalizePendingCreateReportInput(input)
-	return scanReport(s.pool.QueryRow(ctx, getRecentReportByPayloadSQL,
-		normalized.ClinicID,
-		normalized.Source,
-		normalized.Status,
-		normalized.Reason,
-		normalized.StaffPressure,
-		normalized.StockPressure,
-		normalized.QueuePressure,
-		normalized.SubmittedByUserID,
-		windowStart,
-	))
 }
 
 func (s Store) CreatePartnerAPIKey(ctx context.Context, input CreatePartnerAPIKeyInput) (PartnerAPIKey, error) {
@@ -1293,30 +988,6 @@ func (s Store) UpdateCurrentStatusFreshness(ctx context.Context, clinicID string
 	return updated, true, nil
 }
 
-func (s Store) ListClinicReports(ctx context.Context, clinicID string) ([]Report, error) {
-	rows, err := s.pool.Query(ctx, listClinicReportsSQL, clinicID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (Report, error) {
-		return scanReport(row)
-	})
-}
-
-func (s Store) ListPendingReports(ctx context.Context, scope ReportReviewScope) ([]Report, error) {
-	rows, err := s.pool.Query(ctx, listPendingReportsSQL, scope.Role, scope.District)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (Report, error) {
-		return scanReport(row)
-	})
-}
-
 func (s Store) ListClinicAuditEvents(ctx context.Context, clinicID string) ([]AuditEvent, error) {
 	rows, err := s.pool.Query(ctx, listClinicAuditEventsSQL, clinicID)
 	if err != nil {
@@ -1345,6 +1016,34 @@ func (s Store) CreateAuditEvent(ctx context.Context, input CreateAuditEventInput
 	return insertAuditEvent(ctx, s.pool, input)
 }
 
+func (s Store) CreateReportTx(ctx context.Context, input CreateReportInput) (Report, CurrentStatus, AuditEvent, error) {
+	normalized := normalizeCreateReportInput(input)
+	if normalized.ReviewState != "accepted" {
+		return Report{}, CurrentStatus{}, AuditEvent{}, ErrReportNotAccepted
+	}
+	// TODO: Port to sqlc (Task 8)
+	return Report{}, CurrentStatus{}, AuditEvent{}, errors.New("store: CreateReportTx not yet migrated")
+}
+
+func (s Store) CreatePendingReportTx(ctx context.Context, input CreateReportInput) (Report, error) {
+	normalized := normalizePendingCreateReportInput(input)
+	if normalized.ReviewState != "pending" {
+		return Report{}, ErrReportNotPending
+	}
+	// TODO: Port to sqlc (Task 8)
+	return Report{}, errors.New("store: CreatePendingReportTx not yet migrated")
+}
+
+func (s Store) ReviewReportTx(ctx context.Context, input ReviewReportInput) (Report, *CurrentStatus, error) {
+	if input.Decision != "accepted" && input.Decision != "rejected" {
+		return Report{}, nil, ErrInvalidReviewDecision
+	}
+	// TODO: Port to sqlc (Task 8)
+	return Report{}, nil, errors.New("store: ReviewReportTx not yet migrated")
+}
+
+/*
+=== Original CreateReportTx/CreatePendingReportTx/ReviewReportTx implementations preserved below ===
 func (s Store) CreateReportTx(ctx context.Context, input CreateReportInput) (Report, CurrentStatus, AuditEvent, error) {
 	normalized := normalizeCreateReportInput(input)
 	if normalized.ReviewState != "accepted" {
@@ -1568,6 +1267,7 @@ func (s Store) ReviewReportTx(ctx context.Context, input ReviewReportInput) (Rep
 
 	return report, status, nil
 }
+*/
 
 func reviewScopeCanAccessDistrict(scope ReportReviewScope, district string) bool {
 	switch scope.Role {
@@ -1709,67 +1409,6 @@ func scanCurrentStatus(row pgx.Row) (CurrentStatus, error) {
 	status.ConfidenceScore = nullFloat64Ptr(confidence)
 
 	return status, nil
-}
-
-func scanReport(row pgx.Row) (Report, error) {
-	var report Report
-	var externalID sql.NullString
-	var reporterName sql.NullString
-	var reason sql.NullString
-	var staffPressure sql.NullString
-	var stockPressure sql.NullString
-	var queuePressure sql.NullString
-	var notes sql.NullString
-	var confidence sql.NullFloat64
-	var visitVerificationJSON []byte
-	var submittedByUserID sql.NullInt64
-	var reviewedByUserID sql.NullInt64
-	var reviewedAt sql.NullTime
-	var reviewNotes sql.NullString
-
-	if err := row.Scan(
-		&report.ID,
-		&externalID,
-		&report.ClinicID,
-		&reporterName,
-		&report.Source,
-		&report.OfflineCreated,
-		&report.SubmittedAt,
-		&report.ReceivedAt,
-		&report.Status,
-		&reason,
-		&staffPressure,
-		&stockPressure,
-		&queuePressure,
-		&notes,
-		&report.ReviewState,
-		&confidence,
-		&visitVerificationJSON,
-		&submittedByUserID,
-		&reviewedByUserID,
-		&reviewedAt,
-		&reviewNotes,
-	); err != nil {
-		return Report{}, err
-	}
-
-	report.ExternalID = nullStringPtr(externalID)
-	report.ReporterName = nullStringPtr(reporterName)
-	report.Reason = nullStringPtr(reason)
-	report.StaffPressure = nullStringPtr(staffPressure)
-	report.StockPressure = nullStringPtr(stockPressure)
-	report.QueuePressure = nullStringPtr(queuePressure)
-	report.Notes = nullStringPtr(notes)
-	report.ConfidenceScore = nullFloat64Ptr(confidence)
-	if err := unmarshalMap(visitVerificationJSON, &report.VisitVerification); err != nil {
-		return Report{}, err
-	}
-	report.SubmittedByUserID = nullInt64Ptr(submittedByUserID)
-	report.ReviewedByUserID = nullInt64Ptr(reviewedByUserID)
-	report.ReviewedAt = nullTimePtr(reviewedAt)
-	report.ReviewNotes = nullStringPtr(reviewNotes)
-
-	return report, nil
 }
 
 func scanPartnerAPIKey(row pgx.Row) (PartnerAPIKey, error) {

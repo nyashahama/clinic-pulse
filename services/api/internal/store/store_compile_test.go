@@ -65,35 +65,6 @@ func TestOfflineSyncStoreMethodSignatures(t *testing.T) {
 	var _ func(Store, context.Context, string, string, time.Time, *CreateAuditEventInput) (CurrentStatus, bool, error) = Store.UpdateCurrentStatusFreshness
 }
 
-func TestRecentReportByPayloadSQLUsesDuplicateWindowWithoutReviewStateFilter(t *testing.T) {
-	t.Parallel()
-
-	if !strings.Contains(getRecentReportByPayloadSQL, "WHERE received_at >= $9") {
-		t.Fatal("expected recent duplicate lookup to constrain the report window")
-	}
-	if strings.Contains(getRecentReportByPayloadSQL, "review_state = 'pending'") {
-		t.Fatal("expected recent duplicate lookup to include reviewed reports")
-	}
-	if !strings.Contains(getRecentReportByPayloadSQL, "submitted_by_user_id IS NOT DISTINCT FROM $8::bigint") {
-		t.Fatal("expected recent duplicate lookup to scope duplicates to the same reporter")
-	}
-}
-
-func TestReportDuplicatePayloadSQLIgnoresNotes(t *testing.T) {
-	t.Parallel()
-
-	for name, query := range map[string]string{
-		"pending": getPendingReportByPayloadSQL,
-		"recent":  getRecentReportByPayloadSQL,
-	} {
-		t.Run(name, func(t *testing.T) {
-			if strings.Contains(query, "notes IS NOT DISTINCT") {
-				t.Fatal("expected duplicate lookup to ignore note changes within the same operational signal")
-			}
-		})
-	}
-}
-
 func TestListCurrentStatusesForReviewScopeSQLScopesByClinicDistrict(t *testing.T) {
 	t.Parallel()
 

@@ -67,6 +67,64 @@ func syncSummaryFromRow(since time.Time, row *db.SyncSummarySinceRow) SyncSummar
 	return s
 }
 
+func toReport(row *db.GetReportByExternalIDRow) (Report, error) {
+	r := Report{
+		ID:                row.ID,
+		ExternalID:        row.ExternalID,
+		ClinicID:          row.ClinicID,
+		ReporterName:      row.ReporterName,
+		Source:            row.Source,
+		OfflineCreated:    row.OfflineCreated,
+		SubmittedAt:       timestamptzTime(row.SubmittedAt),
+		ReceivedAt:        timestamptzTime(row.ReceivedAt),
+		Status:            row.Status,
+		Reason:            row.Reason,
+		StaffPressure:     row.StaffPressure,
+		StockPressure:     row.StockPressure,
+		QueuePressure:     row.QueuePressure,
+		Notes:             row.Notes,
+		ReviewState:       row.ReviewState,
+		ConfidenceScore:   &row.ConfidenceScore,
+		SubmittedByUserID: row.SubmittedByUserID,
+		ReviewedByUserID:  row.ReviewedByUserID,
+		ReviewedAt:        timestamptzPtr(row.ReviewedAt),
+		ReviewNotes:       row.ReviewNotes,
+	}
+	if err := unmarshalMap(row.VisitVerification, &r.VisitVerification); err != nil {
+		return Report{}, err
+	}
+	return r, nil
+}
+
+func toReportFromPendingRow(row *db.ListPendingReportsRow) (Report, error) {
+	r := Report{
+		ID:                row.ID,
+		ExternalID:        row.ExternalID,
+		ClinicID:          row.ClinicID,
+		ReporterName:      row.ReporterName,
+		Source:            row.Source,
+		OfflineCreated:    row.OfflineCreated,
+		SubmittedAt:       timestamptzTime(row.SubmittedAt),
+		ReceivedAt:        timestamptzTime(row.ReceivedAt),
+		Status:            row.Status,
+		Reason:            row.Reason,
+		StaffPressure:     row.StaffPressure,
+		StockPressure:     row.StockPressure,
+		QueuePressure:     row.QueuePressure,
+		Notes:             row.Notes,
+		ReviewState:       row.ReviewState,
+		ConfidenceScore:   &row.ReportsConfidenceScore,
+		SubmittedByUserID: row.SubmittedByUserID,
+		ReviewedByUserID:  row.ReviewedByUserID,
+		ReviewedAt:        timestamptzPtr(row.ReviewedAt),
+		ReviewNotes:       row.ReviewNotes,
+	}
+	if err := unmarshalMap(row.VisitVerification, &r.VisitVerification); err != nil {
+		return Report{}, err
+	}
+	return r, nil
+}
+
 func syncSummaryFromReviewScopeRow(since time.Time, row *db.SyncSummarySinceForReviewScopeRow) SyncSummary {
 	s := SyncSummary{
 		WindowStartedAt:             since,
