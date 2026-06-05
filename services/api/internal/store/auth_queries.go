@@ -108,21 +108,12 @@ func (s Store) CreateSessionWithAuditTx(ctx context.Context, input CreateSession
 
 	q := s.db.WithTx(tx)
 
-	ipAddr := netip.Addr{}
-	if normalizedSession.IPAddress != nil {
-		parsed, err := netip.ParseAddr(*normalizedSession.IPAddress)
-		if err != nil {
-			return Session{}, AuditEvent{}, ErrInvalidSessionIPAddress
-		}
-		ipAddr = parsed
-	}
-
 	row, err := q.CreateSession(ctx, &db.CreateSessionParams{
 		UserID:    normalizedSession.UserID,
 		TokenHash: normalizedSession.TokenHash,
 		ExpiresAt: pgtype.Timestamptz{Time: normalizedSession.ExpiresAt, Valid: true},
 		UserAgent: normalizedSession.UserAgent,
-		Column5:   ipAddr,
+		IpAddress: normalizedSession.IPAddress,
 	})
 	if err != nil {
 		return Session{}, AuditEvent{}, err

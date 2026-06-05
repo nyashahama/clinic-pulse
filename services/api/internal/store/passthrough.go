@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"encoding/json"
-	"net/netip"
 	"strings"
 	"time"
 
@@ -270,21 +269,12 @@ func (s Store) CreateSession(ctx context.Context, input CreateSessionInput) (Ses
 		return Session{}, err
 	}
 
-	ipAddr := netip.Addr{}
-	if normalized.IPAddress != nil {
-		parsed, err := netip.ParseAddr(*normalized.IPAddress)
-		if err != nil {
-			return Session{}, ErrInvalidSessionIPAddress
-		}
-		ipAddr = parsed
-	}
-
 	row, err := s.db.CreateSession(ctx, &db.CreateSessionParams{
 		UserID:    normalized.UserID,
 		TokenHash: normalized.TokenHash,
 		ExpiresAt: pgtype.Timestamptz{Time: normalized.ExpiresAt, Valid: true},
 		UserAgent: normalized.UserAgent,
-		Column5:   ipAddr,
+		IpAddress: normalized.IPAddress,
 	})
 	if err != nil {
 		return Session{}, err
@@ -379,7 +369,7 @@ func userFromRow(id int64, email, displayName string, passwordHash *string, disa
 	}
 }
 
-func sessionFromCreateRow(row *db.CreateSessionRow) Session {
+func sessionFromCreateRow(row *db.Session) Session {
 	return Session{
 		ID:         row.ID,
 		UserID:     row.UserID,
@@ -389,7 +379,7 @@ func sessionFromCreateRow(row *db.CreateSessionRow) Session {
 		RevokedAt:  timestamptzPtr(row.RevokedAt),
 		LastSeenAt: timestamptzPtr(row.LastSeenAt),
 		UserAgent:  row.UserAgent,
-		IPAddress:  &row.Host,
+		IPAddress:  row.IpAddress,
 	}
 }
 
@@ -403,7 +393,7 @@ func sessionFromTokenHashRow(row *db.GetSessionByTokenHashRow) Session {
 		RevokedAt:  timestamptzPtr(row.SessionRevokedAt),
 		LastSeenAt: timestamptzPtr(row.SessionLastSeenAt),
 		UserAgent:  row.SessionUserAgent,
-		IPAddress:  &row.SessionIpAddress,
+		IPAddress:  row.SessionIpAddress,
 	}
 }
 

@@ -25,7 +25,7 @@ INSERT INTO sessions (
     user_agent,
     ip_address
 )
-VALUES ($1, $2, $3, $4, $5::inet)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING
     id,
     user_id,
@@ -35,7 +35,7 @@ RETURNING
     revoked_at,
     last_seen_at,
     user_agent,
-    host(ip_address);
+    ip_address;
 
 -- name: GetSessionByTokenHash :one
 WITH active_session (
@@ -75,7 +75,7 @@ WITH active_session (
         s.revoked_at,
         s.last_seen_at,
         s.user_agent,
-        host(s.ip_address),
+        s.ip_address,
         u.id,
         u.email,
         u.display_name,

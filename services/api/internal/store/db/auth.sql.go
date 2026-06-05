@@ -7,7 +7,6 @@ package db
 
 import (
 	"context"
-	"net/netip"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -20,7 +19,7 @@ INSERT INTO sessions (
     user_agent,
     ip_address
 )
-VALUES ($1, $2, $3, $4, $5::inet)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING
     id,
     user_id,
@@ -30,7 +29,7 @@ RETURNING
     revoked_at,
     last_seen_at,
     user_agent,
-    host(ip_address)
+    ip_address
 `
 
 type CreateSessionParams struct {
@@ -38,30 +37,18 @@ type CreateSessionParams struct {
 	TokenHash string             `json:"token_hash"`
 	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
 	UserAgent *string            `json:"user_agent"`
-	Column5   netip.Addr         `json:"column_5"`
+	IpAddress *string            `json:"ip_address"`
 }
 
-type CreateSessionRow struct {
-	ID         int64              `json:"id"`
-	UserID     int64              `json:"user_id"`
-	TokenHash  string             `json:"token_hash"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
-	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
-	RevokedAt  pgtype.Timestamptz `json:"revoked_at"`
-	LastSeenAt pgtype.Timestamptz `json:"last_seen_at"`
-	UserAgent  *string            `json:"user_agent"`
-	Host       string             `json:"host"`
-}
-
-func (q *Queries) CreateSession(ctx context.Context, arg *CreateSessionParams) (*CreateSessionRow, error) {
+func (q *Queries) CreateSession(ctx context.Context, arg *CreateSessionParams) (*Session, error) {
 	row := q.db.QueryRow(ctx, createSession,
 		arg.UserID,
 		arg.TokenHash,
 		arg.ExpiresAt,
 		arg.UserAgent,
-		arg.Column5,
+		arg.IpAddress,
 	)
-	var i CreateSessionRow
+	var i Session
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -71,7 +58,7 @@ func (q *Queries) CreateSession(ctx context.Context, arg *CreateSessionParams) (
 		&i.RevokedAt,
 		&i.LastSeenAt,
 		&i.UserAgent,
-		&i.Host,
+		&i.IpAddress,
 	)
 	return &i, err
 }
@@ -247,7 +234,7 @@ WITH active_session (
         s.revoked_at,
         s.last_seen_at,
         s.user_agent,
-        host(s.ip_address),
+        s.ip_address,
         u.id,
         u.email,
         u.display_name,
@@ -289,7 +276,7 @@ type GetSessionByTokenHashRow struct {
 	SessionRevokedAt          pgtype.Timestamptz `json:"session_revoked_at"`
 	SessionLastSeenAt         pgtype.Timestamptz `json:"session_last_seen_at"`
 	SessionUserAgent          *string            `json:"session_user_agent"`
-	SessionIpAddress          string             `json:"session_ip_address"`
+	SessionIpAddress          *string            `json:"session_ip_address"`
 	UserID                    int64              `json:"user_id"`
 	UserEmail                 string             `json:"user_email"`
 	UserDisplayName           string             `json:"user_display_name"`

@@ -115,7 +115,7 @@ type PartnerApiKey struct {
 	ExpiresAt        pgtype.Timestamptz `json:"expires_at"`
 	RevokedAt        pgtype.Timestamptz `json:"revoked_at"`
 	LastUsedAt       pgtype.Timestamptz `json:"last_used_at"`
-	LastUsedIp       string             `json:"last_used_ip"`
+	LastUsedIp       *string            `json:"last_used_ip"`
 	CreatedByUserID  *int64             `json:"created_by_user_id"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
@@ -239,7 +239,7 @@ type Session struct {
 	RevokedAt  pgtype.Timestamptz `json:"revoked_at"`
 	LastSeenAt pgtype.Timestamptz `json:"last_seen_at"`
 	UserAgent  *string            `json:"user_agent"`
-	IpAddress  string             `json:"ip_address"`
+	IpAddress  *string            `json:"ip_address"`
 }
 
 type User struct {

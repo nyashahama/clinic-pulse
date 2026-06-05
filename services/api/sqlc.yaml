@@ -20,4 +20,8 @@ sql:
           - db_type: "inet"
             go_type:
               type: "string"
+          - db_type: "inet"
             nullable: true
+            go_type:
+              type: "string"
+              pointer: true
