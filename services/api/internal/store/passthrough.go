@@ -30,6 +30,9 @@ func (s Store) ListCurrentStatuses(ctx context.Context) ([]CurrentStatus, error)
 }
 
 func (s Store) ListCurrentStatusesForReviewScope(ctx context.Context, scope ReportReviewScope) ([]CurrentStatus, error) {
+	if scope.Role == "district_manager" && scope.District == nil {
+		return []CurrentStatus{}, nil
+	}
 	district := ""
 	if scope.District != nil {
 		district = *scope.District
