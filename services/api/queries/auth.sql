@@ -148,7 +148,7 @@ LIMIT 1;
 -- name: UpdateUserLifecycle :one
 UPDATE users
 SET
-    display_name = COALESCE($2, display_name),
+    display_name = COALESCE(NULLIF($2, ''), display_name),
     disabled_at = CASE WHEN $3::boolean THEN COALESCE(disabled_at, $4) ELSE NULL END,
     updated_at = $4
 WHERE id = $1
@@ -157,7 +157,7 @@ RETURNING id, email, display_name, password_hash, disabled_at, password_changed_
 -- name: UpdateUserLifecycleName :one
 UPDATE users
 SET
-    display_name = COALESCE($2, display_name),
+    display_name = COALESCE(NULLIF($2, ''), display_name),
     updated_at = $3
 WHERE id = $1
 RETURNING id, email, display_name, password_hash, disabled_at, password_changed_at, password_reset_required, created_at, updated_at;

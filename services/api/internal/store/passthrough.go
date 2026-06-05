@@ -332,9 +332,9 @@ func (s Store) UpdateUserPassword(ctx context.Context, userID int64, passwordHas
 func (s Store) UpdateUserLifecycle(ctx context.Context, input UpdateUserLifecycleInput) (User, error) {
 	if input.Disabled == nil {
 		row, err := s.db.UpdateUserLifecycleName(ctx, &db.UpdateUserLifecycleNameParams{
-			ID:          input.UserID,
-			DisplayName: strOrZero(input.DisplayName),
-			UpdatedAt:   pgtype.Timestamptz{Time: input.UpdatedAt, Valid: true},
+			ID:        input.UserID,
+			Column2:   input.DisplayName,
+			UpdatedAt: pgtype.Timestamptz{Time: input.UpdatedAt, Valid: true},
 		})
 		if err != nil {
 			return User{}, err
@@ -343,10 +343,10 @@ func (s Store) UpdateUserLifecycle(ctx context.Context, input UpdateUserLifecycl
 	}
 
 	row, err := s.db.UpdateUserLifecycle(ctx, &db.UpdateUserLifecycleParams{
-		ID:          input.UserID,
-		DisplayName: strOrZero(input.DisplayName),
-		Column3:     *input.Disabled,
-		UpdatedAt:   pgtype.Timestamptz{Time: input.UpdatedAt, Valid: true},
+		ID:        input.UserID,
+		Column2:   input.DisplayName,
+		Column3:   *input.Disabled,
+		UpdatedAt: pgtype.Timestamptz{Time: input.UpdatedAt, Valid: true},
 	})
 	if err != nil {
 		return User{}, err

@@ -598,7 +598,7 @@ func (q *Queries) RevokeSession(ctx context.Context, tokenHash string) error {
 const updateUserLifecycle = `-- name: UpdateUserLifecycle :one
 UPDATE users
 SET
-    display_name = COALESCE($2, display_name),
+    display_name = COALESCE(NULLIF($2, ''), display_name),
     disabled_at = CASE WHEN $3::boolean THEN COALESCE(disabled_at, $4) ELSE NULL END,
     updated_at = $4
 WHERE id = $1
@@ -606,10 +606,10 @@ RETURNING id, email, display_name, password_hash, disabled_at, password_changed_
 `
 
 type UpdateUserLifecycleParams struct {
-	ID          int64              `json:"id"`
-	DisplayName string             `json:"display_name"`
-	Column3     bool               `json:"column_3"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	ID        int64              `json:"id"`
+	Column2   interface{}        `json:"column_2"`
+	Column3   bool               `json:"column_3"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
 type UpdateUserLifecycleRow struct {
@@ -627,7 +627,7 @@ type UpdateUserLifecycleRow struct {
 func (q *Queries) UpdateUserLifecycle(ctx context.Context, arg *UpdateUserLifecycleParams) (*UpdateUserLifecycleRow, error) {
 	row := q.db.QueryRow(ctx, updateUserLifecycle,
 		arg.ID,
-		arg.DisplayName,
+		arg.Column2,
 		arg.Column3,
 		arg.UpdatedAt,
 	)
@@ -649,16 +649,16 @@ func (q *Queries) UpdateUserLifecycle(ctx context.Context, arg *UpdateUserLifecy
 const updateUserLifecycleName = `-- name: UpdateUserLifecycleName :one
 UPDATE users
 SET
-    display_name = COALESCE($2, display_name),
+    display_name = COALESCE(NULLIF($2, ''), display_name),
     updated_at = $3
 WHERE id = $1
 RETURNING id, email, display_name, password_hash, disabled_at, password_changed_at, password_reset_required, created_at, updated_at
 `
 
 type UpdateUserLifecycleNameParams struct {
-	ID          int64              `json:"id"`
-	DisplayName string             `json:"display_name"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	ID        int64              `json:"id"`
+	Column2   interface{}        `json:"column_2"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
 type UpdateUserLifecycleNameRow struct {
@@ -674,7 +674,7 @@ type UpdateUserLifecycleNameRow struct {
 }
 
 func (q *Queries) UpdateUserLifecycleName(ctx context.Context, arg *UpdateUserLifecycleNameParams) (*UpdateUserLifecycleNameRow, error) {
-	row := q.db.QueryRow(ctx, updateUserLifecycleName, arg.ID, arg.DisplayName, arg.UpdatedAt)
+	row := q.db.QueryRow(ctx, updateUserLifecycleName, arg.ID, arg.Column2, arg.UpdatedAt)
 	var i UpdateUserLifecycleNameRow
 	err := row.Scan(
 		&i.ID,
