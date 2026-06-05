@@ -590,17 +590,29 @@ func (s Store) UpdateUserLifecycleWithAuditTx(ctx context.Context, input UpdateU
 
 	q := s.db.WithTx(tx)
 
-	userRow, err := q.UpdateUserLifecycle(ctx, &db.UpdateUserLifecycleParams{
-		ID:          input.User.UserID,
-		DisplayName: strOrZero(input.User.DisplayName),
-		Column3:     boolOrFalse(input.User.Disabled),
-		UpdatedAt:   pgtype.Timestamptz{Time: input.User.UpdatedAt, Valid: true},
-	})
-	if err != nil {
-		return User{}, AuditEvent{}, err
+	var user User
+	if input.User.Disabled == nil {
+		row, err := q.UpdateUserLifecycleName(ctx, &db.UpdateUserLifecycleNameParams{
+			ID:          input.User.UserID,
+			DisplayName: strOrZero(input.User.DisplayName),
+			UpdatedAt:   pgtype.Timestamptz{Time: input.User.UpdatedAt, Valid: true},
+		})
+		if err != nil {
+			return User{}, AuditEvent{}, err
+		}
+		user = userFromRow(row.ID, row.Email, row.DisplayName, row.PasswordHash, row.DisabledAt, row.PasswordChangedAt, row.PasswordResetRequired, row.CreatedAt, row.UpdatedAt)
+	} else {
+		row, err := q.UpdateUserLifecycle(ctx, &db.UpdateUserLifecycleParams{
+			ID:          input.User.UserID,
+			DisplayName: strOrZero(input.User.DisplayName),
+			Column3:     *input.User.Disabled,
+			UpdatedAt:   pgtype.Timestamptz{Time: input.User.UpdatedAt, Valid: true},
+		})
+		if err != nil {
+			return User{}, AuditEvent{}, err
+		}
+		user = userFromRow(row.ID, row.Email, row.DisplayName, row.PasswordHash, row.DisabledAt, row.PasswordChangedAt, row.PasswordResetRequired, row.CreatedAt, row.UpdatedAt)
 	}
-
-	user := userFromRow(userRow.ID, userRow.Email, userRow.DisplayName, userRow.PasswordHash, userRow.DisabledAt, userRow.PasswordChangedAt, userRow.PasswordResetRequired, userRow.CreatedAt, userRow.UpdatedAt)
 
 	normalized := normalizeCreateAuditEventInput(input.AuditEvent)
 	metadataJSON, err := json.Marshal(normalized.Metadata)

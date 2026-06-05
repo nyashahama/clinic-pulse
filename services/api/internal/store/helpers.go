@@ -290,13 +290,6 @@ func adminUserCreatedAuditEvent(input CreateAuditEventInput, user User) CreateAu
 	return input
 }
 
-func boolOrFalse(b *bool) bool {
-	if b == nil {
-		return false
-	}
-	return *b
-}
-
 func cloneMetadata(metadata map[string]any) map[string]any {
 	cloned := make(map[string]any, len(metadata)+1)
 	for key, value := range metadata {
@@ -502,10 +495,6 @@ func currentStatusFromFreshnessRow(r *db.UpdateCurrentStatusFreshnessRow) Curren
 		ConfidenceScore: &r.ConfidenceScore,
 		UpdatedAt:       timestamptzTime(r.UpdatedAt),
 	}
-}
-
-func marshalAuditMetadata(input CreateAuditEventInput) ([]byte, error) {
-	return json.Marshal(normalizeCreateAuditEventInput(input).Metadata)
 }
 
 func marshalMapOrEmpty(v map[string]any) []byte {
