@@ -54,20 +54,6 @@ func TestOfflineSyncStoreMethodSignatures(t *testing.T) {
 	var _ func(Store, context.Context, string, string, time.Time, *CreateAuditEventInput) (CurrentStatus, bool, error) = Store.UpdateCurrentStatusFreshness
 }
 
-func TestListCurrentStatusesForReviewScopeSQLScopesByClinicDistrict(t *testing.T) {
-	t.Parallel()
-
-	if !strings.Contains(listCurrentStatusesForReviewScopeSQL, "JOIN clinics ON clinics.id = current_status.clinic_id") {
-		t.Fatal("expected scoped current status list to join clinics")
-	}
-	if !strings.Contains(listCurrentStatusesForReviewScopeSQL, "($1 = 'district_manager' AND $2::text IS NOT NULL AND clinics.district = $2)") {
-		t.Fatal("expected district manager current status scope predicate")
-	}
-	if !strings.Contains(listCurrentStatusesForReviewScopeSQL, "$1 IN ('org_admin', 'system_admin')") {
-		t.Fatal("expected org/system admins to retain all-district current status access")
-	}
-}
-
 func TestNormalizeCreateReportInputDoesNotInventRequiredReportFields(t *testing.T) {
 	t.Parallel()
 

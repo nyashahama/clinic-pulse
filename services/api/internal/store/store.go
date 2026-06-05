@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 
 	"clinicpulse/services/api/internal/store/db"
 
@@ -22,7 +23,6 @@ func Open(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
 		pool.Close()
 		return nil, err
 	}
-
 	return pool, nil
 }
 
@@ -37,4 +37,11 @@ func (s Store) Close() {
 	if s.pool != nil {
 		s.pool.Close()
 	}
+}
+
+func (s Store) Ready(ctx context.Context) error {
+	if s.pool == nil {
+		return errors.New("store: database pool is not configured")
+	}
+	return s.pool.Ping(ctx)
 }
