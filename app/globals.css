@@ -57,6 +57,19 @@
   --color-content-default: rgb(var(--content-default, 64 64 64));
   --color-content-emphasis: rgb(var(--content-emphasis, 23 23 23));
 
+  /* Domain palette — Clinic Pulse "Editorial Paper" */
+  --color-clinics-paper: var(--clinics-paper);
+  --color-clinics-canvas: var(--clinics-canvas);
+  --color-clinics-stone: var(--clinics-stone);
+  --color-clinics-ink: var(--clinics-ink);
+  --color-clinics-ink-mute: var(--clinics-ink-mute);
+  --color-clinics-canopy: var(--clinics-canopy);
+  --color-clinics-canopy-soft: var(--clinics-canopy-soft);
+  --color-clinics-cobalt: var(--clinics-cobalt);
+  --color-clinics-amber: var(--clinics-amber);
+  --color-clinics-rose: var(--clinics-rose);
+  --font-serif: var(--font-instrument-serif);
+
   /* Animation tokens — existing retained */
   --animate-fade-in: fade-in 0.2s ease-out forwards;
   --animate-slide-up-fade: slide-up-fade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
@@ -67,17 +80,8 @@
   --animate-pulse-grow: pulse-grow 3s ease-in-out infinite;
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
-
-  /* Animation tokens — new from dub.co */
-  --animate-text-appear: text-appear 0.15s ease;
-  --animate-fade-in-blur: fade-in-blur 0.5s ease-out forwards;
-  --animate-gradient-move: gradient-move 5s linear infinite;
-  --animate-infinite-scroll: infinite-scroll 22s linear infinite;
-  --animate-infinite-scroll-y: infinite-scroll-y 22s linear infinite;
-  --animate-pulse-scale: pulse-scale 6s ease-out infinite;
-  --animate-scale-in-content: scale-in-content 0.2s ease;
-  --animate-scale-out-content: scale-out-content 0.2s ease;
-  --animate-ellipsis-wave: ellipsis-wave 1.5s ease-in-out infinite;
+  --animate-pulse-live-indicator: pulse-live-indicator 2.4s ease-in-out infinite;
+  --animate-reveal-fade-up: reveal-fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 :root {
@@ -125,6 +129,18 @@
   --sidebar-accent-foreground: #171717;
   --sidebar-border: #e5e5e5;
   --sidebar-ring: #0D7A6B;
+
+  /* Clinic Pulse domain palette — light */
+  --clinics-paper: #F5F1EA;
+  --clinics-canvas: #FAFAF7;
+  --clinics-stone: #E8E2D5;
+  --clinics-ink: #0F0F0E;
+  --clinics-ink-mute: #5B5B58;
+  --clinics-canopy: #0D7A6B;
+  --clinics-canopy-soft: #E6F0EE;
+  --clinics-cobalt: #1E5F8C;
+  --clinics-amber: #B45309;
+  --clinics-rose: #9F1239;
 }
 
 .dark {
@@ -171,6 +187,18 @@
   --content-subtle: 180 180 180;
   --content-default: 224 224 224;
   --content-emphasis: 250 250 250;
+
+  /* Clinic Pulse domain palette — dark */
+  --clinics-paper: #0F0F0E;
+  --clinics-canvas: #161614;
+  --clinics-stone: #26241F;
+  --clinics-ink: #F2EEE5;
+  --clinics-ink-mute: #A6A39B;
+  --clinics-canopy: #3ECFA8;
+  --clinics-canopy-soft: #163832;
+  --clinics-cobalt: #5DA3D9;
+  --clinics-amber: #F59E0B;
+  --clinics-rose: #FB7185;
 }
 
 @keyframes fade-in {
@@ -207,53 +235,6 @@
 @keyframes pulse-grow {
   0%, 100% { transform: scale(1); opacity: 0.6; }
   50% { transform: scale(1.1); opacity: 1; }
-}
-
-@keyframes text-appear {
-  0% { opacity: 0; transform: rotateX(45deg) scale(0.95); }
-  100% { opacity: 1; transform: rotateX(0deg) scale(1); }
-}
-
-@keyframes fade-in-blur {
-  0% { opacity: 0; filter: blur(4px); }
-  50% { opacity: 0.5; filter: blur(0px); }
-  100% { opacity: 1; filter: blur(0px); }
-}
-
-@keyframes gradient-move {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 200% 50%; }
-}
-
-@keyframes infinite-scroll {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(var(--scroll, -150%)); }
-}
-
-@keyframes infinite-scroll-y {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(var(--scroll, -150%)); }
-}
-
-@keyframes pulse-scale {
-  0% { transform: scale(0.8); opacity: 0; }
-  30% { opacity: 1; }
-  100% { transform: scale(2); opacity: 0; }
-}
-
-@keyframes scale-in-content {
-  0% { transform: rotateX(-30deg) scale(0.9); opacity: 0; }
-  100% { transform: rotateX(0deg) scale(1); opacity: 1; }
-}
-
-@keyframes scale-out-content {
-  0% { transform: rotateX(0deg) scale(1); opacity: 1; }
-  100% { transform: rotateX(-10deg) scale(0.95); opacity: 0; }
-}
-
-@keyframes ellipsis-wave {
-  0%, 40% { transform: translateY(0); }
-  20% { transform: translateY(var(--offset, -10%)); }
 }
 
 @keyframes clinic-signal-drift {
@@ -307,6 +288,24 @@
 @keyframes accordion-up {
   from { height: var(--radix-accordion-content-height); }
   to { height: 0; }
+}
+
+@keyframes pulse-live-indicator {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(1.15); }
+}
+
+@keyframes reveal-fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-on-scroll {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
 
 html {
