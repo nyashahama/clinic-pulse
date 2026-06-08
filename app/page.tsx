@@ -1,39 +1,33 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 
-import { DemoBookingCTA } from "@/components/landing/demo-booking-cta";
+import { FinalCTA } from "@/components/landing/final-cta";
 import { Footer } from "@/components/landing/footer";
-import { Nav } from "@/components/landing/nav";
 import { LandingHeroBooking } from "@/components/landing/landing-hero-booking";
+import { Manifesto } from "@/components/landing/manifesto";
+import { Nav } from "@/components/landing/nav";
 import { OperatingGap } from "@/components/landing/operating-gap";
-import { ProductFeatureCards } from "@/components/landing/product-feature-cards";
-import { StakeholderProof } from "@/components/landing/stakeholder-proof";
+import { PaperNoise } from "@/components/landing/sections/paper-noise";
+import { ProductSurfaces } from "@/components/landing/product-surfaces";
 import { TrustInfrastructure } from "@/components/landing/trust-infrastructure";
-import { WorkflowTimeline } from "@/components/landing/workflow-timeline";
-import { DemoStoreProvider } from "@/lib/demo/demo-store";
 
 export const metadata: Metadata = {
-  title: "Clinic Pulse | Clinic operations platform",
+  title: "ClinicPulse — Audit-first clinic operations",
   description:
-    "Clinic Pulse gives district teams live clinic availability, offline field reporting, patient rerouting, and audit-ready operating records.",
+    "ClinicPulse gives district teams live clinic availability, offline field reporting, patient rerouting, and audit-ready operating records.",
 };
 
 export default function Home() {
   return (
-    <div className="bg-white text-neutral-950 dark:bg-background dark:text-foreground">
+    <div className="relative min-h-screen bg-clinics-paper text-clinics-ink">
+      <PaperNoise />
       <Nav />
       <main>
-        <DemoStoreProvider>
-          <Suspense fallback={null}>
-            <LandingHeroBooking />
-          </Suspense>
-        </DemoStoreProvider>
-        <StakeholderProof />
+        <LandingHeroBooking />
+        <Manifesto />
         <OperatingGap />
-        <WorkflowTimeline />
-        <ProductFeatureCards />
+        <ProductSurfaces />
         <TrustInfrastructure />
-        <DemoBookingCTA />
+        <FinalCTA />
       </main>
       <Footer />
     </div>
