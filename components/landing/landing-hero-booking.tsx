@@ -1,19 +1,22 @@
-import { HeroDistrictConsole } from "@/components/landing/hero-district-console";
-import { StatusPill } from "@/components/landing/sections/status-pill";
+import Image from "next/image";
 import Link from "next/link";
 
+import { HeroDistrictConsole } from "@/components/landing/hero-district-console";
+import { landingPhotos } from "@/components/landing/photo-assets";
+import { StatusPill } from "@/components/landing/sections/status-pill";
+
 /**
- * Landing hero — editorial heading + real product UI. The left column
- * has the two-tone serif heading and CTAs. The right column embeds
- * the real HeroDistrictConsole with map, metrics, and incident card.
+ * Landing hero — editorial heading + clinic photo + real product UI.
+ * Left column: two-tone serif heading, CTAs, stats on paper background.
+ * Right column: clinic photo with HeroDistrictConsole overlaid (glass effect).
  */
 export function LandingHeroBooking() {
+  const heroPhoto = landingPhotos.heroClinic;
+
   return (
-    <section
-      id="hero"
-      className="relative bg-clinics-paper"
-    >
-      <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-10 px-6 py-16 lg:grid-cols-[1fr_1.4fr] lg:items-center lg:gap-14 lg:py-0 lg:[&:first-child]:min-h-[85vh]">
+    <section id="hero" className="relative bg-clinics-paper">
+      <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-10 px-6 py-16 lg:grid-cols-[1fr_1.2fr] lg:items-center lg:gap-14 lg:py-0 lg:min-h-[85vh]">
+        {/* Left — editorial heading */}
         <div className="max-w-2xl">
           <StatusPill label="LIVE — MP-001" className="mb-6" />
 
@@ -64,8 +67,21 @@ export function LandingHeroBooking() {
           </div>
         </div>
 
-        <div className="hidden lg:block">
-          <HeroDistrictConsole className="w-full" />
+        {/* Right — clinic photo with district console overlaid */}
+        <div className="relative hidden min-h-[520px] overflow-hidden rounded-2xl border border-clinics-stone lg:block">
+          <Image
+            src={heroPhoto.src}
+            alt={heroPhoto.alt}
+            fill
+            priority
+            sizes="(min-width: 1024px) 48rem, 100vw"
+            className="object-cover"
+            style={{ objectPosition: heroPhoto.position }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-clinics-ink/70 via-clinics-ink/30 to-transparent" />
+          <div className="absolute inset-4 overflow-hidden rounded-xl ring-1 ring-white/10">
+            <HeroDistrictConsole className="w-full" />
+          </div>
         </div>
       </div>
     </section>
