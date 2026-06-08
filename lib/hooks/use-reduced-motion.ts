@@ -21,5 +21,5 @@ function getSnapshot() {
  * Updates reactively when the user changes their system preference.
  */
 export function useReducedMotion(): boolean {
-  return useSyncExternalStore(subscribe, getSnapshot);
+  return useSyncExternalStore(subscribe, getSnapshot, () => false);
 }
