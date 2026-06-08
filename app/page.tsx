@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { FAQSection } from "@/components/landing/faq-section";
 import { FinalCTA } from "@/components/landing/final-cta";
 import { FeaturesSection } from "@/components/landing/features-section";
 import { Footer } from "@/components/landing/footer";
@@ -37,6 +38,7 @@ export default function Home() {
         <ProblemContrast />
         <TrustInfrastructure />
         <SocialProofSection />
+        <FAQSection />
         <FinalCTA />
       </main>
       <Footer />
