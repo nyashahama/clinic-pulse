@@ -16,19 +16,24 @@ export function BrowserFrame({
   return (
     <div
       className={cn(
-        "min-w-0 max-w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-border dark:bg-card",
+        "min-w-0 max-w-full overflow-hidden rounded-xl border border-neutral-200/80 bg-white shadow-2xl shadow-black/[0.08] dark:border-border dark:bg-card",
         className,
       )}
     >
-      <div className="flex h-12 min-w-0 items-center gap-3 border-b border-neutral-200 bg-neutral-50 px-4 dark:border-border dark:bg-muted">
-        <div className="flex shrink-0 items-center gap-1.5">
-          <span className="size-3 rounded-full bg-red-400" />
-          <span className="size-3 rounded-full bg-amber-400" />
-          <span className="size-3 rounded-full bg-emerald-400" />
+      {/* macOS title bar with glass reflection */}
+      <div className="relative flex h-10 min-w-0 items-center gap-3 border-b border-neutral-200/60 bg-gradient-to-b from-neutral-50 to-neutral-100 px-4 dark:border-border dark:from-muted dark:to-muted">
+        <div className="absolute inset-x-0 top-0 h-px bg-white/60 dark:bg-white/10" />
+        <div className="flex shrink-0 items gap-[7px]">
+          <span className="size-[11px] rounded-full bg-[#FF5F57] shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]" />
+          <span className="size-[11px] rounded-full bg-[#FEBC2E] shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]" />
+          <span className="size-[11px] rounded-full bg-[#28C840] shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]" />
         </div>
-        <div className="min-w-0 flex-1 truncate rounded-md border border-neutral-200 bg-white px-3 py-1 font-mono text-xs text-neutral-500 dark:border-border dark:bg-card dark:text-muted-foreground">
-          {title}
+        <div className="min-w-0 flex-1 text-center">
+          <span className="truncate rounded-md bg-white/80 px-3 py-0.5 font-mono text-[11px] text-neutral-500 shadow-[0_1px_2px_rgba(0,0,0,0.06)] dark:bg-card/80 dark:text-muted-foreground">
+            {title}
+          </span>
         </div>
+        <div className="w-[52px]" />
       </div>
       {children}
     </div>
