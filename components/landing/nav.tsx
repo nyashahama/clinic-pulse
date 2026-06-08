@@ -5,12 +5,11 @@ import { StatusPill } from "@/components/landing/sections/status-pill";
 import Link from "next/link";
 
 const NAV_ITEMS = [
-  { name: "Problem", href: "#problem" },
-  { name: "Gap", href: "#gap" },
-  { name: "Operating gap", href: "#operating-gap" },
+  { name: "Impact", href: "#manifesto" },
   { name: "Product", href: "#product" },
+  { name: "Features", href: "#features" },
   { name: "Trust", href: "#trust" },
-  { name: "Final", href: "#final" },
+  { name: "FAQ", href: "#faq" },
 ];
 
 export function Nav() {
