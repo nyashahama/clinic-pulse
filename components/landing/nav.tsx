@@ -2,7 +2,6 @@
 
 import { ClinicPulseLogo } from "@/components/brand/clinicpulse-logo";
 import { StatusPill } from "@/components/landing/sections/status-pill";
-import { cn } from "@/lib/utils";
 import Link from "next/link";
 
 const NAV_ITEMS = [
