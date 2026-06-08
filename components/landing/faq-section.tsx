@@ -47,12 +47,12 @@ export function FAQSection() {
 
   return (
     <section id="faq" className="border-t border-neutral-200 bg-white">
-      <div className="mx-auto max-w-[720px] px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
-        <p className="mb-4 text-center text-xs font-semibold uppercase tracking-widest text-clinics-primary">
+      <div className="mx-auto max-w-[800px] px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
+        <p className="mb-5 text-center text-xs font-semibold uppercase tracking-widest text-clinics-primary">
           FAQ
         </p>
         <h2
-          className="mx-auto mb-12 max-w-[500px] text-center font-display text-3xl font-medium leading-[1.15] tracking-tight text-neutral-900 sm:text-4xl"
+          className="mx-auto mb-14 max-w-[550px] text-center font-display text-4xl font-medium leading-[1.15] tracking-tight text-neutral-900 sm:text-5xl"
           style={{ textWrap: "balance" }}
         >
           Questions from district health teams
@@ -63,9 +63,9 @@ export function FAQSection() {
             <div key={i}>
               <button
                 onClick={() => setOpenIndex(openIndex === i ? null : i)}
-                className="flex w-full items-center justify-between gap-4 py-5 text-left transition-colors hover:text-clinics-primary"
+                className="flex w-full items-center justify-between gap-4 py-6 text-left transition-colors hover:text-clinics-primary"
               >
-                <span className="text-[15px] font-medium text-neutral-900">
+                <span className="text-base font-medium text-neutral-900">
                   {faq.question}
                 </span>
                 <ChevronDown
@@ -78,11 +78,11 @@ export function FAQSection() {
               <div
                 className={cn(
                   "grid overflow-hidden transition-all duration-200",
-                  openIndex === i ? "grid-rows-[1fr] pb-5" : "grid-rows-[0fr]",
+                  openIndex === i ? "grid-rows-[1fr] pb-6" : "grid-rows-[0fr]",
                 )}
               >
                 <div className="min-h-0 overflow-hidden">
-                  <p className="text-sm leading-relaxed text-neutral-600">
+                  <p className="text-[15px] leading-relaxed text-neutral-600">
                     {faq.answer}
                   </p>
                 </div>
