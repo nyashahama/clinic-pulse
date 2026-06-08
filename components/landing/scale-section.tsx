@@ -35,7 +35,7 @@ export function ScaleSection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.15, duration: 0.5 }}
-                className="relative border-r border-white/[0.08] px-8 py-6 last:border-r-0"
+                className="relative px-8 py-6"
               >
                 <div className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
                   <NumberFlow value={stat.value} />
