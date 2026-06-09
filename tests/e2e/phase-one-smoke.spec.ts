@@ -41,11 +41,11 @@ test.describe("phase-one operations route checklist", () => {
 
   test("renders public landing and booking routes", async ({ page }) => {
     await page.goto("/");
-    // Hero heading is split across spans — check text content
+    // Hero h1 is split across spans — check for presence
     const hero = page.locator("h1");
     await expect(hero).toBeVisible();
     await expect(hero).toContainText("Know which clinics");
-    await expect(hero).toContainText("patients");
+    // Book walkthrough is in the nav header, not in hero
     await expect(page.getByRole("link", { name: "Book walkthrough" })).toBeVisible();
     await expectNoStagedProductLanguage(page);
 

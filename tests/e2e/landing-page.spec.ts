@@ -59,13 +59,11 @@ test.describe("landing page 2026", () => {
     const headerBook = page.locator("header").getByRole("link", {
       name: "Book walkthrough",
     }).last();
-    const heroBook = page.getByRole("link", { name: "Book walkthrough" }).first();
 
-    // Check both CTAs are visible
+    // Check header CTA is visible
     await expect(headerBook).toBeVisible();
-    await expect(heroBook).toBeVisible();
 
-    await heroBook.click();
+    await headerBook.click();
 
     const dialog = page.getByRole("dialog", {
       name: "Book a Clinic Pulse walkthrough",
@@ -85,7 +83,6 @@ test.describe("landing page 2026", () => {
     await expect(console).toContainText("Tshwane North");
     await expect(console).toContainText("Non-functional");
     await expect(console).toContainText("AUD-OPS-MAB-001");
-    await expect(page.getByRole("link", { name: "Book walkthrough" }).first()).toBeVisible();
   });
 
   test("keeps hero incident proof owned by the console", async ({ page }) => {
@@ -127,7 +124,7 @@ test.describe("landing page 2026", () => {
 
     const manifesto = page.locator("#manifesto");
     await expect(manifesto).toBeAttached();
-    await expect(manifesto).toContainText("Community health worker");
+    await expect(manifesto).toContainText("Field worker");
   });
 
   test("aligns the desktop stakeholder chapter without dead space", async ({ page }) => {
@@ -182,7 +179,7 @@ test.describe("landing page 2026", () => {
     await expect(page.locator("#faq")).toContainText("POPIA");
     await expect(page.locator("#final")).toBeVisible();
     await expect(
-      page.getByRole("button", { name: /walkthrough/i }).first(),
+      page.getByRole("link", { name: /walkthrough/i }).first(),
     ).toBeVisible();
   });
 });
