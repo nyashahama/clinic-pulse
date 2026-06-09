@@ -172,17 +172,17 @@ test.describe("authenticated dashboard theme controls", () => {
       page.getByRole("heading", { name: "Organisation Governance Workbench" }),
     ).toBeVisible();
 
-    await page.goto("/districts");
+    await page.goto("/district");
     await expectDarkTheme(page);
     await expect(
-      page.getByRole("heading", { name: "Unified severity queue" }),
+      page.getByRole("heading", { name: "Tshwane North District operating picture" }),
     ).toBeVisible();
 
     await page.goto("/field");
     await expectDarkTheme(page);
     await expect(page.getByRole("heading", { name: "Field workbench" })).toBeVisible();
 
-    await page.goto("/districts/clinics/clinic-mamelodi-east");
+    await page.goto("/district/clinics/clinic-mamelodi-east");
     await expectDarkTheme(page);
     await expect(
       page.getByRole("heading", { name: "Mamelodi East Community Clinic" }),

@@ -6,7 +6,7 @@ import {
   loadSyncSummaryForRole,
 } from "@/lib/demo/server-hydration";
 import { requireDashboardWorkflowAccess } from "../workflow-guard";
-import DistrictConsolePageClient from "../districts/page-client";
+import DistrictConsolePageClient from "./page-client";
 
 export default async function DistrictWorkspacePage() {
   await connection();

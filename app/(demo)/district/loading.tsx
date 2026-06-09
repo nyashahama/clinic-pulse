@@ -1,5 +1,5 @@
 import { WorkspaceDashboardLoading } from "@/components/product/workspace-loading";
 
-export default function DistrictLoading() {
+export default function DemoLoading() {
   return <WorkspaceDashboardLoading />;
 }

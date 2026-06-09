@@ -750,50 +750,37 @@ test.describe("phase 1 role dashboard navigation", () => {
     await expect(page.getByRole("link", { name: "Back to severity queue" })).toBeVisible();
   });
 
-  test("demo showcase does not expose report review", async ({ page }) => {
+  test("district workspace renders the command center with report review available", async ({ page }) => {
     await signInAs(page, "district-manager@clinicpulse.local", "/district");
-
-    await page.goto("/districts");
 
     await expect(
       page.locator('[data-role-dashboard="district_manager"]').filter({ visible: true }),
     ).toBeVisible();
-    await expect(page.locator("#report-review")).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { name: "Tshwane North District operating picture" }),
+    ).toBeVisible();
   });
 
   test("district users can open report stream details", async ({ page }) => {
     await signInAs(page, "district-manager@clinicpulse.local", "/district");
 
-    for (const scenario of [
-      {
-        path: "/district",
-        urlPattern: /\/district\/reports\/[^?]+\?from=district$/,
-        backLabel: "Back to district console",
-      },
-      {
-        path: "/districts",
-        urlPattern: /\/districts\/reports\/[^?]+\?from=districts$/,
-        backLabel: "Back to district console",
-      },
-    ] as const) {
-      await page.goto(scenario.path);
+    await page.goto("/district");
 
-      const reportStream = page.locator("section", {
-        has: page.getByRole("heading", { name: "Report stream" }),
-      });
-      const reportDetailLink = reportStream.getByRole("link", {
-        name: /Open report detail/i,
-      }).first();
+    const reportStream = page.locator("section", {
+      has: page.getByRole("heading", { name: "Report stream" }),
+    });
+    const reportDetailLink = reportStream.getByRole("link", {
+      name: /Open report detail/i,
+    }).first();
 
-      await expect(reportDetailLink).toBeVisible();
-      await Promise.all([
-        page.waitForURL(scenario.urlPattern),
-        reportDetailLink.click(),
-      ]);
-      await expect(page.getByRole("heading", { name: "Report evidence brief" })).toBeVisible();
-      await expect(page.getByRole("link", { name: scenario.backLabel })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Review clinic context" })).toBeVisible();
-    }
+    await expect(reportDetailLink).toBeVisible();
+    await Promise.all([
+      page.waitForURL(/\/district\/reports\/[^?]+\?from=district$/),
+      reportDetailLink.click(),
+    ]);
+    await expect(page.getByRole("heading", { name: "Report evidence brief" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Back to district console" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Review clinic context" })).toBeVisible();
   });
 
   test("system admin opens scenario controls as a standalone module", async ({

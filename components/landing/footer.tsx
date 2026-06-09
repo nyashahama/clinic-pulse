@@ -8,10 +8,6 @@ const FOOTER_LINKS = [
   { name: "Login", href: "/login" },
 ];
 
-/**
- * Footer — flat, paper background, no motion, no social links, no TrustBar.
- * Just a simple row: logo + copyright on the left, links on the right.
- */
 export function Footer() {
   return (
     <footer className="border-t border-clinics-stone bg-clinics-paper py-8">

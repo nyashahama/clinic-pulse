@@ -2,12 +2,16 @@ package store
 
 import (
 	"context"
+	"errors"
+
+	"clinicpulse/services/api/internal/store/db"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Store struct {
 	pool *pgxpool.Pool
+	db   *db.Queries
 }
 
 func Open(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
@@ -19,16 +23,25 @@ func Open(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
 		pool.Close()
 		return nil, err
 	}
-
 	return pool, nil
 }
 
 func New(pool *pgxpool.Pool) Store {
-	return Store{pool: pool}
+	return Store{
+		pool: pool,
+		db:   db.New(pool),
+	}
 }
 
 func (s Store) Close() {
 	if s.pool != nil {
 		s.pool.Close()
 	}
+}
+
+func (s Store) Ready(ctx context.Context) error {
+	if s.pool == nil {
+		return errors.New("store: database pool is not configured")
+	}
+	return s.pool.Ping(ctx)
 }

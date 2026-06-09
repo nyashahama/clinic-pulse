@@ -53,16 +53,10 @@ test.describe("product shell responsive behavior", () => {
     await expect(mobileSidebar).toBeHidden();
   });
 
-  test("keeps demo showcase and district product routes separate", async ({ page }) => {
+  test("district product route renders the command center workspace", async ({ page }) => {
     await signInAsDistrictManager(page);
     await expect(page).toHaveURL(/\/district$/);
 
-    await page.goto("/districts");
-    await expect(page).toHaveURL(/\/districts$/);
-    await expect(page.getByRole("heading", { name: "Unified severity queue" })).toBeVisible();
-
-    await page.goto("/district");
-    await expect(page).toHaveURL(/\/district$/);
     await expect(
       page.getByRole("heading", { name: "Tshwane North District operating picture" }),
     ).toBeVisible();
