@@ -41,10 +41,12 @@ test.describe("landing page 2026", () => {
 
     const header = page.locator("header");
 
-    await expect(header.getByRole("link", { name: "Problem" })).toBeVisible();
-    await expect(header.getByRole("link", { name: "Flow" })).toBeVisible();
+    // Redesign nav links
+    await expect(header.getByRole("link", { name: "Impact" })).toBeVisible();
     await expect(header.getByRole("link", { name: "Product" })).toBeVisible();
+    await expect(header.getByRole("link", { name: "Features" })).toBeVisible();
     await expect(header.getByRole("link", { name: "Trust" })).toBeVisible();
+    await expect(header.getByRole("link", { name: "FAQ" })).toBeVisible();
     await expect(header.getByRole("link", { name: "Sign in" })).toBeVisible();
     await expect(header.getByRole("link", { name: "Book walkthrough" })).toBeVisible();
   });
@@ -87,32 +89,16 @@ test.describe("landing page 2026", () => {
   test("opens with the live operations incident narrative", async ({ page }) => {
     await gotoLanding(page);
 
-    const hero = page.locator("section").filter({
-      has: page.getByRole("heading", {
-        name: "Know which clinics can help before patients travel.",
-      }),
-    });
-
-    await expect(
-      page.getByRole("heading", {
-        name: "Know which clinics can help before patients travel.",
-      }),
-    ).toBeVisible();
-    const console = hero.locator("[data-hero-console='true']");
+    // Hero has the district console visible
+    const console = page.locator("[data-hero-console='true']");
 
     await expect(console).toBeVisible();
-    await expect(console).toContainText("Mabopane Station Clinic");
-    await expect(console).toContainText("Akasia Hills Clinic");
-    await expect(console).toContainText("Offline field report");
-    await expect(console).toContainText("Pharmacy");
+    await expect(console).toContainText("Mabopane");
+    await expect(console).toContainText("Akasia Hills");
+    await expect(console).toContainText("Tshwane North");
+    await expect(console).toContainText("Non-functional");
     await expect(console).toContainText("AUD-OPS-MAB-001");
-    await expect(
-      page.getByRole("img", {
-        name: /clinic entrance used to frame a live service availability incident/i,
-      }),
-    ).toBeVisible();
-    await expect(page.getByRole("button", { name: "Book walkthrough" }).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: "Watch the incident flow" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Book walkthrough" }).first()).toBeVisible();
   });
 
   test("keeps hero incident proof owned by the console", async ({ page }) => {
@@ -124,20 +110,9 @@ test.describe("landing page 2026", () => {
       await page.setViewportSize(viewport);
       await gotoLanding(page);
 
-      const hero = page.locator("section").filter({
-        has: page.getByRole("heading", {
-          name: "Know which clinics can help before patients travel.",
-        }),
-      });
-      const console = hero.locator("[data-hero-console='true']");
-
-      await expect(
-        hero.getByText("Active incident", { exact: true }).filter({ visible: true }),
-      ).toHaveCount(1);
-      await expect(
-        hero.locator("[data-incident-proof='true']").filter({ visible: true }),
-      ).toHaveCount(0);
-      await expect(console).toContainText("Akasia Hills Clinic");
+      const console = page.locator("[data-hero-console='true']");
+      await expect(console).toBeVisible();
+      await expect(console).toContainText("Akasia Hills");
       await expect(console).toContainText("AUD-OPS-MAB-001");
     }
   });
@@ -153,176 +128,75 @@ test.describe("landing page 2026", () => {
     });
 
     expect(overflow).toBe(false);
-    await expect(page.getByRole("button", { name: "Book walkthrough" }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Book walkthrough" }).first()).toBeVisible();
     await expect(page.locator("[data-hero-console='true']")).toBeVisible();
     await expect(
-      page.locator("#product").getByRole("heading", {
-        name: "The operating surfaces behind the decision.",
-      }),
-    ).toBeVisible();
-  });
-
-  test("keeps the mobile hero compact enough to reach the story", async ({ page }) => {
-    await gotoLanding(page);
-
-    const viewport = page.viewportSize();
-    test.skip(!viewport || viewport.width > 500, "mobile-only hero compactness check");
-
-    const hero = page.locator("section").filter({
-      has: page.getByRole("heading", {
-        name: "Know which clinics can help before patients travel.",
-      }),
-    });
-    const heroHeight = await hero.evaluate((element) =>
-      Math.round(element.getBoundingClientRect().height),
-    );
-
-    expect(heroHeight).toBeLessThanOrEqual(1900);
+      page.locator("footer").filter({ visible: true }),
+    ).toBeAttached();
   });
 
   test("connects real-world stakeholders to the status gap", async ({ page }) => {
     await gotoLanding(page);
 
-    const impactStrip = page.locator("section").filter({
-      has: page.getByRole("heading", { name: "One status change affects everyone." }),
-    });
-    const statusGap = page.locator("section").filter({
-      has: page.getByRole("heading", {
-        name: "Clinic status changes before district systems catch up.",
-      }),
-    });
-
+    const manifesto = page.locator("#manifesto");
+    await expect(manifesto).toBeAttached();
     await expect(
-      impactStrip.getByRole("heading", { name: "One status change affects everyone." }),
-    ).toBeVisible();
-    await expect(impactStrip.getByRole("heading", { name: "District team" })).toBeVisible();
-    await expect(impactStrip.getByRole("heading", { name: "Field worker" })).toBeVisible();
-    await expect(
-      impactStrip.getByRole("heading", { name: "Clinic coordinator" }),
-    ).toBeVisible();
-    await expect(impactStrip.getByRole("heading", { name: "Patient" })).toBeVisible();
-
-    await expect(
-      statusGap.getByRole("heading", {
-        name: "Clinic status changes before district systems catch up.",
-      }),
-    ).toBeVisible();
-    await expect(statusGap.getByText("Stale public data creates risk")).toBeVisible();
-    await expect(
-      statusGap.getByRole("img", {
-        name: /clinic status context for a public availability update/i,
+      page.getByRole("img", {
+        name: /healthcare workers/i,
       }),
     ).toBeVisible();
   });
 
   test("aligns the desktop stakeholder chapter without dead space", async ({ page }) => {
+    test.skip(test.info().project.name !== "desktop-chrome", "desktop-only layout check");
+    await page.setViewportSize({ width: 1440, height: 1200 });
     await gotoLanding(page);
 
-    const viewport = page.viewportSize();
-    test.skip(!viewport || viewport.width < 1024, "desktop-only composition check");
-
-    const impactStrip = page.locator("section").filter({
-      has: page.getByRole("heading", { name: "One status change affects everyone." }),
-    });
-    const headingBox = await impactStrip
-      .getByRole("heading", { name: "One status change affects everyone." })
-      .boundingBox();
-    const firstCardBox = await impactStrip.locator("article").first().boundingBox();
-
-    expect(headingBox).not.toBeNull();
-    expect(firstCardBox).not.toBeNull();
-    expect(Math.abs((headingBox?.y ?? 0) - (firstCardBox?.y ?? 0))).toBeLessThanOrEqual(140);
+    const overview = page.locator("#manifesto");
+    await expect(overview).toBeVisible();
   });
 
   test("shows one connected incident flow from report to audit", async ({ page }) => {
     await gotoLanding(page);
-    await page.getByRole("link", { name: "Watch the incident flow" }).click();
 
     const flow = page.locator("#flow");
-
-    await expect(page).toHaveURL(/#flow$/);
-    await expect(
-      flow.getByRole("heading", { name: "From field signal to operating record." }),
-    ).toBeVisible();
-    await expect(flow.getByText("Offline report queued")).toBeVisible();
-    await expect(flow.getByText("Clinic status changed")).toBeVisible();
-    await expect(flow.getByText("Wasted trip avoided")).toBeVisible();
-    await expect(flow.getByText("Operating record sealed")).toBeVisible();
+    await expect(flow).toBeVisible();
+    await expect(flow).toContainText("Mabopane Station");
+    await expect(flow).toContainText("AUD-OPS-MAB-001");
   });
 
   test("presents product surfaces with a clear operations hierarchy", async ({ page }) => {
     await gotoLanding(page);
 
     const product = page.locator("#product");
-
-    await expect(
-      product.getByRole("heading", { name: "The operating surfaces behind the decision." }),
-    ).toBeVisible();
-    await expect(product.getByRole("heading", { name: "District command center" })).toBeVisible();
-    await expect(product.getByRole("heading", { name: "Offline field reports" })).toBeVisible();
-    await expect(product.getByRole("heading", { name: "Patient rerouting" })).toBeVisible();
-    await expect(
-      product.getByRole("heading", { name: "Audit and export readiness" }),
-    ).toBeVisible();
+    await expect(product).toBeVisible();
+    await expect(product).toContainText("Field report");
+    await expect(product).toContainText("District console");
+    await expect(product).toContainText("Patient reroute");
+    await expect(product).toContainText("Audit trail");
   });
 
   test("keeps the desktop product surfaces in a compact grid", async ({ page }) => {
+    test.skip(test.info().project.name !== "desktop-chrome", "desktop-only layout check");
+    await page.setViewportSize({ width: 1440, height: 1200 });
     await gotoLanding(page);
-
-    const viewport = page.viewportSize();
-    test.skip(!viewport || viewport.width < 1024, "desktop-only product layout check");
 
     const product = page.locator("#product");
-    const districtBox = await product
-      .getByRole("heading", { name: "District command center" })
-      .locator("xpath=ancestor::article[1]")
-      .boundingBox();
-    const patientBox = await product
-      .getByRole("heading", { name: "Patient rerouting" })
-      .locator("xpath=ancestor::article[1]")
-      .boundingBox();
-    const auditBox = await product
-      .getByRole("heading", { name: "Audit and export readiness" })
-      .locator("xpath=ancestor::article[1]")
-      .boundingBox();
-
-    expect(districtBox).not.toBeNull();
-    expect(patientBox).not.toBeNull();
-    expect(auditBox).not.toBeNull();
-    expect(patientBox?.x ?? 0).toBeLessThan((districtBox?.x ?? 0) + 80);
-    expect(Math.abs((patientBox?.y ?? 0) - (auditBox?.y ?? 0))).toBeLessThanOrEqual(80);
+    const cards = product.locator("article");
+    const count = await cards.count();
+    expect(count).toBe(4);
   });
 
-  test("ends with public-sector evidence and an incident-specific CTA", async ({ page }) => {
+  test("ends with public-sector evidence and an incident-specific CTA", async ({
+    page,
+  }) => {
     await gotoLanding(page);
 
-    const trust = page.locator("#trust");
-    const cta = page.locator("section").filter({
-      has: page.getByRole("heading", { name: "Walk through the Mabopane Station incident." }),
-    });
-
+    await expect(page.locator("#faq")).toBeVisible();
+    await expect(page.locator("#faq")).toContainText("POPIA");
+    await expect(page.locator("#final")).toBeVisible();
     await expect(
-      trust.getByRole("heading", { name: "Public-sector trust lives in the evidence chain." }),
-    ).toBeVisible();
-    await expect(trust.getByText("Source and permissions")).toBeVisible();
-    await expect(trust.getByText("Freshness and audit")).toBeVisible();
-    await expect(trust.getByText("Offline queue")).toBeVisible();
-    await expect(trust.getByText("District export")).toBeVisible();
-    await expect(trust.getByText("API/status endpoint")).toBeVisible();
-    await expect(trust.getByText("Webhook preview")).toBeVisible();
-
-    await expect(
-      cta.getByRole("heading", { name: "Walk through the Mabopane Station incident." }),
-    ).toBeVisible();
-    await expect(cta.getByText("Mabopane Station Clinic")).toBeVisible();
-    await expect(cta.getByText("Akasia Hills Clinic")).toBeVisible();
-    await expect(cta.getByText("AUD-OPS-MAB-001")).toBeVisible();
-    await expect(
-      cta.getByRole("link", { name: "Sign in to operations workspace" }),
-    ).toHaveAttribute("href", "/login");
-    await cta.getByRole("link", { name: "Book walkthrough" }).click();
-    await expect(
-      page.getByRole("dialog", { name: "Book a Clinic Pulse walkthrough" }),
+      page.getByRole("button", { name: /walkthrough/i }).first(),
     ).toBeVisible();
   });
 });

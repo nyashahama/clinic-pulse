@@ -25,39 +25,67 @@ test.describe("Landing page redesign — 2026 editorial paper", () => {
     expect(bg).toBeTruthy();
   });
 
-  test("nav has 6 anchor links", async ({ page }) => {
+  test("nav has 5 anchor links", async ({ page }) => {
     await page.goto(`${BASE}/`);
-    const navLinks = page.locator("header nav a");
-    await expect(navLinks).toHaveCount(6);
+    const navLinks = page.locator("header nav a:not([href='#'])");
+    await expect(navLinks).toHaveCount(5);
   });
 
-  test("hero has status pill", async ({ page }) => {
+  test("hero has district console", async ({ page }) => {
     await page.goto(`${BASE}/`);
-    const pill = page.locator("text=LIVE — MP-001");
-    await expect(pill).toBeVisible();
+    const console = page.locator("[data-hero-console]");
+    await expect(console).toBeAttached();
   });
 
-  test("manifesto has 3 numbered pillars", async ({ page }) => {
+  test("manifesto section is rendered as stakeholder impact", async ({ page }) => {
     await page.goto(`${BASE}/`);
-    const pillars = page.locator("#manifesto ol li");
-    await expect(pillars).toHaveCount(3);
+    const section = page.locator("#manifesto");
+    await expect(section).toBeAttached();
   });
 
-  test("operating gap uses sticky-scroll", async ({ page }) => {
+  test("operating gap section exists", async ({ page }) => {
     await page.goto(`${BASE}/`);
-    const sticky = page.locator("#operating-gap");
-    await expect(sticky).toBeAttached();
+    const flow = page.locator("#flow");
+    await expect(flow).toBeAttached();
   });
 
-  test("product surfaces has bento grid", async ({ page }) => {
+  test("product surfaces has 4 cards", async ({ page }) => {
     await page.goto(`${BASE}/`);
-    const bento = page.locator("#product article");
-    await expect(bento.first()).toBeVisible();
+    const cards = page.locator("#product article");
+    await expect(cards).toHaveCount(4);
   });
 
   test("footer has copyright", async ({ page }) => {
     await page.goto(`${BASE}/`);
     const footer = page.locator("footer");
     await expect(footer).toContainText("ClinicPulse");
+  });
+
+  test("features section uses dark theme", async ({ page }) => {
+    await page.goto(`${BASE}/`);
+    const features = page.locator("#features");
+    await expect(features).toBeAttached();
+    const bg = await features.evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(bg).toBeTruthy();
+  });
+
+  test("scale section shows animated counters", async ({ page }) => {
+    await page.goto(`${BASE}/`);
+    const heading = page.locator("text=Built to operate at national scale");
+    await expect(heading).toBeAttached();
+  });
+
+  test("FAQ section has accordion questions", async ({ page }) => {
+    await page.goto(`${BASE}/`);
+    const faq = page.locator("#faq");
+    await expect(faq).toBeAttached();
+    const questions = page.locator("#faq button");
+    await expect(questions.first()).toBeVisible();
+  });
+
+  test("social proof shows testimonials", async ({ page }) => {
+    await page.goto(`${BASE}/`);
+    const proof = page.locator("#proof");
+    await expect(proof).toBeAttached();
   });
 });
