@@ -28,10 +28,10 @@ export function RealtimeApiVisual() {
         <span className="text-blue-400">curl</span>{" "}
         <span className="text-white/50">/v1/clinics/mp-001</span>
         <div className="mt-2 text-white/30">{"{"}</div>
-        <div className="pl-3"><span className="text-blue-400">"name"</span>: <span className="text-emerald-400">"Mabopane Station"</span>,</div>
-        <div className="pl-3"><span className="text-blue-400">"status"</span>: <span className="text-red-400">"non-functional"</span>,</div>
-        <div className="pl-3"><span className="text-blue-400">"services"</span>: {"{"} <span className="text-red-400">"pharmacy"</span>: <span className="text-red-400">"closed"</span>, <span className="text-amber-400">"chronic"</span>: <span className="text-amber-400">"paused"</span> {"}"},</div>
-        <div className="pl-3"><span className="text-blue-400">"reroute_to"</span>: <span className="text-emerald-400">"akasia-hills-001"</span></div>
+        <div className="pl-3"><span className="text-blue-400">&quot;name&quot;</span>: <span className="text-emerald-400">&quot;Mabopane Station&quot;</span>,</div>
+        <div className="pl-3"><span className="text-blue-400">&quot;status&quot;</span>: <span className="text-red-400">&quot;non-functional&quot;</span>,</div>
+        <div className="pl-3"><span className="text-blue-400">&quot;services&quot;</span>: {"{"} <span className="text-red-400">&quot;pharmacy&quot;</span>: <span className="text-red-400">&quot;closed&quot;</span>, <span className="text-amber-400">&quot;chronic&quot;</span>: <span className="text-amber-400">&quot;paused&quot;</span> {"}"},</div>
+        <div className="pl-3"><span className="text-blue-400">&quot;reroute_to&quot;</span>: <span className="text-emerald-400">&quot;akasia-hills-001&quot;</span></div>
         <div className="text-white/30">{"}"}</div>
         <div className="mt-2 flex items-center gap-1.5 text-[10px] text-emerald-400/60">
           <CheckCircle2 className="size-3" />

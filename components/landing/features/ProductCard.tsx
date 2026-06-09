@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 
 interface PanelProps {
   children: ReactNode;
-  className?: string;
   hasShimmer?: boolean;
   hasActiveOnHover?: boolean;
   hasMotion?: boolean;
@@ -18,7 +17,6 @@ interface PanelProps {
 
 export function Panel({
   children,
-  className,
   hasShimmer = false,
   hasActiveOnHover = false,
   hasMotion = false,
@@ -91,7 +89,7 @@ export function ProductCard({
   feature,
   className,
 }: ProductCardProps) {
-  const { title, subtitle, description, icon: Icon, highlights, visual, href, isMain, alignLeft = true } = feature;
+  const { title, subtitle, icon: Icon, highlights, visual, href, isMain, alignLeft = true } = feature;
 
   return (
     <Panel

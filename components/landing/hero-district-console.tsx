@@ -2,7 +2,6 @@ import type { LucideIcon } from "lucide-react";
 import {
   Activity,
   Building2,
-  ClipboardCheck,
   DatabaseZap,
   FileText,
   Filter,
@@ -16,7 +15,6 @@ import {
 
 import {
   BrowserFrame,
-  MetricTile,
   ProductRow,
   StatusPill,
 } from "@/components/landing/product-preview-primitives";
