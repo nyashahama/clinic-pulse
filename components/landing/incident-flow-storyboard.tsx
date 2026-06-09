@@ -1,53 +1,111 @@
-import type { CSSProperties } from "react";
 import Image from "next/image";
+import type { LucideIcon } from "lucide-react";
+import {
+  AlertTriangle,
+  Clock,
+  FileText,
+  MapPin,
+  Radio,
+  Route,
+  ShieldCheck,
+  User,
+} from "lucide-react";
 
 import {
   LandingSection,
   LandingSectionHeader,
 } from "@/components/landing/landing-section";
 import { landingPhotos } from "@/components/landing/photo-assets";
-import { incidentFlowSteps } from "@/lib/landing/openpanel-refactor-content";
 import { cn } from "@/lib/utils";
 
-const toneClasses = {
-  critical: {
-    card: "border-red-200 bg-red-50/80 dark:border-red-900/60 dark:bg-red-950/30",
-    marker: "border-red-300 bg-red-600 text-white",
-    state: "border-red-200 bg-white text-red-700 dark:border-red-900/60 dark:bg-red-950/45 dark:text-red-200",
-    rail: "bg-red-200 dark:bg-red-900/60",
-  },
-  warning: {
-    card: "border-amber-200 bg-amber-50/80 dark:border-amber-900/60 dark:bg-amber-950/30",
-    marker: "border-amber-800 bg-amber-800 text-white",
-    state: "border-amber-200 bg-white text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/45 dark:text-amber-200",
-    rail: "bg-amber-200 dark:bg-amber-900/60",
-  },
-  healthy: {
-    card: "border-emerald-200 bg-emerald-50/80 dark:border-emerald-900/60 dark:bg-emerald-950/30",
-    marker: "border-emerald-800 bg-emerald-800 text-white",
-    state: "border-emerald-200 bg-white text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/45 dark:text-emerald-200",
-    rail: "bg-emerald-200 dark:bg-emerald-900/60",
-  },
-  neutral: {
-    card: "border-neutral-200 bg-white dark:border-border dark:bg-card",
-    marker: "border-neutral-300 bg-neutral-900 text-white",
-    state: "border-neutral-200 bg-neutral-50 text-neutral-700 dark:border-border dark:bg-muted dark:text-muted-foreground",
-    rail: "bg-neutral-200 dark:bg-border",
-  },
-} satisfies Record<
-  (typeof incidentFlowSteps)[number]["tone"],
+type TimelineVariant = "amber" | "red" | "green" | "neutral" | "blue";
+
+interface TimelineEvent {
+  time: string;
+  date: string;
+  title: string;
+  detail: string;
+  surface: string;
+  icon: LucideIcon;
+  dotColor: string;
+  ringColor: string;
+  assignee: { name: string; initials: string };
+  status: { label: string; variant: TimelineVariant };
+}
+
+const timelineEvents: TimelineEvent[] = [
   {
-    card: string;
-    marker: string;
-    state: string;
-    rail: string;
-  }
->;
+    time: "07:12",
+    date: "Today",
+    title: "Offline field report queued",
+    detail: "Community health worker submitted pharmacy closure report from Mabopane Station. No signal — saved locally.",
+    surface: "Field report",
+    icon: Radio,
+    dotColor: "bg-amber-500",
+    ringColor: "ring-amber-200",
+    assignee: { name: "S. Ndaba", initials: "SN" },
+    status: { label: "Synced", variant: "amber" },
+  },
+  {
+    time: "07:14",
+    date: "Today",
+    title: "District status updated to non-functional",
+    detail: "Generator failure confirmed. Pharmacy and chronic care pickup paused. 83 patients affected.",
+    surface: "District console",
+    icon: AlertTriangle,
+    dotColor: "bg-red-500",
+    ringColor: "ring-red-200",
+    assignee: { name: "System", initials: "SY" },
+    status: { label: "Critical", variant: "red" },
+  },
+  {
+    time: "07:15",
+    date: "Today",
+    title: "Patient reroute triggered",
+    detail: "Akasia Hills Clinic identified as nearest compatible alternative for pharmacy services. Public finder updated.",
+    surface: "Public finder",
+    icon: Route,
+    dotColor: "bg-emerald-500",
+    ringColor: "ring-emerald-200",
+    assignee: { name: "System", initials: "SY" },
+    status: { label: "18 min saved", variant: "green" },
+  },
+  {
+    time: "07:16",
+    date: "Today",
+    title: "Audit record sealed",
+    detail: "Source report, status change, reroute decision, and affected patient count linked. Record immutable.",
+    surface: "Audit ledger",
+    icon: ShieldCheck,
+    dotColor: "bg-neutral-400",
+    ringColor: "ring-neutral-200",
+    assignee: { name: "System", initials: "SY" },
+    status: { label: "AUD-OPS-MAB-001", variant: "neutral" },
+  },
+  {
+    time: "08:01",
+    date: "Today",
+    title: "Field follow-up submitted",
+    detail: "District manager verified generator repair ETA. Estimated restoration by 14:00.",
+    surface: "Field report",
+    icon: FileText,
+    dotColor: "bg-blue-500",
+    ringColor: "ring-blue-200",
+    assignee: { name: "T. Mkhize", initials: "TM" },
+    status: { label: "Update", variant: "blue" },
+  },
+];
+
+const statusStyles: Record<TimelineVariant, string> = {
+  amber: "bg-amber-50 text-amber-700 ring-amber-600/10",
+  red: "bg-red-50 text-red-700 ring-red-600/10",
+  green: "bg-emerald-50 text-emerald-700 ring-emerald-600/10",
+  neutral: "bg-neutral-100 text-neutral-600 ring-neutral-500/10",
+  blue: "bg-blue-50 text-blue-700 ring-blue-600/10",
+};
 
 export function IncidentFlowStoryboard() {
   const fieldWorkerPhoto = landingPhotos.fieldWorker;
-  const auditReference =
-    incidentFlowSteps[incidentFlowSteps.length - 1]?.state ?? "Traceable operating record";
 
   return (
     <LandingSection id="flow" className="border-y border-neutral-200 bg-neutral-50 dark:border-border dark:bg-background">
@@ -78,99 +136,82 @@ export function IncidentFlowStoryboard() {
           </div>
         </div>
 
+        {/* Incident timeline */}
         <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm dark:border-border dark:bg-card">
-          <div className="border-b border-neutral-200 px-4 py-4 dark:border-border sm:px-5">
-            <div className="grid gap-2 sm:flex sm:items-center sm:justify-between">
-              <p className="text-sm font-semibold text-neutral-950 dark:text-card-foreground">
-                Connected incident path
-              </p>
+          <div className="border-b border-neutral-200 px-5 py-4 dark:border-border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <p className="text-sm font-semibold text-neutral-950 dark:text-card-foreground">
+                  Mabopane Station — incident timeline
+                </p>
+                <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
+                  <span className="size-1.5 rounded-full bg-red-500" />
+                  Active
+                </span>
+              </div>
               <p className="font-mono text-xs text-neutral-500 dark:text-muted-foreground">
-                OPERATIONS / {auditReference}
+                AUD-OPS-MAB-001
               </p>
             </div>
           </div>
 
-          <div className="relative grid gap-4 overflow-hidden p-4 sm:p-5 lg:grid-cols-4 lg:gap-0">
-            <div
-              aria-hidden="true"
-              data-motion-layer="true"
-              className="pointer-events-none absolute inset-x-8 top-24 hidden h-px bg-neutral-200 dark:bg-border lg:block"
-            >
-              <span
-                data-motion-object="true"
-                className="absolute -top-1 size-2 rounded-full bg-primary shadow-[0_0_18px_rgba(13,122,107,0.75)] [animation:clinic-rail-scroll_7s_linear_infinite]"
-                style={
-                  {
-                    "--clinic-rail-x": "calc(100vw - 16rem)",
-                    "--clinic-rail-y": "0",
-                  } as CSSProperties
-                }
-              />
-            </div>
-            {incidentFlowSteps.map((step, index) => {
-              const tone = toneClasses[step.tone];
-              const isLast = index === incidentFlowSteps.length - 1;
+          <div className="relative">
+            {timelineEvents.map((event, index) => {
+              const Icon = event.icon;
+              const isLast = index === timelineEvents.length - 1;
 
               return (
-                <article
-                  key={step.step}
-                  className="relative z-10 min-w-0 lg:px-2"
-                  aria-label={`${step.surface}: ${step.title}`}
-                >
-                  <div
-                    className={cn(
-                      "relative z-10 flex min-h-56 flex-col rounded-lg border p-4 shadow-sm lg:min-h-72",
-                      tone.card,
+                <div key={index} className="relative flex gap-4 px-5 py-4">
+                  {/* Rail + dot */}
+                  <div className="flex flex-col items-center">
+                    <div
+                      className={cn(
+                        "relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full ring-4",
+                        event.dotColor,
+                        event.ringColor,
+                      )}
+                    >
+                      <Icon className="size-3.5 text-white" />
+                    </div>
+                    {!isLast && (
+                      <div className="w-px flex-1 bg-neutral-200 dark:bg-border" />
                     )}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <span
-                        className={cn(
-                          "flex size-10 shrink-0 items-center justify-center rounded-md border font-mono text-xs font-semibold",
-                          tone.marker,
-                        )}
-                      >
-                        {step.step}
-                      </span>
-                      <span
-                        className={cn(
-                          "max-w-[11rem] rounded-full border px-2.5 py-1 text-right text-[11px] font-semibold leading-4",
-                          tone.state,
-                        )}
-                      >
-                        {step.state}
-                      </span>
-                    </div>
-
-                    <div className="mt-8 min-w-0 flex-1">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-700 dark:text-muted-foreground">
-                        {step.surface}
-                      </p>
-                      <h3 className="mt-2 text-lg font-semibold leading-6 text-neutral-950 dark:text-foreground">
-                        {step.title}
-                      </h3>
-                      <p className="mt-3 text-sm leading-6 text-neutral-600 dark:text-muted-foreground">
-                        {step.detail}
-                      </p>
-                    </div>
                   </div>
 
-                  {!isLast ? (
-                    <>
+                  {/* Content */}
+                  <div className="min-w-0 flex-1 pb-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-medium text-neutral-950 dark:text-card-foreground">
+                        {event.title}
+                      </p>
                       <span
                         className={cn(
-                          "absolute left-5 top-full h-4 w-0.5 sm:left-6 lg:left-auto lg:right-[-0.5rem] lg:top-1/2 lg:h-0.5 lg:w-4",
-                          tone.rail,
+                          "inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset",
+                          statusStyles[event.status.variant],
                         )}
-                        aria-hidden="true"
-                      />
-                      <span
-                        className="absolute left-[1.06rem] top-[calc(100%+0.75rem)] size-2 rotate-45 border-r border-t border-neutral-300 dark:border-border sm:left-[1.31rem] lg:left-auto lg:right-[-0.66rem] lg:top-[calc(50%-0.22rem)]"
-                        aria-hidden="true"
-                      />
-                    </>
-                  ) : null}
-                </article>
+                      >
+                        {event.status.label}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[13px] leading-relaxed text-neutral-600 dark:text-muted-foreground">
+                      {event.detail}
+                    </p>
+                    <div className="mt-2 flex items-center gap-3 text-[11px] text-neutral-500 dark:text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Clock className="size-3" />
+                        {event.date} {event.time}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <MapPin className="size-3" />
+                        {event.surface}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <User className="size-3" />
+                        {event.assignee.name}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               );
             })}
           </div>
