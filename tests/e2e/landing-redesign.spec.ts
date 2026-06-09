@@ -49,10 +49,11 @@ test.describe("Landing page redesign — 2026 editorial paper", () => {
     await expect(flow).toBeAttached();
   });
 
-  test("product surfaces has 4 cards", async ({ page }) => {
+  test("product surfaces has 4 visible cards", async ({ page }) => {
     await page.goto(`${BASE}/`);
-    const cards = page.locator("#product article");
-    await expect(cards).toHaveCount(4);
+    // Product cards use motion.div wrappers, check for h3 headings
+    const headings = page.locator("#product h3");
+    await expect(headings).toHaveCount(4);
   });
 
   test("footer has copyright", async ({ page }) => {

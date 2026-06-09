@@ -41,12 +41,12 @@ test.describe("phase-one operations route checklist", () => {
 
   test("renders public landing and booking routes", async ({ page }) => {
     await page.goto("/");
-    await expect(
-      page.getByRole("heading", {
-        name: "Know which clinics can help before patients travel.",
-      }),
-    ).toBeVisible();
-    await expect(page.getByRole("button", { name: "Book walkthrough" })).toBeVisible();
+    // Hero heading is split across spans — check text content
+    const hero = page.locator("h1");
+    await expect(hero).toBeVisible();
+    await expect(hero).toContainText("Know which clinics");
+    await expect(hero).toContainText("patients");
+    await expect(page.getByRole("link", { name: "Book walkthrough" })).toBeVisible();
     await expectNoStagedProductLanguage(page);
 
     await page.goto("/request-walkthrough");
