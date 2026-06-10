@@ -1,33 +1,21 @@
-export type StatusTone = "neutral" | "warning" | "critical" | "healthy";
+import type { LandingMotionTone } from "@/lib/landing/landing-motion-content";
 
 export type PatientJourneyStepData = {
-  /** Step number in the timeline (1-5) */
   step: number;
-  /** Short moment label: "Depart", "Travel", "Arrive", "Discover", "Reroute" */
   moment: string;
-  /** Approximate time of day for this moment */
   time: string;
-  /** Where the patient is at this moment */
   location: string;
-  /** Type of ClinicPulse artifact to render */
   artifact: "finder-card" | "field-report" | "status-badge" | "impact-statement";
-  /** ClinicPulse status badge tone */
-  tone: StatusTone;
-  /** Primary headline shown in the data artifact */
+  tone: LandingMotionTone;
   headline: string;
-  /** Secondary detail line(s) */
   details: string[];
-  /** Freshness label */
   freshness: string;
-  /** Source attribution label */
   source?: string;
-  /** Metric to highlight (e.g., "90 min", "18 min") */
   metric?: string;
-  /** Metric label */
   metricLabel?: string;
 };
 
-export const patientJourneySteps: PatientJourneyStepData[] = [
+export const patientJourneySteps = [
   {
     step: 1,
     moment: "Depart",
@@ -106,4 +94,4 @@ export const patientJourneySteps: PatientJourneyStepData[] = [
     metric: "18 min",
     metricLabel: "detour",
   },
-];
+] as const;
