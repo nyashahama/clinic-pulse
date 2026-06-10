@@ -9,6 +9,7 @@ import { LogoCarousel } from "@/components/landing/logo-carousel";
 import { Manifesto } from "@/components/landing/manifesto";
 import { Nav } from "@/components/landing/nav";
 import { OperatingGap } from "@/components/landing/operating-gap";
+import { RealWorldStakesSection } from "@/components/landing/real-world-stakes-section";
 import { PaperNoise } from "@/components/landing/sections/paper-noise";
 import { ProblemContrast } from "@/components/landing/problem-contrast";
 import { ProductSurfaces } from "@/components/landing/product-surfaces";
@@ -31,6 +32,7 @@ export default function Home() {
         <LandingHeroBooking />
         <LogoCarousel />
         <Manifesto />
+        <RealWorldStakesSection />
         <OperatingGap />
         <ScaleSection />
         <ProductSurfaces />
