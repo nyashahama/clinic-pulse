@@ -8,7 +8,7 @@ export type PatientJourneyStepData = {
   artifact: "finder-card" | "field-report" | "status-badge" | "impact-statement";
   tone: LandingMotionTone;
   headline: string;
-  details: string[];
+  details: readonly string[];
   freshness: string;
   source?: string;
   metric?: string;
