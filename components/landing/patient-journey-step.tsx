@@ -123,9 +123,9 @@ export function PatientJourneyStep({ step }: { step: PatientJourneyStepData }) {
       id={`journey-step-${step.step}`}
       aria-labelledby={`journey-step-${step.step}-label`}
       className={cn(
-        "scroll-snap-align-start flex w-[320px] shrink-0 flex-col rounded-xl border bg-neutral-950/60 p-5 transition-all duration-700 sm:w-[360px]",
+        "snap-start flex w-[320px] shrink-0 flex-col rounded-xl border bg-neutral-950/60 p-5 transition-all duration-700 sm:w-[360px]",
         styles.border,
-        visible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
+        visible ? "motion-safe:translate-y-0 motion-safe:opacity-100" : "motion-safe:translate-y-8 motion-safe:opacity-0"
       )}
     >
       <div className="flex items-center gap-3">
