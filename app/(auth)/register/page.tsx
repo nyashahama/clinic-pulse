@@ -1,4 +1,3 @@
-import { ClinicPulseMark } from "@/components/brand/clinicpulse-logo";
 import { SignupForm, type SignupActionState } from "@/components/auth/signup-form";
 import { validateFrontendRuntimeEnv } from "@/lib/runtime/frontend-env";
 import Link from "next/link";
@@ -72,77 +71,46 @@ export default function RegisterPage() {
   const frontendEnv = validateFrontendRuntimeEnv();
 
   return (
-    <div className="flex min-h-[100dvh] w-full flex-col items-center justify-between px-4 pb-5 pt-24 sm:px-6">
-      <div className="grow basis-0" />
-
-      <main className="relative flex w-full flex-col items-center justify-center">
-        <section className="w-full max-w-[30rem] rounded-[2rem] border border-white/70 bg-white/78 p-5 shadow-2xl shadow-slate-900/10 backdrop-blur-xl dark:border-border dark:bg-card/90 dark:shadow-black/30 sm:p-7">
-          <div className="text-center">
-            <ClinicPulseMark className="mx-auto mb-4 size-12 rounded-2xl shadow-lg shadow-emerald-950/20" />
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#0D7A6B]">
-              Invite-only access
-            </p>
-            <h1 className="mt-3 font-display text-3xl font-semibold tracking-[-0.04em] text-neutral-950 dark:text-card-foreground">
-              Create your ClinicPulse account
-            </h1>
-            <p className="mt-3 text-sm leading-6 text-neutral-600 dark:text-muted-foreground">
-              Request workspace access for district operations, field reporting,
-              and partner coordination workflows.
-            </p>
-          </div>
-
-          <div className="mt-8">
-            <SignupForm
-              action={signupAction}
-              allowPublicRegistration={frontendEnv.allowPublicRegistration}
-            />
-          </div>
-
-          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-200">
-            New accounts are currently provisioned by administrators.
-            {frontendEnv.showDemoCredentials
-              ? " The local scenario includes seeded users you can use from the sign in page."
-              : null}
-          </div>
-
-          <p className="mt-6 text-center text-sm font-medium text-neutral-500 dark:text-muted-foreground">
-            Already have an account?&nbsp;
-            <Link
-              href="/login"
-              className="font-semibold text-[#0D7A6B] transition-colors hover:text-neutral-900 dark:text-emerald-300 dark:hover:text-foreground"
-            >
-              Sign in
-            </Link>
-          </p>
-        </section>
-      </main>
-
-      <div className="flex grow basis-0 flex-col justify-end">
-        <p className="max-w-md px-4 py-4 text-center text-xs font-medium leading-5 text-neutral-500 dark:text-muted-foreground md:px-0">
-          By continuing, you agree to ClinicPulse&rsquo;s{" "}
-          <Link
-            href="/legal/terms"
-            className="font-semibold text-neutral-600 hover:text-neutral-800 dark:text-muted-foreground dark:hover:text-foreground"
-          >
-            Terms of Service
-          </Link>{" "}
-          and{" "}
-          <Link
-            href="/legal/privacy"
-            className="font-semibold text-neutral-600 hover:text-neutral-800 dark:text-muted-foreground dark:hover:text-foreground"
-          >
-            Privacy Policy
-          </Link>
-          , and{" "}
-          <Link
-            href="/legal/safety"
-            className="font-semibold text-neutral-600 hover:text-neutral-800 dark:text-muted-foreground dark:hover:text-foreground"
-          >
-            Safety Notes
-          </Link>
-          .
+    <div className="w-full max-w-[30rem]">
+      <div className="text-center">
+        <div className="mx-auto mb-5 inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-amber-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
+          <span className="size-1.5 rounded-full bg-amber-500" />
+          Invite-only access
+        </div>
+        <h1 className="font-display text-[1.75rem] font-semibold tracking-[-0.035em] text-neutral-950 dark:text-foreground">
+          Request ClinicPulse access
+        </h1>
+        <p className="mt-2.5 text-sm leading-6 text-neutral-500 dark:text-muted-foreground">
+          Request workspace access for district operations, field reporting,
+          and partner coordination workflows.
         </p>
       </div>
+
+      <div className="mt-8">
+        <SignupForm
+          action={signupAction}
+          allowPublicRegistration={frontendEnv.allowPublicRegistration}
+        />
+      </div>
+
+      <div className="mt-5 rounded-xl border border-amber-200/60 bg-amber-50/50 p-3.5 text-xs leading-6 text-amber-800 dark:border-amber-500/15 dark:bg-amber-500/5 dark:text-amber-300">
+        <p className="font-medium">Accounts are provisioned by administrators.</p>
+        {frontendEnv.showDemoCredentials ? (
+          <p className="mt-1 text-amber-600/80 dark:text-amber-400/60">
+            Use the seeded demo credentials on the sign in page.
+          </p>
+        ) : null}
+      </div>
+
+      <p className="mt-6 text-center text-sm text-neutral-500 dark:text-muted-foreground">
+        Already have an account?&nbsp;
+        <Link
+          href="/login"
+          className="font-semibold text-[#0D7A6B] transition-colors hover:text-[#0a5e54] dark:text-emerald-300 dark:hover:text-emerald-200"
+        >
+          Sign in
+        </Link>
+      </p>
     </div>
   );
 }
