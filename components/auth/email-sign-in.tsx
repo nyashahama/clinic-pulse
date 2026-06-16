@@ -14,10 +14,10 @@ export type EmailSignInAction = (
 ) => Promise<EmailSignInActionState>;
 
 const inputClassName =
-  "block w-full min-w-0 appearance-none rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-950 shadow-sm outline-none transition placeholder:text-neutral-400 focus:border-[#0D7A6B] focus:ring-4 focus:ring-[#0D7A6B]/10 dark:border-border dark:bg-muted dark:text-foreground dark:placeholder:text-muted-foreground";
+  "block w-full min-w-0 appearance-none rounded-lg border border-neutral-200 bg-white px-3.5 py-2.5 text-sm text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-[#0D7A6B] focus:ring-2 focus:ring-[#0D7A6B]/10 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-white/30 dark:focus:border-emerald-400/50 dark:focus:ring-emerald-400/10";
 
 const buttonClassName =
-  "inline-flex w-full shrink-0 items-center justify-center rounded-xl border border-neutral-950 bg-neutral-950 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/10 transition hover:-translate-y-0.5 hover:bg-neutral-800 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70 dark:border-primary dark:bg-primary dark:text-primary-foreground dark:shadow-black/30 dark:hover:bg-primary/90";
+  "inline-flex w-full shrink-0 items-center justify-center rounded-lg bg-[#06251F] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0a3d33] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-500";
 
 export function EmailSignIn({
   action,
@@ -39,17 +39,17 @@ function EmailOnlySignIn() {
   return (
     <form
       onSubmit={(event) => event.preventDefault()}
-      className="flex flex-col gap-y-4"
+      className="flex flex-col gap-4"
     >
       <label>
-        <span className="mb-2 block text-sm font-semibold leading-none text-neutral-900 dark:text-foreground">
-          Email
+        <span className="mb-1.5 block text-xs font-medium text-neutral-600 dark:text-white/50">
+          Email address
         </span>
         <input
           id="email"
           name="email"
           type="email"
-          placeholder="panic@thedis.co"
+          placeholder="you@health.gov"
           autoComplete="email"
           autoFocus
           required
@@ -76,18 +76,18 @@ function PasswordEmailSignIn({
   const [state, formAction, pending] = useActionState(action, {});
 
   return (
-    <form action={formAction} className="flex flex-col gap-y-4">
+    <form action={formAction} className="flex flex-col gap-4">
       {returnTo ? <input type="hidden" name="next" value={returnTo} /> : null}
 
       <label>
-        <span className="mb-2 block text-sm font-semibold leading-none text-neutral-900 dark:text-foreground">
-          Email
+        <span className="mb-1.5 block text-xs font-medium text-neutral-600 dark:text-white/50">
+          Email address
         </span>
         <input
           id="email"
           name="email"
           type="email"
-          placeholder="panic@thedis.co"
+          placeholder="you@health.gov"
           autoComplete="email"
           autoFocus
           required
@@ -97,7 +97,7 @@ function PasswordEmailSignIn({
       </label>
 
       <label>
-        <span className="mb-2 block text-sm font-semibold leading-none text-neutral-900 dark:text-foreground">
+        <span className="mb-1.5 block text-xs font-medium text-neutral-600 dark:text-white/50">
           Password
         </span>
         <input
@@ -113,7 +113,7 @@ function PasswordEmailSignIn({
       {state.error ? (
         <p
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:border-red-900/60 dark:bg-red-950/35 dark:text-red-200"
+          className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-300"
         >
           {state.error}
         </p>
@@ -124,7 +124,7 @@ function PasswordEmailSignIn({
         disabled={pending}
         className={buttonClassName}
       >
-        {pending ? "Logging in..." : "Log in"}
+        {pending ? "Signing in..." : "Sign in"}
       </button>
     </form>
   );

@@ -7,28 +7,28 @@ const clinicCards = [
     name: "Mamelodi East Clinic",
     status: "Operational",
     detail: "Queue under 18 min",
-    statusColor: "bg-emerald-500",
-    borderColor: "border-emerald-200",
-    bgColor: "bg-emerald-50",
-    textColor: "text-emerald-700",
+    statusColor: "bg-emerald-400",
+    accentColor: "border-l-emerald-400",
+    bgColor: "bg-emerald-400/10",
+    textColor: "text-emerald-300",
   },
   {
     name: "Atteridgeville CHC",
     status: "Degraded",
     detail: "Pharmacy stock low",
     statusColor: "bg-amber-400",
-    borderColor: "border-amber-200",
-    bgColor: "bg-amber-50",
-    textColor: "text-amber-700",
+    accentColor: "border-l-amber-400",
+    bgColor: "bg-amber-400/10",
+    textColor: "text-amber-300",
   },
   {
     name: "Soshanguve Block X",
     status: "Rerouting",
     detail: "2 ambulances redirected",
-    statusColor: "bg-sky-500",
-    borderColor: "border-sky-200",
-    bgColor: "bg-sky-50",
-    textColor: "text-sky-700",
+    statusColor: "bg-sky-400",
+    accentColor: "border-l-sky-400",
+    bgColor: "bg-sky-400/10",
+    textColor: "text-sky-300",
   },
 ];
 
@@ -140,7 +140,7 @@ export default function AuthLayout({
               {clinicCards.map((clinic) => (
                 <div
                   key={clinic.name}
-                  className={`rounded-xl border ${clinic.borderColor} ${clinic.bgColor} p-4 transition-all hover:shadow-md dark:border-white/10 dark:bg-white/5`}
+                  className={`rounded-lg border-l-2 ${clinic.accentColor} ${clinic.bgColor} p-4 transition-all hover:bg-white/10 dark:border-white/10`}
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">

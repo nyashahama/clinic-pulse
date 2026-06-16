@@ -140,6 +140,19 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           Request access
         </Link>
       </p>
+
+      <div className="mt-10 grid grid-cols-3 gap-4 border-t border-neutral-100 pt-6 dark:border-white/5">
+        {[
+          { icon: "◉", label: "Live clinic status" },
+          { icon: "↗", label: "Patient rerouting" },
+          { icon: "⊞", label: "Audit trail" },
+        ].map((feature) => (
+          <div key={feature.label} className="flex flex-col items-center gap-1.5 text-center">
+            <span className="text-lg text-[#0D7A6B] dark:text-emerald-400">{feature.icon}</span>
+            <span className="text-[11px] font-medium text-neutral-400 dark:text-white/30">{feature.label}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
