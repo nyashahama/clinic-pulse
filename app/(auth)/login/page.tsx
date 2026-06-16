@@ -1,4 +1,3 @@
-import { ClinicPulseMark } from "@/components/brand/clinicpulse-logo";
 import { LoginForm } from "@/components/auth/login-form";
 import type { EmailSignInActionState } from "@/components/auth/email-sign-in";
 import { ClinicPulseAuthApiError, login } from "@/lib/auth/api";
@@ -86,98 +85,61 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const returnTo = getSafeAuthReturnPath(firstSearchParam(resolvedSearchParams.next));
 
   return (
-    <div className="flex min-h-[100dvh] w-full flex-col items-center justify-between px-4 pb-5 pt-24 sm:px-6">
-      <div className="grow basis-0" />
-
-      <main className="relative flex w-full flex-col items-center justify-center">
-        <section className="w-full max-w-[26rem] rounded-[2rem] border border-white/70 bg-white/78 p-5 shadow-2xl shadow-slate-900/10 backdrop-blur-xl dark:border-border dark:bg-card/90 dark:shadow-black/30 sm:p-7">
-          <div className="text-center">
-            <ClinicPulseMark className="mx-auto mb-4 size-12 rounded-2xl shadow-lg shadow-emerald-950/20" />
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#0D7A6B]">
-              Secure workspace
-            </p>
-            <h1 className="mt-3 font-display text-3xl font-semibold tracking-[-0.04em] text-neutral-950 dark:text-card-foreground">
-              Sign in to ClinicPulse
-            </h1>
-            <p className="mt-3 text-sm leading-6 text-neutral-600 dark:text-muted-foreground">
-              Access live clinic status, field reports, rerouting context, and
-              audit history for your district.
-            </p>
-          </div>
-
-          <div className="mt-8">
-            <LoginForm loginAction={loginAction} returnTo={returnTo ?? undefined} />
-          </div>
-
-          {frontendEnv.showDemoCredentials ? (
-            <div className="mt-6 rounded-2xl border border-[#0D7A6B]/15 bg-[#ecf7f4] p-4 dark:border-primary/30 dark:bg-primary/10">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-neutral-950 dark:text-card-foreground">
-                  Local seeded credentials
-                </p>
-                <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[#0D7A6B] dark:bg-card dark:text-emerald-300">
-                  Seeded
-                </span>
-              </div>
-              <div className="mt-3 space-y-2">
-                {demoAccounts.map((account) => (
-                  <div
-                    key={account.email}
-                    className="rounded-xl border border-white/80 bg-white/70 px-3 py-2 dark:border-border dark:bg-card/75"
-                  >
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500 dark:text-muted-foreground">
-                      {account.role}
-                    </p>
-                    <p className="mt-1 break-all font-mono text-xs text-neutral-800 dark:text-card-foreground">
-                      {account.email}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-3 font-mono text-xs text-neutral-700 dark:text-muted-foreground">
-                Password: ClinicPulseDemo123!
-              </p>
-            </div>
-          ) : null}
-
-          <p className="mt-6 text-center text-sm font-medium text-neutral-500 dark:text-muted-foreground">
-            Don&rsquo;t have an account?&nbsp;
-            <Link
-              href="/register"
-              className="font-semibold text-[#0D7A6B] transition-colors hover:text-neutral-900 dark:text-emerald-300 dark:hover:text-foreground"
-            >
-              Sign up
-            </Link>
-          </p>
-        </section>
-      </main>
-
-      <div className="flex grow basis-0 flex-col justify-end">
-        <p className="max-w-md px-4 py-4 text-center text-xs font-medium leading-5 text-neutral-500 dark:text-muted-foreground md:px-0">
-          By continuing, you agree to ClinicPulse&rsquo;s{" "}
-          <Link
-            href="/legal/terms"
-            className="font-semibold text-neutral-600 hover:text-neutral-800 dark:text-muted-foreground dark:hover:text-foreground"
-          >
-            Terms of Service
-          </Link>{" "}
-          and{" "}
-          <Link
-            href="/legal/privacy"
-            className="font-semibold text-neutral-600 hover:text-neutral-800 dark:text-muted-foreground dark:hover:text-foreground"
-          >
-            Privacy Policy
-          </Link>
-          , and{" "}
-          <Link
-            href="/legal/safety"
-            className="font-semibold text-neutral-600 hover:text-neutral-800 dark:text-muted-foreground dark:hover:text-foreground"
-          >
-            Safety Notes
-          </Link>
-          .
+    <div className="w-full max-w-[24rem]">
+      <div className="mb-8">
+        <h1 className="font-display text-2xl font-semibold tracking-[-0.03em] text-neutral-950 dark:text-foreground">
+          Sign in to ClinicPulse
+        </h1>
+        <p className="mt-2 text-sm leading-6 text-neutral-500 dark:text-muted-foreground">
+          Access live clinic status, field reports, and
+          audit history for your district.
         </p>
       </div>
+
+      <LoginForm loginAction={loginAction} returnTo={returnTo ?? undefined} />
+
+      {frontendEnv.showDemoCredentials ? (
+        <div className="mt-8 rounded-xl border border-neutral-200 bg-white/60 p-4 dark:border-white/10 dark:bg-white/5">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-semibold text-neutral-700 dark:text-white/80">
+              Demo credentials
+            </p>
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+              Local
+            </span>
+          </div>
+          <div className="mt-3 space-y-1.5">
+            {demoAccounts.map((account) => (
+              <div
+                key={account.email}
+                className="flex items-center justify-between rounded-lg border border-neutral-100 bg-white px-3 py-2 dark:border-white/5 dark:bg-white/5"
+              >
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-neutral-800 dark:text-white/90">
+                    {account.role}
+                  </p>
+                  <p className="mt-0.5 truncate font-mono text-[11px] text-neutral-400 dark:text-white/40">
+                    {account.email}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 font-mono text-[11px] text-neutral-500 dark:text-white/40">
+            Password: <span className="font-semibold text-neutral-700 dark:text-white/70">ClinicPulseDemo123!</span>
+          </p>
+        </div>
+      ) : null}
+
+      <p className="mt-8 text-center text-sm text-neutral-500 dark:text-muted-foreground">
+        Don&rsquo;t have an account?&nbsp;
+        <Link
+          href="/register"
+          className="font-semibold text-[#0D7A6B] transition-colors hover:text-[#0a5e54] dark:text-emerald-300 dark:hover:text-emerald-200"
+        >
+          Request access
+        </Link>
+      </p>
     </div>
   );
 }
