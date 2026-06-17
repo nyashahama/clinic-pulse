@@ -79,6 +79,36 @@ async function loginAction(
   redirect(nextPath);
 }
 
+const features = [
+  {
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+    ),
+    label: "Live clinic status",
+  },
+  {
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 8L22 12L18 16" />
+        <path d="M2 12H22" />
+      </svg>
+    ),
+    label: "Patient rerouting",
+  },
+  {
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+      </svg>
+    ),
+    label: "Audit trail",
+  },
+];
+
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const frontendEnv = validateFrontendRuntimeEnv();
   const resolvedSearchParams = searchParams ? await searchParams : {};
@@ -142,13 +172,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       </p>
 
       <div className="mt-10 grid grid-cols-3 gap-4 border-t border-neutral-100 pt-6 dark:border-white/5">
-        {[
-          { icon: "◉", label: "Live clinic status" },
-          { icon: "↗", label: "Patient rerouting" },
-          { icon: "⊞", label: "Audit trail" },
-        ].map((feature) => (
+        {features.map((feature) => (
           <div key={feature.label} className="flex flex-col items-center gap-1.5 text-center">
-            <span className="text-lg text-[#0D7A6B] dark:text-emerald-400">{feature.icon}</span>
+            <span className="text-[#0D7A6B] dark:text-emerald-400">{feature.icon}</span>
             <span className="text-[11px] font-medium text-neutral-400 dark:text-white/30">{feature.label}</span>
           </div>
         ))}

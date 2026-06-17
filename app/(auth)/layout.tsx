@@ -1,4 +1,5 @@
 import { ClinicPulseLogo } from "@/components/brand/clinicpulse-logo";
+import { AuthSidebarContent } from "@/components/auth/auth-sidebar-content";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -30,6 +31,12 @@ const clinicCards = [
     bgColor: "bg-sky-400/10",
     textColor: "text-sky-300",
   },
+];
+
+const stats: [string, string][] = [
+  ["3,500+", "clinics"],
+  ["<30s", "updates"],
+  ["24/7", "audit"],
 ];
 
 export default function AuthLayout({
@@ -130,54 +137,11 @@ export default function AuthLayout({
             </div>
           </div>
 
-          <div className="relative flex-1 overflow-y-auto p-8 lg:p-10">
-            <p className="mb-5 text-sm leading-6 text-emerald-100/60">
-              Secure access for district managers, field reporters, and partner
-              teams coordinating live availability across public health sites.
-            </p>
-
-            <div className="space-y-3">
-              {clinicCards.map((clinic) => (
-                <div
-                  key={clinic.name}
-                  className={`rounded-lg border-l-2 ${clinic.accentColor} ${clinic.bgColor} p-4 transition-all hover:bg-white/10 dark:border-white/10`}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-neutral-900 dark:text-white">
-                        {clinic.name}
-                      </p>
-                      <p className="mt-0.5 text-xs text-neutral-500 dark:text-emerald-100/50">
-                        {clinic.detail}
-                      </p>
-                    </div>
-                    <div className={`flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${clinic.textColor} dark:text-white`}>
-                      <span className={`size-1.5 rounded-full ${clinic.statusColor}`} />
-                      {clinic.status}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-6 grid grid-cols-3 gap-3">
-              {[
-                ["3,500+", "clinics"],
-                ["<30s", "updates"],
-                ["24/7", "audit"],
-              ].map(([value, label]) => (
-                <div
-                  key={label}
-                  className="rounded-lg bg-white/5 p-3 text-center backdrop-blur-sm"
-                >
-                  <p className="text-lg font-bold text-white">{value}</p>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-200/50">
-                    {label}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
+          <AuthSidebarContent
+            clinicCards={clinicCards}
+            stats={stats}
+            description="Secure access for district managers, field reporters, and partner teams coordinating live availability across public health sites."
+          />
         </div>
       </aside>
     </div>

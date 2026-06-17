@@ -1,8 +1,14 @@
+"use client";
+
+import { motion } from "motion/react";
+
 export function GoogleButton() {
   return (
-    <button
+    <motion.button
       type="button"
-      className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50 dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:hover:bg-white/10"
+      whileHover={{ scale: 1.01 }}
+      whileTap={{ scale: 0.98 }}
+      className="inline-flex w-full shrink-0 items-center justify-center gap-2.5 rounded-lg border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 hover:shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:hover:border-white/20 dark:hover:bg-white/10"
     >
       <svg className="size-4" viewBox="0 0 24 24" fill="none">
         <path
@@ -23,6 +29,6 @@ export function GoogleButton() {
         />
       </svg>
       Continue with Google
-    </button>
+    </motion.button>
   );
 }
