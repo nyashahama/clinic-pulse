@@ -91,7 +91,7 @@ export default function RegisterPage() {
         <p className="font-medium">Accounts are provisioned by administrators.</p>
         {frontendEnv.showDemoCredentials ? (
           <p className="mt-1 text-amber-600/80 dark:text-amber-400/60">
-            Use the seeded demo credentials on the sign in page.
+            Use the pre-provisioned accounts on the sign in page.
           </p>
         ) : null}
       </div>

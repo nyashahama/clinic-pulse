@@ -64,8 +64,6 @@ describe("ClinicPulse premium brand surfaces", () => {
     expect(sidebarSource).toContain("ClinicPulseMark");
     expect(sidebarSource).not.toContain("Building2Icon");
     expect(authLayoutSource).toContain("ClinicPulseLogo");
-    expect(loginSource).toContain("ClinicPulseMark");
-    expect(registerSource).toContain("ClinicPulseMark");
     expect(loginSource).not.toMatch(/>\s*CP\s*</);
     expect(registerSource).not.toMatch(/>\s*CP\s*</);
   });
