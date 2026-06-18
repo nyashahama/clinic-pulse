@@ -90,9 +90,9 @@ export default function AuthLayout({
           />
         </Link>
 
-        <div className="relative z-10 flex flex-1 items-center justify-center px-4 py-24 sm:px-6">
+        <main className="relative z-10 flex flex-1 items-center justify-center px-4 py-24 sm:px-6">
           {children}
-        </div>
+        </main>
 
         <div className="relative z-10 pb-6 text-center text-xs font-medium leading-5 text-neutral-400 dark:text-muted-foreground">
           <p>
@@ -115,9 +115,10 @@ export default function AuthLayout({
         <div className="relative flex min-h-full flex-col">
           <div className="relative h-[45%] min-h-[280px] overflow-hidden">
             <Image
-              src="/districts/clinics/clinic-front-01.jpg"
+              src="/district/clinics/clinic-front-01.jpg"
               alt="Healthcare worker using ClinicPulse"
               fill
+              sizes="(min-width: 900px) 440px, 0px"
               className="object-cover"
               priority
             />

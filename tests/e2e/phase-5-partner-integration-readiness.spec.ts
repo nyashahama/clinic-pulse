@@ -9,8 +9,8 @@ async function signIn(page: Page, email: string) {
   }
 
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(password);
-  const submitButton = page.locator("form").getByRole("button").first();
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  const submitButton = page.getByRole("button", { name: "Log in" });
   await expect(submitButton).toBeVisible();
 
   if (await submitButton.isEnabled()) {

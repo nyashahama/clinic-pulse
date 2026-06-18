@@ -177,7 +177,7 @@ function PasswordEmailSignIn({
                     className="opacity-75"
                   />
                 </svg>
-                Signing in...
+                Logging in...
               </motion.span>
             ) : (
               <motion.span
@@ -187,7 +187,7 @@ function PasswordEmailSignIn({
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.15 }}
               >
-                Sign in
+                Log in
               </motion.span>
             )}
           </AnimatePresence>

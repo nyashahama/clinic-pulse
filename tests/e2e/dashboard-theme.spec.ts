@@ -11,7 +11,7 @@ const LIGHT_THEME_COLOR = "hsl(0 0% 100%)";
 async function signIn(page: Page) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(demoAccount.email);
-  await page.getByLabel("Password").fill(demoAccount.password);
+  await page.getByLabel("Password", { exact: true }).fill(demoAccount.password);
   await page.getByRole("button", { name: "Log in" }).click();
   await expect(page).toHaveURL(/\/admin$/);
 }
