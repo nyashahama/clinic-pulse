@@ -2,6 +2,10 @@
 
 import { cn } from "@/lib/utils";
 import { useActionState } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { AuthInput } from "./auth-input";
+import { PasswordToggle } from "./password-toggle";
+import { AuthStagger, AuthFadeIn } from "./auth-stagger";
 
 export type SignupActionState = {
   fields?: {
@@ -18,22 +22,8 @@ export type SignupAction = (
   formData: FormData,
 ) => Promise<SignupActionState>;
 
-const inputClassName =
-  "block w-full min-w-0 appearance-none rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-950 shadow-sm outline-none transition placeholder:text-neutral-400 focus:border-[#0D7A6B] focus:ring-4 focus:ring-[#0D7A6B]/10 dark:border-border dark:bg-muted dark:text-foreground dark:placeholder:text-muted-foreground";
-
-function FieldLabel({
-  children,
-  htmlFor,
-}: {
-  children: React.ReactNode;
-  htmlFor: string;
-}) {
-  return (
-    <label htmlFor={htmlFor} className="mb-2 block text-sm font-semibold leading-none text-neutral-900 dark:text-foreground">
-      {children}
-    </label>
-  );
-}
+const selectClassName =
+  "block w-full min-w-0 appearance-none rounded-lg border border-neutral-200 bg-white px-3.5 py-2.5 text-sm text-neutral-900 outline-none transition-all duration-200 placeholder:text-neutral-400 focus:border-[#0D7A6B] focus:ring-2 focus:ring-[#0D7A6B]/15 focus:shadow-[0_0_0_3px_rgba(13,122,107,0.06)] hover:border-neutral-300 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-white/30 dark:focus:border-emerald-400/50 dark:focus:ring-emerald-400/15 dark:hover:border-white/20";
 
 export function SignupForm({
   action,
@@ -43,121 +33,185 @@ export function SignupForm({
   allowPublicRegistration: boolean;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
+  const pw = PasswordToggle();
+  const confirmPw = PasswordToggle();
   const submitLabel = allowPublicRegistration
     ? "Request account"
     : "Request access review";
 
   return (
     <form action={formAction} className="grid gap-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <FieldLabel htmlFor="fullName">Full name</FieldLabel>
-          <input
-            id="fullName"
-            name="fullName"
-            type="text"
-            placeholder="Nomsa Dlamini"
-            autoComplete="name"
+      <AuthStagger className="grid gap-4">
+        <AuthFadeIn>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <AuthInput
+              id="fullName"
+              name="fullName"
+              type="text"
+              label="Full name"
+              placeholder="Nomsa Dlamini"
+              autoComplete="name"
+              required
+              defaultValue={state.fields?.fullName ?? ""}
+            />
+
+            <div>
+              <label htmlFor="role" className="mb-1.5 block text-xs font-medium text-neutral-600 dark:text-white/50">
+                Role
+              </label>
+              <select
+                id="role"
+                name="role"
+                required
+                defaultValue={state.fields?.role ?? ""}
+                className={cn(selectClassName)}
+              >
+                <option value="" disabled>
+                  Select role
+                </option>
+                <option value="district_manager">District manager</option>
+                <option value="reporter">Field reporter</option>
+                <option value="org_admin">Organisation admin</option>
+                <option value="partner">Partner team</option>
+              </select>
+            </div>
+          </div>
+        </AuthFadeIn>
+
+        <AuthFadeIn>
+          <AuthInput
+            id="email"
+            name="email"
+            type="email"
+            label="Work email"
+            placeholder="nomsa@health.gov"
+            autoComplete="email"
             required
-            defaultValue={state.fields?.fullName ?? ""}
-            className={cn(inputClassName)}
+            defaultValue={state.fields?.email ?? ""}
           />
-        </div>
+        </AuthFadeIn>
 
-        <div>
-          <FieldLabel htmlFor="role">Role</FieldLabel>
-          <select
-            id="role"
-            name="role"
+        <AuthFadeIn>
+          <AuthInput
+            id="organisation"
+            name="organisation"
+            type="text"
+            label="Organisation"
+            placeholder="Tshwane District Health"
+            autoComplete="organization"
             required
-            defaultValue={state.fields?.role ?? ""}
-            className={cn(inputClassName)}
+            defaultValue={state.fields?.organisation ?? ""}
+          />
+        </AuthFadeIn>
+
+        {allowPublicRegistration ? (
+          <AuthFadeIn>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <AuthInput
+                id="password"
+                name="password"
+                type={pw.type}
+                label="Password"
+                autoComplete="new-password"
+                minLength={12}
+                required
+                trailing={pw.toggle}
+              />
+
+              <AuthInput
+                id="confirmPassword"
+                name="confirmPassword"
+                type={confirmPw.type}
+                label="Confirm password"
+                autoComplete="new-password"
+                minLength={12}
+                required
+                trailing={confirmPw.toggle}
+              />
+            </div>
+          </AuthFadeIn>
+        ) : null}
+
+        <AnimatePresence>
+          {state.error && (
+            <motion.div
+              initial={{ opacity: 0, y: -6, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.98 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <motion.div
+                animate={{ x: [0, -4, 4, -2, 2, 0] }}
+                transition={{ duration: 0.4, delay: 0.15 }}
+              >
+                <p
+                  role="alert"
+                  className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-400 dark:border-red-500/15 dark:bg-red-500/5 dark:text-red-400"
+                >
+                  {state.error}
+                </p>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AuthFadeIn>
+          <motion.button
+            type="submit"
+            disabled={pending}
+            whileHover={{ scale: pending ? 1 : 1.01 }}
+            whileTap={{ scale: pending ? 1 : 0.98 }}
+            className="inline-flex w-full shrink-0 items-center justify-center rounded-lg bg-[#06251F] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#0a3d33] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-500"
           >
-            <option value="" disabled>
-              Select role
-            </option>
-            <option value="district_manager">District manager</option>
-            <option value="reporter">Field reporter</option>
-            <option value="org_admin">Organisation admin</option>
-            <option value="partner">Partner team</option>
-          </select>
-        </div>
-      </div>
-
-      <div>
-        <FieldLabel htmlFor="email">Work email</FieldLabel>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          placeholder="nomsa@health.gov"
-          autoComplete="email"
-          required
-          defaultValue={state.fields?.email ?? ""}
-          className={cn(inputClassName)}
-        />
-      </div>
-
-      <div>
-        <FieldLabel htmlFor="organisation">Organisation</FieldLabel>
-        <input
-          id="organisation"
-          name="organisation"
-          type="text"
-          placeholder="Tshwane District Health"
-          autoComplete="organization"
-          required
-          defaultValue={state.fields?.organisation ?? ""}
-          className={cn(inputClassName)}
-        />
-      </div>
-
-      {allowPublicRegistration ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <FieldLabel htmlFor="password">Password</FieldLabel>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              minLength={12}
-              required
-              className={cn(inputClassName)}
-            />
-          </div>
-
-          <div>
-            <FieldLabel htmlFor="confirmPassword">Confirm password</FieldLabel>
-            <input
-              id="confirmPassword"
-              name="confirmPassword"
-              type="password"
-              autoComplete="new-password"
-              minLength={12}
-              required
-              className={cn(inputClassName)}
-            />
-          </div>
-        </div>
-      ) : null}
-
-      {state.error ? (
-        <p
-          role="alert"
-          className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium leading-6 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-200"
-        >
-          {state.error}
-        </p>
-      ) : null}
-
-      <button
-        type="submit"
-        disabled={pending}
-        className="inline-flex w-full shrink-0 items-center justify-center rounded-xl border border-neutral-950 bg-neutral-950 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/10 transition hover:-translate-y-0.5 hover:bg-neutral-800 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70 dark:border-primary dark:bg-primary dark:text-primary-foreground dark:shadow-black/30 dark:hover:bg-primary/90"
-      >
-        {pending ? "Reviewing request..." : submitLabel}
-      </button>
+            <AnimatePresence mode="wait">
+              {pending ? (
+                <motion.span
+                  key="loading"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.15 }}
+                  className="inline-flex items-center gap-2"
+                >
+                  <svg
+                    className="size-4 animate-spin"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      className="opacity-25"
+                    />
+                    <path
+                      d="M4 12a8 8 0 0 1 8-8"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      className="opacity-75"
+                    />
+                  </svg>
+                  Reviewing request...
+                </motion.span>
+              ) : (
+                <motion.span
+                  key="idle"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  {submitLabel}
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </motion.button>
+        </AuthFadeIn>
+      </AuthStagger>
     </form>
   );
 }

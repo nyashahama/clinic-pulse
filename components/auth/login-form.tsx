@@ -3,6 +3,7 @@
 import { AuthMethodsSeparator } from "./auth-methods-separator";
 import { EmailSignIn, type EmailSignInAction } from "./email-sign-in";
 import { GoogleButton } from "./google-button";
+import { AuthFadeIn } from "./auth-stagger";
 
 export function LoginForm({
   loginAction,
@@ -14,8 +15,12 @@ export function LoginForm({
   return (
     <div className="flex flex-col gap-4">
       <EmailSignIn action={loginAction} returnTo={returnTo} />
-      <AuthMethodsSeparator />
-      <GoogleButton />
+      <AuthFadeIn>
+        <AuthMethodsSeparator />
+      </AuthFadeIn>
+      <AuthFadeIn>
+        <GoogleButton />
+      </AuthFadeIn>
     </div>
   );
 }
