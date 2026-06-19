@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Geist_Mono } from "next/font/google";
-import localFont from "next/font/local";
+import { Inter, Instrument_Serif, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
@@ -10,10 +9,11 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-const satoshi = localFont({
-  src: "./fonts/Satoshi-Variable.woff2",
-  variable: "--font-satoshi",
-  weight: "300 900",
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-instrument-serif",
+  subsets: ["latin"],
+  weight: ["400"],
+  style: ["normal", "italic"],
   display: "swap",
 });
 
@@ -63,7 +63,7 @@ export default function RootLayout({
     <html
       lang="en"
       data-scroll-behavior="smooth"
-      className={`${inter.variable} ${satoshi.variable} ${geistMono.variable}`}
+      className={`${inter.variable} ${instrumentSerif.variable} ${geistMono.variable}`}
       suppressHydrationWarning
     >
       <body className="bg-background text-foreground antialiased">

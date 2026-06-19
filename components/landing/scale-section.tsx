@@ -27,7 +27,7 @@ export function ScaleSection() {
           <p className="mx-auto mt-3 max-w-[400px] text-sm text-white/50">
             Our infrastructure handles real-time data from thousands of clinics across all nine provinces, every day.
           </p>
-          <div className="mt-10 grid gap-0 sm:grid-cols-3">
+          <div className="mt-10 flex flex-col items-center gap-6 sm:flex-row sm:justify-center sm:gap-0">
             {stats.map((stat, i) => (
               <motion.div
                 key={stat.label}
@@ -35,7 +35,7 @@ export function ScaleSection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.15, duration: 0.5 }}
-                className="relative border-r border-white/[0.08] px-8 py-6 last:border-r-0"
+                className="relative px-10 py-6 text-center"
               >
                 <div className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
                   <NumberFlow value={stat.value} />

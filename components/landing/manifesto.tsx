@@ -1,79 +1,114 @@
-"use client";
+import Image from "next/image";
 
-import { motion } from "motion/react";
-import { MaxWidthWrapper } from "@/components/ui/max-width-wrapper";
-import { DotsPattern } from "@/components/ui/dots-pattern";
-import { StatusBadge } from "./status-badge";
+import { landingPhotos } from "@/components/landing/photo-assets";
+import { SectionHeader } from "@/components/landing/sections/section-header";
 
-const reportRows = [
-  { clinic: "Mamelodi Clinic", status: "degraded" as const, time: "2m ago" },
-  { clinic: "Soweto CHC", status: "operational" as const, time: "5m ago" },
-  { clinic: "Alexandra PHC", status: "non-functional" as const, time: "8m ago" },
-  { clinic: "Tembisa CHC", status: "operational" as const, time: "12m ago" },
-  { clinic: "Diepsloot CHC", status: "operational" as const, time: "15m ago" },
+const STAKEHOLDERS = [
+  {
+    role: "District team",
+    outcome:
+      "Acts on source, reason, and freshness before making a public routing decision.",
+    signal: "Live district view",
+    photo: "clinicTeam" as const,
+    prominent: true,
+  },
+  {
+    role: "Field worker",
+    outcome:
+      "Submits the service update even when the report has to queue offline.",
+    signal: "Queued field report",
+    photo: "fieldWorker" as const,
+    prominent: false,
+  },
+  {
+    role: "Clinic coordinator",
+    outcome:
+      "Confirms the service impact without losing the original source record.",
+    signal: "Traceable status change",
+    photo: "clinicExterior" as const,
+    prominent: false,
+  },
+  {
+    role: "Patient",
+    outcome:
+      "Sees the safer nearby route before spending time travelling to a blocked service.",
+    signal: "18 min avoided",
+    photo: "patientCare" as const,
+    prominent: true,
+  },
 ];
 
+/**
+ * Manifesto — rewritten as a stakeholder impact section. Shows how
+ * one status change affects four different roles, each with a real
+ * photo background. Replaces the abstract three-pillar manifesto.
+ */
 export function Manifesto() {
   return (
-    <section className="relative border-t border-neutral-200 bg-white">
-      <DotsPattern
-        dotSize={1.5}
-        gapSize={12}
-        className="text-neutral-300/25 [mask-image:radial-gradient(closest-side,black,transparent)]"
-      />
-      <MaxWidthWrapper className="relative py-16 sm:py-20 lg:py-24">
-        <div className="grid gap-12 lg:grid-cols-2 lg:gap-20">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.5 }}
-          >
-            <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-[#0D7A6B]">
-              The Problem
-            </p>
-            <h2 className="font-display text-3xl font-medium leading-[1.15] tracking-tight text-neutral-900 sm:text-4xl" style={{ textWrap: "balance" }}>
-              Healthcare access is not just about facilities. It is about what is working today.
-            </h2>
-            <p className="mt-6 text-base leading-relaxed text-neutral-500">
-              On any given day, hundreds of South Africa&apos;s 3,500+ public clinics are understaffed, out of stock, or overwhelmed. The data exists — in DHIS2, in field reports, in WhatsApp groups — but it is spread across systems that were never designed to talk to each other.
-            </p>
-            <p className="mt-4 text-base leading-relaxed text-neutral-500">
-              ClinicPulse connects these disconnected signals into a single operating layer. So district managers can redirect patients before they travel. So field workers can report from anywhere, even offline. So every clinic visit starts with knowing what&apos;s actually available.
-            </p>
-          </motion.div>
+    <section id="manifesto" className="bg-clinics-paper py-24 md:py-32">
+      <div className="mx-auto max-w-6xl px-6">
+        <SectionHeader
+          eyebrow="Real-world stakes"
+          heading="One status change affects everyone."
+          subhead="The same clinic status update changes district decisions, field reporting, coordinator follow-up, and patient routing."
+        />
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ delay: 0.2, duration: 0.5 }}
-            className="flex flex-col gap-3"
-          >
-            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
-              Live Clinic Reports
-            </p>
-            <div className="flex flex-col gap-2">
-              {reportRows.map((row, i) => (
-                <motion.div
-                  key={row.clinic}
-                  initial={{ opacity: 0, x: 10 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.3 + i * 0.08 }}
-                  className="flex items-center justify-between rounded-lg border border-neutral-200 bg-neutral-50 px-3.5 py-2.5"
-                >
-                  <div>
-                    <div className="text-sm font-medium text-neutral-900">{row.clinic}</div>
-                    <div className="text-xs text-neutral-400">{row.time}</div>
-                  </div>
-                  <StatusBadge status={row.status} />
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
+        <div className="mt-16 grid gap-4 sm:grid-cols-2">
+          {STAKEHOLDERS.map((s) => {
+            const photo = landingPhotos[s.photo];
+            return (
+              <article
+                key={s.role}
+                className="relative min-h-48 overflow-hidden rounded-xl border border-clinics-stone"
+              >
+                <Image
+                  src={photo.src}
+                  alt={photo.alt}
+                  fill
+                  sizes="(min-width: 640px) 50vw, 100vw"
+                  className="object-cover"
+                  style={{ objectPosition: photo.position }}
+                />
+                {s.prominent ? (
+                  <div className="absolute inset-0 bg-gradient-to-t from-clinics-ink via-clinics-ink/70 to-clinics-ink/10" />
+                ) : (
+                  <div className="absolute inset-0 bg-clinics-paper/88 backdrop-blur-[1px]" />
+                )}
+
+                <div className="relative z-10 flex min-h-40 flex-col justify-end p-5">
+                  <p
+                    className={
+                      s.prominent
+                        ? "text-xs font-semibold uppercase tracking-[0.14em] text-clinics-canopy-soft"
+                        : "text-xs font-semibold uppercase tracking-[0.14em] text-clinics-canopy"
+                    }
+                  >
+                    {s.signal}
+                  </p>
+                  <h3
+                    className={
+                      s.prominent
+                        ? "mt-2 text-lg font-semibold text-white"
+                        : "mt-2 text-lg font-semibold text-clinics-ink"
+                    }
+                  >
+                    {s.role}
+                  </h3>
+                  <p
+                    className={
+                      s.prominent
+                        ? "mt-2 text-sm leading-6 text-white/80"
+                        : "mt-2 text-sm leading-6 text-clinics-ink-mute"
+                    }
+                  >
+                    {s.outcome}
+                  </p>
+                </div>
+              </article>
+            );
+          })}
         </div>
-      </MaxWidthWrapper>
+      </div>
     </section>
   );
 }
