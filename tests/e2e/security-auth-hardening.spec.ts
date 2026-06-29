@@ -20,7 +20,7 @@ test("register page stays provisioned-only when public registration is disabled"
 }) => {
   await page.goto("/register");
 
-  await expect(page.getByLabel("Password")).toHaveCount(0);
+  await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Request access review" }),
   ).toBeVisible();

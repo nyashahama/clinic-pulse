@@ -5,7 +5,7 @@ const password = "ClinicPulseDemo123!";
 async function signInAsDistrictManager(page: Page) {
   await page.goto("/login");
   await page.getByLabel("Email").fill("district-manager@clinicpulse.local");
-  await page.getByLabel("Password").fill(password);
+  await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Log in" }).click();
   await expect(page).toHaveURL(/\/district$/);
 }

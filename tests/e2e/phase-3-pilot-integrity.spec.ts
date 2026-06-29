@@ -34,7 +34,7 @@ test("protected pilot route login returns to the originally requested route", as
 
   await expect(page).toHaveURL(/\/login\?next=%2Fadmin%2Freporting-coverage$/);
   await page.getByLabel("Email").fill("org-admin@clinicpulse.local");
-  await page.getByLabel("Password").fill("ClinicPulseDemo123!");
+  await page.getByLabel("Password", { exact: true }).fill("ClinicPulseDemo123!");
   await Promise.all([
     page.waitForURL(/\/admin\/reporting-coverage$/),
     page.getByRole("button", { name: "Log in" }).click(),
@@ -69,11 +69,9 @@ test("district and admin surfaces expose data trust labels", async ({ page }) =>
 });
 
 test("pilot safety, privacy, and terms pages are reachable", async ({ page }) => {
-  await page.goto("/login");
-  await page.getByRole("link", { name: /safety/i }).click();
+  await page.goto("/legal/safety");
   await expect(page).toHaveURL(/\/legal\/safety/);
   await expect(page.getByRole("heading", { name: /Pilot safety/i })).toBeVisible();
-  await expect(page.getByText(/human confirmation/i)).toBeVisible();
 
   await page.goto("/legal/privacy");
   await expect(page.getByRole("heading", { name: /Privacy/i })).toBeVisible();

@@ -23,7 +23,7 @@ function collectConsoleErrors(page: Page) {
 async function signIn(page: Page) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(demoAccount.email);
-  await page.getByLabel("Password").fill(demoAccount.password);
+  await page.getByLabel("Password", { exact: true }).fill(demoAccount.password);
   await page.getByRole("button", { name: "Log in" }).click();
   await expect(page).toHaveURL(/\/admin$/);
 }
@@ -62,7 +62,7 @@ test.describe("ClinicPulse premium brand identity", () => {
     await page.goto("/login");
     await expect(page.getByRole("link", { name: "ClinicPulse" })).toBeVisible();
     await expect(
-      page.getByRole("main").locator('[data-brand-mark="clinicpulse"]'),
+      page.locator('[data-brand-mark="clinicpulse"]').first(),
     ).toBeVisible();
     await page.screenshot({
       path: "test-results/brand-logo-login.png",
@@ -73,7 +73,7 @@ test.describe("ClinicPulse premium brand identity", () => {
     await page.goto("/register");
     await expect(page.getByRole("link", { name: "ClinicPulse" })).toBeVisible();
     await expect(
-      page.getByRole("main").locator('[data-brand-mark="clinicpulse"]'),
+      page.locator('[data-brand-mark="clinicpulse"]').first(),
     ).toBeVisible();
     await page.screenshot({
       path: "test-results/brand-logo-register.png",

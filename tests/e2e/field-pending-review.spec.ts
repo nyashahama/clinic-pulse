@@ -48,7 +48,7 @@ async function mockCurrentLocation(
 async function signInAsReporter(page: Page) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(reporterAccount.email);
-  await page.getByLabel("Password").fill(reporterAccount.password);
+  await page.getByLabel("Password", { exact: true }).fill(reporterAccount.password);
   await page.getByRole("button", { name: "Log in" }).click();
   await expect(page).toHaveURL(/\/field$/);
 }
