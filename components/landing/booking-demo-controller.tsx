@@ -13,22 +13,36 @@ import {
   UserRound,
   X,
 } from "lucide-react";
+import { motion } from "motion/react";
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { useDemoStore } from "@/lib/demo/demo-store";
 import {
   shouldOpenBookingModal,
   shouldOpenBookingModalFromSearchParams,
 } from "@/lib/landing/booking-modal";
 import { cn } from "@/lib/utils";
-import type { DemoLeadFormInput } from "@/components/demo/demo-lead-form";
 
-const monthDays = Array.from({ length: 31 }, (_, index) => index + 1);
-const leadingBlankDays = Array.from({ length: 5 }, (_, index) => `blank-${index}`);
 const timeSlots = ["09:00", "10:30", "12:00", "14:00", "15:30"];
+const interestOptions = ["clinic_operator", "government", "ngo", "investor", "other"] as const;
+type InterestType = (typeof interestOptions)[number];
 
-type InterestType = DemoLeadFormInput["interest"];
+function pad(n: number) {
+  return n < 10 ? `0${n}` : `${n}`;
+}
+
+function startOfMonth(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+function monthCells(view: Date): (number | null)[] {
+  const firstWeekday = startOfMonth(view).getDay();
+  const daysInMonth = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstWeekday; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  return cells;
+}
 
 type BookingDemoControllerProps = {
   children: (controls: { openBooking: () => void }) => ReactNode;
@@ -37,10 +51,12 @@ type BookingDemoControllerProps = {
 export function BookingDemoController({ children }: BookingDemoControllerProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { addDemoLead } = useDemoStore();
   const [duration, setDuration] = useState<30 | 45>(30);
-  const [selectedDay, setSelectedDay] = useState(4);
+  const [viewDate, setViewDate] = useState(() => startOfMonth(new Date()));
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [selectedTime, setSelectedTime] = useState("10:30");
+  const [company, setCompany] = useState("");
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [lead, setLead] = useState({
@@ -52,10 +68,26 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
     note: "",
   });
 
-  const selectedDateLabel = useMemo(
-    () => `May ${selectedDay}, 2026 at ${selectedTime}`,
-    [selectedDay, selectedTime],
-  );
+  const today = useMemo(() => {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    return t;
+  }, []);
+
+  const cells = useMemo(() => monthCells(viewDate), [viewDate]);
+  const monthLabel = viewDate.toLocaleString("en-US", { month: "long", year: "numeric" });
+
+  const isPast = (day: number) => {
+    const d = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
+    return d < today;
+  };
+
+  const selectedDateLabel = useMemo(() => {
+    if (selectedDay == null) return "Select a date";
+    return `${viewDate.toLocaleString("en-US", { month: "long" })} ${selectedDay}, ${viewDate.getFullYear()} at ${selectedTime}`;
+  }, [selectedDay, viewDate, selectedTime]);
+
+  const requestedDateValue = selectedDay == null ? "" : `${viewDate.getFullYear()}-${pad(viewDate.getMonth() + 1)}-${pad(selectedDay)}`;
   const bookingUrlOpen = shouldOpenBookingModalFromSearchParams(searchParams);
   const bookingOpen = isBookingOpen || bookingUrlOpen;
 
@@ -85,6 +117,7 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
 
   const isSubmitDisabled =
     isSubmitting ||
+    selectedDay == null ||
     lead.name.trim().length === 0 ||
     lead.workEmail.trim().length === 0 ||
     lead.organization.trim().length === 0 ||
@@ -94,39 +127,43 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
     setLead((current) => ({ ...current, [field]: value }));
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
-    if (isSubmitDisabled) {
-      return;
-    }
+    setSubmitError(null);
+    if (isSubmitDisabled || selectedDay == null) return;
 
     setIsSubmitting(true);
-
-    const note = [
-      lead.note.trim(),
-      `Requested slot: ${selectedDateLabel}`,
-      `Duration: ${duration} minutes`,
-    ]
-      .filter(Boolean)
-      .join("\n");
-
-    addDemoLead({
-      ...lead,
-      name: lead.name.trim(),
-      workEmail: lead.workEmail.trim(),
-      organization: lead.organization.trim(),
-      role: lead.role.trim(),
-      note,
-      createdAt: new Date().toISOString(),
-      status: "new",
-    });
-
-    router.push(
-      `/request-walkthrough/thanks?name=${encodeURIComponent(lead.name)}&organization=${encodeURIComponent(
-        lead.organization,
-      )}`,
-    );
+    try {
+      const res = await fetch("/api/walkthrough-requests", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: lead.name.trim(),
+          work_email: lead.workEmail.trim(),
+          organization: lead.organization.trim(),
+          role: lead.role.trim(),
+          interest: lead.interest,
+          note: lead.note.trim(),
+          requested_date: requestedDateValue,
+          requested_time: selectedTime,
+          duration_minutes: duration,
+          company,
+        }),
+      });
+      if (!res.ok) {
+        setSubmitError("Something went wrong submitting your request. Please try again.");
+        setIsSubmitting(false);
+        return;
+      }
+      router.push(
+        `/request-walkthrough/thanks?name=${encodeURIComponent(lead.name)}&organization=${encodeURIComponent(
+          lead.organization,
+        )}&date=${encodeURIComponent(requestedDateValue)}&time=${encodeURIComponent(selectedTime)}&duration=${duration}`,
+      );
+    } catch {
+      setSubmitError("Network error. Please try again.");
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -134,28 +171,45 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
       {children({ openBooking: () => setIsBookingOpen(true) })}
 
       {bookingOpen ? (
-        <div
+        <motion.div
           className="fixed inset-0 z-50 grid place-items-start overflow-y-auto bg-neutral-950/52 px-4 py-8 backdrop-blur-[2px] sm:place-items-center"
           role="dialog"
           aria-modal="true"
           aria-label="Book a Clinic Pulse walkthrough"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
         >
-          <BookingPanel
-            duration={duration}
-            isSubmitDisabled={isSubmitDisabled}
-            isSubmitting={isSubmitting}
-            lead={lead}
-            selectedDateLabel={selectedDateLabel}
-            selectedDay={selectedDay}
-            selectedTime={selectedTime}
-            onClose={closeBooking}
-            onDurationChange={setDuration}
-            onLeadChange={updateLead}
-            onSelectedDayChange={setSelectedDay}
-            onSelectedTimeChange={setSelectedTime}
-            onSubmit={handleSubmit}
-          />
-        </div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <BookingPanel
+              duration={duration}
+              isSubmitDisabled={isSubmitDisabled}
+              isSubmitting={isSubmitting}
+              lead={lead}
+              selectedDateLabel={selectedDateLabel}
+              selectedDay={selectedDay}
+              selectedTime={selectedTime}
+              viewDate={viewDate}
+              monthLabel={monthLabel}
+              cells={cells}
+              isPast={isPast}
+              onClose={closeBooking}
+              onDurationChange={setDuration}
+              onLeadChange={updateLead}
+              onSelectedDayChange={setSelectedDay}
+              onSelectedTimeChange={setSelectedTime}
+              onViewDateChange={setViewDate}
+              onSubmit={handleSubmit}
+              company={company}
+              onCompanyChange={setCompany}
+              submitError={submitError}
+            />
+          </motion.div>
+        </motion.div>
       ) : null}
     </>
   );
@@ -174,8 +228,16 @@ type BookingPanelProps = {
     note: string;
   };
   selectedDateLabel: string;
-  selectedDay: number;
+  selectedDay: number | null;
   selectedTime: string;
+  viewDate: Date;
+  monthLabel: string;
+  cells: (number | null)[];
+  isPast: (day: number) => boolean;
+  onViewDateChange: (date: Date) => void;
+  company: string;
+  onCompanyChange: (value: string) => void;
+  submitError: string | null;
   onClose: () => void;
   onDurationChange: (duration: 30 | 45) => void;
   onLeadChange: (field: keyof BookingPanelProps["lead"], value: string) => void;
@@ -192,12 +254,20 @@ function BookingPanel({
   selectedDateLabel,
   selectedDay,
   selectedTime,
+  viewDate,
+  monthLabel,
+  cells,
+  isPast,
   onClose,
   onDurationChange,
   onLeadChange,
   onSelectedDayChange,
   onSelectedTimeChange,
+  onViewDateChange,
   onSubmit,
+  company,
+  onCompanyChange,
+  submitError,
 }: BookingPanelProps) {
   return (
     <section
@@ -264,47 +334,41 @@ function BookingPanel({
         </div>
 
         <div className="mt-9 flex items-center justify-between">
-          <h3 className="text-xl font-semibold">
-            May <span className="text-neutral-500 dark:text-muted-foreground">2026</span>
-          </h3>
+          <h3 className="text-xl font-semibold">{monthLabel}</h3>
           <div className="flex items-center gap-3 text-neutral-400 dark:text-muted-foreground">
-            <ChevronLeft className="size-5" />
-            <ChevronRight className="size-5" />
+            <button type="button" aria-label="Previous month" onClick={() => onViewDateChange(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))} className="grid size-7 place-items-center rounded-md border border-neutral-300 hover:text-neutral-950 dark:border-border">
+              <ChevronLeft className="size-4" />
+            </button>
+            <button type="button" aria-label="Next month" onClick={() => onViewDateChange(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))} className="grid size-7 place-items-center rounded-md border border-neutral-300 hover:text-neutral-950 dark:border-border">
+              <ChevronRight className="size-4" />
+            </button>
           </div>
         </div>
 
         <div className="mt-4 grid min-w-0 grid-cols-7 border-y border-neutral-200 py-3 text-center text-[11px] font-bold text-neutral-700 dark:border-border dark:text-muted-foreground sm:text-xs">
-          {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((day) => (
-            <span key={day}>{day}</span>
-          ))}
+          {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((day) => (<span key={day}>{day}</span>))}
         </div>
 
         <div className="mt-4 grid min-w-0 grid-cols-7 gap-1 sm:gap-2">
-          {leadingBlankDays.map((day) => (
-            <span key={day} aria-hidden="true" />
-          ))}
-          {monthDays.map((day) => {
-            const isAvailable = day !== 1 && day !== 2 && day !== 3;
+          {cells.map((day, index) => {
+            if (day == null) return <span key={`b-${index}`} aria-hidden="true" />;
+            const past = isPast(day);
+            const selected = selectedDay === day;
             return (
               <button
                 key={day}
                 type="button"
-                disabled={!isAvailable}
+                disabled={past}
                 onClick={() => onSelectedDayChange(day)}
                 className={cn(
                   "relative grid aspect-square min-w-0 place-items-center rounded-md text-xs font-semibold transition sm:rounded-lg sm:text-sm",
-                  isAvailable
-                    ? "bg-neutral-200 text-neutral-950 hover:bg-neutral-300"
-                    : "bg-transparent text-neutral-400",
-                  selectedDay === day && "bg-neutral-950 text-white hover:bg-neutral-950",
-                  isAvailable && "dark:bg-muted dark:text-foreground dark:hover:bg-accent",
-                  selectedDay === day && "dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90",
+                  past ? "text-neutral-400" : "bg-neutral-200 text-neutral-950 hover:bg-neutral-300",
+                  selected && "bg-neutral-950 text-white hover:bg-neutral-950",
+                  !past && "dark:bg-muted dark:text-foreground dark:hover:bg-accent",
+                  selected && "dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90",
                 )}
               >
                 {day}
-                {day === 2 ? (
-                  <span className="absolute bottom-1.5 size-1 rounded-full bg-neutral-400" />
-                ) : null}
               </button>
             );
           })}
@@ -337,45 +401,38 @@ function BookingPanel({
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3">
+        {submitError ? (
+          <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
+            {submitError}
+          </p>
+        ) : null}
+
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <LeadInput label="Name" value={lead.name} onChange={(value) => onLeadChange("name", value)} />
-          <LeadInput
-            label="Work email"
-            type="email"
-            value={lead.workEmail}
-            onChange={(value) => onLeadChange("workEmail", value)}
-          />
-          <LeadInput
-            label="Organization"
-            value={lead.organization}
-            onChange={(value) => onLeadChange("organization", value)}
-          />
+          <LeadInput label="Work email" type="email" value={lead.workEmail} onChange={(value) => onLeadChange("workEmail", value)} />
+          <LeadInput label="Organization" value={lead.organization} onChange={(value) => onLeadChange("organization", value)} />
           <LeadInput label="Role" value={lead.role} onChange={(value) => onLeadChange("role", value)} />
-          <label className="grid gap-1.5 text-sm font-semibold text-neutral-800 dark:text-foreground">
+          <label className="grid gap-1.5 text-sm font-semibold text-neutral-800 dark:text-foreground sm:col-span-2">
             Focus
-            <select
-              value={lead.interest}
-              onChange={(event) => onLeadChange("interest", event.target.value)}
-              className="h-11 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-900 outline-none transition focus:border-neutral-950 dark:border-border dark:bg-muted dark:text-foreground dark:focus:border-primary"
-            >
-              <option value="clinic_operator">Clinic Operator</option>
-              <option value="government">Government</option>
-              <option value="ngo">NGO</option>
-              <option value="investor">Investor</option>
-              <option value="other">Other</option>
+            <select value={lead.interest} onChange={(e) => onLeadChange("interest", e.target.value)} className="h-11 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-900 outline-none transition focus:border-neutral-950 dark:border-border dark:bg-muted dark:text-foreground dark:focus:border-primary">
+              {interestOptions.map((opt) => (<option key={opt} value={opt}>{opt.replace("_", " ")}</option>))}
             </select>
           </label>
-          <label className="grid gap-1.5 text-sm font-semibold text-neutral-800 dark:text-foreground">
+          <label className="grid gap-1.5 text-sm font-semibold text-neutral-800 dark:text-foreground sm:col-span-2">
             Notes
-            <textarea
-              value={lead.note}
-              onChange={(event) => onLeadChange("note", event.target.value)}
-              rows={3}
-              placeholder="What should we tailor the walkthrough around?"
-              className="resize-none rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-medium text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-950 dark:border-border dark:bg-muted dark:text-foreground dark:placeholder:text-muted-foreground dark:focus:border-primary"
-            />
+            <textarea value={lead.note} onChange={(e) => onLeadChange("note", e.target.value)} rows={3} placeholder="What should we tailor the walkthrough around?" className="resize-none rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-medium text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-950 dark:border-border dark:bg-muted dark:text-foreground dark:placeholder:text-muted-foreground dark:focus:border-primary" />
           </label>
         </div>
+
+        <input
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          value={company}
+          onChange={(e) => onCompanyChange(e.target.value)}
+          className="pointer-events-none absolute h-0 w-0 opacity-0"
+        />
 
         <Button
           type="submit"
