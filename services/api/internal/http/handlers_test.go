@@ -5360,6 +5360,7 @@ type fakeStore struct {
 	membershipsErr                        error
 	partnerKeyErr                         error
 	createPartnerAPIKeyErr                error
+	walkthroughErr                        error
 	listPartnerAPIKeysErr                 error
 	revokePartnerAPIKeyErr                error
 	createPartnerWebhookSubscriptionErr   error
@@ -5915,6 +5916,26 @@ func (f fakeStore) CreatePartnerAPIKey(_ context.Context, input store.CreatePart
 		*f.partnerAPIKeys = append(*f.partnerAPIKeys, apiKey)
 	}
 	return apiKey, nil
+}
+
+func (f fakeStore) CreateWalkthroughRequest(_ context.Context, input store.CreateWalkthroughRequestInput) (store.WalkthroughRequest, error) {
+	if f.walkthroughErr != nil {
+		return store.WalkthroughRequest{}, f.walkthroughErr
+	}
+	return store.WalkthroughRequest{
+		ID:              1,
+		Name:            input.Name,
+		WorkEmail:       input.WorkEmail,
+		Organization:    input.Organization,
+		Role:            input.Role,
+		Interest:        input.Interest,
+		Note:            input.Note,
+		RequestedDate:   input.RequestedDate,
+		RequestedTime:   input.RequestedTime,
+		DurationMinutes: input.DurationMinutes,
+		Status:          "new",
+		CreatedAt:       time.Now(),
+	}, nil
 }
 
 func (f fakeStore) ListPartnerAPIKeys(_ context.Context, organisationID *int64) ([]store.PartnerAPIKey, error) {
@@ -6587,4 +6608,45 @@ func clinicDetailInDistrict(id string, district string) store.ClinicDetail {
 			VerificationStatus: "verified",
 		},
 	}
+}
+
+func TestCreateWalkthroughRequest(t *testing.T) {
+	validBody := `{"name":"Thabo","work_email":"thabo@gov.za","organization":"Tshwane","role":"Lead","interest":"government","requested_date":"2030-07-27","requested_time":"10:30","duration_minutes":30}`
+
+	t.Run("201 on valid payload", func(t *testing.T) {
+		router := apihttp.NewRouter(fakeStore{})
+		req := httptest.NewRequest(http.MethodPost, "/v1/public/walkthrough-requests", strings.NewReader(validBody))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("expected 201, got %d: %s", rec.Code, rec.Body.String())
+		}
+		if !strings.Contains(rec.Body.String(), `"id":1`) {
+			t.Fatalf("expected created id in body, got %s", rec.Body.String())
+		}
+	})
+
+	t.Run("400 on missing fields", func(t *testing.T) {
+		router := apihttp.NewRouter(fakeStore{})
+		req := httptest.NewRequest(http.MethodPost, "/v1/public/walkthrough-requests", strings.NewReader(`{"name":"","work_email":"bad","interest":"nope","requested_date":"2030-07-27","requested_time":"10:30","duration_minutes":99}`))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d", rec.Code)
+		}
+	})
+
+	t.Run("400 on past date", func(t *testing.T) {
+		router := apihttp.NewRouter(fakeStore{})
+		body := `{"name":"Thabo","work_email":"thabo@gov.za","organization":"Tshwane","role":"Lead","interest":"government","requested_date":"2000-01-01","requested_time":"10:30","duration_minutes":30}`
+		req := httptest.NewRequest(http.MethodPost, "/v1/public/walkthrough-requests", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400 for past date, got %d", rec.Code)
+		}
+	})
 }
