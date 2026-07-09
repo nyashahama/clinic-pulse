@@ -253,3 +253,18 @@ type User struct {
 	PasswordChangedAt     pgtype.Timestamptz `json:"password_changed_at"`
 	PasswordResetRequired bool               `json:"password_reset_required"`
 }
+
+type WalkthroughRequest struct {
+	ID              int64              `json:"id"`
+	Name            string             `json:"name"`
+	WorkEmail       string             `json:"work_email"`
+	Organization    string             `json:"organization"`
+	Role            string             `json:"role"`
+	Interest        string             `json:"interest"`
+	Note            string             `json:"note"`
+	RequestedDate   pgtype.Date        `json:"requested_date"`
+	RequestedTime   string             `json:"requested_time"`
+	DurationMinutes int32              `json:"duration_minutes"`
+	Status          string             `json:"status"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
