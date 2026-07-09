@@ -15,6 +15,9 @@ export default function BookDemoThanksPage() {
   const searchParams = useSearchParams();
   const name = getParam(searchParams, "name");
   const organization = getParam(searchParams, "organization");
+  const date = getParam(searchParams, "date");
+  const time = getParam(searchParams, "time");
+  const duration = getParam(searchParams, "duration");
 
   const greeting = name ? `Thanks, ${name}` : "Thanks for booking";
 
@@ -35,6 +38,12 @@ export default function BookDemoThanksPage() {
                 Request captured successfully.
                 {organization ? ` Your team from ${organization} will be routed to admin lead follow-up.` : ""}
               </p>
+              {date && time ? (
+                <p className="mt-2">
+                  Preferred slot: <span className="font-semibold">{date} at {time}</span>
+                  {duration ? ` (${duration} minutes)` : ""}. We&apos;ll confirm by email with a Google Meet link.
+                </p>
+              ) : null}
               <p className="mt-2 text-sm leading-6">
                 You can now continue to the product surfaces and keep momentum: district console,
                 finder, field reporting, and admin handoff are all live in one flow.
