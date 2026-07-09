@@ -96,6 +96,9 @@ export async function submitWalkthroughRequest(
 
   const from = opts.env.WALKTHROUGH_FROM_EMAIL || "Clinic Pulse <onboarding@resend.dev>";
   const notifyTo = opts.env.WALKTHROUGH_NOTIFY_EMAIL || "";
+  if (!notifyTo) {
+    console.warn("WALKTHROUGH_NOTIFY_EMAIL is not set; the founder will not be notified of walkthrough requests");
+  }
   try {
     if (notifyTo) {
       await opts.sendEmail({

@@ -11,9 +11,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: { code: "invalid_json", message: "invalid body" } }, { status: 400 });
   }
 
+  const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+  if (!resend) {
+    console.warn("RESEND_API_KEY is not set; walkthrough request emails will not be sent");
+  }
+
   const result = await submitWalkthroughRequest(body as WalkthroughInput, {
     fetchImpl: fetch,
-    sendEmail: (msg: EmailMessage) => new Resend(process.env.RESEND_API_KEY).emails.send(msg),
+    sendEmail: resend ? (msg: EmailMessage) => resend.emails.send(msg) : async () => ({}),
     env: process.env,
   });
 
