@@ -94,6 +94,7 @@ type ClinicStore interface {
 	ListPartnerWebhookEvents(ctx context.Context, organisationID *int64) ([]store.PartnerWebhookEvent, error)
 	UpsertIntegrationStatusCheck(ctx context.Context, input store.UpsertIntegrationStatusCheckInput) (store.IntegrationStatusCheck, error)
 	ListIntegrationStatusChecks(ctx context.Context, organisationID *int64) ([]store.IntegrationStatusCheck, error)
+	CreateWalkthroughRequest(ctx context.Context, input store.CreateWalkthroughRequestInput) (store.WalkthroughRequest, error)
 }
 
 type HandlerConfig struct {
