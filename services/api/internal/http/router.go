@@ -113,6 +113,7 @@ func NewRouter(store ClinicStore, options ...RouterOption) nethttp.Handler {
 	router.Get("/v1/public/alternatives", handler.ListPublicAlternatives)
 	router.Get("/v1/public/clinics", handler.ListPublicClinics)
 	router.Get("/v1/public/clinics/{clinicId}", handler.GetPublicClinic)
+	router.Post("/v1/public/walkthrough-requests", handler.CreateWalkthroughRequest)
 	router.With(partnerAuth, RequirePartnerScope("clinics:read")).Get("/v1/partner/clinics", handler.ListPartnerClinics)
 	router.With(partnerAuth, RequirePartnerScope("status:read")).Get("/v1/partner/clinics/{clinicId}/status", handler.GetPartnerClinicStatus)
 	router.With(partnerAuth, RequirePartnerScope("alternatives:read")).Get("/v1/partner/alternatives", handler.ListPartnerAlternatives)

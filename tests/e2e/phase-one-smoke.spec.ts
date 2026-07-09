@@ -51,14 +51,25 @@ test.describe("phase-one operations route checklist", () => {
 
     await page.goto("/request-walkthrough");
     await expect(page).toHaveURL(/\/\?booking=1$/);
-    await expect(
-      page.getByRole("dialog", { name: "Book a Clinic Pulse walkthrough" }),
-    ).toBeVisible();
+    const dialog = page.getByRole("dialog", { name: "Book a Clinic Pulse walkthrough" });
+    await expect(dialog).toBeVisible();
     await expectNoStagedProductLanguage(page);
 
-    await page.goto("/request-walkthrough/thanks?name=Smoke&organization=E2E%20District");
-    await expect(page.getByRole("heading", { name: "Thanks, Smoke" })).toBeVisible();
-    await expect(page.getByText("Request captured successfully.")).toBeVisible();
+    await dialog.getByLabel("Name").fill("E2E Tester");
+    await dialog.getByLabel("Work email").fill("e2e@clinicpulse.test");
+    await dialog.getByLabel("Organization").fill("Verify District");
+    await dialog.getByLabel("Role").fill("Ops Lead");
+    await dialog.getByLabel("Notes").fill("Pilot readiness");
+
+    // pick the last enabled day button in the current month grid
+    const enabledDays = dialog.locator("button:not([disabled])").filter({ hasText: /^\d+$/ });
+    await enabledDays.last().click();
+    await dialog.getByRole("button", { name: "10:30" }).click();
+    await dialog.getByRole("button", { name: /Confirm walkthrough/i }).click();
+
+    await expect(page).toHaveURL(/\/request-walkthrough\/thanks/);
+    await expect(page.getByText(/Request captured successfully/i)).toBeVisible();
+    await expect(page.getByText(/Preferred slot:/i)).toBeVisible();
     await expectNoStagedProductLanguage(page);
   });
 

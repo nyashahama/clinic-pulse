@@ -13,6 +13,7 @@ import (
 type Querier interface {
 	CreateSession(ctx context.Context, arg *CreateSessionParams) (*CreateSessionRow, error)
 	CreateUser(ctx context.Context, arg *CreateUserParams) (*CreateUserRow, error)
+	CreateWalkthroughRequest(ctx context.Context, arg *CreateWalkthroughRequestParams) (*WalkthroughRequest, error)
 	DeleteOrganisationMembershipsForUser(ctx context.Context, userID int64) error
 	DisableUser(ctx context.Context, arg *DisableUserParams) (int64, error)
 	EnableUser(ctx context.Context, id int64) (int64, error)

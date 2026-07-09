@@ -456,3 +456,30 @@ type CreateAuditEventInput struct {
 	EntityID       *string
 	Metadata       map[string]any
 }
+
+type WalkthroughRequest struct {
+	ID              int64     `json:"id"`
+	Name            string    `json:"name"`
+	WorkEmail       string    `json:"work_email"`
+	Organization    string    `json:"organization"`
+	Role            string    `json:"role"`
+	Interest        string    `json:"interest"`
+	Note            string    `json:"note"`
+	RequestedDate   time.Time `json:"requested_date"`
+	RequestedTime   string    `json:"requested_time"`
+	DurationMinutes int       `json:"duration_minutes"`
+	Status          string    `json:"status"`
+	CreatedAt       time.Time `json:"created_at"`
+}
+
+type CreateWalkthroughRequestInput struct {
+	Name            string
+	WorkEmail       string
+	Organization    string
+	Role            string
+	Interest        string
+	Note            string
+	RequestedDate   time.Time
+	RequestedTime   string
+	DurationMinutes int
+}

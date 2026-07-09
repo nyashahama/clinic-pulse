@@ -1,7 +1,9 @@
 package http
 
 import (
+	"encoding/json"
 	nethttp "net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -9,6 +11,12 @@ import (
 
 	"clinicpulse/services/api/internal/service"
 	"clinicpulse/services/api/internal/store"
+)
+
+var (
+	emailRegex = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
+	dateRegex  = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
+	timeRegex  = regexp.MustCompile(`^([01]\d|2[0-3]):[0-5]\d$`)
 )
 
 type publicClinicDetailResponse struct {
@@ -36,6 +44,97 @@ type publicAlternativeResponse struct {
 	ReasonCode     string                     `json:"reasonCode"`
 	RankReason     string                     `json:"rankReason"`
 	MatchedService string                     `json:"matchedService"`
+}
+
+type walkthroughRequestPayload struct {
+	Name            string `json:"name"`
+	WorkEmail       string `json:"work_email"`
+	Organization    string `json:"organization"`
+	Role            string `json:"role"`
+	Interest        string `json:"interest"`
+	Note            string `json:"note"`
+	RequestedDate   string `json:"requested_date"`
+	RequestedTime   string `json:"requested_time"`
+	DurationMinutes int    `json:"duration_minutes"`
+}
+
+var walkthroughInterests = map[string]struct{}{
+	"clinic_operator": {}, "government": {}, "ngo": {}, "investor": {}, "other": {},
+}
+
+func (h Handler) CreateWalkthroughRequest(w nethttp.ResponseWriter, r *nethttp.Request) {
+	var payload walkthroughRequestPayload
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		RespondError(w, nethttp.StatusBadRequest, "invalid_json", "invalid request body")
+		return
+	}
+
+	var fields []string
+	name := strings.TrimSpace(payload.Name)
+	workEmail := strings.TrimSpace(payload.WorkEmail)
+	organization := strings.TrimSpace(payload.Organization)
+	role := strings.TrimSpace(payload.Role)
+	note := strings.TrimSpace(payload.Note)
+	interest := strings.TrimSpace(payload.Interest)
+	requestedTime := strings.TrimSpace(payload.RequestedTime)
+
+	if name == "" {
+		fields = append(fields, "name")
+	}
+	if !emailRegex.MatchString(workEmail) {
+		fields = append(fields, "work_email")
+	}
+	if organization == "" {
+		fields = append(fields, "organization")
+	}
+	if role == "" {
+		fields = append(fields, "role")
+	}
+	if _, ok := walkthroughInterests[interest]; !ok {
+		fields = append(fields, "interest")
+	}
+	if !dateRegex.MatchString(strings.TrimSpace(payload.RequestedDate)) {
+		fields = append(fields, "requested_date")
+	}
+	if !timeRegex.MatchString(requestedTime) {
+		fields = append(fields, "requested_time")
+	}
+	if payload.DurationMinutes != 30 && payload.DurationMinutes != 45 {
+		fields = append(fields, "duration_minutes")
+	}
+
+	if len(fields) > 0 {
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", fields...)
+		return
+	}
+
+	requestedDate, err := time.Parse("2006-01-02", strings.TrimSpace(payload.RequestedDate))
+	if err != nil {
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "requested_date")
+		return
+	}
+	if requestedDate.Before(time.Now().UTC().Truncate(24 * time.Hour)) {
+		RespondError(w, nethttp.StatusBadRequest, "validation_error", "validation failed", "requested_date")
+		return
+	}
+
+	created, err := h.store.CreateWalkthroughRequest(r.Context(), store.CreateWalkthroughRequestInput{
+		Name:            name,
+		WorkEmail:       workEmail,
+		Organization:    organization,
+		Role:            role,
+		Interest:        interest,
+		Note:            note,
+		RequestedDate:   requestedDate,
+		RequestedTime:   requestedTime,
+		DurationMinutes: payload.DurationMinutes,
+	})
+	if err != nil {
+		respondStoreError(w, err, "failed to create walkthrough request")
+		return
+	}
+
+	RespondJSON(w, nethttp.StatusCreated, created)
 }
 
 func (h Handler) ListPublicClinics(w nethttp.ResponseWriter, r *nethttp.Request) {

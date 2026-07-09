@@ -73,7 +73,8 @@ test.describe("landing page 2026", () => {
     });
     await expect(dialog).toBeVisible();
 
-    const selectedDay = dialog.getByRole("button", { name: "4", exact: true });
+    const enabledDays = dialog.locator("button:not([disabled])").filter({ hasText: /^\d+$/ });
+    const selectedDay = enabledDays.first();
     const selectedTime = dialog.getByRole("button", { name: "10:30" });
 
     for (const target of [selectedDay, selectedTime]) {
