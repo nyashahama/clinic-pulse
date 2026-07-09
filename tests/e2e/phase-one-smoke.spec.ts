@@ -57,7 +57,7 @@ test.describe("phase-one operations route checklist", () => {
 
     await dialog.getByLabel("Name").fill("E2E Tester");
     await dialog.getByLabel("Work email").fill("e2e@clinicpulse.test");
-    await dialog.getByLabel("Organization").fill("Demo District");
+    await dialog.getByLabel("Organization").fill("Verify District");
     await dialog.getByLabel("Role").fill("Ops Lead");
     await dialog.getByLabel("Notes").fill("Pilot readiness");
 

@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { submitWalkthroughRequest, validateWalkthroughInput } from "./submit";
+import { submitWalkthroughRequest, validateWalkthroughInput, type WalkthroughInput } from "./submit";
 
-const validBody = {
+const validBody: WalkthroughInput = {
   name: "Thabo",
   work_email: "thabo@gov.za",
   organization: "Tshwane",
@@ -29,7 +29,11 @@ describe("submitWalkthroughRequest", () => {
   it("traps honeypot as success without calling upstream", async () => {
     const fetchImpl = vi.fn();
     const sendEmail = vi.fn();
-    const res = await submitWalkthroughRequest({ ...validBody, company: "spam" } as any, { fetchImpl: fetchImpl as any, sendEmail, env: {} });
+    const res = await submitWalkthroughRequest({ ...validBody, company: "spam" } as WalkthroughInput, {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      sendEmail,
+      env: {},
+    });
     expect(res.status).toBe(201);
     expect(fetchImpl).not.toHaveBeenCalled();
   });
@@ -37,8 +41,8 @@ describe("submitWalkthroughRequest", () => {
   it("persists and sends two emails on success", async () => {
     const fetchImpl = vi.fn().mockResolvedValue({ ok: true });
     const sendEmail = vi.fn().mockResolvedValue({});
-    const res = await submitWalkthroughRequest(validBody as any, {
-      fetchImpl: fetchImpl as any,
+    const res = await submitWalkthroughRequest(validBody as WalkthroughInput, {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
       sendEmail,
       env: { CLINICPULSE_API_BASE_URL: "http://api", WALKTHROUGH_NOTIFY_EMAIL: "founder@x.com", WALKTHROUGH_FROM_EMAIL: "cp <a@b.com>" },
     });
@@ -48,13 +52,21 @@ describe("submitWalkthroughRequest", () => {
   });
 
   it("returns 400 on invalid input", async () => {
-    const res = await submitWalkthroughRequest({ ...validBody, work_email: "bad" } as any, { fetchImpl: vi.fn() as any, sendEmail: vi.fn(), env: {} });
+    const res = await submitWalkthroughRequest({ ...validBody, work_email: "bad" } as WalkthroughInput, {
+      fetchImpl: vi.fn() as unknown as typeof fetch,
+      sendEmail: vi.fn(),
+      env: {},
+    });
     expect(res.status).toBe(400);
   });
 
   it("returns 502 when upstream fails", async () => {
     const fetchImpl = vi.fn().mockResolvedValue({ ok: false });
-    const res = await submitWalkthroughRequest(validBody as any, { fetchImpl: fetchImpl as any, sendEmail: vi.fn(), env: { CLINICPULSE_API_BASE_URL: "http://api" } });
+    const res = await submitWalkthroughRequest(validBody as WalkthroughInput, {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      sendEmail: vi.fn(),
+      env: { CLINICPULSE_API_BASE_URL: "http://api" },
+    });
     expect(res.status).toBe(502);
   });
 });
