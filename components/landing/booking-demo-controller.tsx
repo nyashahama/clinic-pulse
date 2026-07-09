@@ -364,8 +364,8 @@ function BookingPanel({
                   "relative grid aspect-square min-w-0 place-items-center rounded-md text-xs font-semibold transition sm:rounded-lg sm:text-sm",
                   past ? "text-neutral-400" : "bg-neutral-200 text-neutral-950 hover:bg-neutral-300",
                   selected && "bg-neutral-950 text-white hover:bg-neutral-950",
-                  !past && "dark:bg-muted dark:text-foreground dark:hover:bg-accent",
-                  selected && "dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90",
+                  !past && "dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90",
+                  selected && "dark:ring-2 dark:ring-white dark:ring-offset-2 dark:ring-offset-card",
                 )}
               >
                 {day}
