@@ -36,7 +36,7 @@ describe("validateFrontendRuntimeEnv", () => {
         CLINICPULSE_DEPLOY_ENV: "staging",
         CLINICPULSE_API_BASE_URL: "http://localhost:8080",
         NEXT_PUBLIC_CLINICPULSE_API_BASE_URL: "https://api.staging.clinicpulse.example",
-        CLINICPULSE_ALLOW_DEMO_FALLBACK: "true",
+        CLINICPULSE_ALLOW_DEMO_FALLBACK: "invalid",
       }),
     ).toThrowError(
       /CLINICPULSE_API_BASE_URL[\s\S]*NEXT_PUBLIC_CLINICPULSE_API_BASE_URL[\s\S]*CLINICPULSE_ALLOW_DEMO_FALLBACK/,
@@ -74,7 +74,7 @@ describe("validateFrontendRuntimeEnv", () => {
     ).toThrowError(/CLINICPULSE_API_BASE_URL/);
   });
 
-  it("shows demo credentials only in local deployments", () => {
+  it("shows demo credentials only in local deployments or when explicitly enabled", () => {
     expect(
       validateFrontendRuntimeEnv({
         CLINICPULSE_DEPLOY_ENV: "local",
@@ -96,6 +96,15 @@ describe("validateFrontendRuntimeEnv", () => {
         CLINICPULSE_ALLOW_DEMO_FALLBACK: "false",
       }).showDemoCredentials,
     ).toBe(false);
+
+    expect(
+      validateFrontendRuntimeEnv({
+        CLINICPULSE_DEPLOY_ENV: "staging",
+        CLINICPULSE_API_BASE_URL: "https://api.clinicpulse.test",
+        NEXT_PUBLIC_CLINICPULSE_API_BASE_URL: "/api/clinicpulse",
+        CLINICPULSE_ALLOW_DEMO_FALLBACK: "true",
+      }).showDemoCredentials,
+    ).toBe(true);
   });
 
   it("keeps public registration disabled outside local deployments", () => {
