@@ -82,9 +82,9 @@ export function validateFrontendRuntimeEnv(
       );
     }
 
-    if (env.CLINICPULSE_ALLOW_DEMO_FALLBACK !== "false") {
+    if (env.CLINICPULSE_ALLOW_DEMO_FALLBACK !== "false" && env.CLINICPULSE_ALLOW_DEMO_FALLBACK !== "true") {
       problems.push(
-        "CLINICPULSE_ALLOW_DEMO_FALLBACK must be explicitly false outside local deployments.",
+        "CLINICPULSE_ALLOW_DEMO_FALLBACK must be explicitly false or true outside local deployments.",
       );
     }
 
@@ -106,7 +106,8 @@ export function validateFrontendRuntimeEnv(
     apiBaseUrl,
     browserApiBaseUrl,
     showDemoCredentials:
-      deployEnv === "local" && env.CLINICPULSE_ALLOW_DEMO_FALLBACK !== "false",
+      env.CLINICPULSE_ALLOW_DEMO_FALLBACK === "true" ||
+      (deployEnv === "local" && env.CLINICPULSE_ALLOW_DEMO_FALLBACK !== "false"),
     allowPublicRegistration: deployEnv === "local" && allowPublicRegistration,
   };
 }
