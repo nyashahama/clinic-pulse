@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import Script from "next/script";
+import { ApiWarmup } from "@/components/api-warmup";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
@@ -80,6 +81,7 @@ export default function RootLayout({
           disableTransitionOnChange
           enableSystem
         >
+          <ApiWarmup />
           {children}
         </ThemeProvider>
       </body>
