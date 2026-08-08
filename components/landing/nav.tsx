@@ -11,7 +11,7 @@ export function Nav() {
         <Link
           href="/"
           aria-label="ClinicPulse home"
-          className="shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-landing-route"
+          className="inline-flex min-h-11 shrink-0 items-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-landing-route"
         >
           <ClinicPulseLogo
             iconClassName="size-8 rounded-lg"

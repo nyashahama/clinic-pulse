@@ -88,7 +88,7 @@ test.describe("landing operational narrative", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     const headerHeight = await header.evaluate((node) => node.getBoundingClientRect().height);
     expect(Math.round(headerHeight)).toBeLessThanOrEqual(72);
-    for (const linkName of ["Sign in", "Walkthrough"]) {
+    for (const linkName of ["ClinicPulse home", "Sign in", "Walkthrough"]) {
       const link = header.getByRole("link", { name: linkName, exact: true });
       await expect(link).toBeVisible();
       const target = await link.boundingBox();
