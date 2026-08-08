@@ -1,6 +1,7 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { Dialog } from "@base-ui/react/dialog";
+import { useRouter } from "next/navigation";
 import {
   CalendarDays,
   Check,
@@ -13,13 +14,19 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { motion } from "motion/react";
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import {
+  FormEvent,
+  ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
+import { BOOKING_OPEN_EVENT } from "@/components/landing/booking-trigger";
 import { Button } from "@/components/ui/button";
 import {
   shouldOpenBookingModal,
-  shouldOpenBookingModalFromSearchParams,
 } from "@/lib/landing/booking-modal";
 import { cn } from "@/lib/utils";
 
@@ -45,12 +52,11 @@ function monthCells(view: Date): (number | null)[] {
 }
 
 type BookingDemoControllerProps = {
-  children: (controls: { openBooking: () => void }) => ReactNode;
+  children: ReactNode;
 };
 
 export function BookingDemoController({ children }: BookingDemoControllerProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [duration, setDuration] = useState<30 | 45>(30);
   const [viewDate, setViewDate] = useState(() => startOfMonth(new Date()));
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
@@ -59,6 +65,7 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const returnFocusRef = useRef<HTMLAnchorElement | null>(null);
   const [lead, setLead] = useState({
     name: "",
     workEmail: "",
@@ -88,30 +95,39 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
   }, [selectedDay, viewDate, selectedTime]);
 
   const requestedDateValue = selectedDay == null ? "" : `${viewDate.getFullYear()}-${pad(viewDate.getMonth() + 1)}-${pad(selectedDay)}`;
-  const bookingUrlOpen = shouldOpenBookingModalFromSearchParams(searchParams);
-  const bookingOpen = isBookingOpen || bookingUrlOpen;
-
   useEffect(() => {
-    const syncBookingHash = () => {
-      if (window.location.hash === "#booking") {
-        setIsBookingOpen(true);
-      }
+    const syncBookingLocation = () => {
+      setIsBookingOpen(shouldOpenBookingModal(window.location.href));
     };
 
-    const openBooking = window.setTimeout(syncBookingHash, 0);
-    window.addEventListener("hashchange", syncBookingHash);
+    const initialSync = window.setTimeout(syncBookingLocation, 0);
+    const openFromTrigger = (event: Event) => {
+      const trigger = (event as CustomEvent<HTMLAnchorElement>).detail;
+      returnFocusRef.current = trigger;
+      setIsBookingOpen(true);
+    };
+
+    window.addEventListener("hashchange", syncBookingLocation);
+    window.addEventListener("popstate", syncBookingLocation);
+    window.addEventListener(BOOKING_OPEN_EVENT, openFromTrigger);
+    document.documentElement.dataset.bookingEnhanced = "true";
 
     return () => {
-      window.clearTimeout(openBooking);
-      window.removeEventListener("hashchange", syncBookingHash);
+      window.clearTimeout(initialSync);
+      window.removeEventListener("hashchange", syncBookingLocation);
+      window.removeEventListener("popstate", syncBookingLocation);
+      window.removeEventListener(BOOKING_OPEN_EVENT, openFromTrigger);
+      delete document.documentElement.dataset.bookingEnhanced;
     };
   }, []);
 
-  const closeBooking = () => {
-    setIsBookingOpen(false);
-
-    if (shouldOpenBookingModal(window.location.href)) {
+  const handleOpenChange = (open: boolean) => {
+    setIsBookingOpen(open);
+    if (!open && shouldOpenBookingModal(window.location.href)) {
       router.replace("/", { scroll: false });
+    }
+    if (!open && returnFocusRef.current) {
+      window.requestAnimationFrame(() => returnFocusRef.current?.focus());
     }
   };
 
@@ -167,51 +183,41 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
   };
 
   return (
-    <>
-      {children({ openBooking: () => setIsBookingOpen(true) })}
-
-      {bookingOpen ? (
-        <motion.div
-          className="fixed inset-0 z-50 grid place-items-start overflow-y-auto bg-neutral-950/52 px-4 py-8 backdrop-blur-[2px] sm:place-items-center"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Book a Clinic Pulse walkthrough"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+    <Dialog.Root open={isBookingOpen} onOpenChange={handleOpenChange}>
+      {children}
+      <Dialog.Portal>
+        <Dialog.Backdrop
+          data-booking-backdrop="true"
+          className="fixed inset-0 z-50 bg-neutral-950/52 backdrop-blur-[2px] transition-opacity duration-200 motion-reduce:duration-0 motion-reduce:transition-none data-ending-style:opacity-0 data-starting-style:opacity-0"
+        />
+        <Dialog.Popup
+          className="fixed inset-x-4 top-8 z-50 mx-auto max-h-[calc(100vh-4rem)] w-[540px] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-xl outline-none transition duration-200 motion-reduce:duration-0 motion-reduce:transition-none data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-starting-style:scale-[0.98] data-starting-style:opacity-0 sm:top-1/2 sm:-translate-y-1/2"
         >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.97, y: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <BookingPanel
-              duration={duration}
-              isSubmitDisabled={isSubmitDisabled}
-              isSubmitting={isSubmitting}
-              lead={lead}
-              selectedDateLabel={selectedDateLabel}
-              selectedDay={selectedDay}
-              selectedTime={selectedTime}
-              viewDate={viewDate}
-              monthLabel={monthLabel}
-              cells={cells}
-              isPast={isPast}
-              onClose={closeBooking}
-              onDurationChange={setDuration}
-              onLeadChange={updateLead}
-              onSelectedDayChange={setSelectedDay}
-              onSelectedTimeChange={setSelectedTime}
-              onViewDateChange={setViewDate}
-              onSubmit={handleSubmit}
-              company={company}
-              onCompanyChange={setCompany}
-              submitError={submitError}
-            />
-          </motion.div>
-        </motion.div>
-      ) : null}
-    </>
+          <BookingPanel
+            duration={duration}
+            isSubmitDisabled={isSubmitDisabled}
+            isSubmitting={isSubmitting}
+            lead={lead}
+            selectedDateLabel={selectedDateLabel}
+            selectedDay={selectedDay}
+            selectedTime={selectedTime}
+            viewDate={viewDate}
+            monthLabel={monthLabel}
+            cells={cells}
+            isPast={isPast}
+            onDurationChange={setDuration}
+            onLeadChange={updateLead}
+            onSelectedDayChange={setSelectedDay}
+            onSelectedTimeChange={setSelectedTime}
+            onViewDateChange={setViewDate}
+            onSubmit={handleSubmit}
+            company={company}
+            onCompanyChange={setCompany}
+            submitError={submitError}
+          />
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
@@ -238,7 +244,6 @@ type BookingPanelProps = {
   company: string;
   onCompanyChange: (value: string) => void;
   submitError: string | null;
-  onClose: () => void;
   onDurationChange: (duration: 30 | 45) => void;
   onLeadChange: (field: keyof BookingPanelProps["lead"], value: string) => void;
   onSelectedDayChange: (day: number) => void;
@@ -258,7 +263,6 @@ function BookingPanel({
   monthLabel,
   cells,
   isPast,
-  onClose,
   onDurationChange,
   onLeadChange,
   onSelectedDayChange,
@@ -276,15 +280,25 @@ function BookingPanel({
       aria-label="Book a Clinic Pulse walkthrough"
     >
       <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-4 dark:border-border">
-        <h2 className="text-xl font-semibold">Book a walkthrough</h2>
-        <button
-          type="button"
-          onClick={onClose}
-          className="grid size-7 place-items-center rounded-md border border-neutral-300 text-neutral-500 transition hover:text-neutral-950 dark:border-border dark:text-muted-foreground dark:hover:text-foreground"
-          aria-label="Close booking"
+        <div>
+          <Dialog.Title className="text-xl font-semibold">
+            Book a Clinic Pulse walkthrough
+          </Dialog.Title>
+          <Dialog.Description className="sr-only">
+            Choose a date and tell the Clinic Pulse team what to cover.
+          </Dialog.Description>
+        </div>
+        <Dialog.Close
+          render={
+            <button
+              type="button"
+              className="grid size-7 place-items-center rounded-md border border-neutral-300 text-neutral-500 transition hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-border dark:text-muted-foreground dark:hover:text-foreground"
+              aria-label="Close booking"
+            />
+          }
         >
           <X className="size-4" />
-        </button>
+        </Dialog.Close>
       </div>
 
       <form className="max-h-[76vh] overflow-y-auto overflow-x-hidden px-4 py-7 sm:px-6" onSubmit={onSubmit}>
