@@ -29,6 +29,21 @@ async function expectNoHorizontalOverflow(page: Page) {
 }
 
 test.describe("landing operational narrative", () => {
+  test("publishes social metadata for the seeded operating scenario", async ({ page }) => {
+    test.skip(test.info().project.name !== "desktop-chrome", "single metadata check");
+
+    await gotoLanding(page);
+
+    await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
+      "content",
+      "Clinic Pulse | Clinic operations platform",
+    );
+    await expect(page.locator('meta[property="og:description"]')).toHaveAttribute(
+      "content",
+      "Explore a seeded clinic disruption from field report to district response, patient routing, and an audit-ready operating record.",
+    );
+  });
+
   test("handles the unavailable API without an unhandled page error", async ({ page }) => {
     test.skip(test.info().project.name !== "desktop-chrome", "single runtime error check");
     const pageErrors: string[] = [];
@@ -73,8 +88,13 @@ test.describe("landing operational narrative", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     const headerHeight = await header.evaluate((node) => node.getBoundingClientRect().height);
     expect(Math.round(headerHeight)).toBeLessThanOrEqual(72);
-    await expect(header.getByRole("link", { name: "Sign in" })).toBeVisible();
-    await expect(header.getByRole("link", { name: "Walkthrough", exact: true })).toBeVisible();
+    for (const linkName of ["Sign in", "Walkthrough"]) {
+      const link = header.getByRole("link", { name: linkName, exact: true });
+      await expect(link).toBeVisible();
+      const target = await link.boundingBox();
+      expect(target).not.toBeNull();
+      expect(target?.height ?? 0).toBeGreaterThanOrEqual(44);
+    }
   });
 
   test("enhances a real walkthrough link with an accessible dialog", async ({ page }) => {
@@ -83,6 +103,26 @@ test.describe("landing operational narrative", () => {
     const trigger = page.getByRole("link", { name: "Book a walkthrough" }).first();
     await expect(trigger).toHaveAttribute("href", "/request-walkthrough");
     await expect(page.locator("html")).toHaveAttribute("data-booking-enhanced", "true");
+
+    const modifiedClickWasCancelled = await trigger.evaluate((link) => {
+      let wasCancelledBeforeNavigationGuard = false;
+      const navigationGuard = (event: MouseEvent) => {
+        wasCancelledBeforeNavigationGuard = event.defaultPrevented;
+        event.preventDefault();
+      };
+      document.addEventListener("click", navigationGuard, { once: true });
+      link.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          button: 0,
+          cancelable: true,
+          ctrlKey: true,
+        }),
+      );
+      return wasCancelledBeforeNavigationGuard;
+    });
+    expect(modifiedClickWasCancelled).toBe(false);
+
     await trigger.click();
     await expect(
       page.getByRole("dialog", { name: "Book a Clinic Pulse walkthrough" }),
@@ -90,6 +130,25 @@ test.describe("landing operational narrative", () => {
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(trigger).toBeFocused();
+  });
+
+  test("keeps booking query state synchronized with browser history", async ({ page }) => {
+    test.skip(test.info().project.name !== "desktop-chrome", "single history check");
+
+    await gotoLanding(page);
+    await expect(page.locator("html")).toHaveAttribute("data-booking-enhanced", "true");
+
+    await page.evaluate(() => {
+      window.history.pushState({}, "", "/?booking=1");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    await expect(
+      page.getByRole("dialog", { name: "Book a Clinic Pulse walkthrough" }),
+    ).toBeVisible();
+
+    await page.goBack();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
   });
 
   test("shows one complete incident from field report to operating record", async ({
@@ -206,6 +265,7 @@ test.describe("landing operational narrative", () => {
       { width: 320, height: 720 },
       { width: 390, height: 844 },
       { width: 768, height: 900 },
+      { width: 1024, height: 768 },
       { width: 1440, height: 900 },
     ]) {
       await page.setViewportSize(viewport);

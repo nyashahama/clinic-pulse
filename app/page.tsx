@@ -14,6 +14,12 @@ export const metadata: Metadata = {
   title: "Clinic Pulse | Clinic operations platform",
   description:
     "Clinic Pulse connects clinic availability, offline field reporting, patient rerouting, and audit-ready operating records for district teams.",
+  openGraph: {
+    title: "Clinic Pulse | Clinic operations platform",
+    description:
+      "Explore a seeded clinic disruption from field report to district response, patient routing, and an audit-ready operating record.",
+    type: "website",
+  },
 };
 
 export default function Home() {

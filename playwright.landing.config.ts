@@ -9,8 +9,9 @@ export default defineConfig({
   testMatch: ["landing-page.spec.ts", "landing-motion.spec.ts", "landing-no-js.spec.ts"],
   fullyParallel: false,
   // Keep the cold webpack server responsive while desktop, mobile, and no-JS
-  // projects exercise this DOM-heavy page in parallel.
-  workers: 2,
+  // projects exercise this DOM-heavy page. Hydration is part of the contract,
+  // so serialize rather than masking server contention with longer timeouts.
+  workers: 1,
   reporter: process.env.CI ? [["github"], ["list"]] : "list",
   timeout: 45_000,
   expect: {

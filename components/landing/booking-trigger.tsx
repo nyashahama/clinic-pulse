@@ -14,6 +14,17 @@ export function BookingTrigger({
   className,
 }: BookingTriggerProps) {
   const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+
     event.preventDefault();
     window.dispatchEvent(
       new CustomEvent<HTMLAnchorElement>(BOOKING_OPEN_EVENT, {

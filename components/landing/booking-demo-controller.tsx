@@ -97,7 +97,7 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
   const requestedDateValue = selectedDay == null ? "" : `${viewDate.getFullYear()}-${pad(viewDate.getMonth() + 1)}-${pad(selectedDay)}`;
   useEffect(() => {
     const syncBookingLocation = () => {
-      if (shouldOpenBookingModal(window.location.href)) setIsBookingOpen(true);
+      setIsBookingOpen(shouldOpenBookingModal(window.location.href));
     };
 
     const initialSync = window.setTimeout(syncBookingLocation, 0);
@@ -186,9 +186,12 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
     <Dialog.Root open={isBookingOpen} onOpenChange={handleOpenChange}>
       {children}
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-50 bg-neutral-950/52 backdrop-blur-[2px] transition-opacity duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0" />
+        <Dialog.Backdrop
+          data-booking-backdrop="true"
+          className="fixed inset-0 z-50 bg-neutral-950/52 backdrop-blur-[2px] transition-opacity duration-200 motion-reduce:duration-0 motion-reduce:transition-none data-ending-style:opacity-0 data-starting-style:opacity-0"
+        />
         <Dialog.Popup
-          className="fixed inset-x-4 top-8 z-50 mx-auto max-h-[calc(100vh-4rem)] w-[540px] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-xl outline-none transition duration-200 data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-starting-style:scale-[0.98] data-starting-style:opacity-0 sm:top-1/2 sm:-translate-y-1/2"
+          className="fixed inset-x-4 top-8 z-50 mx-auto max-h-[calc(100vh-4rem)] w-[540px] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-xl outline-none transition duration-200 motion-reduce:duration-0 motion-reduce:transition-none data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-starting-style:scale-[0.98] data-starting-style:opacity-0 sm:top-1/2 sm:-translate-y-1/2"
         >
           <BookingPanel
             duration={duration}
