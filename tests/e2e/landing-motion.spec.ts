@@ -17,6 +17,34 @@ async function customMotionAnimationCount(page: import("@playwright/test").Page)
 }
 
 test.describe("landing motion system", () => {
+  test("updates the desktop canvas as native scroll reaches each stage", async ({ page }) => {
+    test.skip(test.info().project.name !== "desktop-chrome", "desktop-only progression check");
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+
+    const canvas = page.locator("#how-it-works [data-progressive-canvas='true']");
+    const target = page.locator("[data-incident-stage='patient-route']");
+    await target.scrollIntoViewIfNeeded();
+
+    await expect(canvas).toHaveAttribute("data-active-stage", "patient-route");
+  });
+
+  test("uses four compact incident canvases on mobile", async ({ page }) => {
+    test.skip(test.info().project.name !== "mobile-chrome", "mobile-only progression check");
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+
+    const story = page.locator("#how-it-works");
+    await expect(story.locator("[data-incident-stage] [data-district-canvas='true']")).toHaveCount(
+      4,
+    );
+    const progressiveCanvas = story.locator("[data-progressive-canvas='true']");
+    await expect(progressiveCanvas).toHaveCount(1);
+    await expect(progressiveCanvas).toBeHidden();
+  });
+
   test("adds active operational motion on desktop", async ({ page }) => {
     test.skip(test.info().project.name !== "desktop-chrome", "desktop-only motion check");
 

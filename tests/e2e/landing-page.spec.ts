@@ -360,6 +360,28 @@ test.describe("landing page 2026", () => {
     await expect(hero.locator("img")).toHaveCount(0);
   });
 
+  test("shows one complete incident from field report to operating record", async ({
+    page,
+  }) => {
+    await gotoLanding(page);
+    await page.getByRole("link", { name: "Follow the incident" }).click();
+
+    await expect(page).toHaveURL(/#how-it-works$/);
+    const story = page.locator("#how-it-works");
+
+    for (const heading of [
+      "Field report received",
+      "District response formed",
+      "Patient route updated",
+      "Operating record sealed",
+    ]) {
+      await expect(story.getByRole("heading", { name: heading })).toBeVisible();
+    }
+
+    await expect(story).toContainText("08:42");
+    await expect(story).toContainText("08:47");
+  });
+
   test("keeps the mobile navigation to one row", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoLanding(page);

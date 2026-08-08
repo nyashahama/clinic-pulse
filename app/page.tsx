@@ -4,13 +4,12 @@ import { BookingDemoController } from "@/components/landing/booking-demo-control
 import { DemoBookingCTA } from "@/components/landing/demo-booking-cta";
 import { DistrictSignalRail } from "@/components/landing/district-signal-rail";
 import { Footer } from "@/components/landing/footer";
+import { IncidentNarrative } from "@/components/landing/incident-narrative";
 import { Nav } from "@/components/landing/nav";
-import { OperatingGap } from "@/components/landing/operating-gap";
 import { OperationalHero } from "@/components/landing/operational-hero";
 import { ProductFeatureCards } from "@/components/landing/product-feature-cards";
 import { StakeholderProof } from "@/components/landing/stakeholder-proof";
 import { TrustInfrastructure } from "@/components/landing/trust-infrastructure";
-import { WorkflowTimeline } from "@/components/landing/workflow-timeline";
 
 export const metadata: Metadata = {
   title: "Clinic Pulse | Clinic operations platform",
@@ -26,9 +25,8 @@ export default function Home() {
         <main>
           <OperationalHero />
           <DistrictSignalRail />
+          <IncidentNarrative />
           <StakeholderProof />
-          <OperatingGap />
-          <WorkflowTimeline />
           <ProductFeatureCards />
           <TrustInfrastructure />
           <DemoBookingCTA />
