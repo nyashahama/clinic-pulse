@@ -382,6 +382,42 @@ test.describe("landing page 2026", () => {
     await expect(story).toContainText("08:47");
   });
 
+  test("shows the evidence ledger behind the district decision", async ({ page }) => {
+    await gotoLanding(page);
+
+    const ledger = page.locator("#trust-and-evidence");
+    await expect(ledger.getByRole("heading", { name: "AUD-OPS-MAB-001" })).toBeVisible();
+    for (const time of ["08:42", "08:44", "08:46", "08:47"]) {
+      await expect(ledger.getByText(time, { exact: true })).toBeVisible();
+    }
+    await expect(ledger).toContainText("Offline field report");
+    await expect(ledger).toContainText("Operational → Non-functional");
+    await expect(ledger).toContainText("Akasia Hills Clinic");
+    await expect(ledger).toContainText("CSV export available");
+    await expect(ledger).toContainText("Status endpoint contract");
+    await expect(ledger).toContainText("Partner handoff preview");
+  });
+
+  test("switches product surfaces with accessible tabs", async ({ page }) => {
+    await gotoLanding(page);
+
+    const product = page.locator("#product-surfaces");
+    const district = product.getByRole("tab", { name: "District console" });
+    const field = product.getByRole("tab", { name: "Field report" });
+    const audit = product.getByRole("tab", { name: "Audit record" });
+
+    await expect(product.locator("[data-product-explorer-enhanced='true']")).toBeVisible();
+    await expect(district).toHaveAttribute("aria-selected", "true");
+    await district.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(field).toBeFocused();
+    await expect(field).toHaveAttribute("aria-selected", "true");
+    await expect(product.getByRole("tabpanel")).toContainText("Queued offline, then synced");
+    await page.keyboard.press("End");
+    await expect(audit).toBeFocused();
+    await expect(product.getByRole("tabpanel")).toContainText("AUD-OPS-MAB-001");
+  });
+
   test("keeps the mobile navigation to one row", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoLanding(page);
