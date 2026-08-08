@@ -418,6 +418,40 @@ test.describe("landing page 2026", () => {
     await expect(product.getByRole("tabpanel")).toContainText("AUD-OPS-MAB-001");
   });
 
+  test("keeps the approved chapter order through the final walkthrough close", async ({
+    page,
+  }) => {
+    await gotoLanding(page);
+
+    const chapterOrder = await page.locator("[data-landing-chapter]").evaluateAll((nodes) =>
+      nodes.map((node) => node.getAttribute("data-landing-chapter")),
+    );
+    expect(chapterOrder).toEqual([
+      "hero",
+      "signal-rail",
+      "incident-narrative",
+      "evidence-ledger",
+      "product-explorer",
+      "walkthrough-close",
+    ]);
+
+    const close = page.locator("[data-landing-chapter='walkthrough-close']");
+    await expect(
+      close.getByRole("heading", {
+        name: "Walk through one district incident from report to record.",
+      }),
+    ).toBeVisible();
+    await expect(close.getByRole("link", { name: "Book a walkthrough" })).toHaveAttribute(
+      "href",
+      "/request-walkthrough",
+    );
+    await expect(close.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      "href",
+      "/login",
+    );
+    await expect(page.getByRole("contentinfo")).toContainText("Seeded walkthrough data");
+  });
+
   test("keeps the mobile navigation to one row", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoLanding(page);

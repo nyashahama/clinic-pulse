@@ -9,74 +9,76 @@ const navigation = {
     { name: "Book Walkthrough", href: "/request-walkthrough" },
   ],
   proof: [
-    { name: "Operating Gap", href: "/#problem" },
-    { name: "Product Flow", href: "/#flow" },
-    { name: "Product Surfaces", href: "/#product" },
-    { name: "Trust Layer", href: "/#trust" },
+    { name: "How it works", href: "/#how-it-works" },
+    { name: "Product surfaces", href: "/#product-surfaces" },
+    { name: "Trust and evidence", href: "/#trust-and-evidence" },
+    { name: "Sign in", href: "/login" },
   ],
 };
 
 export function Footer() {
   return (
-    <footer className="bg-white dark:bg-background">
-      <div className="mx-auto w-full max-w-screen-xl border-x border-neutral-100 px-3 dark:border-border lg:px-10">
-        <div className="relative z-10 overflow-hidden rounded-t-2xl border border-b-0 border-neutral-200 bg-white px-6 py-16 dark:border-border dark:bg-card sm:px-10">
-          <div className="xl:grid xl:grid-cols-3 xl:gap-8">
-            <div className="flex flex-col gap-6">
-              <div className="grow">
-                <Link href="/" className="block max-w-fit">
-                  <ClinicPulseLogo
-                    iconClassName="size-6 rounded-md"
-                    wordmarkClassName="text-sm"
-                  />
-                </Link>
-              </div>
-            </div>
-            <div className="mt-16 grid grid-cols-2 gap-8 xl:col-span-2 xl:mt-0 lg:grid-cols-2">
-              <div>
-                <h3 className="text-sm font-medium text-neutral-900 dark:text-card-foreground">Product</h3>
-                <ul role="list" className="mt-3 flex flex-col gap-3">
-                  {navigation.product.map((item) => (
-                    <li key={item.name}>
-                      <Link
-                        href={item.href}
-                        className="text-sm text-neutral-500 transition-colors hover:text-neutral-700 dark:text-muted-foreground dark:hover:text-foreground"
-                      >
-                        {item.name}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-neutral-900 dark:text-card-foreground">Proof</h3>
-                <ul role="list" className="mt-3 flex flex-col gap-3">
-                  {navigation.proof.map((item) => (
-                    <li key={item.name}>
-                      <Link
-                        href={item.href}
-                        className="text-sm text-neutral-500 transition-colors hover:text-neutral-700 dark:text-muted-foreground dark:hover:text-foreground"
-                      >
-                        {item.name}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-          <div className="mt-12 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-pulse-dot absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
-                <span className="inline-flex h-2 w-2 rounded-full bg-green-500" />
-              </span>
-              <span className="text-xs text-neutral-500 dark:text-muted-foreground">All systems operational</span>
-            </div>
-            <p className="max-w-72 text-xs text-neutral-500 dark:text-muted-foreground sm:text-right">
-              Scenario data is local to the walkthrough and mirrors the Clinic Pulse operating model.
+    <footer className="border-t border-landing-ink/12 bg-landing-paper px-4 text-landing-ink dark:border-white/10 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[80rem] py-12 sm:py-16">
+        <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(28rem,0.85fr)] lg:gap-16">
+          <div>
+            <Link href="/" className="block max-w-fit">
+              <ClinicPulseLogo
+                iconClassName="size-7 rounded-md"
+                wordmarkClassName="text-sm text-landing-ink dark:text-white"
+              />
+            </Link>
+            <p className="mt-5 max-w-sm text-sm leading-6 text-landing-ink/58 dark:text-white/56">
+              Clinic service status, patient routing, and the operating evidence behind each decision.
             </p>
           </div>
+
+          <div className="grid grid-cols-2 gap-8">
+            <div>
+              <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-landing-ink/42 dark:text-white/42">
+                Product
+              </h3>
+              <ul role="list" className="mt-3 flex flex-col gap-3">
+                {navigation.product.map((item) => (
+                  <li key={item.name}>
+                    <Link
+                      href={item.href}
+                      className="text-sm font-medium text-landing-ink/62 transition-colors hover:text-landing-green dark:text-white/60 dark:hover:text-landing-mint"
+                    >
+                      {item.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-landing-ink/42 dark:text-white/42">
+                Explore
+              </h3>
+              <ul role="list" className="mt-3 flex flex-col gap-3">
+                {navigation.proof.map((item) => (
+                  <li key={item.name}>
+                    <Link
+                      href={item.href}
+                      className="text-sm font-medium text-landing-ink/62 transition-colors hover:text-landing-green dark:text-white/60 dark:hover:text-landing-mint"
+                    >
+                      {item.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-12 flex flex-col gap-4 border-t border-landing-ink/12 pt-6 text-xs text-landing-ink/48 dark:border-white/10 dark:text-white/45 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 font-mono uppercase tracking-[0.1em]">
+            <span className="size-2 rotate-45 bg-landing-green" aria-hidden="true" />
+            Seeded walkthrough data
+          </div>
+          <p className="max-w-md sm:text-right">
+            Illustrative product scenario. No deployment activity or live clinic status is represented.
+          </p>
         </div>
       </div>
     </footer>
