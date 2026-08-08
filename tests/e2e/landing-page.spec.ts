@@ -326,4 +326,48 @@ test.describe("landing page 2026", () => {
       page.getByRole("dialog", { name: "Book a Clinic Pulse walkthrough" }),
     ).toBeVisible();
   });
+
+  test("enhances a real walkthrough link with an accessible dialog", async ({ page }) => {
+    await gotoLanding(page);
+
+    const trigger = page.getByRole("link", { name: "Book a walkthrough" }).first();
+    await expect(trigger).toHaveAttribute("href", "/request-walkthrough");
+    await expect(page.locator("html")).toHaveAttribute("data-booking-enhanced", "true");
+    await trigger.click();
+    await expect(
+      page.getByRole("dialog", { name: "Book a Clinic Pulse walkthrough" }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  });
+
+  test("opens with an honestly labeled district operating scenario", async ({ page }) => {
+    await gotoLanding(page);
+
+    const hero = page.locator("[data-landing-hero='true']");
+    await expect(hero.getByText("District clinic operations", { exact: true })).toBeVisible();
+    await expect(
+      hero.getByRole("heading", { name: "Know which clinics can serve patients now." }),
+    ).toBeVisible();
+    await expect(
+      hero.getByText(/Illustrative operating scenario using seeded product data/i).first(),
+    ).toBeVisible();
+    await expect(hero.locator("[data-district-canvas='true']")).toBeVisible();
+    await expect(hero).toContainText("Mabopane Station Clinic");
+    await expect(hero).toContainText("Generator failure");
+    await expect(hero).toContainText("08:42");
+    await expect(hero.locator("img")).toHaveCount(0);
+  });
+
+  test("keeps the mobile navigation to one row", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoLanding(page);
+
+    const header = page.getByRole("banner");
+    const headerHeight = await header.evaluate((node) => node.getBoundingClientRect().height);
+    expect(Math.round(headerHeight)).toBeLessThanOrEqual(72);
+    await expect(header.getByRole("link", { name: "Sign in" })).toBeVisible();
+    await expect(header.getByRole("link", { name: "Walkthrough", exact: true })).toBeVisible();
+  });
 });
