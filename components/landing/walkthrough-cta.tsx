@@ -8,7 +8,7 @@ export function WalkthroughCta() {
   return (
     <section
       data-landing-chapter="walkthrough-close"
-      className="dark relative overflow-hidden bg-landing-ledger px-4 py-20 text-white sm:px-6 sm:py-24 lg:px-8 lg:py-28"
+      className="relative overflow-hidden bg-landing-ledger px-4 py-20 text-white sm:px-6 sm:py-24 lg:px-8 lg:py-28"
     >
       <div
         className="absolute inset-x-0 top-0 h-1 bg-landing-route"
@@ -44,7 +44,7 @@ export function WalkthroughCta() {
         </div>
 
         <div className="border-y border-white/14 py-2">
-          <p className="py-3 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42">
+          <p className="py-3 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-white/62">
             Walkthrough coverage
           </p>
           <ul className="divide-y divide-white/10 border-t border-white/10">
@@ -54,7 +54,7 @@ export function WalkthroughCta() {
                   <Check className="size-3.5" aria-hidden="true" />
                 </span>
                 <div>
-                  <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-white/35">
+                  <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-white/62">
                     0{index + 1}
                   </p>
                   <p className="mt-1 text-sm font-semibold leading-5 text-white/84">{item}</p>

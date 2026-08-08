@@ -28,14 +28,14 @@ export function Footer() {
                 wordmarkClassName="text-sm text-landing-ink dark:text-white"
               />
             </Link>
-            <p className="mt-5 max-w-sm text-sm leading-6 text-landing-ink/58 dark:text-white/56">
+            <p className="mt-5 max-w-sm text-sm leading-6 text-landing-ink/70 dark:text-white/70">
               Clinic service status, patient routing, and the operating evidence behind each decision.
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-8">
             <div>
-              <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-landing-ink/42 dark:text-white/42">
+              <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-landing-ink/68 dark:text-white/70">
                 Product
               </h3>
               <ul role="list" className="mt-3 flex flex-col gap-3">
@@ -52,7 +52,7 @@ export function Footer() {
               </ul>
             </div>
             <div>
-              <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-landing-ink/42 dark:text-white/42">
+              <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-landing-ink/68 dark:text-white/70">
                 Explore
               </h3>
               <ul role="list" className="mt-3 flex flex-col gap-3">
@@ -71,7 +71,7 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col gap-4 border-t border-landing-ink/12 pt-6 text-xs text-landing-ink/48 dark:border-white/10 dark:text-white/45 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-12 flex flex-col gap-4 border-t border-landing-ink/12 pt-6 text-xs text-landing-ink/68 dark:border-white/10 dark:text-white/70 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 font-mono uppercase tracking-[0.1em]">
             <span className="size-2 rotate-45 bg-landing-green" aria-hidden="true" />
             Seeded walkthrough data

@@ -22,7 +22,7 @@ export function OperationalHero() {
               {operationalNarrative.hero.eyebrow}
             </p>
             <span className="h-3 w-px bg-landing-ink/18" aria-hidden="true" />
-            <p className="text-xs font-medium text-landing-ink/58 dark:text-white/58">
+            <p className="text-xs font-medium text-landing-ink/68 dark:text-white/70">
               {operationalNarrative.disclosure}
             </p>
           </div>
@@ -57,7 +57,7 @@ export function OperationalHero() {
                     <Icon className="size-3.5 text-landing-green" aria-hidden="true" />
                     {proof.label}
                   </div>
-                  <p className="mt-1.5 text-xs leading-5 text-landing-ink/58 dark:text-white/55">
+                  <p className="mt-1.5 text-xs leading-5 text-landing-ink/68 dark:text-white/70">
                     {proof.detail}
                   </p>
                 </div>

@@ -20,7 +20,7 @@ export function DistrictSignalRail() {
                 {item.step}
               </span>
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.09em] text-landing-ink/48 dark:text-white/48">
+                <p className="text-xs font-semibold uppercase tracking-[0.09em] text-landing-ink/68 dark:text-white/70">
                   {item.label}
                 </p>
                 <p className="mt-1.5 text-sm font-semibold leading-5">{item.value}</p>

@@ -87,7 +87,7 @@ export function ProductExplorerTabs() {
                 "relative flex min-w-0 items-center gap-2.5 border-r border-b border-landing-ink/10 px-3 py-4 text-left text-xs font-semibold transition last:border-r-0 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-landing-route dark:border-white/10 sm:px-5 sm:text-sm lg:border-b-0",
                 isActive
                   ? "bg-landing-ledger text-white"
-                  : "bg-white text-landing-ink/56 hover:bg-landing-paper hover:text-landing-ink dark:bg-[#10221f] dark:text-white/52 dark:hover:bg-white/7 dark:hover:text-white",
+                  : "bg-white text-landing-ink/72 hover:bg-landing-paper hover:text-landing-ink dark:bg-[#10221f] dark:text-white/72 dark:hover:bg-white/7 dark:hover:text-white",
               )}
             >
               <Icon
@@ -132,7 +132,7 @@ export function ProductExplorerTabs() {
             ))}
           </ul>
 
-          <div className="mt-6 flex items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-landing-ink/42 dark:text-white/42">
+          <div className="mt-6 flex items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-landing-ink/68 dark:text-white/70">
             Same incident / role-specific view
             <ArrowUpRight className="size-3.5" aria-hidden="true" />
           </div>

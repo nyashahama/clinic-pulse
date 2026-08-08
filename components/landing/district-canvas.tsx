@@ -59,7 +59,7 @@ export function DistrictCanvas({
           </span>
           <div className="min-w-0">
             <h3 className="truncate text-sm font-semibold">Tshwane North operating view</h3>
-            <p className="truncate font-mono text-[10px] uppercase tracking-[0.12em] text-landing-ink/55 dark:text-white/55">
+            <p className="truncate font-mono text-[10px] uppercase tracking-[0.12em] text-landing-ink/70 dark:text-white/70">
               {operationalNarrative.disclosure}
             </p>
           </div>
@@ -126,7 +126,7 @@ export function DistrictCanvas({
             </svg>
 
             <div className="absolute left-3 top-3 rounded-lg border border-landing-ink/12 bg-white/92 px-2.5 py-2 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-[#10221f]/92">
-              <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-landing-ink/48 dark:text-white/48">
+              <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-landing-ink/70 dark:text-white/70">
                 Active service
               </p>
               <p className="mt-1 text-xs font-semibold">{operationalNarrative.incident.service}</p>
@@ -197,7 +197,7 @@ export function DistrictCanvas({
                 <StageIcon className="size-4" aria-hidden="true" />
               </span>
               <div className="min-w-0">
-                <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-landing-ink/50 dark:text-white/50">
+                <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-landing-ink/70 dark:text-white/70">
                   Stage {stage.step} / {stage.eyebrow}
                 </p>
                 <p className="mt-1 text-sm font-semibold leading-5">{stage.title}</p>
@@ -214,7 +214,7 @@ export function DistrictCanvas({
                 key={event.label}
                 className="grid min-w-0 grid-cols-[5.25rem_minmax(0,1fr)] items-start gap-2 border-t border-landing-ink/8 pt-2 text-xs dark:border-white/8"
               >
-                <span className="font-mono uppercase tracking-[0.08em] text-landing-ink/48 dark:text-white/48">
+                <span className="font-mono uppercase tracking-[0.08em] text-landing-ink/68 dark:text-white/70">
                   {event.label}
                 </span>
                 <span className="min-w-0 break-words font-semibold leading-5">{event.value}</span>

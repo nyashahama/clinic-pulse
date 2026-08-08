@@ -13,7 +13,7 @@ const toneStyles: Record<IncidentTone, { className: string; icon: LucideIcon }> 
   },
   healthy: {
     className:
-      "border-landing-green/35 bg-landing-green/10 text-landing-green dark:border-landing-green/45 dark:bg-landing-green/12",
+      "border-landing-green/35 bg-landing-green/10 text-[#06685d] dark:border-landing-green/45 dark:bg-landing-green/12 dark:text-landing-green",
     icon: CircleCheck,
   },
   warning: {
@@ -28,13 +28,22 @@ const toneStyles: Record<IncidentTone, { className: string; icon: LucideIcon }> 
   },
 };
 
+const invertedToneStyles: Record<IncidentTone, string> = {
+  neutral: "!border-white/20 !bg-white/8 !text-white",
+  healthy: "!border-landing-mint/40 !bg-landing-mint/10 !text-landing-mint",
+  warning: "!border-[#f5c35b]/40 !bg-[#f5c35b]/10 !text-[#f5c35b]",
+  critical: "!border-[#ff8a8e]/40 !bg-[#ff8a8e]/10 !text-[#ff8a8e]",
+};
+
 export function OperationalStatus({
   children,
   className,
+  inverted = false,
   tone,
 }: {
   children: ReactNode;
   className?: string;
+  inverted?: boolean;
   tone: IncidentTone;
 }) {
   const style = toneStyles[tone];
@@ -45,6 +54,7 @@ export function OperationalStatus({
       className={cn(
         "inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-semibold leading-4",
         style.className,
+        inverted ? invertedToneStyles[tone] : null,
         className,
       )}
     >

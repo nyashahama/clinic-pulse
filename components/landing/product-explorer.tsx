@@ -22,7 +22,7 @@ export function ProductExplorer() {
             <p className="max-w-xl text-sm leading-7 text-landing-ink/64 sm:text-base dark:text-white/62">
               {operationalNarrative.product.description}
             </p>
-            <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.12em] text-landing-ink/42 dark:text-white/42">
+            <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.12em] text-landing-ink/68 dark:text-white/70">
               {operationalNarrative.disclosure}
             </p>
           </div>

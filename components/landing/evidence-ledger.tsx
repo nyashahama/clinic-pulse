@@ -37,7 +37,7 @@ export function EvidenceLedger() {
     <section
       id="trust-and-evidence"
       data-landing-chapter="evidence-ledger"
-      className="dark scroll-mt-20 overflow-hidden bg-landing-ledger px-4 py-20 text-white sm:px-6 sm:py-24 lg:px-8 lg:py-28"
+      className="scroll-mt-20 overflow-hidden bg-landing-ledger px-4 py-20 text-white sm:px-6 sm:py-24 lg:px-8 lg:py-28"
     >
       <div className="mx-auto grid max-w-[80rem] gap-12 lg:grid-cols-[minmax(19rem,0.62fr)_minmax(0,1.38fr)] lg:gap-16">
         <div className="lg:sticky lg:top-24 lg:self-start">
@@ -53,7 +53,7 @@ export function EvidenceLedger() {
           <p className="mt-5 max-w-md text-sm leading-7 text-white/64 sm:text-base">
             {operationalNarrative.ledger.description}
           </p>
-          <p className="mt-5 font-mono text-[10px] uppercase tracking-[0.12em] text-white/42">
+          <p className="mt-5 font-mono text-[10px] uppercase tracking-[0.12em] text-white/62">
             {operationalNarrative.disclosure}
           </p>
         </div>
@@ -69,7 +69,7 @@ export function EvidenceLedger() {
                   {operationalNarrative.incident.auditId}
                 </h3>
               </div>
-              <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-white/48">
+              <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-white/62">
                 <span className="size-2 rounded-full bg-landing-mint" aria-hidden="true" />
                 4 linked events
               </div>
@@ -85,7 +85,7 @@ export function EvidenceLedger() {
                     <p className="font-mono text-sm font-semibold text-landing-mint">
                       {event.stage.time}
                     </p>
-                    <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-white/35">
+                    <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-white/62">
                       Event {event.stage.step}
                     </p>
                     {index < ledgerEvents.length - 1 ? (
@@ -100,11 +100,11 @@ export function EvidenceLedger() {
                     <p className="text-sm font-semibold text-white">{event.verb}</p>
                     <dl className="mt-3 grid min-w-0 gap-2 text-xs leading-5">
                       <div className="grid min-w-0 grid-cols-[4.5rem_minmax(0,1fr)] gap-3">
-                        <dt className="font-mono uppercase tracking-[0.09em] text-white/38">Source</dt>
+                        <dt className="font-mono uppercase tracking-[0.09em] text-white/62">Source</dt>
                         <dd className="min-w-0 break-words text-white/65">{event.source}</dd>
                       </div>
                       <div className="grid min-w-0 grid-cols-[4.5rem_minmax(0,1fr)] gap-3">
-                        <dt className="font-mono uppercase tracking-[0.09em] text-white/38">Value</dt>
+                        <dt className="font-mono uppercase tracking-[0.09em] text-white/62">Value</dt>
                         <dd className="min-w-0 break-words font-semibold text-white/88">
                           {event.value}
                         </dd>
@@ -112,7 +112,11 @@ export function EvidenceLedger() {
                     </dl>
                   </div>
 
-                  <OperationalStatus tone={event.stage.tone} className="w-fit sm:justify-self-end">
+                  <OperationalStatus
+                    tone={event.stage.tone}
+                    inverted
+                    className="w-fit sm:justify-self-end"
+                  >
                     {event.stage.statusLabel}
                   </OperationalStatus>
                 </li>
@@ -126,7 +130,7 @@ export function EvidenceLedger() {
               return (
                 <li key={capability.label} className="min-w-0 bg-landing-ledger p-4">
                   <Icon className="size-4 text-landing-mint" aria-hidden="true" />
-                  <p className="mt-3 font-mono text-[9px] font-semibold uppercase tracking-[0.13em] text-white/38">
+                  <p className="mt-3 font-mono text-[9px] font-semibold uppercase tracking-[0.13em] text-white/62">
                     {capability.label}
                   </p>
                   <p className="mt-1.5 text-xs font-semibold leading-5 text-white/82">

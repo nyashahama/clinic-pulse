@@ -18,7 +18,7 @@ export function IncidentNarrative() {
             <p className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-landing-green">
               {operationalNarrative.narrative.eyebrow}
             </p>
-            <p className="mt-3 max-w-sm text-xs leading-5 text-landing-ink/52 dark:text-white/52">
+            <p className="mt-3 max-w-sm text-xs leading-5 text-landing-ink/70 dark:text-white/70">
               {operationalNarrative.disclosure}
             </p>
           </div>
@@ -46,7 +46,7 @@ export function IncidentNarrative() {
                       {stage.step}
                     </span>
                     <div className="min-w-0">
-                      <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-landing-ink/48 dark:text-white/48">
+                      <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-landing-ink/68 dark:text-white/70">
                         {stage.eyebrow}
                       </p>
                       <p className="mt-1 flex items-center gap-1.5 font-mono text-xs font-semibold text-landing-ink/68 dark:text-white/68">
@@ -75,7 +75,7 @@ export function IncidentNarrative() {
                       key={event.label}
                       className="grid min-w-0 grid-cols-[6.5rem_minmax(0,1fr)] gap-4 py-3 text-sm"
                     >
-                      <dt className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-landing-ink/48 dark:text-white/48">
+                      <dt className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-landing-ink/68 dark:text-white/70">
                         {event.label}
                       </dt>
                       <dd className="min-w-0 break-words font-semibold leading-5">{event.value}</dd>
