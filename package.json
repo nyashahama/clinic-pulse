@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "test:landing": "playwright test --config=playwright.landing.config.ts",
     "capture:showcase": "playwright test --config=playwright.showcase.config.ts",
     "smoke": "node scripts/smoke/clinicpulse-smoke.mjs",
     "load:smoke": "node scripts/load/core-journeys.mjs",
