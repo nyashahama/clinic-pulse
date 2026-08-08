@@ -8,6 +8,9 @@ export default defineConfig({
   testDir: "./tests/e2e",
   testMatch: ["landing-page.spec.ts", "landing-motion.spec.ts", "landing-no-js.spec.ts"],
   fullyParallel: false,
+  // Keep the cold webpack server responsive while desktop, mobile, and no-JS
+  // projects exercise this DOM-heavy page in parallel.
+  workers: 2,
   reporter: process.env.CI ? [["github"], ["list"]] : "list",
   timeout: 45_000,
   expect: {

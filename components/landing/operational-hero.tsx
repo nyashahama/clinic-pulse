@@ -15,7 +15,7 @@ export function OperationalHero() {
     >
       <div className="pointer-events-none absolute inset-0 opacity-45 [background-image:linear-gradient(to_right,var(--landing-ink)_1px,transparent_1px)] [background-size:80px_100%] [mask-image:linear-gradient(to_bottom,black,transparent_72%)] dark:opacity-[0.06]" />
 
-      <div className="relative mx-auto grid min-h-[calc(100svh-4rem)] max-w-[80rem] gap-12 py-12 sm:py-16 lg:grid-cols-[minmax(0,0.82fr)_minmax(35rem,1.18fr)] lg:items-center lg:gap-10 lg:py-14">
+      <div className="relative mx-auto grid min-h-[calc(100svh-4rem)] max-w-[80rem] gap-12 py-12 sm:py-16 lg:grid-cols-[minmax(20rem,0.78fr)_minmax(32rem,1.22fr)] lg:items-center lg:gap-8 lg:py-14 xl:grid-cols-[minmax(0,0.82fr)_minmax(35rem,1.18fr)] xl:gap-10">
         <div className="max-w-2xl">
           <div className="flex flex-wrap items-center gap-2.5">
             <p className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-landing-green">
@@ -27,7 +27,7 @@ export function OperationalHero() {
             </p>
           </div>
 
-          <h1 className="mt-7 max-w-[11ch] font-display text-[3.25rem] leading-[0.96] tracking-[-0.04em] text-landing-ink sm:text-[4.4rem] lg:text-[4.8rem] dark:text-white">
+          <h1 className="mt-7 max-w-[11ch] font-display text-[3.25rem] leading-[0.96] tracking-[-0.04em] text-landing-ink sm:text-[4.4rem] lg:text-[3.6rem] xl:text-[4.8rem] dark:text-white">
             {operationalNarrative.hero.title}
           </h1>
           <p className="mt-7 max-w-xl text-base leading-7 text-landing-ink/68 sm:text-lg sm:leading-8 dark:text-white/65">

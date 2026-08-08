@@ -23,10 +23,7 @@ import {
   useState,
 } from "react";
 
-import {
-  BOOKING_OPEN_EVENT,
-  bookingDialogHandle,
-} from "@/components/landing/booking-trigger";
+import { BOOKING_OPEN_EVENT } from "@/components/landing/booking-trigger";
 import { Button } from "@/components/ui/button";
 import {
   shouldOpenBookingModal,
@@ -67,6 +64,7 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
   const [company, setCompany] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
   const returnFocusRef = useRef<HTMLAnchorElement | null>(null);
   const [lead, setLead] = useState({
     name: "",
@@ -99,14 +97,14 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
   const requestedDateValue = selectedDay == null ? "" : `${viewDate.getFullYear()}-${pad(viewDate.getMonth() + 1)}-${pad(selectedDay)}`;
   useEffect(() => {
     const syncBookingLocation = () => {
-      if (shouldOpenBookingModal(window.location.href)) bookingDialogHandle.open(null);
+      if (shouldOpenBookingModal(window.location.href)) setIsBookingOpen(true);
     };
 
     const initialSync = window.setTimeout(syncBookingLocation, 0);
     const openFromTrigger = (event: Event) => {
       const trigger = (event as CustomEvent<HTMLAnchorElement>).detail;
       returnFocusRef.current = trigger;
-      bookingDialogHandle.open(null);
+      setIsBookingOpen(true);
     };
 
     window.addEventListener("hashchange", syncBookingLocation);
@@ -124,6 +122,7 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
   }, []);
 
   const handleOpenChange = (open: boolean) => {
+    setIsBookingOpen(open);
     if (!open && shouldOpenBookingModal(window.location.href)) {
       router.replace("/", { scroll: false });
     }
@@ -184,7 +183,7 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
   };
 
   return (
-    <Dialog.Root handle={bookingDialogHandle} onOpenChange={handleOpenChange}>
+    <Dialog.Root open={isBookingOpen} onOpenChange={handleOpenChange}>
       {children}
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-neutral-950/52 backdrop-blur-[2px] transition-opacity duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0" />

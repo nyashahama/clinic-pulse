@@ -29,6 +29,18 @@ async function expectNoHorizontalOverflow(page: Page) {
 }
 
 test.describe("landing operational narrative", () => {
+  test("handles the unavailable API without an unhandled page error", async ({ page }) => {
+    test.skip(test.info().project.name !== "desktop-chrome", "single runtime error check");
+    const pageErrors: string[] = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+
+    await gotoLanding(page);
+    await expect(page.locator("html")).toHaveAttribute("data-booking-enhanced", "true");
+    await page.waitForTimeout(500);
+
+    expect(pageErrors).toEqual([]);
+  });
+
   test("opens with an honestly labeled district scenario and one-row navigation", async ({
     page,
   }) => {
@@ -178,6 +190,17 @@ test.describe("landing operational narrative", () => {
 
   test("keeps every approved viewport inside the document width", async ({ page }) => {
     test.skip(test.info().project.name !== "desktop-chrome", "single responsive matrix");
+    const lifecycleErrors: string[] = [];
+    page.on("console", (message) => {
+      if (
+        message.type() === "error" &&
+        /state update on a component that hasn't mounted|state update on an unmounted component/i.test(
+          message.text(),
+        )
+      ) {
+        lifecycleErrors.push(message.text());
+      }
+    });
 
     for (const viewport of [
       { width: 320, height: 720 },
@@ -205,6 +228,34 @@ test.describe("landing operational narrative", () => {
         await expect(progressiveCanvas).toBeVisible();
       }
     }
+
+    expect(lifecycleErrors).toEqual([]);
+  });
+
+  test("keeps the tablet hero balanced", async ({ page }) => {
+    test.skip(test.info().project.name !== "desktop-chrome", "single layout audit");
+
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await gotoLanding(page);
+    const tabletHeading = await page.getByRole("heading", {
+      name: "Know which clinics can serve patients now.",
+    }).boundingBox();
+    expect(tabletHeading).not.toBeNull();
+    expect(tabletHeading?.height ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(400);
+  });
+
+  test("keeps mobile stage canvases focused on the map", async ({ page }) => {
+    test.skip(test.info().project.name !== "desktop-chrome", "single layout audit");
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoLanding(page);
+    const compactCanvas = page
+      .locator("[data-incident-stage='field-report'] [data-district-canvas='true']")
+      .first();
+    await expect(compactCanvas).toBeVisible();
+    await expect(
+      compactCanvas.getByText("Field report received", { exact: true }),
+    ).toHaveCount(0);
   });
 
   test("has no blocking accessibility violations across product panels", async ({ page }) => {

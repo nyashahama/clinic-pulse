@@ -27,6 +27,7 @@ export function IncidentProgression({ children }: { children: ReactNode }) {
     const stageElements = Array.from(
       root.querySelectorAll<HTMLElement>("[data-incident-stage]"),
     );
+    let isActive = true;
     const visibleEntries = new Map<Element, IntersectionObserverEntry>();
 
     const selectActiveStage = () => {
@@ -40,7 +41,7 @@ export function IncidentProgression({ children }: { children: ReactNode }) {
         })[0];
 
       const nextStageId = closestEntry?.target.getAttribute("data-incident-stage") ?? null;
-      if (isIncidentStageId(nextStageId)) setActiveStageId(nextStageId);
+      if (isActive && isIncidentStageId(nextStageId)) setActiveStageId(nextStageId);
     };
 
     const observer = new IntersectionObserver(
@@ -52,7 +53,10 @@ export function IncidentProgression({ children }: { children: ReactNode }) {
     );
 
     for (const stageElement of stageElements) observer.observe(stageElement);
-    return () => observer.disconnect();
+    return () => {
+      isActive = false;
+      observer.disconnect();
+    };
   }, []);
 
   return (

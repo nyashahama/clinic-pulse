@@ -1,10 +1,8 @@
 "use client";
 
-import { Dialog } from "@base-ui/react/dialog";
 import { type MouseEvent, type ReactNode } from "react";
 
 export const BOOKING_OPEN_EVENT = "clinicpulse:open-booking";
-export const bookingDialogHandle = Dialog.createHandle();
 
 type BookingTriggerProps = {
   children?: ReactNode;

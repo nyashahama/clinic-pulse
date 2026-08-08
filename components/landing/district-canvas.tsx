@@ -43,6 +43,7 @@ export function DistrictCanvas({
   return (
     <article
       data-active-stage={stageId}
+      data-canvas-variant={variant}
       data-district-canvas="true"
       data-progressive-canvas={progressive ? "true" : undefined}
       data-route-active={routeActive ? "true" : "false"}
@@ -190,38 +191,42 @@ export function DistrictCanvas({
           </p>
         </div>
 
-        <div className={cn("min-w-0 p-3 sm:p-4", isCompact ? "border-t border-landing-ink/10 dark:border-white/10" : null)}>
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 items-start gap-2.5">
-              <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg border border-landing-ink/12 bg-landing-paper dark:border-white/12 dark:bg-white/7">
-                <StageIcon className="size-4" aria-hidden="true" />
-              </span>
-              <div className="min-w-0">
-                <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-landing-ink/70 dark:text-white/70">
-                  Stage {stage.step} / {stage.eyebrow}
-                </p>
-                <p className="mt-1 text-sm font-semibold leading-5">{stage.title}</p>
-              </div>
-            </div>
-            <OperationalStatus tone={stage.tone} className="shrink-0">
-              {stage.statusLabel}
-            </OperationalStatus>
-          </div>
-
-          <div className="mt-4 grid gap-2">
-            {stage.events.map((event) => (
-              <div
-                key={event.label}
-                className="grid min-w-0 grid-cols-[5.25rem_minmax(0,1fr)] items-start gap-2 border-t border-landing-ink/8 pt-2 text-xs dark:border-white/8"
-              >
-                <span className="font-mono uppercase tracking-[0.08em] text-landing-ink/68 dark:text-white/70">
-                  {event.label}
+        {!isCompact ? (
+          <div className="min-w-0 p-3 sm:p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-start gap-2.5">
+                <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg border border-landing-ink/12 bg-landing-paper dark:border-white/12 dark:bg-white/7">
+                  <StageIcon className="size-4" aria-hidden="true" />
                 </span>
-                <span className="min-w-0 break-words font-semibold leading-5">{event.value}</span>
+                <div className="min-w-0">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-landing-ink/70 dark:text-white/70">
+                    Stage {stage.step} / {stage.eyebrow}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold leading-5">{stage.title}</p>
+                </div>
               </div>
-            ))}
+              <OperationalStatus tone={stage.tone} className="shrink-0">
+                {stage.statusLabel}
+              </OperationalStatus>
+            </div>
+
+            <div className="mt-4 grid gap-2">
+              {stage.events.map((event) => (
+                <div
+                  key={event.label}
+                  className="grid min-w-0 grid-cols-[5.25rem_minmax(0,1fr)] items-start gap-2 border-t border-landing-ink/8 pt-2 text-xs dark:border-white/8"
+                >
+                  <span className="font-mono uppercase tracking-[0.08em] text-landing-ink/68 dark:text-white/70">
+                    {event.label}
+                  </span>
+                  <span className="min-w-0 break-words font-semibold leading-5">
+                    {event.value}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
     </article>
   );
