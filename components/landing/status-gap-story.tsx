@@ -30,15 +30,15 @@ export function StatusGapStory() {
 
   return (
     <LandingSection id="problem">
-      <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+      <div className="grid gap-8 lg:grid-cols-[0.82fr_1.18fr] lg:items-center lg:gap-14">
         <LandingSectionHeader
           eyebrow={operatingGap.label}
           title={operatingGap.title}
           description={operatingGap.description}
         />
 
-        <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm dark:border-border dark:bg-card">
-          <div className="relative aspect-[16/8]">
+        <div className="overflow-hidden rounded-xl border border-white/[0.09] bg-white/[0.025] shadow-2xl shadow-black/20">
+          <div className="relative aspect-[16/6] min-h-36">
             <Image
               src={photo.src}
               alt={photo.alt}
@@ -50,12 +50,12 @@ export function StatusGapStory() {
           </div>
 
           <div className="border-t border-neutral-200 p-4 dark:border-border sm:p-5">
-            <div className="grid gap-3" data-motion-layer="true">
+            <div className="grid gap-2.5" data-motion-layer="true">
               {statusGapTimeline.map((item, index) => (
                 <article
                   key={`${item.label}-${item.title}`}
                   className={cn(
-                    "grid gap-3 rounded-lg border p-4 sm:grid-cols-[4.5rem_1fr] sm:items-start",
+                    "grid gap-2.5 rounded-lg border p-3 sm:grid-cols-[4.5rem_1fr] sm:items-start sm:p-3.5",
                     toneClassNames[item.tone],
                   )}
                 >

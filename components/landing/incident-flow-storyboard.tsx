@@ -50,15 +50,15 @@ export function IncidentFlowStoryboard() {
     incidentFlowSteps[incidentFlowSteps.length - 1]?.state ?? "Traceable operating record";
 
   return (
-    <LandingSection id="flow" className="border-y border-neutral-200 bg-neutral-50 dark:border-border dark:bg-background">
-      <div className="grid gap-10">
-        <div className="grid gap-8 lg:grid-cols-[0.78fr_1.22fr] lg:items-end">
+    <LandingSection id="flow" className="border-y border-white/[0.08] bg-[#090b0a]">
+      <div className="grid gap-8 lg:gap-10">
+        <div className="grid gap-7 lg:grid-cols-[0.74fr_1.26fr] lg:items-end">
           <LandingSectionHeader
             eyebrow="Incident flow"
             title="From field signal to operating record."
             description="One availability incident moves from an offline field report to the district console, patient reroute, and sealed audit trail without splitting the source record."
           />
-          <div className="relative min-h-64 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100 shadow-sm dark:border-border dark:bg-muted lg:min-h-80">
+          <div className="relative min-h-44 overflow-hidden rounded-xl border border-white/[0.09] bg-white/[0.03] shadow-2xl shadow-black/20 sm:min-h-56 lg:min-h-72">
             <Image
               src={fieldWorkerPhoto.src}
               alt={fieldWorkerPhoto.alt}
@@ -78,19 +78,19 @@ export function IncidentFlowStoryboard() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm dark:border-border dark:bg-card">
-          <div className="border-b border-neutral-200 px-4 py-4 dark:border-border sm:px-5">
+        <div className="overflow-hidden rounded-xl border border-white/[0.09] bg-white/[0.025] shadow-2xl shadow-black/20">
+          <div className="border-b border-white/[0.08] px-4 py-4 sm:px-5">
             <div className="grid gap-2 sm:flex sm:items-center sm:justify-between">
-              <p className="text-sm font-semibold text-neutral-950 dark:text-card-foreground">
+              <p className="text-sm font-semibold text-white">
                 Connected incident path
               </p>
-              <p className="font-mono text-xs text-neutral-500 dark:text-muted-foreground">
+              <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-white/36">
                 OPERATIONS / {auditReference}
               </p>
             </div>
           </div>
 
-          <div className="relative grid gap-4 overflow-hidden p-4 sm:p-5 lg:grid-cols-4 lg:gap-0">
+          <div className="relative grid gap-3 overflow-hidden p-3 sm:p-5 lg:grid-cols-4 lg:gap-0">
             <div
               aria-hidden="true"
               data-motion-layer="true"
@@ -119,7 +119,7 @@ export function IncidentFlowStoryboard() {
                 >
                   <div
                     className={cn(
-                      "relative z-10 flex min-h-56 flex-col rounded-lg border p-4 shadow-sm lg:min-h-72",
+                      "relative z-10 flex flex-col rounded-lg border p-4 shadow-sm lg:min-h-64",
                       tone.card,
                     )}
                   >
@@ -142,7 +142,7 @@ export function IncidentFlowStoryboard() {
                       </span>
                     </div>
 
-                    <div className="mt-8 min-w-0 flex-1">
+                    <div className="mt-5 min-w-0 flex-1 lg:mt-7">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-700 dark:text-muted-foreground">
                         {step.surface}
                       </p>

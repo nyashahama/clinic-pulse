@@ -8,7 +8,7 @@ export function GoogleButton() {
       type="button"
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.98 }}
-      className="inline-flex w-full shrink-0 items-center justify-center gap-2.5 rounded-lg border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 hover:shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:hover:border-white/20 dark:hover:bg-white/10"
+      className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2.5 rounded-full border border-white/[0.11] bg-white/[0.035] px-4 text-sm font-medium text-white/72 transition-all duration-200 hover:border-white/22 hover:bg-white/[0.07] hover:text-white"
     >
       <svg className="size-4" viewBox="0 0 24 24" fill="none">
         <path

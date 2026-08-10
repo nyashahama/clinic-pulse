@@ -12,8 +12,8 @@ type LandingSectionProps = {
 };
 
 const landingSectionSpacingClassNames = {
-  default: "py-16 sm:py-20 lg:py-24",
-  compact: "py-10 sm:py-10 lg:py-10",
+  default: "py-14 sm:py-18 lg:py-24",
+  compact: "py-9 sm:py-10 lg:py-12",
   none: "py-0 sm:py-0 lg:py-0",
 } satisfies Record<NonNullable<LandingSectionProps["spacing"]>, string>;
 
@@ -25,10 +25,10 @@ export function LandingSection({
   spacing = "default",
 }: LandingSectionProps) {
   return (
-    <section id={id} className={cn("relative bg-white dark:bg-background", className)}>
+    <section id={id} className={cn("relative bg-[#070908]", className)}>
       <MaxWidthWrapper
         className={cn(
-          "border-x-neutral-100 dark:border-x-border",
+          "border-x-white/[0.06]",
           landingSectionSpacingClassNames[spacing],
           contentClassName,
         )}
@@ -57,24 +57,24 @@ export function LandingSectionHeader({
   return (
     <div
       className={cn(
-        "grid gap-4",
+        "grid gap-3 sm:gap-4",
         align === "center" ? "mx-auto max-w-3xl text-center" : "max-w-3xl text-left",
         className,
       )}
     >
       {eyebrow ? (
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-emerald-300/80 sm:text-xs">
           {eyebrow}
         </p>
       ) : null}
       <h2
-        className="font-display text-3xl leading-[1.08] text-neutral-950 dark:text-foreground sm:text-4xl lg:text-5xl"
+        className="font-display text-3xl leading-[1.02] tracking-[-0.035em] text-white sm:text-4xl lg:text-5xl"
         style={{ textWrap: "balance" }}
       >
         {title}
       </h2>
       {description ? (
-        <p className="text-base leading-7 text-neutral-600 dark:text-muted-foreground sm:text-lg">{description}</p>
+        <p className="max-w-2xl text-sm leading-6 text-white/55 sm:text-base sm:leading-7">{description}</p>
       ) : null}
     </div>
   );

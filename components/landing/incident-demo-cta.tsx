@@ -17,8 +17,8 @@ export function IncidentDemoCTA() {
   ] as const;
 
   return (
-    <section className="bg-white px-4 py-16 dark:bg-background sm:px-6 sm:py-20 lg:px-8 lg:py-24">
-      <div className="mx-auto max-w-screen-xl overflow-hidden rounded-xl border border-neutral-800 bg-neutral-950 text-white shadow-2xl shadow-neutral-950/25">
+    <section className="bg-[#070908] px-4 py-14 sm:px-6 sm:py-18 lg:px-8 lg:py-24">
+      <div className="mx-auto max-w-screen-xl overflow-hidden rounded-2xl border border-white/[0.1] bg-[#0b0d0c] text-white shadow-[0_36px_120px_rgba(0,0,0,0.45)]">
         <div className="grid gap-0 lg:grid-cols-[1.04fr_0.96fr]">
           <div className="px-6 py-10 sm:px-10 lg:px-12 lg:py-14">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300">
@@ -38,7 +38,7 @@ export function IncidentDemoCTA() {
               <ButtonLink
                 href={incidentDemoCta.primaryCta.href}
                 variant="primary"
-                className="h-11 border-primary bg-primary text-primary-foreground shadow-[0_0_0_1px_rgba(62,207,142,0.16),0_18px_48px_rgba(62,207,142,0.16)] hover:bg-primary/90 hover:ring-primary/20"
+                className="h-11 rounded-full border-white bg-white text-neutral-950 shadow-[0_16px_44px_rgba(0,0,0,0.32)] hover:bg-white/88 hover:ring-white/20"
               >
                 {incidentDemoCta.primaryCta.label}
                 <ArrowRight className="size-4" />
@@ -46,7 +46,7 @@ export function IncidentDemoCTA() {
               <ButtonLink
                 href={incidentDemoCta.secondaryCta.href}
                 variant="secondary"
-                className="h-11 border-white/20 bg-transparent text-white hover:border-white/40 hover:bg-white/10"
+                className="h-11 rounded-full border-white/14 bg-transparent text-white/72 hover:border-white/32 hover:bg-white/[0.06] hover:text-white"
               >
                 {incidentDemoCta.secondaryCta.label}
                 <ExternalLink className="size-4" />

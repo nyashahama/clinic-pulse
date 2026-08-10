@@ -13,14 +13,18 @@ import { WorkflowTimeline } from "@/components/landing/workflow-timeline";
 import { DemoStoreProvider } from "@/lib/demo/demo-store";
 
 export const metadata: Metadata = {
-  title: "Clinic Pulse | Clinic operations platform",
+  title: "ClinicPulse | Live clinic operations",
   description:
     "Clinic Pulse gives district teams live clinic availability, offline field reporting, patient rerouting, and audit-ready operating records.",
 };
 
 export default function Home() {
   return (
-    <div className="bg-white text-neutral-950 dark:bg-background dark:text-foreground">
+    <div
+      className="dark min-h-screen bg-[#070908] text-white"
+      data-public-shell="landing"
+      data-public-theme="dark-editorial"
+    >
       <Nav />
       <main>
         <DemoStoreProvider>

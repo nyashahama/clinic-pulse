@@ -1,42 +1,42 @@
-import { ClinicPulseLogo } from "@/components/brand/clinicpulse-logo";
 import { AuthSidebarContent } from "@/components/auth/auth-sidebar-content";
+import { ClinicPulseLogo } from "@/components/brand/clinicpulse-logo";
 import Image from "next/image";
 import Link from "next/link";
 
 const clinicCards = [
   {
-    name: "Mamelodi East Clinic",
-    status: "Operational",
-    detail: "Queue under 18 min",
-    statusColor: "bg-emerald-400",
-    accentColor: "border-l-emerald-400",
-    bgColor: "bg-emerald-400/10",
-    textColor: "text-emerald-300",
+    name: "Mabopane Station Clinic",
+    status: "Non-functional",
+    detail: "Generator failure · pharmacy affected",
+    statusColor: "bg-red-400",
+    accentColor: "border-l-red-400",
+    bgColor: "bg-red-400/[0.07]",
+    textColor: "text-red-300",
   },
   {
-    name: "Atteridgeville CHC",
-    status: "Degraded",
-    detail: "Pharmacy stock low",
-    statusColor: "bg-amber-400",
-    accentColor: "border-l-amber-400",
-    bgColor: "bg-amber-400/10",
-    textColor: "text-amber-300",
+    name: "Akasia Hills Clinic",
+    status: "Accepting",
+    detail: "Compatible pharmacy service available",
+    statusColor: "bg-emerald-300",
+    accentColor: "border-l-emerald-300",
+    bgColor: "bg-emerald-300/[0.07]",
+    textColor: "text-emerald-200",
   },
   {
-    name: "Soshanguve Block X",
-    status: "Rerouting",
-    detail: "2 ambulances redirected",
-    statusColor: "bg-sky-400",
-    accentColor: "border-l-sky-400",
-    bgColor: "bg-sky-400/10",
-    textColor: "text-sky-300",
+    name: "AUD-OPS-MAB-001",
+    status: "Linked",
+    detail: "Source, status change, and reroute recorded",
+    statusColor: "bg-sky-300",
+    accentColor: "border-l-sky-300",
+    bgColor: "bg-sky-300/[0.07]",
+    textColor: "text-sky-200",
   },
 ];
 
 const stats: [string, string][] = [
-  ["3,500+", "clinics"],
-  ["<30s", "updates"],
-  ["24/7", "audit"],
+  ["Source", "attached"],
+  ["Route", "ready"],
+  ["Audit", "linked"],
 ];
 
 export default function AuthLayout({
@@ -45,19 +45,24 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="relative grid min-h-[100dvh] min-h-screen grid-cols-1 min-[900px]:grid-cols-[minmax(0,1fr)_440px] lg:grid-cols-[minmax(0,1fr)_595px]">
-      <div className="relative flex flex-col">
-        <div className="pointer-events-none absolute inset-0 isolate overflow-hidden bg-[#f6f8f7] dark:bg-background">
+    <div
+      className="dark relative grid min-h-[100dvh] min-h-screen grid-cols-1 overflow-x-hidden bg-[#070908] text-white min-[900px]:grid-cols-[minmax(0,1fr)_440px] lg:grid-cols-[minmax(0,1fr)_580px]"
+      data-public-shell="auth"
+      data-public-theme="dark-editorial"
+    >
+      <div className="relative flex min-w-0 flex-col">
+        <div className="pointer-events-none absolute inset-0 isolate overflow-hidden bg-[#070908]">
+          <div className="absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(circle_at_50%_0%,rgba(38,85,72,0.24),transparent_58%)]" />
           <div
-            className="absolute inset-y-0 left-1/2 w-[1200px] -translate-x-1/2"
+            className="absolute inset-y-0 left-1/2 w-[1200px] -translate-x-1/2 opacity-35"
             style={{
               maskImage:
-                "linear-gradient(black,transparent 320px),linear-gradient(90deg,transparent,black 5%,black 95%,transparent)",
+                "linear-gradient(black,transparent 520px),linear-gradient(90deg,transparent,black 5%,black 95%,transparent)",
               maskComposite: "intersect",
             }}
           >
             <svg
-              className="pointer-events-none absolute inset-0 text-[#e2e8ea] dark:text-border"
+              className="pointer-events-none absolute inset-0 text-white/[0.08]"
               width="100%"
               height="100%"
             >
@@ -66,8 +71,8 @@ export default function AuthLayout({
                   id="auth-grid"
                   x={0.75 * 48 - 1}
                   y={-1}
-                  width={48 + 1}
-                  height={48 + 1}
+                  width={49}
+                  height={49}
                   patternUnits="userSpaceOnUse"
                 >
                   <path
@@ -83,25 +88,38 @@ export default function AuthLayout({
           </div>
         </div>
 
-        <Link href="/" className="absolute left-6 top-5 z-10 min-[900px]:left-8 lg:left-12">
+        <Link
+          href="/"
+          className="absolute left-5 top-5 z-20 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/40 sm:left-7 lg:left-10"
+        >
           <ClinicPulseLogo
-            iconClassName="size-8 rounded-xl shadow-md shadow-emerald-950/15"
-            wordmarkClassName="font-display text-lg font-semibold tracking-[-0.02em] text-neutral-950 dark:text-foreground"
+            iconClassName="size-8 rounded-xl shadow-md shadow-black/30"
+            wordmarkClassName="font-display text-base font-semibold tracking-[-0.02em] text-white"
           />
         </Link>
 
-        <main className="relative z-10 flex flex-1 items-center justify-center px-4 py-24 sm:px-6">
-          {children}
+        <main className="relative z-10 flex flex-1 items-center justify-center px-4 pb-8 pt-20 sm:px-6 sm:pb-10 sm:pt-24">
+          <div className="w-full max-w-[34rem] rounded-2xl border border-white/[0.09] bg-[#0b0d0c]/92 p-5 shadow-[0_32px_100px_rgba(0,0,0,0.38)] backdrop-blur sm:p-8">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] pb-4">
+              <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-emerald-200/64">
+                Secure workspace
+              </p>
+              <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-white/30">
+                Illustrative workspace scenario
+              </p>
+            </div>
+            {children}
+          </div>
         </main>
 
-        <div className="relative z-10 pb-6 text-center text-xs font-medium leading-5 text-neutral-400 dark:text-muted-foreground">
+        <div className="relative z-10 px-5 pb-6 text-center text-[11px] font-medium leading-5 text-white/28">
           <p>
             By continuing, you agree to ClinicPulse&rsquo;s{" "}
-            <Link href="/legal/terms" className="font-semibold text-neutral-500 hover:text-neutral-700 dark:text-muted-foreground dark:hover:text-foreground">
+            <Link href="/legal/terms" className="font-semibold text-white/46 hover:text-white/72">
               Terms
             </Link>{" "}
             and{" "}
-            <Link href="/legal/privacy" className="font-semibold text-neutral-500 hover:text-neutral-700 dark:text-muted-foreground dark:hover:text-foreground">
+            <Link href="/legal/privacy" className="font-semibold text-white/46 hover:text-white/72">
               Privacy Policy
             </Link>
             .
@@ -109,31 +127,28 @@ export default function AuthLayout({
         </div>
       </div>
 
-      <aside className="relative hidden h-full flex-col overflow-hidden border-l border-black/5 dark:border-border min-[900px]:flex">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0f2b26] via-[#0a1f1b] to-[#061512]" />
+      <aside className="relative hidden h-full min-h-[100dvh] flex-col overflow-hidden border-l border-white/[0.08] bg-[#050606] min-[900px]:flex">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_18%,rgba(33,100,80,0.24),transparent_34%),linear-gradient(145deg,#0b1210_0%,#050606_58%)]" />
 
         <div className="relative flex min-h-full flex-col">
-          <div className="relative h-[45%] min-h-[280px] overflow-hidden">
+          <div className="relative h-[40%] min-h-[260px] overflow-hidden border-b border-white/[0.08]">
             <Image
               src="/district/clinics/clinic-front-01.jpg"
-              alt="Healthcare worker using ClinicPulse"
+              alt="Illustrative clinic context for the ClinicPulse workspace"
               fill
-              sizes="(min-width: 900px) 440px, 0px"
-              className="object-cover"
+              sizes="(min-width: 900px) 580px, 0px"
+              className="object-cover grayscale-[0.12] saturate-[0.72]"
               priority
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0f2b26] via-[#0f2b26]/60 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#07100d] via-[#07100d]/52 to-black/18" />
 
-            <div className="absolute bottom-0 left-0 right-0 p-8 lg:p-10">
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300 backdrop-blur-sm">
-                <span className="relative flex size-1.5">
-                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex size-1.5 rounded-full bg-emerald-400" />
-                </span>
-                Live district signal
+            <div className="absolute inset-x-0 bottom-0 p-7 lg:p-10">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-black/24 px-3 py-1 font-mono text-[9px] uppercase tracking-[0.18em] text-emerald-200/76 backdrop-blur-sm">
+                <span className="size-1.5 rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(110,231,183,0.8)]" />
+                Modeled incident path
               </div>
-              <h2 className="mt-4 max-w-md font-display text-3xl font-semibold leading-[1.1] tracking-[-0.03em] text-white lg:text-4xl">
-                Know which clinics can serve patients right now.
+              <h2 className="mt-4 max-w-md font-display text-3xl leading-[1.02] tracking-[-0.04em] text-white lg:text-4xl">
+                One signal. One decision trail.
               </h2>
             </div>
           </div>
@@ -141,7 +156,7 @@ export default function AuthLayout({
           <AuthSidebarContent
             clinicCards={clinicCards}
             stats={stats}
-            description="Secure access for district managers, field reporters, and partner teams coordinating live availability across public health sites."
+            description="Secure access for the district, field, and partner teams coordinating the same clinic availability record."
           />
         </div>
       </aside>

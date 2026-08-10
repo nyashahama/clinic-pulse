@@ -49,7 +49,7 @@ test.describe("landing page 2026", () => {
     await expect(header.getByRole("link", { name: "Book walkthrough" })).toBeVisible();
   });
 
-  test("uses dark-native brand surfaces for public CTAs and booking selections", async ({
+  test("uses light editorial CTAs and brand-native booking selections", async ({
     page,
   }) => {
     await gotoLandingInDarkMode(page);
@@ -62,8 +62,8 @@ test.describe("landing page 2026", () => {
     for (const target of [headerBook, heroBook]) {
       const colors = await readSurfaceColors(target);
 
-      expect(colors.actual).toBe(colors.primary);
-      expect(colors.actual).not.toBe(colors.foreground);
+      expect(colors.actual).toBe("rgb(255, 255, 255)");
+      expect(colors.actual).not.toBe(colors.primary);
     }
 
     await heroBook.click();

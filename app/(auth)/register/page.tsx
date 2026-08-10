@@ -71,12 +71,12 @@ export default function RegisterPage() {
   const frontendEnv = validateFrontendRuntimeEnv();
 
   return (
-    <div className="w-full max-w-[28rem]">
-      <div className="mb-8">
-        <h1 className="font-display text-2xl font-semibold tracking-[-0.03em] text-neutral-950 dark:text-foreground">
+    <div className="mx-auto w-full max-w-[28rem]">
+      <div className="mb-7">
+        <h1 className="font-display text-3xl font-medium leading-none tracking-[-0.04em] text-white">
           Request ClinicPulse access
         </h1>
-        <p className="mt-2 text-sm leading-6 text-neutral-500 dark:text-muted-foreground">
+        <p className="mt-3 text-sm leading-6 text-white/46">
           Request workspace access for district operations, field reporting,
           and partner coordination workflows.
         </p>
@@ -87,7 +87,7 @@ export default function RegisterPage() {
         allowPublicRegistration={frontendEnv.allowPublicRegistration}
       />
 
-      <div className="mt-5 rounded-xl border border-amber-200/60 bg-amber-50/50 p-3.5 text-xs leading-6 text-amber-800 dark:border-amber-500/15 dark:bg-amber-500/5 dark:text-amber-300">
+      <div className="mt-5 rounded-xl border border-amber-300/15 bg-amber-300/[0.045] p-3.5 text-xs leading-6 text-amber-200/76">
         <p className="font-medium">Accounts are provisioned by administrators.</p>
         {frontendEnv.showDemoCredentials ? (
           <p className="mt-1 text-amber-600/80 dark:text-amber-400/60">
@@ -96,11 +96,11 @@ export default function RegisterPage() {
         ) : null}
       </div>
 
-      <p className="mt-8 text-center text-sm text-neutral-500 dark:text-muted-foreground">
+      <p className="mt-7 text-center text-sm text-white/42">
         Already have an account?&nbsp;
         <Link
           href="/login"
-          className="font-semibold text-[#0D7A6B] transition-colors hover:text-[#0a5e54] dark:text-emerald-300 dark:hover:text-emerald-200"
+          className="font-semibold text-emerald-300 transition-colors hover:text-emerald-200"
         >
           Sign in
         </Link>

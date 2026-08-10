@@ -6,7 +6,7 @@ import { motion } from "motion/react";
 export function AuthStagger({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <motion.div
-      initial="hidden"
+      initial={false}
       animate="visible"
       variants={{
         hidden: {},

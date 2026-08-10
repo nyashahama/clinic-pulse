@@ -199,4 +199,4 @@ function PasswordEmailSignIn({
 }
 
 const buttonClassName =
-  "inline-flex w-full shrink-0 items-center justify-center rounded-lg bg-[#06251F] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#0a3d33] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-500";
+  "inline-flex h-11 w-full shrink-0 items-center justify-center rounded-full border border-white bg-white px-4 text-sm font-semibold text-neutral-950 shadow-[0_12px_34px_rgba(0,0,0,0.28)] transition-colors hover:bg-white/88 disabled:cursor-not-allowed disabled:opacity-50";

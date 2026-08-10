@@ -115,12 +115,12 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const returnTo = getSafeAuthReturnPath(firstSearchParam(resolvedSearchParams.next));
 
   return (
-    <div className="w-full max-w-[24rem]">
-      <div className="mb-8">
-        <h1 className="font-display text-2xl font-semibold tracking-[-0.03em] text-neutral-950 dark:text-foreground">
+    <div className="mx-auto w-full max-w-[24rem]">
+      <div className="mb-7">
+        <h1 className="font-display text-3xl font-medium leading-none tracking-[-0.04em] text-white">
           Sign in to ClinicPulse
         </h1>
-        <p className="mt-2 text-sm leading-6 text-neutral-500 dark:text-muted-foreground">
+        <p className="mt-3 text-sm leading-6 text-white/46">
           Access live clinic status, field reports, and
           audit history for your district.
         </p>
@@ -129,7 +129,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       <LoginForm loginAction={loginAction} returnTo={returnTo ?? undefined} />
 
       {frontendEnv.showDemoCredentials ? (
-        <div className="mt-8 rounded-xl border border-neutral-200 bg-white/60 p-4 dark:border-white/10 dark:bg-white/5">
+        <div className="mt-7 rounded-xl border border-white/[0.09] bg-white/[0.025] p-4">
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs font-semibold text-neutral-700 dark:text-white/80">
               Demo credentials
@@ -161,21 +161,21 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </div>
       ) : null}
 
-      <p className="mt-8 text-center text-sm text-neutral-500 dark:text-muted-foreground">
+      <p className="mt-7 text-center text-sm text-white/42">
         Don&rsquo;t have an account?&nbsp;
         <Link
           href="/register"
-          className="font-semibold text-[#0D7A6B] transition-colors hover:text-[#0a5e54] dark:text-emerald-300 dark:hover:text-emerald-200"
+          className="font-semibold text-emerald-300 transition-colors hover:text-emerald-200"
         >
           Request access
         </Link>
       </p>
 
-      <div className="mt-10 grid grid-cols-3 gap-4 border-t border-neutral-100 pt-6 dark:border-white/5">
+      <div className="mt-8 grid grid-cols-3 gap-3 border-t border-white/[0.07] pt-5">
         {features.map((feature) => (
           <div key={feature.label} className="flex flex-col items-center gap-1.5 text-center">
-            <span className="text-[#0D7A6B] dark:text-emerald-400">{feature.icon}</span>
-            <span className="text-[11px] font-medium text-neutral-400 dark:text-white/30">{feature.label}</span>
+            <span className="text-emerald-300/72">{feature.icon}</span>
+            <span className="text-[10px] font-medium leading-4 text-white/28">{feature.label}</span>
           </div>
         ))}
       </div>
