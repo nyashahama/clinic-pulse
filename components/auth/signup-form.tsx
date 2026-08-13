@@ -23,7 +23,7 @@ export type SignupAction = (
 ) => Promise<SignupActionState>;
 
 const selectClassName =
-  "block w-full min-w-0 appearance-none rounded-lg border border-neutral-200 bg-white px-3.5 py-2.5 text-sm text-neutral-900 outline-none transition-all duration-200 placeholder:text-neutral-400 focus:border-[#0D7A6B] focus:ring-2 focus:ring-[#0D7A6B]/15 focus:shadow-[0_0_0_3px_rgba(13,122,107,0.06)] hover:border-neutral-300 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-white/30 dark:focus:border-emerald-400/50 dark:focus:ring-emerald-400/15 dark:hover:border-white/20";
+  "block min-h-12 w-full min-w-0 appearance-none rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-base text-neutral-900 outline-none transition-all duration-200 placeholder:text-neutral-400 focus:border-[#0D7A6B] focus:ring-2 focus:ring-[#0D7A6B]/15 focus:shadow-[0_0_0_3px_rgba(13,122,107,0.06)] hover:border-neutral-400";
 
 export function SignupForm({
   action,
@@ -36,8 +36,8 @@ export function SignupForm({
   const pw = PasswordToggle();
   const confirmPw = PasswordToggle();
   const submitLabel = allowPublicRegistration
-    ? "Request account"
-    : "Request access review";
+    ? "Validate access setup"
+    : "Access is administrator-provisioned";
 
   return (
     <form action={formAction} className="grid gap-4">
@@ -56,7 +56,7 @@ export function SignupForm({
             />
 
             <div>
-              <label htmlFor="role" className="mb-1.5 block text-xs font-medium text-neutral-600 dark:text-white/50">
+              <label htmlFor="role" className="mb-1.5 block text-sm font-medium text-neutral-700">
                 Role
               </label>
               <select
@@ -146,7 +146,7 @@ export function SignupForm({
               >
                 <p
                   role="alert"
-                  className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-400 dark:border-red-500/15 dark:bg-red-500/5 dark:text-red-400"
+                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700"
                 >
                   {state.error}
                 </p>
@@ -161,7 +161,7 @@ export function SignupForm({
             disabled={pending}
             whileHover={{ scale: pending ? 1 : 1.01 }}
             whileTap={{ scale: pending ? 1 : 0.98 }}
-            className="inline-flex w-full shrink-0 items-center justify-center rounded-lg bg-[#06251F] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#0a3d33] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+            className="inline-flex h-12 w-full shrink-0 items-center justify-center rounded-full border border-[#0D7A6B] bg-[#0D7A6B] px-4 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(13,122,107,0.18)] transition-colors hover:bg-[#09695d] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#0D7A6B]/25 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <AnimatePresence mode="wait">
               {pending ? (
@@ -195,7 +195,7 @@ export function SignupForm({
                       className="opacity-75"
                     />
                   </svg>
-                  Reviewing request...
+                  Checking details...
                 </motion.span>
               ) : (
                 <motion.span

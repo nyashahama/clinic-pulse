@@ -103,17 +103,6 @@ function PasswordEmailSignIn({
         />
       </AuthFadeIn>
 
-      <AuthFadeIn>
-        <div className="flex items-center justify-end">
-          <a
-            href="/forgot-password"
-            className="text-xs font-medium text-neutral-500 transition-colors hover:text-[#0D7A6B] dark:text-white/40 dark:hover:text-emerald-300"
-          >
-            Forgot password?
-          </a>
-        </div>
-      </AuthFadeIn>
-
       <AnimatePresence>
         {state.error && (
           <motion.div
@@ -128,7 +117,7 @@ function PasswordEmailSignIn({
             >
               <p
                 role="alert"
-                className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-400 dark:border-red-500/15 dark:bg-red-500/5 dark:text-red-400"
+                className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700"
               >
                 {state.error}
               </p>
@@ -199,4 +188,4 @@ function PasswordEmailSignIn({
 }
 
 const buttonClassName =
-  "inline-flex w-full shrink-0 items-center justify-center rounded-lg bg-[#06251F] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#0a3d33] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-500";
+  "inline-flex h-12 w-full shrink-0 items-center justify-center rounded-full border border-[#0D7A6B] bg-[#0D7A6B] px-4 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(13,122,107,0.18)] transition-colors hover:bg-[#09695d] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#0D7A6B]/25 disabled:cursor-not-allowed disabled:opacity-50";

@@ -17,20 +17,23 @@ export function IncidentDemoCTA() {
   ] as const;
 
   return (
-    <section className="bg-white px-4 py-16 dark:bg-background sm:px-6 sm:py-20 lg:px-8 lg:py-24">
-      <div className="mx-auto max-w-screen-xl overflow-hidden rounded-xl border border-neutral-800 bg-neutral-950 text-white shadow-2xl shadow-neutral-950/25">
+    <section
+      data-public-surface="light"
+      className="bg-[#eef3f2] px-4 py-14 text-[#17201e] sm:px-6 sm:py-18 lg:px-8 lg:py-24"
+    >
+      <div className="mx-auto max-w-screen-xl overflow-hidden rounded-[1.75rem] border border-neutral-200 bg-white shadow-[0_24px_70px_rgba(23,32,30,0.10)]">
         <div className="grid gap-0 lg:grid-cols-[1.04fr_0.96fr]">
           <div className="px-6 py-10 sm:px-10 lg:px-12 lg:py-14">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#0D7A6B]">
               {incidentDemoCta.eyebrow}
             </p>
             <h2
-              className="mt-4 font-display text-3xl leading-[1.08] text-white sm:text-4xl lg:text-5xl"
+              className="mt-4 font-display text-3xl leading-[1.08] text-[#17201e] sm:text-4xl lg:text-5xl"
               style={{ textWrap: "balance" }}
             >
               {incidentDemoCta.title}
             </h2>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-white/62">
+            <p className="mt-5 max-w-2xl text-base leading-7 text-neutral-600">
               {incidentDemoCta.description}
             </p>
 
@@ -38,7 +41,7 @@ export function IncidentDemoCTA() {
               <ButtonLink
                 href={incidentDemoCta.primaryCta.href}
                 variant="primary"
-                className="h-11 border-primary bg-primary text-primary-foreground shadow-[0_0_0_1px_rgba(62,207,142,0.16),0_18px_48px_rgba(62,207,142,0.16)] hover:bg-primary/90 hover:ring-primary/20"
+                className="h-12 rounded-full border-[#0D7A6B] bg-[#0D7A6B] text-white shadow-[0_14px_34px_rgba(13,122,107,0.20)] hover:bg-[#09695d] hover:ring-[#0D7A6B]/15"
               >
                 {incidentDemoCta.primaryCta.label}
                 <ArrowRight className="size-4" />
@@ -46,25 +49,25 @@ export function IncidentDemoCTA() {
               <ButtonLink
                 href={incidentDemoCta.secondaryCta.href}
                 variant="secondary"
-                className="h-11 border-white/20 bg-transparent text-white hover:border-white/40 hover:bg-white/10"
+                className="h-12 rounded-full border-neutral-300 bg-white text-neutral-800 hover:border-[#0D7A6B]/40 hover:bg-emerald-50 hover:text-[#0D7A6B]"
               >
                 {incidentDemoCta.secondaryCta.label}
                 <ExternalLink className="size-4" />
               </ButtonLink>
             </div>
-            <p className="mt-5 text-xs leading-5 text-white/55">{incidentDemoCta.note}</p>
+            <p className="mt-5 text-sm leading-6 text-neutral-500">{incidentDemoCta.note}</p>
           </div>
 
-          <div className="border-t border-white/10 bg-white/[0.04] p-4 sm:p-6 lg:border-l lg:border-t-0">
-            <div className="grid h-full content-between gap-6 rounded-lg border border-white/10 bg-neutral-900 p-4 sm:p-5">
-              <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-4">
+          <div className="border-t border-neutral-200 bg-[#f7faf9] p-4 sm:p-6 lg:border-l lg:border-t-0">
+            <div className="grid h-full content-between gap-6 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="flex items-center justify-between gap-3 border-b border-neutral-200 pb-4">
                 <div className="flex min-w-0 items-center gap-3">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-md border border-emerald-300/30 bg-neutral-950 text-emerald-300">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-[#0D7A6B]">
                     <ClipboardCheck className="size-5" />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-white">Live incident summary</p>
-                    <p className="mt-1 break-words font-mono text-xs text-white/55">
+                    <p className="text-sm font-semibold text-neutral-950">Live incident summary</p>
+                    <p className="mt-1 break-words font-mono text-xs text-neutral-500">
                       STATUS_INCIDENT / NON_FUNCTIONAL
                     </p>
                   </div>
@@ -75,18 +78,18 @@ export function IncidentDemoCTA() {
                 {incidentSummary.map((item) => (
                   <div
                     key={item.label}
-                    className="grid min-w-0 gap-1 rounded-md border border-white/10 bg-neutral-950 px-3 py-3"
+                    className="grid min-w-0 gap-1 rounded-xl border border-neutral-200 bg-[#f7faf9] px-3 py-3"
                   >
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/55">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">
                       {item.label}
                     </p>
-                    <p className="break-words font-mono text-sm text-white">{item.value}</p>
+                    <p className="break-words font-mono text-sm text-neutral-900">{item.value}</p>
                   </div>
                 ))}
               </div>
 
               <AuditSealStream
-                className="mt-2 rounded-xl border border-white/10 bg-white/[0.04] p-2"
+                className="mt-2 rounded-xl border border-neutral-200 bg-[#f7faf9] p-2"
                 events={ctaAuditSealEvents}
               />
             </div>

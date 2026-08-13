@@ -1,12 +1,12 @@
 "use client";
 
+import { ArrowRight, Radio } from "lucide-react";
 import Image from "next/image";
-import { ArrowRight } from "lucide-react";
 
 import { HeroDistrictConsole } from "@/components/landing/hero-district-console";
 import { LiveSignalField } from "@/components/landing/motion/live-signal-field";
 import { ScrollReveal } from "@/components/landing/motion/scroll-reveal";
-import { landingPhotos } from "@/components/landing/photo-assets";
+import { operationalLandingPhotos } from "@/components/landing/photo-assets";
 import { liveIncidentHero } from "@/lib/landing/openpanel-refactor-content";
 
 type LiveIncidentHeroProps = {
@@ -14,79 +14,113 @@ type LiveIncidentHeroProps = {
 };
 
 export function LiveIncidentHero({ onBookDemo }: LiveIncidentHeroProps) {
-  return (
-    <section className="relative isolate overflow-hidden border-b border-neutral-950 bg-neutral-950 text-white">
-      <Image
-        src={landingPhotos.heroClinic.src}
-        alt={landingPhotos.heroClinic.alt}
-        fill
-        priority
-        sizes="100vw"
-        className="absolute inset-0 -z-20 object-cover"
-        style={{ objectPosition: landingPhotos.heroClinic.position }}
-      />
-      <div className="absolute inset-0 -z-10 bg-neutral-950/68 sm:bg-neutral-950/62" />
-      <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(10,10,10,0.94)_0%,rgba(10,10,10,0.84)_46%,rgba(10,10,10,0.62)_100%)] lg:bg-[linear-gradient(90deg,rgba(10,10,10,0.94)_0%,rgba(10,10,10,0.66)_46%,rgba(10,10,10,0.18)_100%)]" />
-      <LiveSignalField className="z-0" />
+  const heroPhoto = operationalLandingPhotos.heroWorker;
 
-      <div className="relative z-10 mx-auto grid min-h-[calc(100svh-5rem)] w-full max-w-screen-xl grid-cols-1 gap-6 px-4 py-7 sm:px-6 sm:py-8 lg:grid-cols-[0.86fr_1.14fr] lg:items-center lg:gap-8 lg:px-10 lg:py-10">
-        <div className="min-w-0 max-w-2xl">
+  return (
+    <section
+      data-public-surface="light"
+      className="relative isolate overflow-hidden border-b border-neutral-200 bg-[#f7faf9] text-[#17201e]"
+    >
+      <div className="absolute inset-0 -z-20 bg-[radial-gradient(circle_at_12%_12%,rgba(13,122,107,0.10),transparent_28%),radial-gradient(circle_at_88%_30%,rgba(59,130,246,0.07),transparent_30%)]" />
+      <LiveSignalField className="z-0 opacity-30" />
+
+      <div className="relative z-10 mx-auto grid w-full max-w-screen-xl gap-12 px-4 pb-16 pt-16 sm:px-6 sm:pb-20 sm:pt-20 lg:grid-cols-[0.82fr_1.18fr] lg:items-center lg:gap-14 lg:px-10 lg:pb-24 lg:pt-24">
+        <div className="max-w-2xl">
           <ScrollReveal delay={0.02}>
-            <p className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white/72 backdrop-blur">
-              {liveIncidentHero.eyebrow}
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-800">
+                <span className="size-2 rounded-full bg-emerald-600" />
+                {liveIncidentHero.eyebrow}
+              </p>
+              <p className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-600">
+                Illustrative operational scenario
+              </p>
+            </div>
           </ScrollReveal>
+
           <ScrollReveal delay={0.08}>
-            <h1 className="mt-5 max-w-3xl font-display text-[2.85rem] leading-[0.98] text-white sm:text-6xl lg:text-7xl">
+            <h1 className="mt-7 max-w-3xl font-display text-[2.8rem] leading-[0.98] tracking-[-0.052em] text-[#17201e] sm:text-6xl lg:text-[4.5rem]">
               {liveIncidentHero.title}
             </h1>
           </ScrollReveal>
+
           <ScrollReveal delay={0.14}>
-            <p className="mt-5 max-w-xl text-base leading-7 text-white/76 sm:text-lg sm:leading-8">
+            <p className="mt-6 max-w-xl text-lg leading-8 text-neutral-600">
               {liveIncidentHero.description}
             </p>
           </ScrollReveal>
 
           <ScrollReveal delay={0.2}>
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <button
                 type="button"
                 onClick={onBookDemo}
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-primary bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_0_0_1px_rgba(62,207,142,0.16),0_18px_48px_rgba(62,207,142,0.18)] transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-primary/35 sm:w-auto"
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full border border-[#0D7A6B] bg-[#0D7A6B] px-6 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(13,122,107,0.20)] transition hover:bg-[#09695d] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#0D7A6B]/25 sm:w-auto"
               >
                 {liveIncidentHero.primaryCta.label}
                 <ArrowRight className="size-4" />
               </button>
               <a
                 href={liveIncidentHero.secondaryCta.href}
-                className="inline-flex h-11 w-full items-center justify-center rounded-lg border border-white/25 bg-white/10 px-5 text-sm font-semibold text-white transition hover:border-white/45 hover:bg-white/15 sm:w-auto"
+                className="inline-flex h-12 w-full items-center justify-center rounded-full border border-neutral-300 bg-white px-6 text-sm font-semibold text-neutral-800 transition hover:border-[#0D7A6B]/40 hover:bg-emerald-50 hover:text-[#0D7A6B] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#0D7A6B]/20 sm:w-auto"
               >
                 {liveIncidentHero.secondaryCta.label}
               </a>
             </div>
           </ScrollReveal>
 
-          <ScrollReveal delay={0.26}>
-            <div className="mt-6 grid grid-cols-3 gap-2 sm:mt-8 sm:gap-3">
-              {liveIncidentHero.metrics.map((metric) => (
-                <div
-                  key={metric.label}
-                  className="rounded-lg border border-white/15 bg-white/10 p-2 backdrop-blur sm:p-3"
-                >
-                  <p className="font-display text-xl text-white sm:text-2xl">{metric.value}</p>
-                  <p className="mt-1 text-[9px] font-semibold uppercase leading-4 tracking-[0.12em] text-white/60 sm:text-xs">
-                    {metric.label}
-                  </p>
-                  <p className="mt-2 hidden text-xs leading-5 text-white/58 sm:block">
-                    {metric.detail}
-                  </p>
-                </div>
-              ))}
+          <ScrollReveal delay={0.24}>
+            <div className="mt-7 flex max-w-lg items-start gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm leading-6 text-neutral-600 shadow-sm">
+              <span className="mt-1 flex size-7 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-[#0D7A6B]">
+                <Radio className="size-3.5" />
+              </span>
+              <span>
+                <strong className="font-semibold text-neutral-900">Mabopane Station:</strong>{" "}
+                pharmacy signal received, source attached, reroute ready for review.
+              </span>
             </div>
           </ScrollReveal>
         </div>
 
-        <HeroDistrictConsole className="self-center rounded-xl bg-white/8 p-2 shadow-2xl shadow-black/35 ring-1 ring-white/10 backdrop-blur-md" />
+        <ScrollReveal delay={0.28} className="relative min-w-0">
+          <div className="absolute -inset-8 -z-10 rounded-[3rem] bg-[radial-gradient(ellipse_at_center,rgba(13,122,107,0.12),transparent_68%)]" />
+          <div className="relative rounded-[1.5rem] border border-neutral-200 bg-white p-2 shadow-[0_28px_80px_rgba(23,32,30,0.13)] sm:p-3">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1 pt-1">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-700">
+                Scenario workspace
+              </p>
+              <p className="text-xs font-medium text-neutral-500">
+                Demonstration data · not live
+              </p>
+            </div>
+            <div className="relative mb-3 aspect-[16/4] min-h-24 overflow-hidden rounded-xl bg-neutral-100">
+              <Image
+                src={heroPhoto.src}
+                alt={heroPhoto.alt}
+                fill
+                priority
+                sizes="(min-width: 1024px) 52vw, 100vw"
+                className="object-cover"
+                style={{ objectPosition: heroPhoto.position }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#17201e]/75 via-[#17201e]/20 to-transparent" />
+              <div className="absolute inset-x-3 bottom-3 flex flex-wrap items-center justify-between gap-2">
+                <p className="rounded-full bg-white/92 px-3 py-1 text-xs font-semibold text-neutral-700 shadow-sm">
+                  {heroPhoto.caption}
+                </p>
+                <a
+                  href={heroPhoto.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-full bg-white/92 px-3 py-1 text-xs font-medium text-neutral-600 shadow-sm hover:text-[#0D7A6B]"
+                >
+                  Photo: {heroPhoto.credit}
+                </a>
+              </div>
+            </div>
+            <HeroDistrictConsole className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm" />
+          </div>
+        </ScrollReveal>
       </div>
     </section>
   );

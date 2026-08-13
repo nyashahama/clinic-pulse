@@ -15,6 +15,7 @@ export function BrowserFrame({
 }: BrowserFrameProps) {
   return (
     <div
+      data-public-light-preview="browser-frame"
       className={cn(
         "min-w-0 max-w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-border dark:bg-card",
         className,
@@ -58,6 +59,7 @@ export function StatusPill({
 }) {
   return (
     <span
+      data-public-light-preview="status-pill"
       className={cn(
         "inline-flex max-w-full items-center whitespace-normal break-words rounded-full border px-2 py-0.5 text-[11px] font-semibold",
         toneClasses[tone],
@@ -78,7 +80,10 @@ export function MetricTile({
   value: string;
 }) {
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-2 dark:border-border dark:bg-card sm:p-3">
+    <div
+      data-public-light-preview="metric-tile"
+      className="rounded-lg border border-neutral-200 bg-white p-2 dark:border-border dark:bg-card sm:p-3"
+    >
       <p className="text-[9px] font-semibold uppercase leading-4 tracking-[0.12em] text-neutral-600 dark:text-muted-foreground sm:text-[11px]">
         {label}
       </p>
@@ -101,6 +106,7 @@ export function ProductRow({
 }) {
   return (
     <div
+      data-public-light-preview="product-row"
       className={cn(
         "rounded-lg border px-3 py-2 text-xs transition",
         active ? activeRowToneClasses[activeTone] : "border-neutral-200 bg-white dark:border-border dark:bg-card",

@@ -23,7 +23,7 @@ export function AuthInput({
 
   return (
     <div className="relative">
-      <label htmlFor={id} className="mb-1.5 block text-xs font-medium text-neutral-600 dark:text-white/50">
+      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-neutral-700">
         {label}
       </label>
       <div className="relative">
@@ -39,13 +39,12 @@ export function AuthInput({
             props.onBlur?.(e);
           }}
           className={cn(
-            "block w-full min-w-0 appearance-none rounded-lg border bg-white px-3.5 py-2.5 text-sm text-neutral-900 outline-none transition-all duration-200",
+            "block min-h-12 w-full min-w-0 appearance-none rounded-xl border bg-white px-3.5 py-2.5 text-base text-neutral-900 outline-none transition-all duration-200",
             "placeholder:text-neutral-400",
-            "dark:bg-white/5 dark:text-white dark:placeholder:text-white/30",
             focused
-              ? "border-[#0D7A6B] ring-2 ring-[#0D7A6B]/15 shadow-[0_0_0_3px_rgba(13,122,107,0.06)] dark:border-emerald-400/50 dark:ring-emerald-400/15 dark:shadow-[0_0_0_3px_rgba(52,211,153,0.06)]"
-              : "border-neutral-200 hover:border-neutral-300 dark:border-white/10 dark:hover:border-white/20",
-            error && !focused && "border-red-400 dark:border-red-500/60",
+              ? "border-[#0D7A6B] ring-2 ring-[#0D7A6B]/15 shadow-[0_0_0_3px_rgba(13,122,107,0.06)]"
+              : "border-neutral-300 hover:border-neutral-400",
+            error && !focused && "border-red-400",
             trailing && "pr-10",
             className,
           )}
@@ -64,7 +63,7 @@ export function AuthInput({
             animate={{ opacity: 1, y: 0, height: "auto" }}
             exit={{ opacity: 0, y: -4, height: 0 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="mt-1.5 text-xs font-medium text-red-500 dark:text-red-400"
+            className="mt-1.5 text-xs font-medium text-red-600"
           >
             {error}
           </motion.p>

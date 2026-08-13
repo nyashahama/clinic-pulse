@@ -4,28 +4,41 @@ async function gotoLanding(page: Page) {
   await page.goto("/", { waitUntil: "domcontentloaded" });
 }
 
-async function gotoLandingInDarkMode(page: Page) {
+async function gotoLandingWithDarkPreference(page: Page) {
   await page.addInitScript(() => {
     window.localStorage.setItem("theme", "dark");
   });
   await gotoLanding(page);
-  await expect(page.locator("html")).toHaveClass(/(?:^|\s)dark(?:\s|$)/);
+  await expect(page.locator('[data-public-shell="landing"]')).toHaveAttribute(
+    "data-public-theme",
+    "clinical-light",
+  );
 }
 
 async function readSurfaceColors(locator: ReturnType<Page["locator"]>) {
   return locator.evaluate((element) => {
+    const readRgb = (value: string) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1;
+      canvas.height = 1;
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      if (!context) return [];
+      context.fillStyle = value;
+      context.fillRect(0, 0, 1, 1);
+      return Array.from(context.getImageData(0, 0, 1, 1).data.slice(0, 3));
+    };
     const primaryProbe = document.createElement("div");
     primaryProbe.style.backgroundColor = "var(--primary)";
-    document.body.append(primaryProbe);
+    element.append(primaryProbe);
 
     const foregroundProbe = document.createElement("div");
     foregroundProbe.style.backgroundColor = "var(--foreground)";
-    document.body.append(foregroundProbe);
+    element.append(foregroundProbe);
 
     const colors = {
-      actual: getComputedStyle(element).backgroundColor,
-      foreground: getComputedStyle(foregroundProbe).backgroundColor,
-      primary: getComputedStyle(primaryProbe).backgroundColor,
+      actual: readRgb(getComputedStyle(element).backgroundColor),
+      foreground: readRgb(getComputedStyle(foregroundProbe).backgroundColor),
+      primary: readRgb(getComputedStyle(primaryProbe).backgroundColor),
     };
 
     primaryProbe.remove();
@@ -49,10 +62,10 @@ test.describe("landing page 2026", () => {
     await expect(header.getByRole("link", { name: "Book walkthrough" })).toBeVisible();
   });
 
-  test("uses dark-native brand surfaces for public CTAs and booking selections", async ({
+  test("keeps the clinical action hierarchy when a dark preference is stored", async ({
     page,
   }) => {
-    await gotoLandingInDarkMode(page);
+    await gotoLandingWithDarkPreference(page);
 
     const headerBook = page.locator("header").getByRole("link", {
       name: "Book walkthrough",
@@ -62,8 +75,26 @@ test.describe("landing page 2026", () => {
     for (const target of [headerBook, heroBook]) {
       const colors = await readSurfaceColors(target);
 
-      expect(colors.actual).toBe(colors.primary);
-      expect(colors.actual).not.toBe(colors.foreground);
+      expect(colors.actual).toEqual(colors.primary);
+      expect(colors.actual).not.toEqual(colors.foreground);
+    }
+
+    const nestedLightPreviews = page.locator("[data-public-light-preview]");
+    expect(await nestedLightPreviews.count()).toBeGreaterThanOrEqual(12);
+    for (const preview of await nestedLightPreviews.all()) {
+      const background = await preview.evaluate((element) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 1;
+        canvas.height = 1;
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        if (!context) return [];
+        context.fillStyle = getComputedStyle(element).backgroundColor;
+        context.fillRect(0, 0, 1, 1);
+        return Array.from(context.getImageData(0, 0, 1, 1).data.slice(0, 3));
+      });
+
+      expect(background).toHaveLength(3);
+      expect(Math.min(...background)).toBeGreaterThanOrEqual(230);
     }
 
     await heroBook.click();
@@ -77,11 +108,15 @@ test.describe("landing page 2026", () => {
     const selectedDay = enabledDays.first();
     const selectedTime = dialog.getByRole("button", { name: "10:30" });
 
+    await selectedDay.click();
+    await selectedTime.click();
+    await page.waitForTimeout(300);
+
     for (const target of [selectedDay, selectedTime]) {
       const colors = await readSurfaceColors(target);
 
-      expect(colors.actual).toBe(colors.primary);
-      expect(colors.actual).not.toBe(colors.foreground);
+      expect(colors.actual).toHaveLength(3);
+      expect(Math.max(...colors.actual)).toBeLessThanOrEqual(55);
     }
   });
 
@@ -109,7 +144,7 @@ test.describe("landing page 2026", () => {
     await expect(console).toContainText("AUD-OPS-MAB-001");
     await expect(
       page.getByRole("img", {
-        name: /clinic entrance used to frame a live service availability incident/i,
+        name: /clinician in a white coat checking a smartphone/i,
       }),
     ).toBeVisible();
     await expect(page.getByRole("button", { name: "Book walkthrough" }).first()).toBeVisible();
@@ -211,7 +246,7 @@ test.describe("landing page 2026", () => {
     await expect(statusGap.getByText("Stale public data creates risk")).toBeVisible();
     await expect(
       statusGap.getByRole("img", {
-        name: /clinic status context for a public availability update/i,
+        name: /person outdoors holding a folder while checking a smartphone/i,
       }),
     ).toBeVisible();
   });

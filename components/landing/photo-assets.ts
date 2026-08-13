@@ -5,6 +5,14 @@ export type LandingPhoto = {
   position?: string;
 };
 
+export type LicensedLandingPhoto = LandingPhoto & {
+  id: string;
+  caption: string;
+  sourceUrl: `https://${string}`;
+  licenseLabel: string;
+  licenseUrl: `https://${string}`;
+};
+
 export const landingPhotos = {
   heroClinic: {
     src: "/district/clinics/clinic-front-02.jpg",
@@ -37,3 +45,42 @@ export const landingPhotos = {
     position: "center",
   },
 } satisfies Record<string, LandingPhoto>;
+
+export const operationalLandingPhotos = {
+  heroWorker: {
+    id: "hero-clinic-worker",
+    src: "/landing/clinic-worker-phone.jpg",
+    alt: "clinician in a white coat checking a smartphone while holding a notebook",
+    credit: "Tessy Agbonome",
+    caption: "Illustrative primary-care context",
+    sourceUrl:
+      "https://www.pexels.com/photo/doctor-sitting-with-notebook-and-smartphone-19963173/",
+    licenseLabel: "Pexels License",
+    licenseUrl: "https://www.pexels.com/legal-pages/license/",
+    position: "center",
+  },
+  fieldReport: {
+    id: "field-report-context",
+    src: "/landing/field-report-context.jpg",
+    alt: "healthcare worker outdoors speaking on a phone beside a clipboard",
+    credit: "Laura James",
+    caption: "Illustrative field-reporting context",
+    sourceUrl:
+      "https://www.pexels.com/photo/black-physician-talking-on-smartphone-at-table-on-street-6097764/",
+    licenseLabel: "Pexels License",
+    licenseUrl: "https://www.pexels.com/legal-pages/license/",
+    position: "center 44%",
+  },
+  patientRoute: {
+    id: "patient-route-context",
+    src: "/landing/patient-route-context.jpg",
+    alt: "person outdoors holding a folder while checking a smartphone",
+    credit: "Charlotte May",
+    caption: "Illustrative mobile-routing context",
+    sourceUrl:
+      "https://www.pexels.com/photo/black-woman-with-folder-using-smartphone-5965914/",
+    licenseLabel: "Pexels License",
+    licenseUrl: "https://www.pexels.com/legal-pages/license/",
+    position: "center",
+  },
+} satisfies Record<string, LicensedLandingPhoto>;
