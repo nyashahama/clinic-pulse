@@ -4,7 +4,7 @@ import {
   LandingSection,
   LandingSectionHeader,
 } from "@/components/landing/landing-section";
-import { landingPhotos } from "@/components/landing/photo-assets";
+import { operationalLandingPhotos } from "@/components/landing/photo-assets";
 import {
   operatingGap,
   statusGapTimeline,
@@ -12,10 +12,10 @@ import {
 import { cn } from "@/lib/utils";
 
 const toneClassNames = {
-  warning: "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-200",
-  neutral: "border-neutral-200 bg-neutral-50 text-neutral-800 dark:border-border dark:bg-muted dark:text-muted-foreground",
-  critical: "border-red-200 bg-red-50 text-red-900 dark:border-red-900/60 dark:bg-red-950/35 dark:text-red-200",
-  healthy: "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/35 dark:text-emerald-200",
+  warning: "border-amber-200 bg-amber-50 text-amber-950",
+  neutral: "border-neutral-200 bg-neutral-50 text-neutral-800",
+  critical: "border-red-200 bg-red-50 text-red-950",
+  healthy: "border-emerald-200 bg-emerald-50 text-emerald-950",
 } satisfies Record<(typeof statusGapTimeline)[number]["tone"], string>;
 
 const dotClassNames = {
@@ -26,10 +26,10 @@ const dotClassNames = {
 } satisfies Record<(typeof statusGapTimeline)[number]["tone"], string>;
 
 export function StatusGapStory() {
-  const photo = landingPhotos.clinicExterior;
+  const photo = operationalLandingPhotos.patientRoute;
 
   return (
-    <LandingSection id="problem">
+    <LandingSection id="problem" className="bg-[#eef3f2]">
       <div className="grid gap-8 lg:grid-cols-[0.82fr_1.18fr] lg:items-center lg:gap-14">
         <LandingSectionHeader
           eyebrow={operatingGap.label}
@@ -37,7 +37,7 @@ export function StatusGapStory() {
           description={operatingGap.description}
         />
 
-        <div className="overflow-hidden rounded-xl border border-white/[0.09] bg-white/[0.025] shadow-2xl shadow-black/20">
+        <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_18px_50px_rgba(23,32,30,0.08)]">
           <div className="relative aspect-[16/6] min-h-36">
             <Image
               src={photo.src}
@@ -47,9 +47,22 @@ export function StatusGapStory() {
               className="object-cover"
               style={{ objectPosition: photo.position }}
             />
+            <div className="absolute inset-x-3 bottom-3 flex flex-wrap items-center justify-between gap-2">
+              <p className="rounded-full bg-white/92 px-3 py-1 text-xs font-semibold text-neutral-700 shadow-sm">
+                {photo.caption}
+              </p>
+              <a
+                href={photo.sourceUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-full bg-white/92 px-3 py-1 text-xs font-medium text-neutral-600 shadow-sm hover:text-[#0D7A6B]"
+              >
+                Photo: {photo.credit}
+              </a>
+            </div>
           </div>
 
-          <div className="border-t border-neutral-200 p-4 dark:border-border sm:p-5">
+          <div className="border-t border-neutral-200 p-4 sm:p-5">
             <div className="grid gap-2.5" data-motion-layer="true">
               {statusGapTimeline.map((item, index) => (
                 <article

@@ -4,7 +4,11 @@ import { trustEvidencePanels } from "@/lib/landing/openpanel-refactor-content";
 
 export function EvidenceInfrastructure() {
   return (
-    <section id="trust" className="border-y border-white/[0.08] bg-[#050606] px-4 text-white sm:px-6 lg:px-8">
+    <section
+      id="trust"
+      data-public-surface="dark-evidence"
+      className="border-y border-white/[0.08] bg-[#050606] px-4 text-white sm:px-6 lg:px-8"
+    >
       <div className="mx-auto grid max-w-screen-xl gap-8 py-14 sm:py-18 lg:grid-cols-[0.72fr_1.28fr] lg:items-start lg:gap-12 lg:py-24">
         <div className="max-w-3xl">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300">
@@ -20,7 +24,7 @@ export function EvidenceInfrastructure() {
             In the scenario, every decision keeps its source, permissions,
             freshness, audit reference, export state, and partner handoff visible.
           </p>
-          <p className="mt-6 border-l border-emerald-300/40 pl-4 font-mono text-[10px] uppercase leading-5 tracking-[0.14em] text-white/56">
+          <p className="mt-6 border-l border-emerald-300/40 pl-4 font-mono text-xs leading-5 text-white/64">
             Modeled product evidence · not deployment telemetry
           </p>
         </div>
@@ -28,7 +32,7 @@ export function EvidenceInfrastructure() {
         <div className="grid min-w-0 gap-4">
           <AuditSealStream className="rounded-xl border border-white/10 bg-white/[0.04] p-2" />
 
-          <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-white/56 sm:hidden">
+          <p className="font-mono text-xs text-white/64 sm:hidden">
             Swipe to inspect the evidence objects
           </p>
           <MobileSwipeRail

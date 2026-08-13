@@ -18,7 +18,10 @@ const navigation = {
 
 export function Footer() {
   return (
-    <footer className="border-t border-white/[0.08] bg-[#050606]">
+    <footer
+      data-public-chrome="light"
+      className="border-t border-neutral-200 bg-white text-[#17201e]"
+    >
       <div className="mx-auto w-full max-w-screen-xl px-4 sm:px-6 lg:px-10">
         <div className="relative z-10 overflow-hidden px-0 py-12 sm:py-14">
           <div className="xl:grid xl:grid-cols-3 xl:gap-8">
@@ -65,15 +68,15 @@ export function Footer() {
               </div>
             </div>
           </div>
-          <div className="mt-10 flex flex-col items-start gap-4 border-t border-white/[0.07] pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-10 flex flex-col items-start gap-4 border-t border-neutral-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <span className="relative flex h-2 w-2">
                 <span className="animate-pulse-dot absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
                 <span className="inline-flex h-2 w-2 rounded-full bg-green-500" />
               </span>
-              <span className="text-xs text-white/56">Illustrative workspace ready</span>
+              <span className="text-xs font-medium text-neutral-600">Illustrative workspace ready</span>
             </div>
-            <p className="max-w-72 text-xs leading-5 text-white/56 sm:text-right">
+            <p className="max-w-72 text-xs leading-5 text-neutral-500 sm:text-right">
               Scenario data is local to the walkthrough and mirrors the Clinic Pulse operating model.
             </p>
           </div>

@@ -21,19 +21,76 @@ async function expectVisibleThroughAncestors(
 }
 
 test.describe("public landing and auth experience", () => {
-  test("uses one dark public design system across every route", async ({ page }) => {
+  test("uses one light-first clinical design system across every route", async ({ page }) => {
     for (const route of routes) {
       await page.goto(route, { waitUntil: "domcontentloaded" });
 
       const shell = page.locator("[data-public-shell]").first();
       await expect(shell).toBeVisible();
-      await expect(shell).toHaveAttribute("data-public-theme", "dark-editorial");
+      await expect(shell).toHaveAttribute("data-public-theme", "clinical-light");
+      await expect(shell).not.toHaveClass(/(?:^|\s)dark(?:\s|$)/);
 
-      const background = await shell.evaluate(
-        (element) => getComputedStyle(element).backgroundColor,
-      );
-      expect(background).toMatch(/^rgb\((?:[0-9]|1[0-8]), (?:[0-9]|1[0-8]), (?:[0-9]|1[0-8])\)$/);
+      const colors = await shell.evaluate((element) => {
+        const styles = getComputedStyle(element);
+        const parseRgb = (value: string) =>
+          value.match(/\d+(?:\.\d+)?/g)?.slice(0, 3).map(Number) ?? [];
+
+        return {
+          background: parseRgb(styles.backgroundColor),
+          foreground: parseRgb(styles.color),
+          colorScheme: styles.colorScheme,
+        };
+      });
+
+      expect(colors.background).toHaveLength(3);
+      expect(Math.min(...colors.background)).toBeGreaterThanOrEqual(230);
+      expect(colors.foreground).toHaveLength(3);
+      expect(Math.max(...colors.foreground)).toBeLessThanOrEqual(55);
+      expect(colors.colorScheme).toBe("light");
     }
+  });
+
+  test("keeps the landing light with one contained evidence chapter", async ({
+    page,
+  }) => {
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+
+    const lightSurfaces = page.locator('[data-public-surface="light"]');
+    const darkEvidence = page.locator('[data-public-surface="dark-evidence"]');
+    const lightChrome = page.locator('[data-public-chrome="light"]');
+
+    await expect(lightSurfaces).toHaveCount(6);
+    await expect(darkEvidence).toHaveCount(1);
+    await expect(lightChrome).toHaveCount(2);
+
+    const expectedLightElements = [...(await lightSurfaces.all()), ...(await lightChrome.all())];
+    for (const element of expectedLightElements) {
+      const channels = await element.evaluate((node) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 1;
+        canvas.height = 1;
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        if (!context) return [];
+        context.fillStyle = getComputedStyle(node).backgroundColor;
+        context.fillRect(0, 0, 1, 1);
+        return Array.from(context.getImageData(0, 0, 1, 1).data.slice(0, 3));
+      });
+      expect(channels).toHaveLength(3);
+      expect(Math.min(...channels)).toBeGreaterThanOrEqual(230);
+    }
+
+    const darkChannels = await darkEvidence.evaluate((element) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1;
+      canvas.height = 1;
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      if (!context) return [];
+      context.fillStyle = getComputedStyle(element).backgroundColor;
+      context.fillRect(0, 0, 1, 1);
+      return Array.from(context.getImageData(0, 0, 1, 1).data.slice(0, 3));
+    });
+    expect(darkChannels).toHaveLength(3);
+    expect(Math.max(...darkChannels)).toBeLessThanOrEqual(28);
   });
 
   test("labels the product story honestly and removes unsupported scale claims", async ({
@@ -41,6 +98,7 @@ test.describe("public landing and auth experience", () => {
   }) => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
     await expect(page.getByText("Illustrative operational scenario").first()).toBeVisible();
+    await expect(page.getByText("Scenario workspace", { exact: true })).toBeVisible();
     await expect(
       page.getByRole("heading", {
         name: "Know which clinics can help before patients travel.",
@@ -52,6 +110,38 @@ test.describe("public landing and auth experience", () => {
       await expect(page.getByText("Illustrative workspace scenario")).toBeVisible();
       await expect(page.getByText("3,500+", { exact: true })).toHaveCount(0);
       await expect(page.getByText("<30s", { exact: true })).toHaveCount(0);
+    }
+  });
+
+  test("keeps authentication content on readable light surfaces", async ({ page }) => {
+    for (const route of ["/login", "/register"] as const) {
+      await page.goto(route, { waitUntil: "domcontentloaded" });
+
+      const panel = page.locator('[data-auth-panel="true"]');
+      await expect(panel).toBeVisible();
+
+      const colors = await panel.evaluate((element) => {
+        const styles = getComputedStyle(element);
+        const channels = (value: string) =>
+          value.match(/\d+(?:\.\d+)?/g)?.slice(0, 3).map(Number) ?? [];
+        return {
+          background: channels(styles.backgroundColor),
+          foreground: channels(styles.color),
+        };
+      });
+
+      expect(Math.min(...colors.background)).toBeGreaterThanOrEqual(248);
+      expect(Math.max(...colors.foreground)).toBeLessThanOrEqual(55);
+    }
+
+    await page.goto("/login", { waitUntil: "domcontentloaded" });
+    for (const control of [
+      page.getByLabel("Email address"),
+      page.getByRole("textbox", { name: "Password", exact: true }),
+      page.getByRole("button", { name: "Log in" }),
+    ]) {
+      const box = await control.boundingBox();
+      expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
     }
   });
 
@@ -79,6 +169,8 @@ test.describe("public landing and auth experience", () => {
     await expectVisibleThroughAncestors(loginPassword);
     await expectVisibleThroughAncestors(loginButton);
     await expect(page.getByRole("link", { name: "Request access" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Continue with Google" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Forgot password?" })).toHaveCount(0);
 
     await page.goto("/register", { waitUntil: "domcontentloaded" });
     await expect(
@@ -109,9 +201,7 @@ test.describe("public landing and auth experience", () => {
     const dialogBackground = await dialog.locator("#booking").evaluate(
       (element) => getComputedStyle(element).backgroundColor,
     );
-    expect(dialogBackground).toMatch(
-      /^rgb\((?:[0-3]?\d), (?:[0-3]?\d), (?:[0-3]?\d)\)$/,
-    );
+    expect(dialogBackground).toBe("rgb(255, 255, 255)");
 
     const dialogA11y = await new AxeBuilder({ page })
       .include("[data-booking-dialog-portal]")

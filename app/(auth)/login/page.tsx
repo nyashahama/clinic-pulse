@@ -117,10 +117,10 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <div className="mx-auto w-full max-w-[24rem]">
       <div className="mb-7">
-        <h1 className="font-display text-3xl font-medium leading-none tracking-[-0.04em] text-white">
+        <h1 className="font-display text-3xl font-semibold leading-none tracking-[-0.04em] text-[#17201e]">
           Sign in to ClinicPulse
         </h1>
-        <p className="mt-3 text-sm leading-6 text-white/46">
+        <p className="mt-3 text-base leading-7 text-neutral-600">
           Access live clinic status, field reports, and
           audit history for your district.
         </p>
@@ -129,12 +129,12 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       <LoginForm loginAction={loginAction} returnTo={returnTo ?? undefined} />
 
       {frontendEnv.showDemoCredentials ? (
-        <div className="mt-7 rounded-xl border border-white/[0.09] bg-white/[0.025] p-4">
+        <div className="mt-7 rounded-xl border border-neutral-200 bg-[#f7faf9] p-4">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold text-neutral-700 dark:text-white/80">
+            <p className="text-xs font-semibold text-neutral-700">
               Demo credentials
             </p>
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+            <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-bold text-emerald-800">
               Local
             </span>
           </div>
@@ -142,40 +142,40 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             {demoAccounts.map((account) => (
               <div
                 key={account.email}
-                className="flex items-center justify-between rounded-lg border border-neutral-100 bg-white px-3 py-2 dark:border-white/5 dark:bg-white/5"
+                className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white px-3 py-2"
               >
                 <div className="min-w-0">
-                  <p className="text-xs font-medium text-neutral-800 dark:text-white/90">
+                  <p className="text-xs font-medium text-neutral-800">
                     {account.role}
                   </p>
-                  <p className="mt-0.5 truncate font-mono text-[11px] text-neutral-400 dark:text-white/40">
+                  <p className="mt-0.5 truncate font-mono text-xs text-neutral-500">
                     {account.email}
                   </p>
                 </div>
               </div>
             ))}
           </div>
-          <p className="mt-3 font-mono text-[11px] text-neutral-500 dark:text-white/40">
-            Password: <span className="font-semibold text-neutral-700 dark:text-white/70">ClinicPulseDemo123!</span>
+          <p className="mt-3 font-mono text-xs text-neutral-500">
+            Password: <span className="font-semibold text-neutral-700">ClinicPulseDemo123!</span>
           </p>
         </div>
       ) : null}
 
-      <p className="mt-7 text-center text-sm text-white/42">
+      <p className="mt-7 text-center text-sm text-neutral-600">
         Don&rsquo;t have an account?&nbsp;
         <Link
           href="/register"
-          className="font-semibold text-emerald-300 transition-colors hover:text-emerald-200"
+          className="font-semibold text-[#0D7A6B] transition-colors hover:text-[#09695d]"
         >
           Request access
         </Link>
       </p>
 
-      <div className="mt-8 grid grid-cols-3 gap-3 border-t border-white/[0.07] pt-5">
+      <div className="mt-8 grid grid-cols-3 gap-3 border-t border-neutral-200 pt-5">
         {features.map((feature) => (
           <div key={feature.label} className="flex flex-col items-center gap-1.5 text-center">
-            <span className="text-emerald-300/72">{feature.icon}</span>
-            <span className="text-[10px] font-medium leading-4 text-white/28">{feature.label}</span>
+            <span className="text-[#0D7A6B]">{feature.icon}</span>
+            <span className="text-xs font-medium leading-4 text-neutral-500">{feature.label}</span>
           </div>
         ))}
       </div>

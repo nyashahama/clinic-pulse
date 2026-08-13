@@ -98,7 +98,10 @@ export function HeroDistrictConsole({ className }: { className?: string }) {
               ))}
             </div>
 
-            <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 dark:border-red-900/60 dark:bg-red-950/25">
+            <div
+              data-public-light-preview="incident-card"
+              className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 dark:border-red-900/60 dark:bg-red-950/25"
+            >
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700 dark:text-red-300">

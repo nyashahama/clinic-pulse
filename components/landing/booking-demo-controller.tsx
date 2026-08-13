@@ -282,8 +282,9 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
         ? createPortal(
           <motion.div
           data-booking-dialog-portal="true"
+          data-public-theme="clinical-light"
           ref={dialogRef}
-          className="dark fixed inset-0 z-50 grid place-items-start overflow-y-auto bg-neutral-950/52 px-4 py-8 backdrop-blur-[2px] sm:place-items-center"
+          className="fixed inset-0 z-50 grid place-items-start overflow-y-auto bg-neutral-950/52 px-4 py-8 backdrop-blur-[2px] sm:place-items-center"
           role="dialog"
           aria-modal="true"
           aria-label="Book a Clinic Pulse walkthrough"

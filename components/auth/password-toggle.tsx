@@ -12,7 +12,7 @@ export function PasswordToggle() {
         type="button"
         tabIndex={-1}
         onClick={() => setVisible((v) => !v)}
-        className="flex items-center justify-center rounded-md p-0.5 text-neutral-400 transition-colors hover:text-neutral-600 dark:text-white/30 dark:hover:text-white/60"
+        className="flex size-8 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
         aria-label={visible ? "Hide password" : "Show password"}
       >
         {visible ? (

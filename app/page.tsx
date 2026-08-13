@@ -21,9 +21,9 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     <div
-      className="dark min-h-screen bg-[#070908] text-white"
+      className="min-h-screen bg-[#eef3f2] text-[#171717] [color-scheme:light]"
       data-public-shell="landing"
-      data-public-theme="dark-editorial"
+      data-public-theme="clinical-light"
     >
       <Nav />
       <main>

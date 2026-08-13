@@ -17,7 +17,7 @@ export function ProductOperationsShowcase() {
         title="The operating surfaces behind the decision."
         description="Clinic Pulse gives each team the right surface for the same operating record: district visibility, offline reports, patient guidance, and audit-ready evidence."
       />
-      <p className="mt-7 font-mono text-[9px] uppercase tracking-[0.14em] text-white/56 sm:hidden">
+      <p className="mt-7 text-xs font-semibold text-neutral-500 sm:hidden">
         Swipe to inspect each operating surface
       </p>
       <MobileSwipeRail
@@ -53,17 +53,17 @@ function OperationModuleCard({
   return (
     <article
       className={cn(
-        "grid h-full min-w-0 content-start overflow-hidden rounded-xl border border-white/[0.09] bg-white/[0.025] p-4 shadow-2xl shadow-black/15 sm:p-5",
+        "grid h-full min-w-0 content-start overflow-hidden rounded-2xl border border-neutral-200 bg-white p-4 shadow-[0_16px_44px_rgba(23,32,30,0.07)] sm:p-5",
         variant === "primary" ? "gap-5 lg:p-6" : "gap-4",
       )}
     >
       <div className="min-w-0">
-        <div className="inline-flex max-w-full items-center rounded-full border border-white/[0.09] bg-white/[0.035] px-3 py-1 font-mono text-[9px] uppercase tracking-[0.1em] text-white/56">
+        <div className="inline-flex max-w-full items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
           <span className="min-w-0 break-words">{module.metric}</span>
         </div>
         <h3
           className={cn(
-            "mt-4 font-semibold leading-tight tracking-[-0.02em] text-white",
+            "mt-4 font-semibold leading-tight tracking-[-0.02em] text-neutral-950",
             variant === "primary" ? "text-2xl sm:text-3xl" : "text-lg",
           )}
         >
@@ -71,7 +71,7 @@ function OperationModuleCard({
         </h3>
         <p
           className={cn(
-            "mt-3 max-w-2xl text-sm leading-6 text-white/48",
+            "mt-3 max-w-2xl text-sm leading-6 text-neutral-600",
             variant === "primary" ? "sm:text-base sm:leading-7" : null,
           )}
         >
