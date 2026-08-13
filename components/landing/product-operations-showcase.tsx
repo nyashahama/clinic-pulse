@@ -4,6 +4,7 @@ import {
 } from "@/components/landing/landing-section";
 import { ScrollReveal } from "@/components/landing/motion/scroll-reveal";
 import { ProductSurfacePreview } from "@/components/landing/product-surface-previews";
+import { MobileSwipeRail } from "@/components/landing/mobile-swipe-rail";
 import { productOperationsModules } from "@/lib/landing/openpanel-refactor-content";
 import { cn } from "@/lib/utils";
 
@@ -16,14 +17,12 @@ export function ProductOperationsShowcase() {
         title="The operating surfaces behind the decision."
         description="Clinic Pulse gives each team the right surface for the same operating record: district visibility, offline reports, patient guidance, and audit-ready evidence."
       />
-      <p className="mt-7 font-mono text-[9px] uppercase tracking-[0.14em] text-white/28 sm:hidden">
+      <p className="mt-7 font-mono text-[9px] uppercase tracking-[0.14em] text-white/56 sm:hidden">
         Swipe to inspect each operating surface
       </p>
-      <div
-        aria-label="Product surfaces"
+      <MobileSwipeRail
+        ariaLabel="Product surfaces"
         className="mt-3 grid w-full min-w-0 snap-x snap-mandatory auto-cols-[90%] grid-flow-col gap-3 overflow-x-auto pb-4 sm:mt-10 sm:auto-cols-auto sm:grid-flow-row sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:pb-0 lg:items-stretch"
-        role="region"
-        tabIndex={0}
       >
         {productOperationsModules.map((module, index) => (
           <ScrollReveal
@@ -37,7 +36,7 @@ export function ProductOperationsShowcase() {
             />
           </ScrollReveal>
         ))}
-      </div>
+      </MobileSwipeRail>
     </LandingSection>
   );
 }
@@ -59,7 +58,7 @@ function OperationModuleCard({
       )}
     >
       <div className="min-w-0">
-        <div className="inline-flex max-w-full items-center rounded-full border border-white/[0.09] bg-white/[0.035] px-3 py-1 font-mono text-[9px] uppercase tracking-[0.1em] text-white/42">
+        <div className="inline-flex max-w-full items-center rounded-full border border-white/[0.09] bg-white/[0.035] px-3 py-1 font-mono text-[9px] uppercase tracking-[0.1em] text-white/56">
           <span className="min-w-0 break-words">{module.metric}</span>
         </div>
         <h3

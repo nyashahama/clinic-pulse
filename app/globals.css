@@ -326,3 +326,9 @@ body {
   font-family: var(--font-satoshi);
   font-weight: 500;
 }
+
+[data-public-shell] :is(a, button, input, select, textarea, [tabindex]):focus-visible,
+[data-booking-dialog-portal] :is(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid #6ee7b7;
+  outline-offset: 3px;
+}

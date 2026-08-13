@@ -29,7 +29,7 @@ export function StakeholderImpactStrip() {
               className="relative min-w-0 border-white/[0.08] p-4 even:border-l odd:border-b sm:p-5 [&:nth-child(2)]:border-b [&:nth-child(3)]:border-b-0"
             >
               <div className="flex items-center justify-between gap-3">
-                <span className="font-mono text-[10px] text-white/24">
+                <span className="font-mono text-[10px] text-white/50">
                   0{index + 1}
                 </span>
                 <span className="size-1.5 rounded-full bg-emerald-300/70 shadow-[0_0_12px_rgba(110,231,183,0.48)]" />
@@ -40,7 +40,7 @@ export function StakeholderImpactStrip() {
               <h3 className="mt-2 text-sm font-semibold leading-5 text-white sm:text-base">
                 {item.role}
               </h3>
-              <p className="mt-2 text-xs leading-5 text-white/44 sm:text-sm sm:leading-6">
+              <p className="mt-2 text-xs leading-5 text-white/56 sm:text-sm sm:leading-6">
                 {item.outcome}
               </p>
             </article>

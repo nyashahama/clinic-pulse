@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 
 const routes = ["/", "/login", "/register"] as const;
 
@@ -80,11 +81,100 @@ test.describe("public landing and auth experience", () => {
     await expect(page.getByRole("link", { name: "Request access" })).toBeVisible();
 
     await page.goto("/register", { waitUntil: "domcontentloaded" });
-    await expect(page.getByLabel("Full name")).toBeVisible();
-    await expect(page.getByLabel("Role")).toBeVisible();
-    await expect(page.getByLabel("Work email")).toBeVisible();
-    await expect(page.getByLabel("Organisation")).toBeVisible();
-    await expect(page.getByText("Accounts are provisioned by administrators.")).toBeVisible();
+    await expect(
+      page.getByRole("heading", {
+        name: "Access is provisioned by your organisation.",
+      }),
+    ).toBeVisible();
+    await expect(page.locator("form")).toHaveCount(0);
+    await expect(
+      page.getByRole("link", { name: "Book an access walkthrough" }),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: "Return to sign in" })).toBeVisible();
+  });
+
+  test("contains booking focus and restores it to the opener", async ({ page }) => {
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+
+    const opener = page.getByRole("button", { name: "Book walkthrough" }).first();
+    await opener.focus();
+    await page.keyboard.press("Enter");
+
+    const dialog = page.getByRole("dialog", {
+      name: "Book a Clinic Pulse walkthrough",
+    });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Close booking" })).toBeFocused();
+
+    const dialogBackground = await dialog.locator("#booking").evaluate(
+      (element) => getComputedStyle(element).backgroundColor,
+    );
+    expect(dialogBackground).toMatch(
+      /^rgb\((?:[0-3]?\d), (?:[0-3]?\d), (?:[0-3]?\d)\)$/,
+    );
+
+    const dialogA11y = await new AxeBuilder({ page })
+      .include("[data-booking-dialog-portal]")
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .analyze();
+    expect(
+      dialogA11y.violations.filter(
+        (violation) =>
+          violation.impact === "critical" || violation.impact === "serious",
+      ),
+    ).toEqual([]);
+
+    const backgroundIsInert = await page.locator("[data-public-shell]").evaluate((shell) => {
+      let current: HTMLElement | null = shell as HTMLElement;
+      while (current && current !== document.body) {
+        if (current.inert) return true;
+        current = current.parentElement;
+      }
+      return false;
+    });
+    expect(backgroundIsInert).toBe(true);
+
+    await page.keyboard.press("Shift+Tab");
+    expect(
+      await dialog.evaluate((element) => element.contains(document.activeElement)),
+    ).toBe(true);
+
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await expect(opener).toBeFocused();
+  });
+
+  test("only makes swipe rails keyboard-scrollable on mobile", async ({ page }) => {
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+
+    const productRail = page.getByRole("region", { name: "Product surfaces" });
+    const isMobile = test.info().project.name === "mobile-chrome";
+
+    if (!isMobile) {
+      await expect(productRail).not.toHaveAttribute("tabindex", "0");
+      return;
+    }
+
+    await expect(productRail).toHaveAttribute("tabindex", "0");
+    await productRail.focus();
+    await expect(productRail).toBeFocused();
+
+    const focusIndicator = await productRail.evaluate((element) => {
+      const styles = getComputedStyle(element);
+      return {
+        color: styles.outlineColor,
+        style: styles.outlineStyle,
+        width: styles.outlineWidth,
+      };
+    });
+    expect(focusIndicator.style).not.toBe("none");
+    expect(focusIndicator.width).not.toBe("0px");
+
+    const before = await productRail.evaluate((element) => element.scrollLeft);
+    await page.keyboard.press("ArrowRight");
+    await expect
+      .poll(() => productRail.evaluate((element) => element.scrollLeft))
+      .toBeGreaterThan(before);
   });
 
   test("keeps every public route inside the viewport", async ({ page }) => {
@@ -102,6 +192,28 @@ test.describe("public landing and auth experience", () => {
     }
   });
 
+  test("has no serious or critical accessibility violations", async ({ page }) => {
+    test.setTimeout(90_000);
+
+    for (const route of routes) {
+      await page.goto(route, { waitUntil: "domcontentloaded" });
+      await expect(page.locator("main").first()).toBeVisible();
+
+      const results = await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+        .analyze();
+      const blockingViolations = results.violations.filter(
+        (violation) =>
+          violation.impact === "critical" || violation.impact === "serious",
+      );
+
+      expect(
+        blockingViolations,
+        `${route} has blocking accessibility violations`,
+      ).toEqual([]);
+    }
+  });
+
   test("keeps the mobile landing story compact", async ({ page }) => {
     test.skip(test.info().project.name !== "mobile-chrome", "mobile-only contract");
     await page.goto("/", { waitUntil: "domcontentloaded" });
@@ -114,7 +226,7 @@ test.describe("public landing and auth experience", () => {
 test.describe("server-rendered auth fallback", () => {
   test.use({ javaScriptEnabled: false });
 
-  test("keeps the login and access-request controls visible without hydration", async ({
+  test("keeps login and provision-only access controls visible without hydration", async ({
     page,
   }) => {
     await page.goto("/login", { waitUntil: "domcontentloaded" });
@@ -130,11 +242,11 @@ test.describe("server-rendered auth fallback", () => {
 
     await page.goto("/register", { waitUntil: "domcontentloaded" });
     const registerControls = [
-      page.getByLabel("Full name"),
-      page.getByLabel("Role"),
-      page.getByLabel("Work email"),
-      page.getByLabel("Organisation"),
-      page.getByRole("button", { name: "Request access review" }),
+      page.getByRole("heading", {
+        name: "Access is provisioned by your organisation.",
+      }),
+      page.getByRole("link", { name: "Book an access walkthrough" }),
+      page.getByRole("link", { name: "Return to sign in" }),
     ];
     for (const control of registerControls) {
       await expect(control).toBeVisible();

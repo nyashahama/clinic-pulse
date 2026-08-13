@@ -70,6 +70,55 @@ async function signupAction(
 export default function RegisterPage() {
   const frontendEnv = validateFrontendRuntimeEnv();
 
+  if (!frontendEnv.allowPublicRegistration) {
+    return (
+      <div className="mx-auto w-full max-w-[28rem]">
+        <div className="mb-7">
+          <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-emerald-200/68">
+            Provision-only access
+          </p>
+          <h1 className="mt-4 font-display text-3xl font-medium leading-[1.02] tracking-[-0.04em] text-white">
+            Access is provisioned by your organisation.
+          </h1>
+          <p className="mt-4 text-sm leading-6 text-white/56">
+            ClinicPulse workspaces are not open for public self-registration.
+            An authorised administrator creates accounts for district teams,
+            field reporters, and approved partners.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-amber-300/15 bg-amber-300/[0.045] p-4 text-sm leading-6 text-amber-100/78">
+          <p className="font-semibold text-amber-100">Need access for your team?</p>
+          <p className="mt-1 text-amber-100/64">
+            Use the walkthrough route to discuss workspace provisioning and the
+            roles your organisation needs.
+          </p>
+        </div>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <Link
+            href="/?booking=1"
+            className="inline-flex h-11 items-center justify-center rounded-full border border-white bg-white px-4 text-center text-sm font-semibold text-neutral-950 transition-colors hover:bg-white/88"
+          >
+            Book an access walkthrough
+          </Link>
+          <Link
+            href="/login"
+            className="inline-flex h-11 items-center justify-center rounded-full border border-white/12 bg-white/[0.04] px-4 text-center text-sm font-semibold text-white/76 transition-colors hover:border-white/24 hover:bg-white/[0.08] hover:text-white"
+          >
+            Return to sign in
+          </Link>
+        </div>
+
+        {frontendEnv.showDemoCredentials ? (
+          <p className="mt-5 text-center text-xs leading-5 text-white/42">
+            Local demo access remains available from the sign-in page.
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto w-full max-w-[28rem]">
       <div className="mb-7">

@@ -71,9 +71,9 @@ export function Footer() {
                 <span className="animate-pulse-dot absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
                 <span className="inline-flex h-2 w-2 rounded-full bg-green-500" />
               </span>
-              <span className="text-xs text-white/38">Illustrative workspace ready</span>
+              <span className="text-xs text-white/56">Illustrative workspace ready</span>
             </div>
-            <p className="max-w-72 text-xs leading-5 text-white/34 sm:text-right">
+            <p className="max-w-72 text-xs leading-5 text-white/56 sm:text-right">
               Scenario data is local to the walkthrough and mirrors the Clinic Pulse operating model.
             </p>
           </div>

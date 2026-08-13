@@ -36,8 +36,8 @@ export function SignupForm({
   const pw = PasswordToggle();
   const confirmPw = PasswordToggle();
   const submitLabel = allowPublicRegistration
-    ? "Request account"
-    : "Request access review";
+    ? "Validate access setup"
+    : "Access is administrator-provisioned";
 
   return (
     <form action={formAction} className="grid gap-4">
@@ -195,7 +195,7 @@ export function SignupForm({
                       className="opacity-75"
                     />
                   </svg>
-                  Reviewing request...
+                  Checking details...
                 </motion.span>
               ) : (
                 <motion.span

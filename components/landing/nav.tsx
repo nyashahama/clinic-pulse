@@ -27,7 +27,7 @@ export function Nav() {
         <div className="relative mx-auto w-full max-w-screen-xl px-3 lg:px-10">
           <div className="flex h-14 items-center justify-between gap-3">
             <div className="grow basis-0">
-              <Link href="/" className="block w-fit py-2 pr-2">
+              <Link href="/" className="block w-fit rounded-md py-2 pr-2">
                 <ClinicPulseLogo />
               </Link>
             </div>
@@ -43,7 +43,7 @@ export function Nav() {
                 </Link>
               ))}
               <div className="h-5 w-px bg-white/10" />
-              <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-white/38">
+              <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-white/56">
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="animate-pulse-dot absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
                   <span className="inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
@@ -93,7 +93,7 @@ export function Nav() {
                 {name}
               </Link>
             ))}
-            <span className="ml-1 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-3 font-mono text-[10px] uppercase tracking-[0.1em] text-white/38">
+            <span className="ml-1 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-3 font-mono text-[10px] uppercase tracking-[0.1em] text-white/56">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="animate-pulse-dot absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
                 <span className="inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />

@@ -115,11 +115,11 @@ export default function AuthLayout({
         <div className="relative z-10 px-5 pb-6 text-center text-[11px] font-medium leading-5 text-white/28">
           <p>
             By continuing, you agree to ClinicPulse&rsquo;s{" "}
-            <Link href="/legal/terms" className="font-semibold text-white/46 hover:text-white/72">
+            <Link href="/legal/terms" className="rounded-sm font-semibold text-white/46 hover:text-white/72">
               Terms
             </Link>{" "}
             and{" "}
-            <Link href="/legal/privacy" className="font-semibold text-white/46 hover:text-white/72">
+            <Link href="/legal/privacy" className="rounded-sm font-semibold text-white/46 hover:text-white/72">
               Privacy Policy
             </Link>
             .

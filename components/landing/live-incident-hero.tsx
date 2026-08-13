@@ -28,7 +28,7 @@ export function LiveIncidentHero({ onBookDemo }: LiveIncidentHeroProps) {
                 <span className="size-1.5 rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(110,231,183,0.8)]" />
                 {liveIncidentHero.eyebrow}
               </p>
-              <p className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-white/44">
+              <p className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-white/56">
                 Illustrative operational scenario
               </p>
             </div>
@@ -66,7 +66,7 @@ export function LiveIncidentHero({ onBookDemo }: LiveIncidentHeroProps) {
           </ScrollReveal>
 
           <ScrollReveal delay={0.24}>
-            <div className="mx-auto mt-6 flex max-w-max items-center gap-2 rounded-full border border-white/[0.08] bg-black/20 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-white/42">
+            <div className="mx-auto mt-6 flex max-w-max items-center gap-2 rounded-full border border-white/[0.08] bg-black/20 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-white/56">
               <Radio className="size-3 text-emerald-300/80" />
               Mabopane Station · pharmacy signal · source attached
             </div>

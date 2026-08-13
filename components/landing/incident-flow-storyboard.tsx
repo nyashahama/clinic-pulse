@@ -84,7 +84,7 @@ export function IncidentFlowStoryboard() {
               <p className="text-sm font-semibold text-white">
                 Connected incident path
               </p>
-              <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-white/36">
+              <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-white/56">
                 OPERATIONS / {auditReference}
               </p>
             </div>

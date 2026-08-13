@@ -14,7 +14,17 @@ import {
   X,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import {
+  FormEvent,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -48,6 +58,10 @@ type BookingDemoControllerProps = {
   children: (controls: { openBooking: () => void }) => ReactNode;
 };
 
+const subscribeToClient = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
+
 export function BookingDemoController({ children }: BookingDemoControllerProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -59,6 +73,8 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
   const [lead, setLead] = useState({
     name: "",
     workEmail: "",
@@ -90,6 +106,11 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
   const requestedDateValue = selectedDay == null ? "" : `${viewDate.getFullYear()}-${pad(viewDate.getMonth() + 1)}-${pad(selectedDay)}`;
   const bookingUrlOpen = shouldOpenBookingModalFromSearchParams(searchParams);
   const bookingOpen = isBookingOpen || bookingUrlOpen;
+  const isClient = useSyncExternalStore(
+    subscribeToClient,
+    getClientSnapshot,
+    getServerSnapshot,
+  );
 
   useEffect(() => {
     const syncBookingHash = () => {
@@ -107,13 +128,100 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
     };
   }, []);
 
-  const closeBooking = () => {
+  const closeBooking = useCallback(() => {
     setIsBookingOpen(false);
 
     if (shouldOpenBookingModal(window.location.href)) {
       router.replace("/", { scroll: false });
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    if (!bookingOpen || !isClient) return;
+
+    const dialog = dialogRef.current;
+    const publicShell = document.querySelector<HTMLElement>("[data-public-shell]");
+    if (!dialog || !publicShell) return;
+
+    const activeElement = document.activeElement;
+    if (
+      !openerRef.current &&
+      activeElement instanceof HTMLElement &&
+      !dialog.contains(activeElement)
+    ) {
+      openerRef.current = activeElement;
+    }
+
+    const previousBodyOverflow = document.body.style.overflow;
+    publicShell.inert = true;
+    document.body.style.overflow = "hidden";
+
+    const getFocusableElements = () =>
+      Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter(
+        (element) =>
+          !element.hidden && element.getAttribute("aria-hidden") !== "true",
+      );
+
+    const initialFocus = dialog.querySelector<HTMLElement>(
+      "[data-booking-initial-focus]",
+    );
+    initialFocus?.focus();
+
+    const handleDialogKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeBooking();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const focusableElements = getFocusableElements();
+      const first = focusableElements[0];
+      const last = focusableElements.at(-1);
+      if (!first || !last) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      if (
+        event.shiftKey &&
+        (document.activeElement === first ||
+          !dialog.contains(document.activeElement))
+      ) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleDialogKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleDialogKeyDown);
+      publicShell.inert = false;
+      document.body.style.overflow = previousBodyOverflow;
+
+      const opener = openerRef.current;
+      window.requestAnimationFrame(() => {
+        if (!document.querySelector("[data-booking-dialog-portal]")) {
+          opener?.focus();
+          openerRef.current = null;
+        }
+      });
+    };
+  }, [bookingOpen, closeBooking, isClient]);
+
+  const openBooking = useCallback(() => {
+    setIsBookingOpen(true);
+  }, []);
 
   const isSubmitDisabled =
     isSubmitting ||
@@ -168,14 +276,18 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
 
   return (
     <>
-      {children({ openBooking: () => setIsBookingOpen(true) })}
+      {children({ openBooking })}
 
-      {bookingOpen ? (
-        <motion.div
-          className="fixed inset-0 z-50 grid place-items-start overflow-y-auto bg-neutral-950/52 px-4 py-8 backdrop-blur-[2px] sm:place-items-center"
+      {isClient && bookingOpen
+        ? createPortal(
+          <motion.div
+          data-booking-dialog-portal="true"
+          ref={dialogRef}
+          className="dark fixed inset-0 z-50 grid place-items-start overflow-y-auto bg-neutral-950/52 px-4 py-8 backdrop-blur-[2px] sm:place-items-center"
           role="dialog"
           aria-modal="true"
           aria-label="Book a Clinic Pulse walkthrough"
+          tabIndex={-1}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
@@ -209,8 +321,10 @@ export function BookingDemoController({ children }: BookingDemoControllerProps) 
               submitError={submitError}
             />
           </motion.div>
-        </motion.div>
-      ) : null}
+          </motion.div>,
+          document.body,
+        )
+        : null}
     </>
   );
 }
@@ -282,6 +396,7 @@ function BookingPanel({
           onClick={onClose}
           className="grid size-7 place-items-center rounded-md border border-neutral-300 text-neutral-500 transition hover:text-neutral-950 dark:border-border dark:text-muted-foreground dark:hover:text-foreground"
           aria-label="Close booking"
+          data-booking-initial-focus="true"
         >
           <X className="size-4" />
         </button>

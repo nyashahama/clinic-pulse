@@ -1,4 +1,5 @@
 import { AuditSealStream } from "@/components/landing/motion/audit-seal-stream";
+import { MobileSwipeRail } from "@/components/landing/mobile-swipe-rail";
 import { trustEvidencePanels } from "@/lib/landing/openpanel-refactor-content";
 
 export function EvidenceInfrastructure() {
@@ -19,7 +20,7 @@ export function EvidenceInfrastructure() {
             In the scenario, every decision keeps its source, permissions,
             freshness, audit reference, export state, and partner handoff visible.
           </p>
-          <p className="mt-6 border-l border-emerald-300/40 pl-4 font-mono text-[10px] uppercase leading-5 tracking-[0.14em] text-white/34">
+          <p className="mt-6 border-l border-emerald-300/40 pl-4 font-mono text-[10px] uppercase leading-5 tracking-[0.14em] text-white/56">
             Modeled product evidence · not deployment telemetry
           </p>
         </div>
@@ -27,14 +28,12 @@ export function EvidenceInfrastructure() {
         <div className="grid min-w-0 gap-4">
           <AuditSealStream className="rounded-xl border border-white/10 bg-white/[0.04] p-2" />
 
-          <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-white/28 sm:hidden">
+          <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-white/56 sm:hidden">
             Swipe to inspect the evidence objects
           </p>
-          <div
-            aria-label="Evidence objects"
+          <MobileSwipeRail
+            ariaLabel="Evidence objects"
             className="grid w-full min-w-0 snap-x snap-mandatory auto-cols-[86%] grid-flow-col gap-3 overflow-x-auto pb-4 sm:auto-cols-auto sm:grid-flow-row sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:pb-0"
-            role="region"
-            tabIndex={0}
           >
             {trustEvidencePanels.map((panel) => (
               <article
@@ -62,7 +61,7 @@ export function EvidenceInfrastructure() {
                 </div>
               </article>
             ))}
-          </div>
+          </MobileSwipeRail>
         </div>
       </div>
     </section>

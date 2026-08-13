@@ -22,8 +22,11 @@ test("register page stays provisioned-only when public registration is disabled"
 
   await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "Request access review" }),
+    page.getByRole("heading", {
+      name: "Access is provisioned by your organisation.",
+    }),
   ).toBeVisible();
+  await expect(page.locator("form")).toHaveCount(0);
 });
 
 test("admin can create a pilot user and sees the one-time temporary password", async ({
